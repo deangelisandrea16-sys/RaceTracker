@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KART CRM</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'Courier New', monospace; background: #09090b; color: #fafafa; min-height: 100vh; font-size: 14px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- React + Babel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc,
+  onSnapshot, query, orderBy, serverTimestamp, deleteField
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const cfg = {
+  apiKey: "AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",
+  authDomain: "karting-tools.firebaseapp.com",
+  projectId: "karting-tools",
+  storageBucket: "karting-tools.firebasestorage.app",
+  messagingSenderId: "199360301984",
+  appId: "1:199360301984:web:79435cce3d5fdb171232c5"
+};
+
+const app = initializeApp(cfg);
+const db  = getFirestore(app);
+
+// ── helpers ──────────────────────────────────────────────────
+const col  = name => collection(db, name);
+const dref = (c,id) => doc(db, c, id);
+
+window.FB = {
+  listenVendite:  cb => onSnapshot(query(col("vendite"),  orderBy("createdAt","desc")), s => cb(s.docs.map(d=>({id:d.id,...d.data()})))),
+  listenCatalogo: cb => onSnapshot(query(col("catalogo"), orderBy("createdAt","asc")),  s => cb(s.docs.map(d=>({id:d.id,...d.data()})))),
+  listenMeta:     (key,cb) => onSnapshot(dref("metadata",key), s => cb(s.exists()?s.data():{})),
+
+  addV:    v  => addDoc(col("vendite"),  {...v, createdAt:serverTimestamp()}),
+  updV:    (id,v)=> updateDoc(dref("vendite",id),  {...v, updatedAt:serverTimestamp()}),
+  delV:    id => deleteDoc(dref("vendite",id)),
+
+  addA:    a  => addDoc(col("catalogo"), {...a, createdAt:serverTimestamp()}),
+  updA:    (id,a)=> updateDoc(dref("catalogo",id), {...a, updatedAt:serverTimestamp()}),
+  delA:    id => deleteDoc(dref("catalogo",id)),
+
+  setMeta: (key,field,val) => val === null
+    ? updateDoc(dref("metadata",key), {[field]: deleteField()}).catch(()=>setDoc(dref("metadata",key),{},{merge:true}))
+    : setDoc(dref("metadata",key), {[field]:val}, {merge:true}),
+};
+
+window._FB_READY = true;
+window.dispatchEvent(new Event("fb-ready"));
+</script>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo, useCallback } = React;
+
+// ── SEED ────────────────────────────────────────────────────
+const SEED = [
+  {nome:"Pacchetto video highlight",desc:"Video montato 2-3 min, musica, grafica",prezzo:150},
+  {nome:"Pacchetto foto full day",  desc:"Selezione 80+ foto alta risoluzione",  prezzo:120},
+  {nome:"Pacchetto foto+video",     desc:"Combo foto e highlight video",          prezzo:230},
+  {nome:"Merchandising tuta branded",desc:"Personalizzazione grafica tuta",       prezzo:80},
+  {nome:"Gopro onboard solo",       desc:"Solo footage onboard non montato",      prezzo:50},
+  {nome:"Reel social 60s",          desc:"Reel per Instagram/TikTok",            prezzo:90},
+];
+
+// ── UTILS ────────────────────────────────────────────────────
+const MC = {Contanti:"#22c55e",Bonifico:"#3b82f6",Carta:"#a855f7",Altro:"#71717a"};
+const MB = {Contanti:"green",  Bonifico:"blue",   Carta:"purple", Altro:"gray"   };
+
+const fe  = n => "€ "+parseFloat(n||0).toFixed(2).replace(".",",").replace(/\B(?=(\d{3})+(?!\d))/g,".");
+const fes = n => { n=parseFloat(n||0); return n>=1000?"€ "+(n/1000).toFixed(1)+"k":"€ "+n.toFixed(0); };
+const fd  = d => { if(!d)return""; const p=d.split("-"); return `${p[2]}/${p[1]}/${p[0]}`; };
+
+// ── TOKENS ───────────────────────────────────────────────────
+const K = {
+  bg:"#09090b",card:"#18181b",card2:"#1f1f23",
+  b:"#2e2e34",b2:"#3f3f46",
+  t:"#fafafa",t2:"#a1a1aa",t3:"#71717a",
+  ac:"#f59e0b",ac2:"#fbbf24",
+  green:"#22c55e",red:"#ef4444",blue:"#3b82f6",
+};
+
+const S = {
+  wrap:   {fontFamily:"'Courier New',monospace",background:K.bg,color:K.t,minHeight:"100vh",fontSize:14},
+  hdr:    {background:K.card,borderBottom:`1px solid ${K.b}`,padding:"12px 16px",position:"sticky",top:0,zIndex:100,display:"flex",alignItems:"center",gap:10},
+  nav:    {background:K.card,borderBottom:`1px solid ${K.b}`,display:"flex",overflowX:"auto",scrollbarWidth:"none"},
+  main:   {padding:16,maxWidth:680,margin:"0 auto"},
+  ovl:    {position:"fixed",inset:0,background:"rgba(0,0,0,.78)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"},
+  sht:    {background:K.card,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:680,maxHeight:"92vh",overflowY:"auto",paddingBottom:32,animation:"slideUp .25s ease"},
+  fab:    {position:"fixed",bottom:24,right:20,width:52,height:52,borderRadius:"50%",background:K.ac,color:"#09090b",fontSize:24,fontWeight:900,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 20px rgba(245,158,11,.4)",zIndex:99},
+  inp:    {width:"100%",background:K.bg,border:`1px solid ${K.b}`,borderRadius:10,padding:"10px 12px",fontFamily:"'Courier New',monospace",fontSize:14,fontWeight:600,color:K.t,outline:"none"},
+  lbl:    {display:"block",fontSize:11,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:K.t3,marginBottom:6},
+  sec:    {fontSize:10,fontWeight:700,letterSpacing:"1.5px",textTransform:"uppercase",color:K.t3,margin:"16px 0 10px"},
+  dvd:    {borderTop:`1px solid ${K.b}`,margin:"16px 0"},
+  ntab:   a=>({padding:"12px 16px",fontFamily:"'Courier New',monospace",fontWeight:700,fontSize:12,letterSpacing:.5,textTransform:"uppercase",color:a?K.ac:K.t3,border:"none",background:"none",cursor:"pointer",borderBottom:a?`2px solid ${K.ac}`:"2px solid transparent",whiteSpace:"nowrap"}),
+  btn:    v=>{
+    const b={fontFamily:"'Courier New',monospace",fontWeight:800,fontSize:13,padding:"10px 16px",borderRadius:10,border:"none",cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6};
+    if(v==="p")  return {...b,background:K.ac,color:"#09090b"};
+    if(v==="d")  return {...b,background:"rgba(239,68,68,.15)",color:K.red,border:"1px solid rgba(239,68,68,.3)"};
+    if(v==="g")  return {...b,background:"none",color:K.t2,border:`1px solid ${K.b}`};
+    if(v==="s")  return {...b,background:K.card2,color:K.t2,border:`1px solid ${K.b}`,padding:"6px 10px",fontSize:12};
+    if(v==="sd") return {...b,background:"rgba(239,68,68,.1)",color:K.red,border:"1px solid rgba(239,68,68,.25)",padding:"6px 10px",fontSize:12};
+    return {...b,background:K.card2,color:K.t,border:`1px solid ${K.b}`};
+  },
+  bdg: v=>{
+    const m={green:{bg:"rgba(34,197,94,.15)",color:K.green},blue:{bg:"rgba(59,130,246,.15)",color:K.blue},purple:{bg:"rgba(168,85,247,.15)",color:"#a855f7"},gray:{bg:K.card2,color:K.t3}};
+    const t=m[v]||m.gray;
+    return {fontSize:11,fontWeight:700,padding:"3px 8px",borderRadius:6,whiteSpace:"nowrap",background:t.bg,color:t.color};
+  },
+  card: h=>({background:K.card,border:`1px solid ${h?K.b2:K.b}`,borderRadius:12,padding:14,marginBottom:10,cursor:"pointer",transition:"border-color .15s"}),
+};
+
+// ── HOOK FIREBASE ────────────────────────────────────────────
+function useKart() {
+  const [vendite,  setVendite]  = useState([]);
+  const [catalogo, setCatalogo] = useState([]);
+  const [noteG,    setNoteG]    = useState({});
+  const [noteC,    setNoteC]    = useState({});
+  const [contatti, setContatti] = useState({});
+  const [ready,    setReady]    = useState({v:false,c:false,ng:false,nc:false,cc:false});
+  const [saving,   setSaving]   = useState(false);
+  const [seeded,   setSeeded]   = useState(false);
+
+  const mark = k => setReady(r=>({...r,[k]:true}));
+
+  useEffect(()=>{
+    if(!window._FB_READY){ window.addEventListener("fb-ready",init,{once:true}); return; }
+    init();
+    function init(){
+      const {FB}=window;
+      const u1=FB.listenVendite(d=>{setVendite(d);mark("v");});
+      const u2=FB.listenCatalogo(async d=>{
+        if(d.length===0 && !seeded){
+          setSeeded(true);
+          for(const a of SEED) await FB.addA(a).catch(()=>{});
+        } else { setCatalogo(d); }
+        mark("c");
+      });
+      const u3=FB.listenMeta("note_gare",    d=>{setNoteG(d);   mark("ng");});
+      const u4=FB.listenMeta("note_clienti", d=>{setNoteC(d);   mark("nc");});
+      const u5=FB.listenMeta("contatti",     d=>{setContatti(d);mark("cc");});
+      return ()=>[u1,u2,u3,u4,u5].forEach(u=>u());
+    }
+  },[]);
+
+  const loading = !Object.values(ready).every(Boolean);
+
+  const run = useCallback(async fn=>{
+    setSaving(true);
+    try { await fn(); }
+    catch(e){ console.error(e); alert("Errore Firebase: "+e.message); }
+    finally { setSaving(false); }
+  },[]);
+
+  const {FB} = window;
+
+  // vendite
+  const salvaV = useCallback((form,editId)=>run(()=>{
+    const {saleItems,...rest}=form;
+    const payload={...rest,articoli:saleItems,totale:saleItems.reduce((s,i)=>s+i.qty*i.prezzo,0)};
+    return editId ? FB.updV(editId,payload) : FB.addV(payload);
+  }),[run]);
+
+  const delV = useCallback((id,cb)=>run(async()=>{
+    await FB.delV(id); if(cb)cb();
+  }),[run]);
+
+  // catalogo
+  const salvaA = useCallback((form,editId)=>run(()=>{
+    const p={nome:form.nome.trim(),desc:(form.desc||"").trim(),prezzo:parseFloat(form.prezzo)||0};
+    return editId ? FB.updA(editId,p) : FB.addA(p);
+  }),[run]);
+
+  const delA = useCallback(id=>run(()=>FB.delA(id)),[run]);
+
+  // meta
+  const setNotaG = useCallback((gara,txt)=>run(()=>FB.setMeta("note_gare",gara,txt)),[run]);
+  const setNotaC = useCallback((nome,txt)=>run(()=>FB.setMeta("note_clienti",nome,txt)),[run]);
+
+  const salvaContatto = useCallback((nome,val)=>run(async()=>{
+    await FB.setMeta("contatti",nome,val);
+    const toUpd=vendite.filter(v=>v.cliente===nome&&v.contatto!==val);
+    await Promise.all(toUpd.map(v=>FB.updV(v.id,{...v,contatto:val})));
+  }),[run,vendite]);
+
+  const delCliente = useCallback((nome)=>run(async()=>{
+    await Promise.all([
+      ...vendite.filter(v=>v.cliente===nome).map(v=>FB.delV(v.id)),
+      FB.setMeta("note_clienti",nome,null),
+      FB.setMeta("contatti",nome,null),
+    ]);
+  }),[run,vendite]);
+
+  return {vendite,catalogo,noteG,noteC,contatti,loading,saving,salvaV,delV,salvaA,delA,setNotaG,setNotaC,salvaContatto,delCliente};
+}
+
+// ── COMPONENTS ───────────────────────────────────────────────
+function Modal({open,onClose,title,children}){
+  if(!open)return null;
+  return(
+    <div style={S.ovl} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={S.sht}>
+        <div style={{width:40,height:4,background:K.b2,borderRadius:2,margin:"12px auto 16px"}}/>
+        <div style={{padding:"0 16px 12px",borderBottom:`1px solid ${K.b}`,display:"flex",alignItems:"center",gap:10}}>
+          <div style={{fontWeight:900,fontSize:16,flex:1}}>{title}</div>
+          <button style={S.btn("g")} onClick={onClose}>✕</button>
+        </div>
+        <div style={{padding:16}}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function FI({label,...p}){
+  return(
+    <div style={{marginBottom:14}}>
+      {label&&<label style={S.lbl}>{label}</label>}
+      <input style={S.inp} {...p}/>
+    </div>
+  );
+}
+
+function MethodBar({vendite,tot}){
+  const mm={Contanti:0,Bonifico:0,Carta:0,Altro:0};
+  vendite.forEach(v=>{mm[v.metodo]=(mm[v.metodo]||0)+v.totale;});
+  const segs=Object.entries(mm).filter(([,v])=>v>0).map(([m,v])=>({m,v,pct:tot>0?v/tot*100:0}));
+  return(
+    <div style={{background:K.card,border:`1px solid ${K.b}`,borderRadius:12,padding:14,marginBottom:14}}>
+      <div style={{display:"flex",height:30,borderRadius:10,overflow:"hidden",gap:2,marginBottom:10}}>
+        {segs.map(s=><div key={s.m} style={{flex:s.pct,background:MC[s.m],display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#09090b",overflow:"hidden",whiteSpace:"nowrap"}}>{s.pct>=14?s.m:""}</div>)}
+      </div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:"8px 14px"}}>
+        {segs.map(s=>(
+          <div key={s.m} style={{display:"flex",alignItems:"center",gap:5,fontSize:11,fontWeight:700,color:K.t2}}>
+            <div style={{width:8,height:8,borderRadius:2,background:MC[s.m]}}/>{s.m} {fe(s.v)}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function VRow({v,onDetail,onEdit,onDel}){
+  const [h,setH]=useState(false);
+  return(
+    <div style={{background:K.card,border:`1px solid ${h?K.b2:K.b}`,borderRadius:12,padding:14,marginBottom:8,transition:"border-color .15s"}}
+      onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)}>
+      <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
+        <div style={{flex:1,cursor:"pointer"}} onClick={onDetail}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+            <span style={{fontWeight:800,fontSize:14}}>👤 {v.cliente}</span>
+            <span style={{fontWeight:900,color:K.ac,marginLeft:"auto"}}>{fe(v.totale)}</span>
+          </div>
+          <div style={{fontSize:12,color:K.t2}}>🏁 {v.gara} · 📅 {fd(v.data)}</div>
+          <div style={{fontSize:11,color:K.t3,marginTop:3}}>{(v.articoli||[]).map(a=>`${a.nome} ×${a.qty}`).join(" · ")}</div>
+          <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap"}}>
+            <span style={S.bdg(MB[v.metodo]||"gray")}>{v.metodo}</span>
+            {v.note&&<span style={{fontSize:11,color:K.t3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:160}}>📝 {v.note}</span>}
+          </div>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:4,flexShrink:0}}>
+          <button style={S.btn("s")}  onClick={onEdit}>✏️</button>
+          <button style={S.btn("sd")} onClick={onDel}>🗑</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── APP ───────────────────────────────────────────────────────
+function App(){
+  const {vendite,catalogo,noteG,noteC,contatti,loading,saving,salvaV,delV,salvaA,delA,setNotaG,setNotaC,salvaContatto,delCliente} = useKart();
+
+  const [page,    setPage]    = useState("clienti");
+  const [raceTab, setRaceTab] = useState("__all__");
+  const [clSrch,  setClSrch]  = useState("");
+  const [hov,     setHov]     = useState(null);
+
+  // modals
+  const [modal,   setModal]   = useState(null);
+  const [detV,    setDetV]    = useState(null);
+  const [detC,    setDetC]    = useState(null);
+  const [cfmCb,   setCfmCb]   = useState(null);
+
+  // form vendita
+  const [vF,      setVF]      = useState({cliente:"",contatto:"",gara:"",data:"",metodo:"Contanti",note:"",saleItems:[]});
+  const [editVId, setEditVId] = useState(null);
+  const [iSrch,   setISrch]   = useState("");
+  const [qtyMod,  setQtyMod]  = useState(null);
+  const [qtyVal,  setQtyVal]  = useState({qty:1,prezzo:0});
+
+  // form catalogo
+  const [catF, setCatF] = useState({nome:"",desc:"",prezzo:""});
+
+  // note/contatti inputs locali
+  const [ngIn,  setNgIn]  = useState({});
+  const [ncIn,  setNcIn]  = useState({});
+  const [saved, setSaved] = useState({});
+  const [editCFor, setEditCFor] = useState(null);
+  const [cInp,     setCInp]    = useState("");
+
+  const totRev = vendite.reduce((s,v)=>s+v.totale,0);
+
+  const gare = useMemo(()=>{
+    const g={};
+    vendite.forEach(v=>{
+      if(!g[v.gara])g[v.gara]={nome:v.gara,vendite:[],data:v.data};
+      g[v.gara].vendite.push(v);
+      if(v.data>g[v.gara].data)g[v.gara].data=v.data;
+    });
+    return Object.values(g).sort((a,b)=>new Date(b.data)-new Date(a.data));
+  },[vendite]);
+
+  const clientiGr = useMemo(()=>{
+    const gr={};
+    vendite.forEach(v=>{
+      if(!gr[v.cliente])gr[v.cliente]={nome:v.cliente,contatto:v.contatto||"",vendite:[]};
+      gr[v.cliente].vendite.push(v);
+      if(!gr[v.cliente].contatto&&v.contatto)gr[v.cliente].contatto=v.contatto;
+    });
+    Object.keys(contatti).forEach(n=>{if(gr[n])gr[n].contatto=contatti[n];});
+    return Object.values(gr)
+      .sort((a,b)=>a.nome.localeCompare(b.nome))
+      .filter(c=>!clSrch||c.nome.toLowerCase().includes(clSrch.toLowerCase()));
+  },[vendite,clSrch,contatti]);
+
+  const cfm = (msg,fn)=>{setCfmCb({msg,fn});setModal("confirm");};
+
+  function openV(id,preGara){
+    if(id){
+      const v=vendite.find(x=>x.id===id);if(!v)return;
+      setVF({cliente:v.cliente,contatto:v.contatto||"",gara:v.gara,data:v.data,metodo:v.metodo||"Contanti",note:v.note||"",saleItems:JSON.parse(JSON.stringify(v.articoli||[]))});
+      setEditVId(id);
+    } else {
+      setVF({cliente:"",contatto:"",gara:preGara||"",data:new Date().toISOString().split("T")[0],metodo:"Contanti",note:"",saleItems:[]});
+      setEditVId(null);
+    }
+    setISrch(""); setModal("vendita");
+  }
+
+  function salvaVForm(){
+    if(!vF.cliente.trim()||!vF.gara.trim()||!vF.data||!vF.saleItems.length)return;
+    salvaV(vF,editVId);
+    setRaceTab(vF.gara.trim());
+    setModal(null);
+  }
+
+  function elimV(id,afterFn){
+    const v=vendite.find(x=>x.id===id);
+    cfm(`Eliminare la vendita di ${v?.cliente}?`,()=>delV(id,()=>{setDetV(null);if(afterFn)afterFn();}));
+  }
+
+  function addItem(cat){setQtyMod(cat);setQtyVal({qty:1,prezzo:cat.prezzo});setModal("qty");}
+
+  function cfmItem(){
+    const {id,nome}=qtyMod;const{qty,prezzo}=qtyVal;
+    setVF(f=>{
+      const ex=f.saleItems.findIndex(x=>x.id===id||x.nome===nome);
+      const items=ex>=0?f.saleItems.map((x,i)=>i===ex?{...x,qty:x.qty+qty,prezzo}:x):[...f.saleItems,{id,nome,qty,prezzo}];
+      return{...f,saleItems:items};
+    });
+    setModal("vendita");
+  }
+
+  async function saveNotaG(g){
+    const val=ngIn[g]!==undefined?ngIn[g]:(noteG[g]||"");
+    await setNotaG(g,val);
+    setSaved(p=>({...p,["g_"+g]:true}));
+    setTimeout(()=>setSaved(p=>({...p,["g_"+g]:false})),1800);
+  }
+
+  async function saveNotaC(nome){
+    const val=ncIn[nome]!==undefined?ncIn[nome]:(noteC[nome]||"");
+    await setNotaC(nome,val);
+    setSaved(p=>({...p,["c_"+nome]:true}));
+    setTimeout(()=>setSaved(p=>({...p,["c_"+nome]:false})),1800);
+  }
+
+  async function saveContatto(nome){
+    await salvaContatto(nome,cInp);
+    setEditCFor(null);
+  }
+
+  function salvaCat(){
+    if(!catF.nome.trim())return;
+    salvaA(catF,catF.id||null);
+    setModal(null);
+  }
+
+  const filtItems=catalogo.filter(c=>!iSrch||c.nome.toLowerCase().includes(iSrch.toLowerCase()));
+  const saleTotal=vF.saleItems.reduce((s,i)=>s+i.qty*i.prezzo,0);
+
+  // ── OVERVIEW ─────────────────────────────────────────────
+  function Overview(){
+    const artMap={};
+    vendite.forEach(v=>(v.articoli||[]).forEach(a=>{
+      if(!artMap[a.nome])artMap[a.nome]={nome:a.nome,qty:0,rev:0};
+      artMap[a.nome].qty+=a.qty;artMap[a.nome].rev+=a.qty*a.prezzo;
+    }));
+    const top=Object.values(artMap).sort((a,b)=>b.rev-a.rev).slice(0,5);
+    const nC=[...new Set(vendite.map(v=>v.cliente))].length;
+    return(
+      <div>
+        <div style={{background:"linear-gradient(135deg,rgba(245,158,11,.1),rgba(245,158,11,.02))",border:"1px solid rgba(245,158,11,.25)",borderRadius:16,padding:18,marginBottom:14}}>
+          <div style={{fontSize:9,fontWeight:700,letterSpacing:2,textTransform:"uppercase",color:K.ac,marginBottom:4}}>📊 Revenue totale stagione</div>
+          <div style={{fontSize:34,fontWeight:900,letterSpacing:-1}}>{fe(totRev)}</div>
+          <div style={{fontSize:11,color:K.t3,marginTop:4,fontWeight:700}}>{gare.length} gare · {vendite.length} vendite · {nC} clienti</div>
+        </div>
+        <div style={S.sec}>💳 Metodi di pagamento</div>
+        <MethodBar vendite={vendite} tot={totRev}/>
+        <div style={S.sec}>📦 Articoli più venduti</div>
+        <div style={{background:K.card,border:`1px solid ${K.b}`,borderRadius:12,overflow:"hidden",marginBottom:14}}>
+          {top.map((a,i)=>(
+            <div key={a.nome} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 14px",borderBottom:i<top.length-1?`1px solid ${K.b}`:"none"}}>
+              <span style={{fontSize:10,fontWeight:900,color:K.t3,width:18,textAlign:"center"}}>{i+1}</span>
+              <span style={{flex:1,fontWeight:700,fontSize:12}}>{a.nome}</span>
+              <span style={{fontSize:11,color:K.t3,fontWeight:700}}>×{a.qty}</span>
+              <span style={{fontWeight:900,fontSize:12,color:K.ac,whiteSpace:"nowrap"}}>{fe(a.rev)}</span>
+            </div>
+          ))}
+        </div>
+        <div style={S.sec}>🏁 Gare per revenue</div>
+        <div style={{background:K.card,border:`1px solid ${K.b}`,borderRadius:12,overflow:"hidden",marginBottom:14}}>
+          {gare.map((g,i)=>{
+            const rev=g.vendite.reduce((s,v)=>s+v.totale,0),cl=[...new Set(g.vendite.map(v=>v.cliente))].length;
+            return(
+              <div key={g.nome} onClick={()=>setRaceTab(g.nome)}
+                onMouseEnter={()=>setHov("ov"+i)} onMouseLeave={()=>setHov(null)}
+                style={{display:"flex",alignItems:"center",padding:"10px 14px",gap:10,borderBottom:i<gare.length-1?`1px solid ${K.b}`:"none",cursor:"pointer"}}>
+                <span style={{fontSize:11,fontWeight:900,color:K.t3,width:20,textAlign:"center"}}>{i+1}</span>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:800,fontSize:13,color:hov==="ov"+i?K.ac:K.t,transition:"color .15s"}}>{g.nome}</div>
+                  <div style={{fontSize:10,color:K.t3,fontWeight:700,marginTop:1}}>📅 {fd(g.data)} · {g.vendite.length} vendite · {cl} clienti</div>
+                </div>
+                <span style={{fontWeight:900,fontSize:14,color:K.ac,whiteSpace:"nowrap"}}>{fe(rev)}</span>
+                <span style={{color:K.t3,fontSize:14}}>›</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── GARA SINGOLA ─────────────────────────────────────────
+  function GaraSingola({g}){
+    const vg=g.vendite.slice().sort((a,b)=>new Date(a.data)-new Date(b.data));
+    const tot=vg.reduce((s,v)=>s+v.totale,0);
+    const dates=[...new Set(vg.map(v=>v.data))].sort();
+    const artMap={};
+    vg.forEach(v=>(v.articoli||[]).forEach(a=>{
+      if(!artMap[a.nome])artMap[a.nome]={nome:a.nome,qty:0,rev:0};
+      artMap[a.nome].qty+=a.qty;artMap[a.nome].rev+=a.qty*a.prezzo;
+    }));
+    const topArt=Object.values(artMap).sort((a,b)=>b.rev-a.rev);
+    const cMap={};
+    vg.forEach(v=>{
+      if(!cMap[v.cliente])cMap[v.cliente]={nome:v.cliente,totale:0,metodi:[],arts:[]};
+      cMap[v.cliente].totale+=v.totale;
+      if(!cMap[v.cliente].metodi.includes(v.metodo))cMap[v.cliente].metodi.push(v.metodo);
+      (v.articoli||[]).forEach(a=>{if(!cMap[v.cliente].arts.includes(a.nome))cMap[v.cliente].arts.push(a.nome);});
+    });
+    const cList=Object.values(cMap).sort((a,b)=>b.totale-a.totale);
+    const notaVal=ngIn[g.nome]!==undefined?ngIn[g.nome]:(noteG[g.nome]||"");
+    return(
+      <div>
+        <div style={{background:"linear-gradient(135deg,rgba(245,158,11,.09),transparent)",border:"1px solid rgba(245,158,11,.22)",borderRadius:14,padding:14,marginBottom:14}}>
+          <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:12}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:16,fontWeight:900,letterSpacing:-0.2}}>🏁 {g.nome}</div>
+              <div style={{fontSize:11,color:K.t3,fontWeight:700,marginTop:2}}>📅 {dates.map(fd).join(" — ")}</div>
+            </div>
+            <div style={{fontSize:22,fontWeight:900,color:K.ac,whiteSpace:"nowrap"}}>{fe(tot)}</div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:1,background:K.b,borderRadius:8,overflow:"hidden"}}>
+            {[["Vendite",vg.length],["Clienti",cList.length],["Articoli",topArt.length]].map(([l,v])=>(
+              <div key={l} style={{background:K.card,padding:8,textAlign:"center"}}>
+                <div style={{fontSize:15,fontWeight:900}}>{v}</div>
+                <div style={{fontSize:9,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:K.t3,marginTop:1}}>{l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={S.sec}>📝 Note gara</div>
+        <div style={{background:K.bg,border:`1px solid ${K.b}`,borderRadius:12,padding:"12px 14px",marginBottom:14}}>
+          <textarea value={notaVal} onChange={e=>setNgIn(p=>({...p,[g.nome]:e.target.value}))}
+            placeholder="Condizioni pista, promemoria, contatti..."
+            style={{width:"100%",background:"none",border:"none",outline:"none",fontFamily:"'Courier New',monospace",fontSize:13,color:K.t2,resize:"none",minHeight:58,lineHeight:1.5}}/>
+          <button onClick={()=>saveNotaG(g.nome)}
+            style={{fontFamily:"'Courier New',monospace",fontSize:11,fontWeight:700,padding:"5px 12px",borderRadius:8,border:`1px solid ${saved["g_"+g.nome]?K.green:K.b}`,background:K.card2,color:saved["g_"+g.nome]?K.green:K.t3,cursor:"pointer",marginTop:8}}>
+            {saved["g_"+g.nome]?"✅ SALVATA":"💾 SALVA NOTA"}
+          </button>
+        </div>
+
+        <div style={S.sec}>💳 Metodi di pagamento</div>
+        <MethodBar vendite={vg} tot={tot}/>
+
+        <div style={S.sec}>📦 Articoli venduti</div>
+        <div style={{background:K.card,border:`1px solid ${K.b}`,borderRadius:12,overflow:"hidden",marginBottom:14}}>
+          {topArt.map((a,i)=>(
+            <div key={a.nome} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:i<topArt.length-1?`1px solid ${K.b}`:"none"}}>
+              <span style={{fontSize:10,fontWeight:900,color:K.t3,width:16}}>{i+1}</span>
+              <span style={{flex:1,fontWeight:700,fontSize:13}}>{a.nome}</span>
+              <span style={{color:K.t3,fontSize:11,fontWeight:700,background:K.card2,borderRadius:6,padding:"2px 7px"}}>×{a.qty}</span>
+              <span style={{fontWeight:900,color:K.ac,fontSize:13,whiteSpace:"nowrap"}}>{fe(a.rev)}</span>
+            </div>
+          ))}
+        </div>
+
+        <div style={S.sec}>👥 Clienti ({cList.length})</div>
+        {cList.map(cc=>(
+          <div key={cc.nome} onClick={()=>setDetC(cc.nome)}
+            onMouseEnter={()=>setHov("gc"+cc.nome)} onMouseLeave={()=>setHov(null)}
+            style={{background:K.card,border:`1px solid ${hov==="gc"+cc.nome?K.b2:K.b}`,borderRadius:12,padding:"12px 14px",marginBottom:8,cursor:"pointer",transition:"border-color .15s"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{flex:1,fontWeight:800,fontSize:14}}>👤 {cc.nome}</span>
+              <span style={{fontWeight:900,color:K.ac}}>{fe(cc.totale)}</span>
+            </div>
+            <div style={{fontSize:11,color:K.t3,marginTop:4}}>{cc.arts.slice(0,3).join(" · ")}</div>
+            <div style={{marginTop:6,display:"flex",gap:4}}>
+              {cc.metodi.map(m=><span key={m} style={S.bdg(MB[m]||"gray")}>{m}</span>)}
+            </div>
+          </div>
+        ))}
+
+        <div style={S.sec}>🧾 Vendite ({vg.length})</div>
+        {vg.map(v=><VRow key={v.id} v={v} onDetail={()=>setDetV(v.id)} onEdit={()=>openV(v.id)} onDel={()=>elimV(v.id)}/>)}
+
+        <div style={{marginTop:4,marginBottom:24}}>
+          <button style={{...S.btn("p"),width:"100%",justifyContent:"center"}} onClick={()=>openV(null,g.nome)}>
+            + AGGIUNGI VENDITA A QUESTA GARA
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── DETTAGLIO CLIENTE ─────────────────────────────────────
+  function DetCliente({nome}){
+    const cv=vendite.filter(v=>v.cliente===nome).sort((a,b)=>new Date(b.data)-new Date(a.data));
+    const tot=cv.reduce((s,v)=>s+v.totale,0);
+    const contattoAtt=contatti[nome]||cv.find(v=>v.contatto)?.contatto||"";
+    const ga=[...new Set(cv.map(v=>v.gara))];
+    const notaVal=ncIn[nome]!==undefined?ncIn[nome]:(noteC[nome]||"");
+    const artMap={};
+    cv.forEach(v=>(v.articoli||[]).forEach(a=>{
+      if(!artMap[a.nome])artMap[a.nome]={nome:a.nome,qty:0,rev:0};
+      artMap[a.nome].qty+=a.qty;artMap[a.nome].rev+=a.qty*a.prezzo;
+    }));
+    const topArt=Object.values(artMap).sort((a,b)=>b.rev-a.rev);
+    return(
+      <div>
+        <div style={{background:"linear-gradient(135deg,rgba(245,158,11,.12),rgba(245,158,11,.04))",border:"1px solid rgba(245,158,11,.3)",borderRadius:16,padding:18,textAlign:"center",marginBottom:16}}>
+          <div style={{fontSize:10,fontWeight:700,letterSpacing:2,textTransform:"uppercase",color:K.ac}}>Revenue totale</div>
+          <div style={{fontSize:38,fontWeight:900,letterSpacing:-1,marginTop:4}}>{fe(tot)}</div>
+          <div style={{fontSize:12,color:K.t3,marginTop:6}}>{cv.length} vendite · {ga.length} gare</div>
+        </div>
+
+        <div style={S.sec}>📞 Contatto</div>
+        {editCFor===nome?(
+          <div style={{display:"flex",gap:8,marginBottom:14}}>
+            <input style={{...S.inp,flex:1}} value={cInp} onChange={e=>setCInp(e.target.value)} placeholder="Tel / email" autoFocus/>
+            <button style={S.btn("p")} onClick={()=>saveContatto(nome)}>✓</button>
+            <button style={S.btn("g")} onClick={()=>setEditCFor(null)}>✕</button>
+          </div>
+        ):(
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+            <span style={{flex:1,fontWeight:700,fontSize:14,color:contattoAtt?K.t:K.t3}}>{contattoAtt||"Nessun contatto"}</span>
+            <button style={S.btn("s")} onClick={()=>{setEditCFor(nome);setCInp(contattoAtt);}}>✏️ MODIFICA</button>
+          </div>
+        )}
+
+        <div style={S.sec}>📝 Note cliente</div>
+        <div style={{background:K.bg,border:`1px solid ${K.b}`,borderRadius:12,padding:"12px 14px",marginBottom:14}}>
+          <textarea value={notaVal} onChange={e=>setNcIn(p=>({...p,[nome]:e.target.value}))}
+            placeholder="Preferenze, info utili, promemoria..."
+            style={{width:"100%",background:"none",border:"none",outline:"none",fontFamily:"'Courier New',monospace",fontSize:13,color:K.t2,resize:"none",minHeight:58,lineHeight:1.5}}/>
+          <button onClick={()=>saveNotaC(nome)}
+            style={{fontFamily:"'Courier New',monospace",fontSize:11,fontWeight:700,padding:"5px 12px",borderRadius:8,border:`1px solid ${saved["c_"+nome]?K.green:K.b}`,background:K.card2,color:saved["c_"+nome]?K.green:K.t3,cursor:"pointer",marginTop:8}}>
+            {saved["c_"+nome]?"✅ SALVATA":"💾 SALVA NOTA"}
+          </button>
+        </div>
+
+        {topArt.length>0&&<>
+          <div style={S.sec}>📦 Articoli acquistati</div>
+          <div style={{background:K.card,border:`1px solid ${K.b}`,borderRadius:12,overflow:"hidden",marginBottom:14}}>
+            {topArt.map((a,i)=>(
+              <div key={a.nome} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",borderBottom:i<topArt.length-1?`1px solid ${K.b}`:"none"}}>
+                <span style={{flex:1,fontWeight:700,fontSize:12}}>{a.nome}</span>
+                <span style={{fontSize:11,color:K.t3,fontWeight:700,background:K.card2,borderRadius:6,padding:"2px 7px"}}>×{a.qty}</span>
+                <span style={{fontWeight:900,color:K.ac,fontSize:12,whiteSpace:"nowrap"}}>{fe(a.rev)}</span>
+              </div>
+            ))}
+          </div>
+        </>}
+
+        <div style={S.sec}>🧾 Storico vendite ({cv.length})</div>
+        {cv.map(v=><VRow key={v.id} v={v} onDetail={()=>setDetV(v.id)} onEdit={()=>{setDetC(null);openV(v.id);}} onDel={()=>elimV(v.id)}/>)}
+
+        <div style={S.dvd}/>
+        <button style={{...S.btn("d"),width:"100%",justifyContent:"center"}}
+          onClick={()=>cfm(`Eliminare ${nome} e tutte le sue vendite?`,()=>{delCliente(nome);setDetC(null);})}>
+          🗑 ELIMINA CLIENTE E TUTTE LE SUE VENDITE
+        </button>
+      </div>
+    );
+  }
+
+  // ── LOADING ───────────────────────────────────────────────
+  if(loading)return(
+    <div style={{...S.wrap,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",gap:16}}>
+      <div style={{fontSize:32}}>⚡</div>
+      <div style={{fontSize:18,fontWeight:900,color:K.ac,letterSpacing:-0.5}}>KART<span style={{color:K.t}}>CRM</span></div>
+      <div style={{fontSize:12,color:K.t3,fontWeight:700,letterSpacing:1}}>CONNESSIONE A FIREBASE…</div>
+      <div style={{width:24,height:24,border:`2px solid ${K.b2}`,borderTopColor:K.ac,borderRadius:"50%",animation:"spin .8s linear infinite"}}/>
+    </div>
+  );
+
+  // ── RENDER PRINCIPALE ─────────────────────────────────────
+  return(
+    <div style={S.wrap}>
+
+      {/* HEADER */}
+      <div style={S.hdr}>
+        <a href="index.html" style={{color:K.t3,textDecoration:"none",fontSize:16,marginRight:4}} title="Menu principale">←</a>
+        <div style={{fontSize:18,fontWeight:900,letterSpacing:-0.5,color:K.ac,flex:1}}>⚡ KART<span style={{color:K.t}}>CRM</span></div>
+        <div style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:saving?K.ac:K.green,fontWeight:700}}>
+          <div style={{width:7,height:7,borderRadius:"50%",background:saving?K.ac:K.green,animation:saving?"pulse 1s infinite":"none"}}/>
+          {saving?"SALVATAGGIO…":"SYNC"}
+        </div>
+        <div style={{background:K.ac,color:"#09090b",fontWeight:900,fontSize:13,padding:"5px 10px",borderRadius:8,whiteSpace:"nowrap",marginLeft:8}}>{fe(totRev)}</div>
+      </div>
+
+      {/* NAV */}
+      <nav style={S.nav}>
+        {[["clienti","👤 CLIENTI"],["gare","🏁 GARE"],["catalogo","📦 CATALOGO"]].map(([p,l])=>(
+          <button key={p} style={S.ntab(page===p)} onClick={()=>setPage(p)}>{l}</button>
+        ))}
+      </nav>
+
+      <div style={S.main}>
+
+        {/* CLIENTI */}
+        {page==="clienti"&&(
+          <div>
+            <div style={{position:"relative",marginBottom:14}}>
+              <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:K.t3,fontSize:14}}>🔍</span>
+              <input style={{...S.inp,paddingLeft:36}} placeholder="Cerca cliente..." value={clSrch} onChange={e=>setClSrch(e.target.value)}/>
+            </div>
+            {clientiGr.length===0&&(
+              <div style={{textAlign:"center",padding:"40px 20px",color:K.t3}}>
+                <div style={{fontSize:40,marginBottom:12}}>👤</div>
+                <div style={{fontWeight:700}}>Nessun cliente</div>
+                <div style={{fontSize:12,marginTop:4}}>I clienti appaiono dopo la prima vendita</div>
+              </div>
+            )}
+            {clientiGr.map(c=>{
+              const tot=c.vendite.reduce((s,v)=>s+v.totale,0),nG=[...new Set(c.vendite.map(v=>v.gara))].length;
+              const ctt=contatti[c.nome]||c.contatto;
+              return(
+                <div key={c.nome} onClick={()=>setDetC(c.nome)}
+                  onMouseEnter={()=>setHov("cl"+c.nome)} onMouseLeave={()=>setHov(null)}
+                  style={S.card(hov==="cl"+c.nome)}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontWeight:700,fontSize:14,flex:1}}>👤 {c.nome}</span>
+                    <span style={{fontWeight:900,color:K.ac}}>{fe(tot)}</span>
+                  </div>
+                  <div style={{color:K.t2,fontSize:12,marginTop:4}}>{ctt||<span style={{color:K.t3}}>nessun contatto</span>}</div>
+                  <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
+                    <span style={S.bdg("gray")}>{c.vendite.length} vendite</span>
+                    <span style={S.bdg("blue")}>{nG} gare</span>
+                    {noteC[c.nome]&&<span style={S.bdg("gray")}>📝 nota</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* GARE */}
+        {page==="gare"&&(
+          <div>
+            <div style={{marginBottom:12,marginLeft:-16,marginRight:-16,paddingLeft:16,paddingRight:8}}>
+              <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:2}}>
+                <button onClick={()=>setRaceTab("__all__")}
+                  style={{flexShrink:0,padding:"8px 12px",borderRadius:10,border:`1px solid ${raceTab==="__all__"?K.ac:K.b}`,background:raceTab==="__all__"?"rgba(245,158,11,.08)":K.card2,cursor:"pointer",fontFamily:"'Courier New',monospace",fontWeight:800,fontSize:10,color:raceTab==="__all__"?K.ac:K.t3,display:"flex",flexDirection:"column",alignItems:"flex-start"}}>
+                  📊 TUTTE
+                  <span style={{fontSize:12,fontWeight:900,marginTop:2,color:raceTab==="__all__"?K.ac2:K.t3}}>{fes(totRev)}</span>
+                </button>
+                {gare.map(g=>{
+                  const rev=g.vendite.reduce((s,v)=>s+v.totale,0),act=raceTab===g.nome;
+                  return(
+                    <div key={g.nome} onClick={()=>setRaceTab(g.nome)}
+                      style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-start",padding:"8px 12px",borderRadius:10,border:`1px solid ${act?K.ac:K.b}`,background:act?"rgba(245,158,11,.08)":K.card,cursor:"pointer",minWidth:90,maxWidth:150,boxShadow:act?"0 0 0 1px rgba(245,158,11,.2)":"none",transition:"all .18s"}}>
+                      <div style={{fontWeight:800,fontSize:10,color:act?K.ac:K.t2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:130}}>🏁 {g.nome}</div>
+                      <div style={{fontSize:12,fontWeight:900,color:act?K.ac2:K.t3,marginTop:2}}>{fes(rev)}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            {gare.length===0&&<div style={{textAlign:"center",padding:"40px 20px",color:K.t3}}><div style={{fontSize:40,marginBottom:12}}>🏁</div><div style={{fontWeight:700}}>Nessuna gara</div></div>}
+            {gare.length>0&&raceTab==="__all__"&&<Overview/>}
+            {gare.length>0&&raceTab!=="__all__"&&(()=>{const g=gare.find(x=>x.nome===raceTab);return g?<GaraSingola g={g}/>:null;})()}
+          </div>
+        )}
+
+        {/* CATALOGO */}
+        {page==="catalogo"&&(
+          <div>
+            {catalogo.length===0&&<div style={{textAlign:"center",padding:"40px 20px",color:K.t3}}><div style={{fontSize:40,marginBottom:12}}>📦</div><div style={{fontWeight:700}}>Catalogo vuoto</div></div>}
+            {catalogo.map(c=>(
+              <div key={c.id} style={{background:K.card,border:`1px solid ${K.b}`,borderRadius:12,padding:"12px 14px",marginBottom:8,display:"flex",alignItems:"center",gap:10}}>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:800,fontSize:14}}>{c.nome}</div>
+                  {c.desc&&<div style={{fontSize:11,color:K.t3,marginTop:2}}>{c.desc}</div>}
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontWeight:900,fontSize:15,color:K.ac,whiteSpace:"nowrap"}}>{fe(c.prezzo)}</span>
+                  <button style={S.btn("s")} onClick={()=>{setCatF({nome:c.nome,desc:c.desc||"",prezzo:c.prezzo,id:c.id});setModal("catalogo");}}>✏️</button>
+                  <button style={S.btn("sd")} onClick={()=>cfm("Eliminare questo articolo?",()=>delA(c.id))}>🗑</button>
+                </div>
+              </div>
+            ))}
+            <button style={{...S.btn(),width:"100%",justifyContent:"center",marginTop:8}} onClick={()=>{setCatF({nome:"",desc:"",prezzo:""});setModal("catalogo");}}>+ AGGIUNGI ARTICOLO</button>
+          </div>
+        )}
+      </div>
+
+      {/* FAB */}
+      <button style={S.fab} onClick={()=>page==="catalogo"?(setCatF({nome:"",desc:"",prezzo:""}),setModal("catalogo")):openV(null)}>+</button>
+
+      {/* MODAL DETTAGLIO CLIENTE */}
+      <Modal open={!!detC} onClose={()=>{setDetC(null);setEditCFor(null);}} title={`👤 ${detC||""}`}>
+        {detC&&<DetCliente nome={detC}/>}
+      </Modal>
+
+      {/* MODAL DETTAGLIO VENDITA */}
+      <Modal open={!!detV} onClose={()=>setDetV(null)} title="📋 DETTAGLIO VENDITA">
+        {detV&&(()=>{
+          const v=vendite.find(x=>x.id===detV);if(!v)return null;
+          return(
+            <div>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:14}}>
+                <div style={{flex:1,minWidth:130}}>
+                  <div style={S.lbl}>Cliente</div>
+                  <div style={{fontWeight:800,fontSize:15}}>{v.cliente}</div>
+                  {v.contatto&&<div style={{color:K.t2,fontSize:12,marginTop:2}}>{v.contatto}</div>}
+                </div>
+                <div><div style={S.lbl}>Data</div><div style={{fontWeight:700}}>{fd(v.data)}</div></div>
+              </div>
+              <div style={{marginBottom:14}}><div style={S.lbl}>Gara</div><div style={{fontWeight:700}}>🏁 {v.gara}</div></div>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,marginBottom:14}}>
+                <thead><tr>{["Articolo","Qty","Prezzo","Subtot."].map(h=><th key={h} style={{textAlign:"left",padding:8,color:K.t3,fontSize:10,letterSpacing:1,textTransform:"uppercase",borderBottom:`1px solid ${K.b}`}}>{h}</th>)}</tr></thead>
+                <tbody>{(v.articoli||[]).map((a,i)=>(
+                  <tr key={i}>
+                    <td style={{padding:"10px 8px",borderBottom:`1px solid ${K.b}`,fontWeight:700}}>{a.nome}</td>
+                    <td style={{padding:"10px 8px",borderBottom:`1px solid ${K.b}`,textAlign:"center"}}>{a.qty}</td>
+                    <td style={{padding:"10px 8px",borderBottom:`1px solid ${K.b}`,textAlign:"right",color:K.ac,fontWeight:700}}>{fe(a.prezzo)}</td>
+                    <td style={{padding:"10px 8px",borderBottom:`1px solid ${K.b}`,textAlign:"right",fontWeight:900}}>{fe(a.qty*a.prezzo)}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+              <div style={{textAlign:"right",marginBottom:14}}>
+                <span style={{fontSize:11,fontWeight:700,color:K.t3}}>TOTALE </span>
+                <span style={{fontSize:22,fontWeight:900,color:K.ac}}>{fe(v.totale)}</span>
+              </div>
+              <span style={S.bdg(MB[v.metodo]||"gray")}>{v.metodo}</span>
+              {v.note&&<div style={{background:K.bg,borderRadius:10,padding:10,fontSize:12,color:K.t2,marginTop:12}}>📝 {v.note}</div>}
+              <div style={S.dvd}/>
+              <div style={{display:"flex",gap:8}}>
+                <button style={{...S.btn(),flex:1,justifyContent:"center"}} onClick={()=>{setDetV(null);openV(v.id);}}>✏️ MODIFICA</button>
+                <button style={{...S.btn("d"),flex:1,justifyContent:"center"}} onClick={()=>elimV(v.id,()=>setDetV(null))}>🗑 ELIMINA</button>
+              </div>
+            </div>
+          );
+        })()}
+      </Modal>
+
+      {/* MODAL VENDITA */}
+      <Modal open={modal==="vendita"} onClose={()=>setModal(null)} title={editVId?"✏️ MODIFICA VENDITA":"📋 NUOVA VENDITA"}>
+        <FI label="👤 Cliente *" value={vF.cliente} onChange={e=>setVF(f=>({...f,cliente:e.target.value}))} placeholder="Nome cliente" list="cl-dl"/>
+        <datalist id="cl-dl">{[...new Set(vendite.map(v=>v.cliente))].map(cc=><option key={cc} value={cc}/>)}</datalist>
+        <FI label="📞 Contatto" value={vF.contatto} onChange={e=>setVF(f=>({...f,contatto:e.target.value}))} placeholder="Tel / email"/>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+          <div>
+            <label style={S.lbl}>🏁 Gara *</label>
+            <input style={S.inp} value={vF.gara} onChange={e=>setVF(f=>({...f,gara:e.target.value}))} placeholder="Es: WSK Sarno" list="ga-dl"/>
+            <datalist id="ga-dl">{[...new Set(vendite.map(v=>v.gara))].map(g=><option key={g} value={g}/>)}</datalist>
+          </div>
+          <div>
+            <label style={S.lbl}>📅 Data *</label>
+            <input style={S.inp} type="date" value={vF.data} onChange={e=>setVF(f=>({...f,data:e.target.value}))}/>
+          </div>
+        </div>
+        <div style={{marginBottom:14}}>
+          <label style={S.lbl}>📦 Articoli *</label>
+          {vF.saleItems.map((it,i)=>(
+            <div key={i} style={{background:K.bg,border:`1px solid ${K.b}`,borderRadius:10,padding:"10px 12px",marginBottom:8,display:"flex",alignItems:"center",gap:8}}>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:13}}>{it.nome}</div>
+                <div style={{fontSize:11,color:K.t2}}>×{it.qty} · {fe(it.prezzo)} = <strong style={{color:K.ac}}>{fe(it.qty*it.prezzo)}</strong></div>
+              </div>
+              <button style={{background:"none",border:"none",color:K.red,fontSize:18,cursor:"pointer"}} onClick={()=>setVF(f=>({...f,saleItems:f.saleItems.filter((_,j)=>j!==i)}))}>✕</button>
+            </div>
+          ))}
+          <input style={{...S.inp,marginBottom:8}} placeholder="Filtra articoli..." value={iSrch} onChange={e=>setISrch(e.target.value)}/>
+          <div style={{background:K.bg,border:`1px solid ${K.b}`,borderRadius:12,overflow:"hidden",maxHeight:200,overflowY:"auto"}}>
+            {filtItems.map((ci,i)=>(
+              <div key={ci.id} onClick={()=>addItem(ci)}
+                onMouseEnter={()=>setHov("pi"+ci.id)} onMouseLeave={()=>setHov(null)}
+                style={{padding:"10px 14px",borderBottom:i<filtItems.length-1?`1px solid ${K.b}`:"none",display:"flex",alignItems:"center",cursor:"pointer",gap:10,background:hov==="pi"+ci.id?K.card2:"transparent"}}>
+                <span style={{flex:1,fontWeight:700,fontSize:13,color:hov==="pi"+ci.id?K.ac:K.t,transition:"color .1s"}}>{ci.nome}</span>
+                <span style={{fontSize:12,color:K.ac,fontWeight:700}}>{fe(ci.prezzo)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{marginBottom:14}}>
+          <label style={S.lbl}>💳 Metodo</label>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {["Contanti","Bonifico","Carta","Altro"].map(m=>(
+              <button key={m} onClick={()=>setVF(f=>({...f,metodo:m}))}
+                style={{fontFamily:"'Courier New',monospace",fontWeight:700,fontSize:11,padding:"6px 14px",borderRadius:20,border:`2px solid ${vF.metodo===m?K.ac:K.b}`,background:vF.metodo===m?"rgba(245,158,11,.1)":"none",color:vF.metodo===m?K.ac:K.t2,cursor:"pointer"}}>
+                {m}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{marginBottom:14}}>
+          <label style={S.lbl}>📝 Note</label>
+          <textarea style={{...S.inp,resize:"vertical",minHeight:70}} value={vF.note} onChange={e=>setVF(f=>({...f,note:e.target.value}))} placeholder="Note..."/>
+        </div>
+        <div style={{background:K.bg,borderRadius:10,padding:12,marginBottom:16,textAlign:"right"}}>
+          <span style={{color:K.t3,fontSize:12,fontWeight:700}}>TOTALE: </span>
+          <span style={{fontSize:18,fontWeight:900,color:K.ac}}>{fe(saleTotal)}</span>
+        </div>
+        <button style={{...S.btn("p"),width:"100%",justifyContent:"center"}} onClick={salvaVForm}>
+          {saving?"⏳ SALVATAGGIO…":"✅ SALVA VENDITA"}
+        </button>
+      </Modal>
+
+      {/* MODAL QTY */}
+      <Modal open={modal==="qty"} onClose={()=>setModal("vendita")} title={`📦 ${qtyMod?.nome||""}`}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+          <div><label style={S.lbl}>Quantità</label><input style={S.inp} type="number" min={1} value={qtyVal.qty} onChange={e=>setQtyVal(q=>({...q,qty:parseInt(e.target.value)||1}))}/></div>
+          <div><label style={S.lbl}>Prezzo (€)</label><input style={S.inp} type="number" min={0} step={0.01} value={qtyVal.prezzo} onChange={e=>setQtyVal(q=>({...q,prezzo:parseFloat(e.target.value)||0}))}/></div>
+        </div>
+        <button style={{...S.btn("p"),width:"100%",justifyContent:"center"}} onClick={cfmItem}>✅ AGGIUNGI</button>
+      </Modal>
+
+      {/* MODAL CATALOGO */}
+      <Modal open={modal==="catalogo"} onClose={()=>setModal(null)} title={catF.id?"✏️ MODIFICA ARTICOLO":"📦 NUOVO ARTICOLO"}>
+        <FI label="Nome *" value={catF.nome} onChange={e=>setCatF(f=>({...f,nome:e.target.value}))} placeholder="Es: Pacchetto video highlight"/>
+        <FI label="Descrizione" value={catF.desc} onChange={e=>setCatF(f=>({...f,desc:e.target.value}))} placeholder="Breve descrizione..."/>
+        <FI label="Prezzo (€)" type="number" value={catF.prezzo} onChange={e=>setCatF(f=>({...f,prezzo:e.target.value}))} placeholder="0.00" min={0} step={0.01}/>
+        <button style={{...S.btn("p"),width:"100%",justifyContent:"center"}} onClick={salvaCat}>✅ SALVA ARTICOLO</button>
+      </Modal>
+
+      {/* MODAL CONFIRM */}
+      <Modal open={modal==="confirm"} onClose={()=>setModal(null)} title="⚠️ CONFERMA">
+        {cfmCb&&(
+          <div>
+            <div style={{fontSize:14,color:K.t2,marginBottom:20,lineHeight:1.6}}>{cfmCb.msg}</div>
+            <div style={{display:"flex",gap:8}}>
+              <button style={{...S.btn(),flex:1,justifyContent:"center"}} onClick={()=>setModal(null)}>ANNULLA</button>
+              <button style={{...S.btn("d"),flex:1,justifyContent:"center"}} onClick={()=>{cfmCb.fn();setModal(null);}}>CONFERMA</button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
