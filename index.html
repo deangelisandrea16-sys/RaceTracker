@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karting Tools</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #08080a;
+    --card:    #111114;
+    --border:  #222228;
+    --border2: #38383f;
+    --text:    #f0f0f0;
+    --muted:   #555560;
+    --amber:   #f59e0b;
+    --amber2:  #fbbf24;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    overflow: hidden;
+  }
+
+  /* ── NOISE TEXTURE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── GRID LINES ── */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(245,158,11,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(245,158,11,.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page {
+    position: relative;
+    z-index: 1;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    gap: 0;
+  }
+
+  /* ── LOGO ── */
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(52px, 10vw, 96px);
+    letter-spacing: 6px;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 6px;
+    animation: fadeDown .6s ease both;
+  }
+  .logo span { color: var(--amber); }
+
+  .tagline {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 56px;
+    animation: fadeDown .6s .1s ease both;
+  }
+
+  /* ── CARDS ── */
+  .cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+    max-width: 560px;
+    animation: fadeUp .6s .2s ease both;
+  }
+
+  .tool-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 28px 24px 24px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    text-decoration: none;
+    color: var(--text);
+    overflow: hidden;
+    transition: border-color .2s, transform .2s;
+    cursor: pointer;
+  }
+
+  .tool-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(245,158,11,.07), transparent 60%);
+    opacity: 0;
+    transition: opacity .25s;
+  }
+
+  .tool-card:hover {
+    border-color: var(--amber);
+    transform: translateY(-3px);
+  }
+  .tool-card:hover::before { opacity: 1; }
+
+  .tool-card:active { transform: translateY(0) scale(.98); }
+
+  /* accent line top */
+  .tool-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--amber);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform .25s ease;
+  }
+  .tool-card:hover::after { transform: scaleX(1); }
+
+  .card-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  .card-icon {
+    font-size: 32px;
+    margin-bottom: 14px;
+    line-height: 1;
+  }
+
+  .card-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(28px, 5vw, 38px);
+    letter-spacing: 2px;
+    line-height: 1;
+    margin-bottom: 8px;
+    color: var(--text);
+    transition: color .2s;
+  }
+  .tool-card:hover .card-title { color: var(--amber2); }
+
+  .card-desc {
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: .5px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .card-arrow {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    font-size: 18px;
+    color: var(--border2);
+    transition: color .2s, transform .2s;
+  }
+  .tool-card:hover .card-arrow {
+    color: var(--amber);
+    transform: translate(3px, -3px);
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    margin-top: 40px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    animation: fadeUp .6s .35s ease both;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── MOBILE ── */
+  @media (max-width: 480px) {
+    .cards { grid-template-columns: 1fr; max-width: 320px; }
+    .logo { margin-bottom: 4px; }
+    .tagline { margin-bottom: 36px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="logo">KARTING<span>⚡</span>TOOLS</div>
+  <div class="tagline">Seleziona uno strumento</div>
+
+  <div class="cards">
+
+    <a class="tool-card" href="kart.html">
+      <div class="card-num">01 —</div>
+      <div class="card-icon">🏁</div>
+      <div class="card-title">KART</div>
+      <div class="card-desc">Gestione gara,<br>timing e analisi</div>
+      <div class="card-arrow">↗</div>
+    </a>
+
+    <a class="tool-card" href="crm.html">
+      <div class="card-num">02 —</div>
+      <div class="card-icon">⚡</div>
+      <div class="card-title">CRM</div>
+      <div class="card-desc">Clienti, vendite<br>e gare</div>
+      <div class="card-arrow">↗</div>
+    </a>
+
+  </div>
+
+  <div class="footer">Karting Tools · v2.0</div>
+
+</div>
+</body>
+</html>
