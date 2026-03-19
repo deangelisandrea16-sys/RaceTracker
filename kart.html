@@ -57,6 +57,7 @@
   .card-inner:last-child{margin-bottom:0;}
 
   .pilot-cat{font-size:11px;font-weight:800;letter-spacing:3px;}
+  .pilot-index{font-size:11px;font-weight:800;color:var(--text4);min-width:22px;text-align:right;margin-right:2px;}
   .pilot-num{font-size:20px;font-weight:900;color:var(--text);}
   .pilot-name{font-size:14px;font-weight:700;color:var(--text2);}
   .pilot-team{font-size:12px;font-weight:500;color:var(--text4);margin-top:2px;}
@@ -92,7 +93,7 @@
   .slot-label{font-size:12px;font-weight:800;letter-spacing:1px;}
   .slot-type{font-size:10px;font-weight:600;color:var(--text4);margin-left:auto;letter-spacing:1px;}
   .slot-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
-  .inner-num{font-size:12px;font-weight:800;color:var(--text3);}
+  .inner-num{font-size:18px;font-weight:900;color:var(--text);}
   .inner-name{font-size:13px;font-weight:700;color:var(--text2);}
   .inner-team{font-size:11px;font-weight:500;color:var(--text4);margin-left:auto;}
   .inner-group{font-size:11px;font-weight:900;color:#60a5fa;margin-left:6px;}
@@ -660,16 +661,21 @@ function renderPilots(){
   if(!initialized){return;}
   const el=document.getElementById('pilots-list');
   if(!pilots.length){el.innerHTML='<p class="no-pilots">Nessun pilota. Aggiungine uno!</p>';return;}
-  el.innerHTML=pilots.map(p=>`
+  const total=pilots.length;
+  const counter=`<div style="font-size:11px;font-weight:700;color:var(--text4);margin-bottom:14px;letter-spacing:1px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">TOTALE PILOTI <span style="color:var(--text);font-size:18px;font-weight:900;margin-left:8px;">${total}</span><span style="color:var(--text4);font-size:10px;margin-left:4px;">/ reel da creare</span></div>`;
+  el.innerHTML=counter+pilots.map((p,i)=>`
     <div class="card">
       <div class="pilot-header">
-        <div>
-          <div class="pilot-cat ${catClass(p.cat)}">${p.cat}</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:3px">
-            <span class="pilot-num">#${p.num}</span>
-            <span class="pilot-name">${p.name}</span>
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <span class="pilot-index">${i+1}.</span>
+          <div>
+            <div class="pilot-cat ${catClass(p.cat)}">${p.cat}</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:3px">
+              <span class="pilot-num">#${p.num}</span>
+              <span class="pilot-name">${p.name}</span>
+            </div>
+            <div class="pilot-team">${p.team}</div>
           </div>
-          <div class="pilot-team">${p.team}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">
           <span class="parity-badge">${p.parity}</span>
