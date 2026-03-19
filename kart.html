@@ -360,34 +360,34 @@ const SCHEDULE={
     {time:"18.02",cat:"OK-NJ",label:"OK-NJ",session:"",type:"parity",filter:"EVEN"},
   ],
   "VENERDÌ":[
-    {time:"8.00",cat:"KZ2",label:"KZ2",session:"PROVE LIBERE 1x7'",type:"all"},
-    {time:"8.10",cat:"KZ2",label:"KZ2",session:"",type:"all"},
-    {time:"8.20",cat:"OK",label:"OK",session:"",type:"all"},
-    {time:"8.30",cat:"OK",label:"OK",session:"",type:"all"},
-    {time:"8.40",cat:"OK",label:"OK",session:"",type:"all"},
-    {time:"8.50",cat:"OKJ",label:"OKJunior",session:"",type:"all"},
-    {time:"9.00",cat:"OKJ",label:"OKJunior",session:"",type:"all"},
-    {time:"9.10",cat:"OKJ",label:"OKJunior",session:"",type:"all"},
-    {time:"9.20",cat:"MINI U10",label:"MINI U10",session:"",type:"all"},
-    {time:"9.30",cat:"MINI U10",label:"MINI U10",session:"",type:"all"},
-    {time:"9.40",cat:"MINI GR3",label:"MINI GR3",session:"",type:"all"},
-    {time:"9.50",cat:"MINI GR3",label:"MINI GR3",session:"",type:"all"},
-    {time:"10.00",cat:"OK-NJ",label:"OK-NJ",session:"",type:"all"},
-    {time:"10.10",cat:"OK-NJ",label:"OK-NJ",session:"",type:"all"},
-    {time:"10.20",cat:"KZ2",label:"KZ2",session:"PROVE CRONOMETRATE 6'",type:"all"},
-    {time:"10.30",cat:"KZ2",label:"KZ2",session:"",type:"all"},
-    {time:"10.40",cat:"OK",label:"OK",session:"",type:"all"},
-    {time:"10.50",cat:"OK",label:"OK",session:"",type:"all"},
-    {time:"11.00",cat:"OK",label:"OK",session:"",type:"all"},
-    {time:"11.10",cat:"OKJ",label:"OKJunior",session:"",type:"all"},
-    {time:"11.20",cat:"OKJ",label:"OKJunior",session:"",type:"all"},
-    {time:"11.30",cat:"OKJ",label:"OKJunior",session:"",type:"all"},
-    {time:"11.40",cat:"MINI U10",label:"MINI U10",session:"",type:"all"},
-    {time:"11.50",cat:"MINI U10",label:"MINI U10",session:"",type:"all"},
-    {time:"12.00",cat:"MINI GR3",label:"MINI GR3",session:"",type:"all"},
-    {time:"12.10",cat:"MINI GR3",label:"MINI GR3",session:"",type:"all"},
-    {time:"12.20",cat:"OK-NJ",label:"OK-NJ",session:"",type:"all"},
-    {time:"12.30",cat:"OK-NJ",label:"OK-NJ",session:"",type:"all"},
+    {time:"8.00",cat:"KZ2",label:"KZ2",session:"PROVE LIBERE 1x7'",type:"serie",filter:"1"},
+    {time:"8.10",cat:"KZ2",label:"KZ2",session:"",type:"serie",filter:"2"},
+    {time:"8.20",cat:"OK",label:"OK",session:"",type:"serie",filter:"1"},
+    {time:"8.30",cat:"OK",label:"OK",session:"",type:"serie",filter:"2"},
+    {time:"8.40",cat:"OK",label:"OK",session:"",type:"serie",filter:"3"},
+    {time:"8.50",cat:"OKJ",label:"OKJunior",session:"",type:"serie",filter:"1"},
+    {time:"9.00",cat:"OKJ",label:"OKJunior",session:"",type:"serie",filter:"2"},
+    {time:"9.10",cat:"OKJ",label:"OKJunior",session:"",type:"serie",filter:"3"},
+    {time:"9.20",cat:"MINI U10",label:"MINI U10",session:"",type:"serie",filter:"1"},
+    {time:"9.30",cat:"MINI U10",label:"MINI U10",session:"",type:"serie",filter:"2"},
+    {time:"9.40",cat:"MINI GR3",label:"MINI GR3",session:"",type:"serie",filter:"1"},
+    {time:"9.50",cat:"MINI GR3",label:"MINI GR3",session:"",type:"serie",filter:"2"},
+    {time:"10.00",cat:"OK-NJ",label:"OK-NJ",session:"",type:"serie",filter:"1"},
+    {time:"10.10",cat:"OK-NJ",label:"OK-NJ",session:"",type:"serie",filter:"2"},
+    {time:"10.20",cat:"KZ2",label:"KZ2",session:"PROVE CRONOMETRATE 6'",type:"serie",filter:"1"},
+    {time:"10.30",cat:"KZ2",label:"KZ2",session:"",type:"serie",filter:"2"},
+    {time:"10.40",cat:"OK",label:"OK",session:"",type:"serie",filter:"1"},
+    {time:"10.50",cat:"OK",label:"OK",session:"",type:"serie",filter:"2"},
+    {time:"11.00",cat:"OK",label:"OK",session:"",type:"serie",filter:"3"},
+    {time:"11.10",cat:"OKJ",label:"OKJunior",session:"",type:"serie",filter:"1"},
+    {time:"11.20",cat:"OKJ",label:"OKJunior",session:"",type:"serie",filter:"2"},
+    {time:"11.30",cat:"OKJ",label:"OKJunior",session:"",type:"serie",filter:"3"},
+    {time:"11.40",cat:"MINI U10",label:"MINI U10",session:"",type:"serie",filter:"1"},
+    {time:"11.50",cat:"MINI U10",label:"MINI U10",session:"",type:"serie",filter:"2"},
+    {time:"12.00",cat:"MINI GR3",label:"MINI GR3",session:"",type:"serie",filter:"1"},
+    {time:"12.10",cat:"MINI GR3",label:"MINI GR3",session:"",type:"serie",filter:"2"},
+    {time:"12.20",cat:"OK-NJ",label:"OK-NJ",session:"",type:"serie",filter:"1"},
+    {time:"12.30",cat:"OK-NJ",label:"OK-NJ",session:"",type:"serie",filter:"2"},
     {time:"13.20",cat:"KZ2",label:"KZ2",session:"MANCHES ELIMINATOIRES",type:"group",filter:["A","B"]},
     {time:"13.40",cat:"KZ2",label:"KZ2",session:"",type:"group",filter:["C","D"]},
     {time:"14.00",cat:"OK",label:"OK",session:"",type:"group",filter:["C","E"]},
@@ -572,6 +572,7 @@ function pilotsForSlot(slot){
     if(p.cat!==slot.cat) return false;
     if(slot.type==='all') return true;
     if(slot.type==='parity') return p.parity===slot.filter;
+    if(slot.type==='serie'){if(!p.serie) return true;return p.serie===slot.filter;}
     if(slot.type==='group'){if(!p.group) return true;return slot.filter.includes(p.group.toUpperCase());}
     if(slot.type==='prefinal'){if(!p.prefinal) return true;return p.prefinal===slot.filter;}
     return false;
@@ -579,6 +580,7 @@ function pilotsForSlot(slot){
 }
 function slotFilterLabel(slot){
   if(slot.type==='parity') return slot.filter;
+  if(slot.type==='serie') return 'SERIE '+slot.filter;
   if(slot.type==='group') return 'GRP '+slot.filter.join('+');
   if(slot.type==='prefinal') return 'PREF '+slot.filter;
   return 'ALL';
@@ -703,8 +705,19 @@ function renderSchedule(){
 
   let html='';let lastSession='';
   slots.forEach(slot=>{
-    const ps=pilotsForSlot(slot);if(!ps.length) return;
+    const ps=pilotsForSlot(slot);
     if(slot.session&&slot.session!==lastSession){html+=`<div class="session-divider">${slot.session}</div>`;lastSession=slot.session;}
+    if(!ps.length){
+      html+=`<div class="card" style="opacity:.5">
+        <div class="slot-header">
+          <span class="slot-time">${slot.time}</span>
+          <span class="slot-label ${catClass(slot.cat)}">${slot.label}</span>
+          <span class="slot-type">${slotFilterLabel(slot)}</span>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--text4);padding:4px 0">— NESSUNO —</div>
+      </div>`;
+      return;
+    }
     const noGroup=ps.filter(p=>slot.type==='group'&&!p.group);
     html+=`<div class="card">
       <div class="slot-header">
