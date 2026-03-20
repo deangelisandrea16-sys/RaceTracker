@@ -9,26 +9,24 @@
 <meta name="apple-mobile-web-app-title" content="Race Tracker">
 <title>Race Tracker</title>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-  :root{
-    --bg:#09090b;--bg2:#1c1c1f;--bg3:#111113;
-    --border:#3f3f46;--border2:#52525b;
-    --text:#ffffff;--text2:#f4f4f5;--text3:#e4e4e7;--text4:#a1a1aa;
-    --task-border:#52525b;--task-color:#a1a1aa;
-    --modal-bg:#1c1c1f;--input-bg:#09090b;
-    --btn-bg:#2a2a2e;--btn-color:#f4f4f5;
-    --empty:#71717a;--empty2:#3f3f46;
-  }
-  body.light{
-    --bg:#f4f4f5;--bg2:#ffffff;--bg3:#f1f1f3;
-    --border:#d4d4d8;--border2:#a1a1aa;
-    --text:#09090b;--text2:#18181b;--text3:#3f3f46;--text4:#71717a;
-    --task-border:#a1a1aa;--task-color:#71717a;
-    --modal-bg:#ffffff;--input-bg:#f4f4f5;
-    --btn-bg:#e4e4e7;--btn-color:#18181b;
-    --empty:#a1a1aa;--empty2:#d4d4d8;
-  }
-  body{font-family:'Courier New',monospace;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:80px;transition:background .2s,color .2s;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#09090b;--bg2:#1c1c1f;--bg3:#111113;
+  --border:#3f3f46;--border2:#52525b;
+  --text:#ffffff;--text2:#f4f4f5;--text3:#e4e4e7;--text4:#a1a1aa;
+  --task-border:#52525b;--task-color:#a1a1aa;
+  --modal-bg:#1c1c1f;--input-bg:#09090b;
+  --btn-bg:#2a2a2e;--btn-color:#f4f4f5;
+}
+body.light{
+  --bg:#f4f4f5;--bg2:#ffffff;--bg3:#f1f1f3;
+  --border:#d4d4d8;--border2:#a1a1aa;
+  --text:#09090b;--text2:#18181b;--text3:#3f3f46;--text4:#71717a;
+  --task-border:#a1a1aa;--task-color:#71717a;
+  --modal-bg:#ffffff;--input-bg:#f4f4f5;
+  --btn-bg:#e4e4e7;--btn-color:#18181b;
+}
+body{font-family:'Courier New',monospace;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:80px;transition:background .2s,color .2s;}
 
 .header{border-bottom:1px solid var(–border);padding:14px 16px;position:sticky;top:0;background:var(–bg);z-index:100;display:flex;align-items:center;justify-content:space-between;}
 .header-dot{width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;margin-right:8px;animation:pulse 2s infinite;}
@@ -83,12 +81,14 @@ body.light .task-btn.red{background:#fee2e2;color:#b91c1c;border-color:#dc2626;}
 .note-area{width:100%;background:var(–bg3);border:1px solid var(–border);border-radius:8px;padding:9px 12px;font-size:12px;font-weight:500;color:var(–text2);font-family:inherit;resize:none;outline:none;min-height:56px;}
 .note-area::placeholder{color:var(–text4);}
 
-.io-row{display:flex;gap:8px;margin-bottom:14px;}
+.io-row{display:flex;gap:8px;margin-bottom:10px;}
 .io-btn{flex:1;padding:11px 8px;background:var(–bg2);border:1px solid var(–border2);border-radius:8px;font-size:11px;font-weight:700;color:var(–btn-color);cursor:pointer;font-family:inherit;text-align:center;letter-spacing:.5px;}
 .io-btn.export{border-color:#34d399;color:#34d399;}
 .io-btn.import{border-color:#60a5fa;color:#60a5fa;}
 body.light .io-btn.export{border-color:#059669;color:#059669;}
 body.light .io-btn.import{border-color:#2563eb;color:#2563eb;}
+
+.mgmt-btn{width:100%;padding:12px;background:var(–bg2);border:1px solid var(–border2);border-radius:8px;font-size:13px;font-weight:700;color:var(–btn-color);cursor:pointer;font-family:inherit;margin-bottom:10px;letter-spacing:.5px;}
 
 .slot-time{font-size:18px;font-weight:900;color:var(–text);}
 .slot-label{font-size:12px;font-weight:800;letter-spacing:1px;}
@@ -118,49 +118,46 @@ body.light .final-title{color:#d97706;}
 
 .section-editor{border-bottom:1px solid var(–border);padding:16px;background:var(–bg);}
 .section-label{font-size:11px;font-weight:700;color:var(–text4);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;}
-.sections-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
-.section-tag{display:flex;align-items:center;gap:6px;background:var(–bg2);border:1px solid var(–border2);border-radius:6px;padding:6px 10px;}
-.section-tag span{font-size:12px;font-weight:700;color:var(–text2);cursor:pointer;}
-.section-remove{font-size:12px;color:var(–text4);cursor:pointer;background:none;border:none;padding:0;font-weight:700;}
+.sections-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.section-chip{display:flex;align-items:center;gap:4px;padding:5px 10px;background:var(–bg2);border:1px solid var(–border2);border-radius:8px;font-size:11px;font-weight:700;color:var(–text2);cursor:pointer;}
+.section-chip .del{color:var(–text4);font-size:13px;}
 .add-row{display:flex;gap:8px;}
-.add-input{flex:1;background:var(–bg2);border:1px solid var(–border2);border-radius:6px;padding:9px 12px;font-size:13px;font-weight:600;color:var(–text);outline:none;font-family:inherit;}
-.add-btn{padding:9px 14px;background:var(–btn-bg);border:1px solid var(–border2);border-radius:6px;font-size:12px;font-weight:700;color:var(–btn-color);cursor:pointer;font-family:inherit;}
+.add-input{flex:1;padding:9px 12px;background:var(–input-bg);border:1px solid var(–border2);border-radius:8px;font-size:12px;font-weight:600;color:var(–text);outline:none;font-family:inherit;}
+.add-btn{padding:9px 14px;background:var(–bg2);border:1px solid var(–border2);border-radius:8px;font-size:11px;font-weight:700;color:var(–btn-color);cursor:pointer;font-family:inherit;}
 
-.coverage-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
-.coverage-title{font-size:14px;font-weight:800;color:var(–text);}
-.coverage-stats{display:flex;gap:10px;font-size:12px;font-weight:700;}
-.stat-green{color:#4ade80;} body.light .stat-green{color:#15803d;}
-.stat-orange{color:#fbbf24;} body.light .stat-orange{color:#b45309;}
-.stat-none{color:var(–text4);}
-.coverage-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
-.cov-num{font-size:12px;font-weight:800;color:var(–text3);}
-.cov-name{font-size:12px;font-weight:700;color:var(–text2);}
-.dot-btn{width:13px;height:13px;border-radius:50%;border:1.5px solid var(–border2);background:transparent;cursor:pointer;flex-shrink:0;}
-.dot-btn.green{background:#22c55e;border-color:#22c55e;}
-.dot-btn.orange{background:#f59e0b;border-color:#f59e0b;}
-.dot-btn.red{background:#ef4444;border-color:#ef4444;}
+.track-table{width:100%;border-collapse:collapse;font-size:12px;}
+.track-table th{font-size:9px;font-weight:800;color:var(–text4);letter-spacing:1px;padding:6px 8px;text-align:left;border-bottom:1px solid var(–border);}
+.track-table td{padding:6px 8px;border-bottom:1px solid var(–border);}
+.track-num{font-size:16px;font-weight:900;}
+.track-name{font-size:11px;font-weight:600;color:var(–text3);}
+.dot-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(–border2);background:none;cursor:pointer;font-size:10px;}
+.dot-btn.green{background:#052e16;border-color:#16a34a;}
+.dot-btn.orange{background:#1c1003;border-color:#d97706;}
+.dot-btn.red{background:#1c0303;border-color:#dc2626;}
+body.light .dot-btn.green{background:#dcfce7;border-color:#16a34a;}
+body.light .dot-btn.orange{background:#fef3c7;border-color:#d97706;}
+body.light .dot-btn.red{background:#fee2e2;border-color:#dc2626;}
 
-.empty-state{text-align:center;padding:60px 20px;}
-.empty-state p{color:var(–empty);font-size:14px;font-weight:600;}
-.empty-state small{color:var(–empty2);font-size:12px;margin-top:6px;display:block;}
-.mgmt-btn{padding:12px 16px;background:var(–bg2);border:1px solid var(–border2);border-radius:8px;font-size:12px;font-weight:700;color:var(–btn-color);cursor:pointer;font-family:inherit;margin-bottom:12px;display:block;width:100%;text-align:center;letter-spacing:1px;}
+.no-group-warning{font-size:10px;color:#fbbf24;font-weight:600;margin-top:4px;}
+.empty-state{padding:40px 16px;text-align:center;color:var(–text4);font-size:13px;}
+.loading{text-align:center;padding:40px;color:var(–text4);font-size:13px;font-weight:600;}
+.no-pilots{font-size:12px;color:var(–text4);font-style:italic;padding:8px 0;}
 
-.search-bar-wrap{padding:12px 16px 4px;position:sticky;top:103px;background:var(–bg);z-index:98;}
-.search-bar{width:100%;padding:11px 14px;font-family:inherit;font-size:13px;font-weight:700;background:var(–bg2);border:1px solid var(–border);border-radius:10px;color:var(–text);outline:none;letter-spacing:.5px;}
+/* SEARCH BAR */
+.search-bar-wrap{padding:0 0 12px 0;}
+.search-bar-container{position:relative;}
+.search-bar{width:100%;padding:11px 40px 11px 14px;font-family:inherit;font-size:13px;font-weight:700;background:var(–bg3);border:1px solid var(–border);border-radius:10px;color:var(–text);outline:none;}
 .search-bar::placeholder{color:var(–text4);font-weight:500;}
 .search-bar:focus{border-color:var(–border2);}
+.search-clear{background:none;border:none;color:var(–text4);font-size:18px;cursor:pointer;padding:0 4px;position:absolute;right:10px;top:50%;transform:translateY(-50%);}
 .search-group-label{font-size:10px;font-weight:800;letter-spacing:2px;color:var(–text4);padding:10px 0 4px;text-transform:uppercase;}
-.search-result-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(–bg2);border:1px solid var(–border);border-radius:10px;margin-bottom:6px;cursor:pointer;}
-.search-result-item:active{opacity:.7;}
-.sr-num{font-size:20px;font-weight:900;color:var(–text);min-width:48px;}
+.search-result-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(–bg2);border:1px solid var(–border);border-radius:10px;margin-bottom:6px;}
+.sr-num{font-size:20px;font-weight:900;color:var(–text);min-width:52px;}
 .sr-name{font-size:13px;font-weight:700;color:var(–text2);flex:1;}
 .sr-team{font-size:12px;font-weight:700;color:var(–text3);}
 .sr-cat{font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;letter-spacing:1px;}
-.search-clear{background:none;border:none;color:var(–text4);font-size:18px;cursor:pointer;padding:0 4px;position:absolute;right:24px;top:50%;transform:translateY(-50%);}
-.search-bar-container{position:relative;}
-.no-pilots{font-size:12px;font-weight:500;color:var(–text4);font-style:italic;padding:8px 0;}
-.no-group-warning{font-size:10px;color:#fbbf24;font-weight:600;margin-top:4px;}
 
+/* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;display:flex;align-items:flex-end;}
 .modal{background:var(–modal-bg);border-radius:16px 16px 0 0;width:100%;padding:20px;max-height:90vh;overflow-y:auto;border-top:1px solid var(–border);}
 .modal-title{font-size:16px;font-weight:900;margin-bottom:16px;color:var(–text);}
@@ -173,28 +170,13 @@ body.light .final-title{color:#d97706;}
 .form-submit{width:100%;padding:13px;background:var(–text);color:var(–bg);border:none;border-radius:8px;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;margin-top:8px;letter-spacing:1px;}
 .form-delete{width:100%;padding:13px;background:none;color:#ef4444;border:1.5px solid #ef4444;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px;}
 
-.loading{text-align:center;padding:40px;color:var(–text4);font-size:13px;font-weight:600;}
-
+/* CAT COLORS */
 .cat-kz2{color:#f87171;} body.light .cat-kz2{color:#dc2626;}
 .cat-ok{color:#60a5fa;} body.light .cat-ok{color:#2563eb;}
 .cat-okj{color:#c084fc;} body.light .cat-okj{color:#7c3aed;}
 .cat-gr3{color:#34d399;} body.light .cat-gr3{color:#059669;}
 .cat-u10{color:#22d3ee;} body.light .cat-u10{color:#0891b2;}
 .cat-nj{color:#fbbf24;} body.light .cat-nj{color:#d97706;}
-
-/* ENTRY LIST SEARCH */
-.search-wrap{position:relative;}
-.suggestions{position:absolute;top:100%;left:0;right:0;background:var(–modal-bg);border:1px solid var(–border2);border-radius:8px;z-index:300;max-height:200px;overflow-y:auto;margin-top:4px;}
-.suggestion-item{padding:10px 12px;cursor:pointer;border-bottom:1px solid var(–border);font-size:12px;}
-.suggestion-item:last-child{border-bottom:none;}
-.suggestion-item:hover{background:var(–bg3);}
-.suggestion-num{font-weight:900;color:var(–text);margin-right:8px;}
-.suggestion-name{font-weight:700;color:var(–text2);}
-.suggestion-cat{font-weight:700;margin-left:6px;font-size:10px;}
-.suggestion-team{color:var(–text4);font-size:11px;margin-top:2px;}
-.el-btn{padding:11px 8px;background:var(–bg2);border:1px solid var(–border2);border-radius:8px;font-size:11px;font-weight:700;color:var(–btn-color);cursor:pointer;font-family:inherit;text-align:center;letter-spacing:.5px;width:100%;margin-bottom:12px;}
-.el-btn.loaded{border-color:#34d399;color:#34d399;}
-body.light .el-btn.loaded{border-color:#059669;color:#059669;}
 </style>
 
 </head>
@@ -219,24 +201,21 @@ body.light .el-btn.loaded{border-color:#059669;color:#059669;}
 
 <div id="tab-piloti" class="tab-content">
   <div class="content">
-    <div id="el-status-bar"></div>
     <div class="io-row">
       <button class="io-btn export" onclick="exportData()">⬇ ESPORTA</button>
       <button class="io-btn import" onclick="document.getElementById('import-input').click()">⬆ IMPORTA</button>
       <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(event)">
     </div>
-    <button id="el-load-btn" class="el-btn" onclick="document.getElementById('el-input').click()">📋 CARICA ENTRY LIST</button>
-    <input type="file" id="el-input" accept=".json" style="display:none" onchange="loadEntryList(event)">
     <button class="mgmt-btn" onclick="openAddPilot()">+ AGGIUNGI PILOTA</button>
     <p class="hint">Tocca un task per cambiare stato · "modifica" per editare</p>
     <div class="search-bar-wrap">
-  <div class="search-bar-container">
-    <input class="search-bar" id="pilots-search" placeholder="🔍 Cerca numero, nome o scuderia..." oninput="filterPilots(this.value)" autocomplete="off">
-    <button class="search-clear" id="search-clear-btn" onclick="clearPilotsSearch()" style="display:none">✕</button>
-  </div>
-</div>
-<div id="pilots-list"><div class="loading">Connessione a Firebase...</div></div>
-<div id="pilots-search-results" style="display:none;padding:0 16px 16px"></div>
+      <div class="search-bar-container">
+        <input class="search-bar" id="pilots-search" placeholder="🔍 Cerca numero, nome o scuderia..." oninput="filterPilots(this.value)" autocomplete="off">
+        <button class="search-clear" id="search-clear-btn" onclick="clearPilotsSearch()" style="display:none">✕</button>
+      </div>
+    </div>
+    <div id="pilots-list"><div class="loading">Connessione a Firebase...</div></div>
+    <div id="pilots-search-results" style="display:none"></div>
   </div>
 </div>
 
@@ -266,8 +245,6 @@ body.light .el-btn.loaded{border-color:#059669;color:#059669;}
   <div class="modal" id="modal-inner"></div>
 </div>
 
-<!-- Firebase CDN -->
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
@@ -281,30 +258,13 @@ const firebaseConfig = {
   messagingSenderId: "199360301984",
   appId: "1:199360301984:web:50252111fe9b47231232c5"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// ── DEFAULT DATA ──
-const DEFAULT_PILOTS=[
-  {num:"114",name:"SIACHKO YAUHEN",team:"AKM",cat:"KZ2",parity:"EVEN",group:"",prefinal:""},
-  {num:"229",name:"GALAN OSKAR",team:"FUSION MOTORSPORT",cat:"OK",parity:"ODD",group:"",prefinal:""},
-  {num:"268",name:"VISUET CRUZ",team:"MO ACADEMY GAMOTO",cat:"OK",parity:"EVEN",group:"",prefinal:""},
-  {num:"342",name:"GIRADELLO GIOELE",team:"PAROLIN MOTORSPORT",cat:"OKJ",parity:"EVEN",group:"",prefinal:""},
-  {num:"538",name:"BUFFO ANDREA",team:"BABYRACE",cat:"MINI GR3",parity:"EVEN",group:"",prefinal:""},
-  {num:"621",name:"LEPP SIIM",team:"AIX RACING",cat:"MINI GR3",parity:"ODD",group:"",prefinal:""},
-  {num:"647",name:"YOON ISAAC",team:"BABYRACE",cat:"MINI GR3",parity:"ODD",group:"",prefinal:""},
-  {num:"648",name:"YOON DANIEL",team:"BABYRACE",cat:"MINI U10",parity:"EVEN",group:"",prefinal:""},
-  {num:"650",name:"PREVILLE CHARLIE",team:"BABYRACE",cat:"MINI U10",parity:"EVEN",group:"",prefinal:""},
-  {num:"716",name:"KRISTIANSEN PATRIK",team:"MP GAMOTO",cat:"OK-NJ",parity:"EVEN",group:"",prefinal:""},
-  {num:"729",name:"SIACHKO ARSENYI",team:"AKM",cat:"OK-NJ",parity:"ODD",group:"",prefinal:""},
-  {num:"730",name:"WOJCIK DOMINIK",team:"TEAM DRIVER",cat:"OK-NJ",parity:"EVEN",group:"",prefinal:""},
-  {num:"740",name:"BRAGEOT MATTIS",team:"AKM",cat:"OK-NJ",parity:"EVEN",group:"",prefinal:""},
-  {num:"788",name:"MORENO IKER",team:"DR SRL",cat:"OK-NJ",parity:"EVEN",group:"",prefinal:""},
-];
 
-const TASKS=["PADDOK","PREGRIGLIA","BILANCIA","PISTA","REPORTAGE"];
+// ── CONSTANTS ──
 const DAYS=["MERCOLEDÌ","GIOVEDÌ","VENERDÌ","SABATO","DOMENICA"];
+const TASKS=["PADDOK","PREGRIGLIA","BILANCIA","PISTA","REPORTAGE"];
 const STATUS_CYCLE=["none","green","orange","red"];
 
 const SCHEDULE={
@@ -517,6 +477,7 @@ const SCHEDULE={
 };
 
 // ── ENTRY LIST ──
+
 const ENTRY_LIST={
   "101":{lastName:"ORLOV",firstName:"MAX",team:"SODIKART",cat:"KZ2",parity:"EVEN"},
   "102":{lastName:"AUMAITRE",firstName:"MATHIS",team:"CPB SPORT",cat:"KZ2",parity:"EVEN"},
@@ -940,16 +901,31 @@ let statuses={};
 let notes={};
 let trackSections=["PARTENZA","CURVA 1","RETTILINEO 1","CURVA 2","ESSE","RETTILINEO 2","ARRIVO"];
 let trackStatus={};
-let activeDay=localStorage.getItem('rt_day')||'MERCOLEDÌ';
-let pistaView=localStorage.getItem('rt_pistaview')||'pilota';
-let isDark=localStorage.getItem('rt_theme')!=='false';
 let initialized=false;
-let entryList=JSON.parse(localStorage.getItem('rt_entrylist')||'null');
+let activeTab='piloti';
+let activeDay=localStorage.getItem('rt_day')||'VENERDÌ';
+let pistaView=localStorage.getItem('rt_pista')||'pilota';
+const isLight=localStorage.getItem('rt_theme')!=='false';
+
+// ── THEME ──
+function applyTheme(){
+  document.body.classList.toggle('light',!isLight);
+  document.getElementById('theme-btn').textContent=isLight?'🌙':'☀️';
+}
+applyTheme();
+function toggleTheme(){
+  const now=!document.body.classList.contains('light');
+  document.body.classList.toggle('light',now);
+  document.getElementById('theme-btn').textContent=now?'🌙':'☀️';
+  localStorage.setItem('rt_theme',String(!now));
+}
+window.toggleTheme=toggleTheme;
 
 // ── SYNC STATUS ──
 function setSyncStatus(s){
   const el=document.getElementById('sync-status');
   const dot=document.getElementById('conn-dot');
+  if(!el) return;
   if(s==='ok'){el.textContent='LIVE';el.className='sync-status ok';dot.className='header-dot connected';}
   else if(s==='saving'){el.textContent='SAVING';el.className='sync-status';}
   else{el.textContent='OFFLINE';el.className='sync-status err';dot.className='header-dot';}
@@ -959,21 +935,16 @@ function setSyncStatus(s){
 onValue(ref(db,'tracker'),snapshot=>{
   const data=snapshot.val();
   if(data){
-    pilots=data.pilots?Object.values(data.pilots):DEFAULT_PILOTS;
+    pilots=data.pilots?Object.values(data.pilots):[];
     statuses=data.statuses||{};
     notes=data.notes||{};
     trackSections=data.trackSections||["PARTENZA","CURVA 1","RETTILINEO 1","CURVA 2","ESSE","RETTILINEO 2","ARRIVO"];
     trackStatus=data.trackStatus||{};
-  } else {
-    // First time: initialize with defaults
-    pilots=DEFAULT_PILOTS;
-    statuses={};notes={};trackStatus={};
-    saveAll();
   }
-  // ensure all pilots have required fields
   pilots.forEach(p=>{
     if(!p.group) p.group='';
     if(!p.prefinal) p.prefinal='';
+    if(!p.serie) p.serie='';
     if(!statuses[p.num]) statuses[p.num]={};
     TASKS.forEach(t=>{if(!statuses[p.num][t]) statuses[p.num][t]='none';});
     if(!trackStatus[p.num]) trackStatus[p.num]={};
@@ -984,31 +955,25 @@ onValue(ref(db,'tracker'),snapshot=>{
   renderAll();
 },err=>{
   setSyncStatus('err');
-  console.error(err);
+  console.error('Firebase error:',err);
 });
 
-// ── SAVE TO FIREBASE ──
+// ── SAVE ──
 function saveAll(){
   setSyncStatus('saving');
   const pilotsObj={};
   pilots.forEach(p=>pilotsObj[p.num]=p);
   set(ref(db,'tracker'),{pilots:pilotsObj,statuses,notes,trackSections,trackStatus})
     .then(()=>setSyncStatus('ok'))
-    .catch(()=>setSyncStatus('err'));
+    .catch(e=>{setSyncStatus('err');console.error(e);});
 }
-
 function saveField(field,value){
   setSyncStatus('saving');
   const u={};u[`tracker/${field}`]=value;
   update(ref(db),u)
     .then(()=>setSyncStatus('ok'))
-    .catch(()=>setSyncStatus('err'));
+    .catch(e=>{setSyncStatus('err');console.error(e);});
 }
-
-// ── THEME ──
-function applyTheme(){document.body.classList.toggle('light',!isDark);document.getElementById('theme-btn').textContent=isDark?'☀️':'🌙';}
-function toggleTheme(){isDark=!isDark;localStorage.setItem('rt_theme',isDark);applyTheme();}
-applyTheme();
 
 // ── HELPERS ──
 function cycleStatus(cur){const i=STATUS_CYCLE.indexOf(cur);return STATUS_CYCLE[(i+1)%STATUS_CYCLE.length];}
@@ -1035,6 +1000,11 @@ function slotFilterLabel(slot){
   if(slot.type==='group') return 'GRP '+slot.filter.join('+');
   if(slot.type==='prefinal') return 'PREF '+slot.filter;
   return 'ALL';
+}
+function taskBtn(num,task,small){
+  const s=statuses[num]?.[task]||'none';
+  const sz=small?'style="padding:4px 8px;font-size:10px"':'';
+  return `<button class="task-btn ${s==='none'?'':s}" ${sz} onclick="toggleTask('${num}','${task}')"> ${task}</button>`;
 }
 
 // ── TOGGLE ──
@@ -1089,27 +1059,21 @@ function importData(event){
 }
 window.importData=importData;
 
-// ── TASK BTN ──
-function taskBtn(num,task,small){
-  const s=(statuses[num]&&statuses[num][task])||'none';
-  const sz=small?'style="font-size:10px;padding:4px 8px"':'';
-  return `<button class="task-btn ${s==='none'?'':s}" ${sz} onclick="toggleTask('${num}','${task}')">${task}</button>`;
-}
-
 // ── TABS ──
-let activeTab='piloti';
 function showTab(tab){
   activeTab=tab;
-  document.querySelectorAll('.tab-content').forEach(el=>el.style.display='none');
-  document.getElementById('tab-'+tab).style.display='block';
-  document.querySelectorAll('.tab').forEach((el,i)=>{el.classList.toggle('active',['piloti','programma','pista'][i]===tab);});
+  ['piloti','programma','pista'].forEach(t=>{
+    const el=document.getElementById('tab-'+t);
+    if(el) el.style.display=t===tab?'':'none';
+    document.querySelectorAll('.tab').forEach((b,i)=>{b.classList.toggle('active',['piloti','programma','pista'][i]===tab);});
+  });
   if(tab==='piloti') renderPilots();
   if(tab==='programma') renderSchedule();
   if(tab==='pista') renderPista();
 }
 window.showTab=showTab;
 
-// ── RENDER PILOTS ──
+// ── SEARCH ──
 function filterPilots(q){
   const resultsEl=document.getElementById('pilots-search-results');
   const listEl=document.getElementById('pilots-list');
@@ -1124,8 +1088,6 @@ function filterPilots(q){
   listEl.style.display='none';
   resultsEl.style.display='';
   const query=q.trim().toUpperCase();
-
-  // Search in ENTRY_LIST
   const matches=[];
   Object.entries(ENTRY_LIST).forEach(([num,e])=>{
     const nameStr=(e.lastName+' '+e.firstName).toUpperCase();
@@ -1134,29 +1096,22 @@ function filterPilots(q){
       matches.push({num,name:e.lastName+' '+e.firstName,team:e.team,cat:e.cat,parity:e.parity,isMyPilot:!!pilots.find(p=>p.num===num)});
     }
   });
-
-  if(!matches.length){resultsEl.innerHTML='<div class="empty-state"><p>Nessun risultato per "'+q+'"</p></div>';return;}
-
-  // Group by team
+  if(!matches.length){resultsEl.innerHTML='<div class="empty-state"><p>Nessun risultato</p></div>';return;}
   const groups={};
-  matches.forEach(m=>{
-    if(!groups[m.team]) groups[m.team]=[];
-    groups[m.team].push(m);
-  });
-
-  let html='<div style="font-size:10px;color:var(--text4);font-weight:700;letter-spacing:1px;margin-bottom:8px">'+matches.length+' RISULTATI</div>';
+  matches.forEach(m=>{if(!groups[m.team]) groups[m.team]=[];groups[m.team].push(m);});
+  let html=`<div style="font-size:10px;color:var(--text4);font-weight:700;letter-spacing:1px;margin-bottom:8px">${matches.length} RISULTATI</div>`;
   Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([team,members])=>{
     html+=`<div class="search-group-label">${team} <span style="opacity:.5">(${members.length})</span></div>`;
     members.sort((a,b)=>parseInt(a.num)-parseInt(b.num)).forEach(m=>{
       const catCls=catClass(m.cat);
       const isMine=m.isMyPilot;
-      html+=`<div class="search-result-item" style="${isMine?'border-color:#22c55e;background:rgba(34,197,94,.06)':''}" onclick="clearPilotsSearch()">
+      html+=`<div class="search-result-item" style="${isMine?'border-color:#22c55e;background:rgba(34,197,94,.06)':''}">
         <span class="sr-num" style="${isMine?'color:#22c55e':''}">#${m.num}</span>
         <div style="flex:1;min-width:0">
           <div class="sr-name">${m.name} ${isMine?'<span style="font-size:10px;color:#22c55e;font-weight:800">★ TUO</span>':''}</div>
           <div class="sr-team">${m.team}</div>
         </div>
-        <span class="sr-cat cat-badge ${catCls}">${m.cat}</span>
+        <span class="sr-cat ${catCls}" style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800">${m.cat}</span>
       </div>`;
     });
   });
@@ -1171,12 +1126,13 @@ function clearPilotsSearch(){
 }
 window.clearPilotsSearch=clearPilotsSearch;
 
+// ── RENDER PILOTS ──
 function renderPilots(){
   if(!initialized){return;}
   const el=document.getElementById('pilots-list');
   if(!pilots.length){el.innerHTML='<p class="no-pilots">Nessun pilota. Aggiungine uno!</p>';return;}
   const total=pilots.length;
-  const counter=`<div style="font-size:11px;font-weight:700;color:var(--text4);margin-bottom:14px;letter-spacing:1px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">TOTALE PILOTI <span style="color:var(--text);font-size:18px;font-weight:900;margin-left:8px;">${total}</span><span style="color:var(--text4);font-size:10px;margin-left:4px;">/ reel da creare</span></div>`;
+  const counter=`<div style="font-size:11px;font-weight:700;color:var(--text4);margin-bottom:14px;letter-spacing:1px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">TOTALE PILOTI <span style="color:var(--text);font-size:18px;font-weight:900;margin-left:8px;">${total}</span></div>`;
   el.innerHTML=counter+pilots.map((p,i)=>`
     <div class="card">
       <div class="pilot-header">
@@ -1200,7 +1156,7 @@ function renderPilots(){
       <div class="tasks">${TASKS.map(t=>taskBtn(p.num,t,false)).join('')}</div>
       <div class="note-wrap">
         <span class="note-label">Note</span>
-        <textarea class="note-area" id="note-${p.num}" placeholder="Aggiungi una nota..." onblur="saveNote('${p.num}')">${notes[p.num]||''}</textarea>
+        <textarea class="note-area" id="note-${p.num}" placeholder="Aggiungi una nota..." onblur="saveNote('${p.num}')"> ${notes[p.num]||''}</textarea>
 
 ```
   </div>
@@ -1218,13 +1174,12 @@ const el=document.getElementById(‘schedule-content’);
 if(!initialized){el.innerHTML=’<div class="loading">Caricamento…</div>’;return;}
 const slots=SCHEDULE[activeDay];
 if(!slots){el.innerHTML=’<div class="empty-state"><p>Nessun programma</p></div>’;return;}
-
 let html=’’;let lastSession=’’;
 slots.forEach(slot=>{
 const ps=pilotsForSlot(slot);
 if(slot.session&&slot.session!==lastSession){html+=`<div class="session-divider">${slot.session}</div>`;lastSession=slot.session;}
 if(!ps.length){
-html+=`<div class="card" style="opacity:.5"> <div class="slot-header"> <span class="slot-time">${slot.time}</span> <span class="slot-label ${catClass(slot.cat)}">${slot.label}</span> <span class="slot-type">${slotFilterLabel(slot)}</span> </div> <div style="font-size:11px;font-weight:700;color:var(--text4);padding:4px 0">— NESSUNO —</div> </div>`;
+html+=`<div class="card" style="opacity:.45"> <div class="slot-header"> <span class="slot-time">${slot.time}</span> <span class="slot-label ${catClass(slot.cat)}">${slot.label}</span> <span class="slot-type">${slotFilterLabel(slot)}</span> </div> <div style="font-size:11px;font-weight:700;color:var(--text4);padding:2px 0">— NESSUNO —</div> </div>`;
 return;
 }
 const noGroup=ps.filter(p=>slot.type===‘group’&&!p.group);
@@ -1241,7 +1196,6 @@ ${notes[p.num]?`<div style="margin-top:6px;font-size:11px;color:var(--text4);fon
 </div>
 `).join('')} </div> </div>`;
 });
-
 if(activeDay===‘DOMENICA’){
 html+=`<div class="session-divider">FINALI</div>`;
 const myCats=[…new Set(pilots.map(p=>p.cat))];
@@ -1266,57 +1220,56 @@ function setDay(d){activeDay=d;localStorage.setItem(‘rt_day’,d);renderSchedu
 window.setDay=setDay;
 
 // ── RENDER PISTA ──
+function showPistaView(v){
+pistaView=v;localStorage.setItem(‘rt_pista’,v);
+document.querySelectorAll(’.subtab’).forEach((b,i)=>b.classList.toggle(‘active’,[‘pilota’,‘sessione’][i]===v));
+renderPista();
+}
+window.showPistaView=showPistaView;
+
 function renderPista(){
 const sl=document.getElementById(‘sections-list’);
-sl.innerHTML=trackSections.map(s=>`<div class="section-tag"> <span ondblclick="editSectionInline(this,'${s}')">${s}</span> <button class="section-remove" onclick="removeSection('${s}')">✕</button> </div>`).join(’’);
-document.querySelectorAll(’.subtab’).forEach((el,i)=>{el.classList.toggle(‘active’,[‘pilota’,‘sessione’][i]===pistaView);});
+if(sl) sl.innerHTML=trackSections.map((s,i)=>` <div class="section-chip" ondblclick="editSectionInline(${i})"> <span ondblclick="editSectionInline(${i})">${s}</span> <span class="del" onclick="deleteSection(${i})">✕</span> </div>`).join(’’);
 const el=document.getElementById(‘pista-content’);
-if(!initialized){el.innerHTML=’<div class="loading">Caricamento…</div>’;return;}
+if(!pilots.length){el.innerHTML=’<div class="empty-state"><p>Nessun pilota</p></div>’;return;}
 if(pistaView===‘pilota’){
-el.innerHTML=pilots.map(p=>`<div class="card"> <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"> <span class="pilot-cat ${catClass(p.cat)}">${p.cat}</span> <span class="pilot-num">#${p.num}</span> <span class="pilot-name">${p.name}</span> </div> ${trackSections.length===0?'<p class="no-pilots">Nessuna sezione</p>':`<div class="tasks">${trackSections.map(s=>{
-const st=(trackStatus[p.num]&&trackStatus[p.num][s])||‘none’;
-return `<button class="task-btn ${st==='none'?'':st}" onclick="toggleTrack('${p.num}','${s}')">${s}</button>`;
-}).join(’’)}</div>`} </div> `).join(’’);
+el.innerHTML=pilots.map(p=>`<div class="card"> <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"> <span class="pilot-num">#${p.num}</span> <span class="pilot-name">${p.name}</span> <span class="pilot-cat ${catClass(p.cat)}" style="margin-left:auto">${p.cat}</span> </div> <div style="display:flex;flex-wrap:wrap;gap:6px"> ${trackSections.map(s=>{ const st=trackStatus[p.num]?.[s]||'none'; return`<button class="dot-btn ${st==='none'?'':st}" onclick="toggleTrack('${p.num}','${s}')">${s}</button>`; }).join('')} </div> </div>`).join(’’);
 } else {
 el.innerHTML=trackSections.map(s=>{
-const covered=pilots.filter(p=>(trackStatus[p.num]&&trackStatus[p.num][s])===‘green’).length;
-const partial=pilots.filter(p=>(trackStatus[p.num]&&trackStatus[p.num][s])===‘orange’).length;
-const missing=pilots.length-covered-partial;
-return `<div class="card"> <div class="coverage-header"> <span class="coverage-title">${s}</span> <div class="coverage-stats"> <span class="stat-green">${covered} ✓</span> ${partial>0?`<span class="stat-orange">${partial} ~</span>`:''} <span class="stat-none">${missing} —</span> </div> </div> ${pilots.map(p=>{ const st=(trackStatus[p.num]&&trackStatus[p.num][s])||'none'; return `<div class="coverage-row">
-<button class="dot-btn ${st==='none'?'':st}" onclick="toggleTrack('${p.num}','${s}')"></button>
-<span class="cov-num">#${p.num}</span>
-<span class="cov-name">${p.name}</span>
-<span class="pilot-cat ${catClass(p.cat)}" style="margin-left:auto;font-size:11px">${p.cat}</span>
-</div>`; }).join('')} </div>`;
+const covered=pilots.filter(p=>(trackStatus[p.num]?.[s]||‘none’)!==‘none’);
+return `<div class="card"> <div style="font-size:13px;font-weight:800;margin-bottom:8px">${s} <span style="font-size:11px;color:var(--text4);font-weight:600">${covered.length}/${pilots.length}</span></div> <div style="display:flex;flex-wrap:wrap;gap:6px"> ${pilots.map(p=>{ const st=trackStatus[p.num]?.[s]||'none'; return `<button class="dot-btn ${st==='none'?'':st}" onclick="toggleTrack('${p.num}','${s}')">#${p.num}</button>`; }).join('')} </div> </div>`;
 }).join(’’);
 }
 }
 
-function showPistaView(v){pistaView=v;localStorage.setItem(‘rt_pistaview’,v);renderPista();}
-window.showPistaView=showPistaView;
-
 function addSection(){
 const inp=document.getElementById(‘new-section-input’);
-const val=inp.value.trim().toUpperCase();
-if(val&&!trackSections.includes(val)){trackSections.push(val);saveField(‘trackSections’,trackSections);inp.value=’’;renderPista();}
+const v=inp.value.trim().toUpperCase();
+if(!v) return;
+trackSections.push(v);inp.value=’’;
+saveField(‘trackSections’,trackSections);renderPista();
 }
 window.addSection=addSection;
 
-function removeSection(s){trackSections=trackSections.filter(x=>x!==s);saveField(‘trackSections’,trackSections);renderPista();}
-window.removeSection=removeSection;
-
-function editSectionInline(el,oldVal){
-const inp=document.createElement(‘input’);
-inp.style.cssText=‘background:none;border:none;outline:none;font-size:12px;font-weight:700;width:80px;font-family:inherit;color:inherit’;
-inp.value=oldVal;el.parentNode.replaceChild(inp,el);inp.focus();inp.select();
-function finish(){
-const nv=inp.value.trim().toUpperCase();
-if(nv&&nv!==oldVal&&!trackSections.includes(nv)){
-trackSections=trackSections.map(x=>x===oldVal?nv:x);
-pilots.forEach(p=>{if(trackStatus[p.num]&&trackStatus[p.num][oldVal]!==undefined){trackStatus[p.num][nv]=trackStatus[p.num][oldVal];delete trackStatus[p.num][oldVal];}});
-saveField(‘trackSections’,trackSections);saveField(‘trackStatus’,trackStatus);
-}renderPista();
+function deleteSection(i){
+if(!confirm(‘Eliminare questa sezione?’)) return;
+trackSections.splice(i,1);
+saveField(‘trackSections’,trackSections);renderPista();
 }
+window.deleteSection=deleteSection;
+
+function editSectionInline(i){
+const chips=document.querySelectorAll(’.section-chip’);
+const chip=chips[i];if(!chip) return;
+const old=trackSections[i];
+const inp=document.createElement(‘input’);
+inp.value=old;inp.className=‘add-input’;inp.style.width=‘100%’;
+chip.innerHTML=’’;chip.appendChild(inp);inp.focus();inp.select();
+const finish=()=>{
+const v=inp.value.trim().toUpperCase();
+if(v&&v!==old){trackSections[i]=v;saveField(‘trackSections’,trackSections);}
+renderPista();
+};
 inp.onblur=finish;inp.onkeydown=e=>{if(e.key===‘Enter’) inp.blur();if(e.key===‘Escape’) renderPista();};
 }
 window.editSectionInline=editSectionInline;
@@ -1328,97 +1281,14 @@ function closeModalOutside(e){if(e.target===document.getElementById(‘modal’)
 window.closeModal=closeModal;
 window.closeModalOutside=closeModalOutside;
 
-// ── ENTRY LIST ──
-function loadEntryList(event){
-const file=event.target.files[0];if(!file) return;
-const reader=new FileReader();
-reader.onload=e=>{
-try{
-const data=JSON.parse(e.target.result);
-if(data.entrylist){
-entryList=data.entrylist;
-save(‘rt_entrylist’,entryList);
-updateElStatus();
-alert(‘✅ Entry list caricata!’);
-} else {
-alert(‘❌ File non valido — assicurati sia il JSON entry list WSK’);
-}
-}catch(err){alert(‘❌ Errore nel file’);}
-};
-reader.readAsText(file);
-event.target.value=’’;
-}
-window.loadEntryList=loadEntryList;
-
-function updateElStatus(){
-const bar=document.getElementById(‘el-status-bar’);
-const btn=document.getElementById(‘el-load-btn’);
-if(!bar||!btn) return;
-if(entryList){
-const cats=Object.keys(entryList).filter(k=>k!==‘event’);
-const total=cats.reduce((acc,c)=>acc+(entryList[c]?.length||0),0);
-bar.innerHTML=`<div style="font-size:11px;font-weight:700;color:#34d399;margin-bottom:10px;padding:8px 12px;background:rgba(52,211,153,.1);border:1px solid #34d399;border-radius:8px;">📋 Entry list caricata · ${total} piloti</div>`;
-btn.className=‘el-btn loaded’;
-btn.textContent=‘📋 ENTRY LIST CARICATA ✓’;
-} else {
-bar.innerHTML=’’;
-btn.className=‘el-btn’;
-btn.textContent=‘📋 CARICA ENTRY LIST’;
-}
-}
-
-function searchEntryList(query){
-if(!entryList||!query||query.length<1) return [];
-const q=query.trim().toUpperCase();
-const cats=Object.keys(entryList).filter(k=>k!==‘event’);
-const results=[];
-cats.forEach(cat=>{
-(entryList[cat]||[]).forEach(p=>{
-const numMatch=p.num&&p.num.toString().startsWith(q);
-const nameMatch=p.lastName&&(p.lastName.toUpperCase().includes(q)||
-(p.firstName&&p.firstName.toUpperCase().includes(q)));
-if(numMatch||nameMatch) results.push({…p,cat:cat.replace(’_’,’ ’)});
-});
-});
-return results.slice(0,6);
-}
-window.searchEntryList=searchEntryList;
-
-function selectSuggestion(num,lastName,firstName,team,cat,parity){
-document.getElementById(‘f-num’).value=num;
-document.getElementById(‘f-name’).value=(lastName+’ ‘+firstName).trim();
-document.getElementById(‘f-team’).value=team;
-// set cat
-const catMap={‘KZ2’:‘KZ2’,‘OK’:‘OK’,‘OKJ’:‘OKJ’,‘MINI GR3’:‘MINI GR3’,‘MINI U10’:‘MINI U10’,‘OK NJ’:‘OK-NJ’,‘OKNJ’:‘OK-NJ’};
-const mappedCat=catMap[cat.toUpperCase()]||‘OK’;
-document.getElementById(‘f-cat’).value=mappedCat;
-// set parity
-const numN=parseInt(num);
-document.getElementById(‘f-parity’).value=numN%2===0?‘EVEN’:‘ODD’;
-document.getElementById(‘f-suggestions’).innerHTML=’’;
-}
-window.selectSuggestion=selectSuggestion;
-
-function handleSearchInput(){
-const q=document.getElementById(‘f-search’).value;
-const box=document.getElementById(‘f-suggestions’);
-if(!q){box.innerHTML=’’;return;}
-const results=searchEntryList(q);
-if(!results.length){box.innerHTML=’<div class="suggestion-item" style="color:var(--text4)">Nessun risultato</div>’;return;}
-box.innerHTML=results.map(r=>{
-const catCls=catClass(r.cat.replace(’ ‘,’’).replace(’-’,’’));
-const esc=(s)=>s?s.replace(/’/g,”'”):’’;
-return `<div class="suggestion-item" onclick="selectSuggestion('${r.num}','${esc(r.lastName)}','${esc(r.firstName)}','${esc(r.entrant)}','${r.cat}','')"> <div><span class="suggestion-num">#${r.num}</span><span class="suggestion-name">${r.lastName} ${r.firstName}</span><span class="suggestion-cat ${catCls}">${r.cat}</span></div> <div class="suggestion-team">${r.entrant}</div> </div>`;
-}).join(’’);
-}
-window.handleSearchInput=handleSearchInput;
+// ── ADD PILOT (with entry list lookup) ──
+let _entryPreview=null;
 
 function openAddPilot(){
-openModal(`<button class="modal-close" onclick="closeModal()">✕</button> <div class="modal-title">Aggiungi Pilota</div> <div class="form-group"> <label class="form-label">🔍 Numero Kart</label> <input class="form-input" id="f-num" placeholder="es. 342" type="number" oninput="previewFromNum(this.value)" autocomplete="off" style="font-size:20px;font-weight:900;letter-spacing:2px"> </div> <div id="f-preview" style="display:none;background:var(--bg3);border:2px solid #22c55e;border-radius:10px;padding:12px;margin-bottom:12px"> <div style="font-size:10px;color:#22c55e;letter-spacing:2px;font-weight:700;margin-bottom:8px">✓ TROVATO IN ENTRY LIST</div> <div id="f-preview-content"></div> <div class="form-group" style="margin-top:10px;margin-bottom:10px"> <label class="form-label">Note — opzionale</label> <textarea class="form-textarea" id="f-note" placeholder="Note opzionali..."></textarea> </div> <button onclick="confirmFromEntryList()" style="width:100%;padding:12px;background:#22c55e;color:#fff;border:none;border-radius:8px;font-family:inherit;font-weight:900;font-size:13px;letter-spacing:2px;cursor:pointer">AGGIUNGI</button> </div> <div id="f-manual" style="display:none"> <div style="font-size:10px;color:#f59e0b;letter-spacing:2px;font-weight:700;margin-bottom:10px;padding:8px;background:rgba(245,158,11,.1);border-radius:6px">⚠ NON IN ENTRY LIST — INSERIMENTO MANUALE</div> <div class="form-group"><label class="form-label">Nome Cognome</label><input class="form-input" id="f-name" placeholder="es. ROSSI MARIO"></div> <div class="form-group"><label class="form-label">Scuderia</label><input class="form-input" id="f-team" placeholder="es. TEAM NAME"></div> <div class="form-group"><label class="form-label">Categoria</label> <select class="form-select" id="f-cat"><option>KZ2</option><option>OK</option><option>OKJ</option><option>MINI GR3</option><option>MINI U10</option><option>OK-NJ</option></select></div> <div class="form-group"><label class="form-label">Parità</label> <select class="form-select" id="f-parity"><option value="ODD">ODD (dispari)</option><option value="EVEN">EVEN (pari)</option></select></div> <div class="form-group"><label class="form-label">Note</label> <textarea class="form-textarea" id="f-note-m" placeholder="Note opzionali..."></textarea></div> <button class="form-submit" onclick="savePilotManual()">AGGIUNGI MANUALMENTE</button> </div>`);
+openModal(`<button class="modal-close" onclick="closeModal()">✕</button> <div class="modal-title">Aggiungi Pilota</div> <div class="form-group"> <label class="form-label">Numero Kart</label> <input class="form-input" id="f-num" placeholder="es. 342" type="number" oninput="previewFromNum(this.value)" autocomplete="off" style="font-size:22px;font-weight:900"> </div> <div id="f-preview" style="display:none;background:var(--bg3);border:2px solid #22c55e;border-radius:10px;padding:12px;margin-bottom:12px"> <div style="font-size:10px;color:#22c55e;letter-spacing:2px;font-weight:700;margin-bottom:8px">✓ TROVATO IN ENTRY LIST</div> <div id="f-preview-content"></div> <div class="form-group" style="margin-top:10px;margin-bottom:10px"> <label class="form-label">Note — opzionale</label> <textarea class="form-textarea" id="f-note" placeholder="Note opzionali..."></textarea> </div> <button onclick="confirmFromEntryList()" style="width:100%;padding:12px;background:#22c55e;color:#000;border:none;border-radius:8px;font-family:inherit;font-weight:900;font-size:13px;letter-spacing:2px;cursor:pointer">AGGIUNGI</button> </div> <div id="f-manual" style="display:none"> <div style="font-size:10px;color:#f59e0b;letter-spacing:2px;font-weight:700;margin-bottom:10px;padding:8px;background:rgba(245,158,11,.1);border-radius:6px">⚠ NON IN ENTRY LIST — INSERIMENTO MANUALE</div> <div class="form-group"><label class="form-label">Nome Cognome</label><input class="form-input" id="f-name" placeholder="es. ROSSI MARIO"></div> <div class="form-group"><label class="form-label">Scuderia</label><input class="form-input" id="f-team" placeholder="es. TEAM NAME"></div> <div class="form-group"><label class="form-label">Categoria</label> <select class="form-select" id="f-cat"><option>KZ2</option><option>OK</option><option>OKJ</option><option>MINI GR3</option><option>MINI U10</option><option>OK-NJ</option></select></div> <div class="form-group"><label class="form-label">Parità</label> <select class="form-select" id="f-parity"><option value="ODD">ODD (dispari)</option><option value="EVEN">EVEN (pari)</option></select></div> <div class="form-group"><label class="form-label">Note</label> <textarea class="form-textarea" id="f-note-m" placeholder="Note opzionali..."></textarea></div> <button class="form-submit" onclick="savePilotManual()">AGGIUNGI MANUALMENTE</button> </div>`);
 }
 window.openAddPilot=openAddPilot;
 
-let _entryPreview=null;
 function previewFromNum(val){
 const num=val.trim();
 const preview=document.getElementById(‘f-preview’);
@@ -1434,7 +1304,7 @@ document.getElementById(‘f-preview-content’).innerHTML=
 ‘<span style="font-size:16px;font-weight:800">’+entry.lastName+’ ‘+entry.firstName+’</span>’+
 ‘</div>’+
 ‘<div style="display:flex;gap:8px;flex-wrap:wrap">’+
-‘<span class="cat-badge '+catCls+'" style="font-size:11px;padding:2px 8px;border-radius:6px">’+entry.cat+’</span>’+
+‘<span class="'+catCls+'" style="font-size:11px;padding:2px 8px;border-radius:6px;font-weight:800">’+entry.cat+’</span>’+
 ‘<span style="font-size:11px;color:var(--text4);font-weight:700">’+entry.parity+’</span>’+
 ‘<span style="font-size:11px;color:var(--text4)">’+entry.team+’</span>’+
 ‘</div>’;
@@ -1462,8 +1332,10 @@ window.confirmFromEntryList=confirmFromEntryList;
 
 function savePilotManual(){
 const num=document.getElementById(‘f-num’).value.trim();
-const name=document.getElementById(‘f-name’)?document.getElementById(‘f-name’).value.trim().toUpperCase():’’;
-const team=document.getElementById(‘f-team’)?document.getElementById(‘f-team’).value.trim().toUpperCase():’’;
+const nameEl=document.getElementById(‘f-name’);
+const teamEl=document.getElementById(‘f-team’);
+const name=nameEl?nameEl.value.trim().toUpperCase():’’;
+const team=teamEl?teamEl.value.trim().toUpperCase():’’;
 const cat=document.getElementById(‘f-cat’)?document.getElementById(‘f-cat’).value:‘OK’;
 const parity=document.getElementById(‘f-parity’)?document.getElementById(‘f-parity’).value:‘EVEN’;
 const note=document.getElementById(‘f-note-m’)?document.getElementById(‘f-note-m’).value.trim():’’;
@@ -1476,9 +1348,7 @@ saveAll();closeModal();
 }
 window.savePilotManual=savePilotManual;
 
-function savePilot(){savePilotManual();}
-window.savePilot=savePilot;
-
+// ── EDIT PILOT ──
 function openEditPilot(num){
 const p=pilots.find(x=>x.num===num);if(!p) return;
 openModal(` <button class="modal-close" onclick="closeModal()">✕</button> <div class="modal-title">Modifica #${p.num}</div> <div class="form-group"><label class="form-label">Nome Cognome</label><input class="form-input" id="ef-name" value="${p.name}"></div> <div class="form-group"><label class="form-label">Scuderia</label><input class="form-input" id="ef-team" value="${p.team}"></div> <div class="form-group"><label class="form-label">Categoria</label> <select class="form-select" id="ef-cat">${['KZ2','OK','OKJ','MINI GR3','MINI U10','OK-NJ'].map(c=>`<option ${c===p.cat?‘selected’:’’}>${c}</option>`).join('')}</select></div> <div class="form-group"><label class="form-label">Parità</label> <select class="form-select" id="ef-parity"><option value="ODD" ${p.parity==='ODD'?'selected':''}>ODD (dispari)</option><option value="EVEN" ${p.parity==='EVEN'?'selected':''}>EVEN (pari)</option></select></div> <div class="form-group"><label class="form-label">Gruppo (A-E)</label> <select class="form-select" id="ef-group"><option value="" ${!p.group?'selected':''}>— Non assegnato</option>${['A','B','C','D','E'].map(g=>`<option ${p.group===g?‘selected’:’’}>${g}</option>`).join('')}</select></div> <div class="form-group"><label class="form-label">Prefinal (A/B)</label> <select class="form-select" id="ef-prefinal"><option value="" ${!p.prefinal?'selected':''}>— Non assegnato</option>${['A','B'].map(g=>`<option ${p.prefinal===g?‘selected’:’’}>${g}</option>`).join('')}</select></div> <button class="form-submit" onclick="updatePilot('${num}')">SALVA MODIFICHE</button> <button class="form-delete" onclick="deletePilot('${num}')">Elimina pilota</button> `);
@@ -1511,9 +1381,8 @@ if(activeTab===‘programma’) renderSchedule();
 if(activeTab===‘pista’) renderPista();
 }
 
-// init day tabs immediately
 renderSchedule();
-</script>
 
+</script>
 </body>
 </html>
