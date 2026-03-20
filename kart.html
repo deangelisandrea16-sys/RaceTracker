@@ -1,0 +1,1850 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Race Tracker">
+<title>Race Tracker</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#09090b;--bg2:#1c1c1f;--bg3:#111113;
+  --border:#3f3f46;--border2:#52525b;
+  --text:#ffffff;--text2:#f4f4f5;--text3:#e4e4e7;--text4:#a1a1aa;
+  --task-border:#52525b;--task-color:#a1a1aa;
+  --modal-bg:#1c1c1f;--input-bg:#09090b;
+  --btn-bg:#2a2a2e;--btn-color:#f4f4f5;
+}
+body.light{
+  --bg:#f4f4f5;--bg2:#ffffff;--bg3:#f1f1f3;
+  --border:#d4d4d8;--border2:#a1a1aa;
+  --text:#09090b;--text2:#18181b;--text3:#3f3f46;--text4:#71717a;
+  --task-border:#a1a1aa;--task-color:#71717a;
+  --modal-bg:#ffffff;--input-bg:#f4f4f5;
+  --btn-bg:#e4e4e7;--btn-color:#18181b;
+}
+body{font-family:'Courier New',monospace;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;padding-bottom:80px;transition:background .2s,color .2s;-webkit-text-size-adjust:100%;}
+.header{border-bottom:1px solid var(--border);padding:14px 16px;position:sticky;top:0;background:var(--bg);z-index:100;display:flex;align-items:center;justify-content:space-between;}
+.header-dot{width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;margin-right:8px;animation:pulse 2s infinite;}
+.header-dot.connected{background:#22c55e;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.header-sub{font-size:10px;color:var(--text4);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;font-weight:600;}
+.header-title{font-size:22px;font-weight:900;color:var(--text);letter-spacing:1px;}
+.header-right{display:flex;gap:8px;align-items:center;}
+.theme-btn{background:none;border:1px solid var(--border2);border-radius:8px;padding:6px 10px;font-size:16px;cursor:pointer;color:var(--text);}
+.sync-status{font-size:10px;font-weight:700;color:var(--text4);letter-spacing:1px;}
+.sync-status.ok{color:#22c55e;}.sync-status.err{color:#ef4444;}
+.tabs{display:flex;border-bottom:1px solid var(--border);position:sticky;top:61px;background:var(--bg);z-index:99;overflow-x:auto;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{flex:1;padding:12px 6px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;background:none;border:none;color:var(--text4);cursor:pointer;border-bottom:2px solid transparent;font-family:inherit;white-space:nowrap;min-width:0;}
+.tab.active{color:var(--text);border-bottom-color:var(--text);}
+.subtabs{display:flex;border-bottom:1px solid var(--border);background:var(--bg);}
+.subtab{padding:10px 16px;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;background:none;border:none;color:var(--text4);cursor:pointer;border-bottom:2px solid transparent;font-family:inherit;}
+.subtab.active{color:var(--text);border-bottom-color:var(--text);}
+.content{padding:16px;}
+.hint{font-size:11px;color:var(--text4);margin-bottom:12px;font-weight:500;}
+.card{border:1px solid var(--border);border-radius:12px;padding:14px;background:var(--bg2);margin-bottom:12px;}
+.card-inner{border-radius:8px;padding:10px;background:var(--bg3);margin-bottom:8px;}.card-inner:last-child{margin-bottom:0;}
+.pilot-cat{font-size:11px;font-weight:800;letter-spacing:3px;}
+.pilot-index{font-size:11px;font-weight:800;color:var(--text4);min-width:22px;text-align:right;margin-right:2px;}
+.pilot-num{font-size:20px;font-weight:900;color:var(--text);}
+.pilot-name{font-size:14px;font-weight:700;color:var(--text2);}
+.pilot-team{font-size:15px;font-weight:800;color:var(--text3);margin-top:4px;letter-spacing:.5px;}
+.pilot-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;}
+.parity-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;border:1px solid var(--border2);color:var(--text3);}
+.group-badge{font-size:11px;font-weight:900;padding:3px 10px;border-radius:4px;border:1.5px solid var(--border2);color:var(--text);}
+.group-badge.set{border-color:#60a5fa;color:#60a5fa;background:rgba(96,165,250,.1);}
+body.light .group-badge.set{border-color:#2563eb;color:#2563eb;background:rgba(37,99,235,.08);}
+.pilot-edit-btn{font-size:11px;font-weight:600;color:var(--text3);background:none;border:1px solid var(--border);border-radius:5px;padding:4px 10px;cursor:pointer;font-family:inherit;}
+.tasks{display:flex;flex-wrap:wrap;gap:7px;}
+.task-btn{font-size:11px;font-weight:700;padding:5px 10px;border-radius:6px;border:1px solid var(--task-border);color:var(--task-color);background:none;cursor:pointer;font-family:inherit;transition:all .15s;letter-spacing:.5px;}
+.task-btn.green{border-color:#16a34a;background:#052e16;color:#4ade80;}
+.task-btn.orange{border-color:#d97706;background:#1c1003;color:#fbbf24;}
+.task-btn.red{border-color:#dc2626;background:#1c0303;color:#f87171;}
+body.light .task-btn.green{background:#dcfce7;color:#15803d;border-color:#16a34a;}
+body.light .task-btn.orange{background:#fef3c7;color:#b45309;border-color:#d97706;}
+body.light .task-btn.red{background:#fee2e2;color:#b91c1c;border-color:#dc2626;}
+.note-wrap{margin-top:10px;}
+.note-label{font-size:10px;font-weight:800;color:var(--text4);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px;display:block;}
+.note-area{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:12px;font-weight:500;color:var(--text2);font-family:inherit;resize:none;outline:none;min-height:56px;}
+.note-area::placeholder{color:var(--text4);}
+.io-row{display:flex;gap:8px;margin-bottom:10px;}
+.io-btn{flex:1;padding:11px 8px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;font-size:11px;font-weight:700;color:var(--btn-color);cursor:pointer;font-family:inherit;text-align:center;letter-spacing:.5px;}
+.io-btn.export{border-color:#34d399;color:#34d399;}
+.io-btn.import{border-color:#60a5fa;color:#60a5fa;}
+body.light .io-btn.export{border-color:#059669;color:#059669;}
+body.light .io-btn.import{border-color:#2563eb;color:#2563eb;}
+.mgmt-btn{width:100%;padding:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;font-size:13px;font-weight:700;color:var(--btn-color);cursor:pointer;font-family:inherit;margin-bottom:10px;letter-spacing:.5px;}
+.slot-time{font-size:18px;font-weight:900;color:var(--text);}
+.slot-label{font-size:12px;font-weight:800;letter-spacing:1px;}
+.slot-type{font-size:10px;font-weight:600;color:var(--text4);margin-left:auto;letter-spacing:1px;}
+.slot-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.inner-num{font-size:18px;font-weight:900;color:var(--text);}
+.inner-name{font-size:13px;font-weight:700;color:var(--text2);}
+.inner-team{font-size:11px;font-weight:500;color:var(--text4);margin-left:auto;}
+.inner-group{font-size:11px;font-weight:900;color:#60a5fa;margin-left:6px;}
+body.light .inner-group{color:#2563eb;}
+.day-tabs{display:flex;overflow-x:auto;border-bottom:1px solid var(--border);background:var(--bg);scrollbar-width:none;}
+.day-tabs::-webkit-scrollbar{display:none;}
+.day-tab{padding:10px 14px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:none;border:none;color:var(--text4);cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;font-family:inherit;}
+.day-tab.active{color:var(--text);border-bottom-color:var(--text);background:var(--bg2);}
+.session-divider{font-size:10px;font-weight:800;color:var(--text4);letter-spacing:3px;text-transform:uppercase;padding:10px 0 6px;border-top:1px solid var(--border);margin-top:4px;}
+.session-divider:first-child{border-top:none;margin-top:0;}
+.final-card{border:1px solid #fbbf24;border-radius:12px;padding:14px;background:var(--bg2);margin-bottom:12px;}
+.final-title{font-size:14px;font-weight:900;color:#fbbf24;letter-spacing:2px;margin-bottom:8px;}
+body.light .final-card{border-color:#d97706;}
+body.light .final-title{color:#d97706;}
+.final-row{display:flex;justify-content:space-between;font-size:12px;font-weight:600;color:var(--text3);padding:4px 0;border-bottom:1px solid var(--border);}
+.final-row:last-child{border-bottom:none;}
+.final-time{font-weight:900;color:var(--text);}
+.section-editor{border-bottom:1px solid var(--border);padding:16px;background:var(--bg);}
+.section-label{font-size:11px;font-weight:700;color:var(--text4);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;}
+.sections-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.section-chip{display:flex;align-items:center;gap:4px;padding:5px 10px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;font-size:11px;font-weight:700;color:var(--text2);cursor:pointer;}
+.section-chip .del{color:var(--text4);font-size:13px;}
+.add-row{display:flex;gap:8px;}
+.add-input{flex:1;padding:9px 12px;background:var(--input-bg);border:1px solid var(--border2);border-radius:8px;font-size:12px;font-weight:600;color:var(--text);outline:none;font-family:inherit;}
+.add-btn{padding:9px 14px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;font-size:11px;font-weight:700;color:var(--btn-color);cursor:pointer;font-family:inherit;}
+.track-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;margin-top:8px;}
+.track-btn{padding:8px 6px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);cursor:pointer;font-family:inherit;font-size:10px;font-weight:700;color:var(--text4);text-align:center;line-height:1.3;word-break:break-word;min-height:40px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.track-btn.green{background:#052e16;border-color:#16a34a;color:#4ade80;}
+.track-btn.orange{background:#1c1003;border-color:#d97706;color:#fbbf24;}
+.track-btn.red{background:#1c0303;border-color:#dc2626;color:#f87171;}
+body.light .track-btn.green{background:#dcfce7;border-color:#16a34a;color:#15803d;}
+body.light .track-btn.orange{background:#fef3c7;border-color:#d97706;color:#b45309;}
+body.light .track-btn.red{background:#fee2e2;border-color:#dc2626;color:#b91c1c;}
+.track-session-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(55px,1fr));gap:6px;margin-top:8px;}
+.track-pilot-btn{padding:6px 4px;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);cursor:pointer;font-family:inherit;font-size:11px;font-weight:900;color:var(--text4);text-align:center;min-height:36px;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.track-pilot-btn.green{background:#052e16;border-color:#16a34a;color:#4ade80;}
+.track-pilot-btn.orange{background:#1c1003;border-color:#d97706;color:#fbbf24;}
+.track-pilot-btn.red{background:#1c0303;border-color:#dc2626;color:#f87171;}
+body.light .track-pilot-btn.green{background:#dcfce7;border-color:#16a34a;color:#15803d;}
+body.light .track-pilot-btn.orange{background:#fef3c7;border-color:#d97706;color:#b45309;}
+body.light .track-pilot-btn.red{background:#fee2e2;border-color:#dc2626;color:#b91c1c;}
+.no-group-warning{font-size:10px;color:#fbbf24;font-weight:600;margin-top:4px;}
+.empty-state{padding:40px 16px;text-align:center;color:var(--text4);font-size:13px;}
+.loading{text-align:center;padding:40px;color:var(--text4);font-size:13px;font-weight:600;}
+.no-pilots{font-size:12px;color:var(--text4);font-style:italic;padding:8px 0;}
+.slot-now{border-color:#22c55e;box-shadow:0 0 0 1px #22c55e;}
+.now-badge{font-size:9px;font-weight:900;color:#22c55e;letter-spacing:2px;animation:pulse 2s infinite;}
+.search-bar-wrap{padding:0 0 12px 0;}
+.search-bar-container{position:relative;}
+.search-bar{width:100%;padding:11px 40px 11px 14px;font-family:inherit;font-size:13px;font-weight:700;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--text);outline:none;}
+.search-bar::placeholder{color:var(--text4);font-weight:500;}
+.search-bar:focus{border-color:var(--border2);}
+.search-clear{background:none;border:none;color:var(--text4);font-size:18px;cursor:pointer;padding:0 4px;position:absolute;right:10px;top:50%;transform:translateY(-50%);}
+.search-group-label{font-size:10px;font-weight:800;letter-spacing:2px;color:var(--text4);padding:10px 0 4px;text-transform:uppercase;}
+.search-result-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;}
+.search-result-item:active{opacity:.7;}
+.sr-num{font-size:20px;font-weight:900;color:var(--text);min-width:52px;}
+.sr-name{font-size:13px;font-weight:700;color:var(--text2);}
+.sr-team{font-size:12px;font-weight:700;color:var(--text3);}
+.sr-cat{font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;letter-spacing:1px;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;display:flex;align-items:flex-end;}
+.modal{background:var(--modal-bg);border-radius:16px 16px 0 0;width:100%;max-width:600px;margin:0 auto;padding:20px;max-height:90vh;overflow-y:auto;border-top:1px solid var(--border);}
+.modal-title{font-size:16px;font-weight:900;margin-bottom:16px;color:var(--text);}
+.modal-close{float:right;background:none;border:none;color:var(--text4);font-size:20px;cursor:pointer;}
+.form-group{margin-bottom:14px;}
+.form-label{font-size:10px;font-weight:800;color:var(--text4);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px;display:block;}
+.form-input{width:100%;background:var(--input-bg);border:1px solid var(--border2);border-radius:8px;padding:11px 12px;font-size:14px;font-weight:600;color:var(--text);outline:none;font-family:inherit;}
+.form-select{width:100%;background:var(--input-bg);border:1px solid var(--border2);border-radius:8px;padding:11px 12px;font-size:14px;font-weight:600;color:var(--text);outline:none;font-family:inherit;-webkit-appearance:none;}
+.form-textarea{width:100%;background:var(--input-bg);border:1px solid var(--border2);border-radius:8px;padding:11px 12px;font-size:13px;font-weight:500;color:var(--text);outline:none;font-family:inherit;resize:none;min-height:80px;}
+.form-submit{width:100%;padding:13px;background:var(--text);color:var(--bg);border:none;border-radius:8px;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;margin-top:8px;letter-spacing:1px;}
+.form-delete{width:100%;padding:13px;background:none;color:#ef4444;border:1.5px solid #ef4444;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px;}
+/* Race selector */
+.race-card{border:1px solid var(--border);border-radius:12px;padding:16px;background:var(--bg2);margin-bottom:12px;cursor:pointer;transition:all .15s;}
+.race-card:active{opacity:.7;}
+.race-card.active-race{border-color:#22c55e;box-shadow:0 0 0 1px #22c55e;}
+.race-name{font-size:16px;font-weight:900;color:var(--text);margin-bottom:4px;}
+.race-meta{font-size:11px;color:var(--text4);font-weight:600;}
+.race-badge{display:inline-block;font-size:9px;font-weight:800;padding:2px 8px;border-radius:4px;letter-spacing:1px;background:#22c55e;color:#000;margin-left:8px;}
+.upload-zone{border:2px dashed var(--border2);border-radius:12px;padding:20px;text-align:center;cursor:pointer;margin-bottom:12px;transition:border-color .15s;}
+.upload-zone:active{border-color:var(--text);}
+.upload-zone-label{font-size:12px;font-weight:700;color:var(--text3);margin-bottom:4px;}
+.upload-zone-hint{font-size:10px;color:var(--text4);}
+.upload-zone.loaded{border-color:#22c55e;border-style:solid;}
+/* Pilot detail sheet */
+.detail-sheet{padding:4px 0;}
+.detail-actions{display:flex;gap:8px;margin-top:12px;}
+.detail-actions button{flex:1;padding:11px;border-radius:8px;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;letter-spacing:1px;}
+.btn-add-pilot{background:#22c55e;color:#000;border:none;}
+.btn-note-pilot{background:none;border:1.5px solid var(--border2);color:var(--btn-color);}
+/* CAT COLORS */
+.cat-kz2{color:#f87171;} body.light .cat-kz2{color:#dc2626;}
+.cat-ok{color:#60a5fa;} body.light .cat-ok{color:#2563eb;}
+.cat-okj{color:#c084fc;} body.light .cat-okj{color:#7c3aed;}
+.cat-gr3{color:#34d399;} body.light .cat-gr3{color:#059669;}
+.cat-u10{color:#22d3ee;} body.light .cat-u10{color:#0891b2;}
+.cat-nj{color:#fbbf24;} body.light .cat-nj{color:#d97706;}
+@media(min-width:768px){
+  .content{max-width:800px;margin:0 auto;}
+  .card{transition:border-color .15s;}.card:hover{border-color:var(--border2);}
+  .task-btn:hover{opacity:.8;}
+  .track-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));}
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <div class="header-sub"><span class="header-dot" id="conn-dot"></span><span id="race-header-name">RACE TRACKER</span></div>
+    <div class="header-title">RACE TRACKER <span style="font-size:9px;color:var(--text4);font-weight:500">v4.0</span></div>
+  </div>
+  <div class="header-right">
+    <span class="sync-status" id="sync-status">SYNC...</span>
+    <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">☀️</button>
+  </div>
+</div>
+<div class="tabs">
+  <button class="tab" onclick="showTab('gare')">GARE</button>
+  <button class="tab active" onclick="showTab('piloti')">PILOTI</button>
+  <button class="tab" onclick="showTab('programma')">PROGRAMMA</button>
+  <button class="tab" onclick="showTab('pista')">PISTA</button>
+  <button class="tab" onclick="showTab('debug')" style="font-size:9px;min-width:30px;flex:0;padding:12px 8px;color:var(--border2)">🔧</button>
+</div>
+
+<!-- TAB GARE -->
+<div id="tab-gare" class="tab-content" style="display:none">
+  <div class="content" id="gare-content"></div>
+</div>
+
+<!-- TAB PILOTI -->
+<div id="tab-piloti" class="tab-content">
+  <div class="content">
+    <div class="io-row">
+      <button class="io-btn export" onclick="exportData()">⬇ ESPORTA</button>
+      <button class="io-btn import" onclick="document.getElementById('import-input').click()">⬆ IMPORTA</button>
+      <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+    <button class="mgmt-btn" onclick="openAddPilot()">+ AGGIUNGI PILOTA</button>
+    <p class="hint">Tocca un task per cambiare stato · "modifica" per editare</p>
+    <div class="search-bar-wrap">
+      <div class="search-bar-container">
+        <input class="search-bar" id="pilots-search" placeholder="🔍 Cerca numero, nome o scuderia..." oninput="filterPilots(this.value)" autocomplete="off">
+        <button class="search-clear" id="search-clear-btn" onclick="clearPilotsSearch()" style="display:none">✕</button>
+      </div>
+    </div>
+    <div id="pilots-list"><div class="loading">Connessione a Firebase...</div></div>
+    <div id="pilots-search-results" style="display:none"></div>
+  </div>
+</div>
+
+<!-- TAB PROGRAMMA -->
+<div id="tab-programma" class="tab-content" style="display:none">
+  <div class="day-tabs" id="day-tabs"></div>
+  <div class="content" id="schedule-content"></div>
+</div>
+
+<!-- TAB PISTA -->
+<div id="tab-pista" class="tab-content" style="display:none">
+  <div class="section-editor">
+    <div class="section-label">⚙ Sezioni del circuito</div>
+    <div class="sections-list" id="sections-list"></div>
+    <div class="add-row">
+      <input class="add-input" id="new-section-input" placeholder="Aggiungi sezione..." onkeydown="if(event.key==='Enter')addSection()">
+      <button class="add-btn" onclick="addSection()">+ AGGIUNGI</button>
+    </div>
+    <p class="hint" style="margin-top:8px">Doppio tocco per modificare · ✕ per eliminare</p>
+  </div>
+  <div class="subtabs">
+    <button class="subtab active" onclick="showPistaView('pilota')">PILOTA</button>
+    <button class="subtab" onclick="showPistaView('sessione')">SESSIONE</button>
+  </div>
+  <div class="content" id="pista-content"></div>
+</div>
+
+<!-- TAB DEBUG -->
+<div id="tab-debug" class="tab-content" style="display:none">
+  <div class="content">
+    <div style="font-size:14px;font-weight:900;margin-bottom:12px">🔧 FIREBASE DEBUG</div>
+    <button class="mgmt-btn" onclick="runFirebaseTest()" style="border-color:#60a5fa;color:#60a5fa">🔄 ESEGUI TEST</button>
+    <div id="debug-logs" style="max-height:60vh;overflow-y:auto"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal" style="display:none" onclick="closeModalOutside(event)">
+  <div class="modal" id="modal-inner"></div>
+</div>
+
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import{getDatabase,ref,set,onValue,update,off}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+const firebaseConfig={apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"};
+const app=initializeApp(firebaseConfig);
+const db=getDatabase(app);
+
+// ── CONSTANTS ──
+const TASKS=["PADDOK","PREGRIGLIA","BILANCIA","PISTA","REPORTAGE"];
+const STATUS_CYCLE=["none","green","orange","red"];
+const ALL_TABS=['gare','piloti','programma','pista','debug'];
+
+// ── DEBUG LOGGING (must be defined early) ──
+let debugLogs=[];
+function dlog(msg,type){
+  type=type||'info';
+  debugLogs.push({time:new Date().toLocaleTimeString(),msg,type});
+  renderDebugLogs();
+}
+function renderDebugLogs(){
+  const el=document.getElementById('debug-logs');if(!el)return;
+  el.innerHTML=debugLogs.map(l=>{
+    const colors={ok:'#22c55e',err:'#ef4444',warn:'#fbbf24',info:'var(--text4)'};
+    const borderColors={ok:'#16a34a',err:'#dc2626',warn:'#d97706',info:'var(--border)'};
+    return'<div style="background:var(--bg3);border:1px solid '+borderColors[l.type]+';border-radius:8px;padding:10px;margin-bottom:6px;font-size:11px;color:'+colors[l.type]+';word-break:break-all">'+l.time+' — '+l.msg+'</div>';
+  }).join('');
+  el.scrollTop=el.scrollHeight;
+}
+function renderDebug(){renderDebugLogs();}
+
+// ── DEFAULT DATA (WSK Super Master Franciacorta — used as fallback) ──
+const DAYS=["MERCOLEDÌ","GIOVEDÌ","VENERDÌ","SABATO","DOMENICA"];
+const SCHEDULE={
+  "MERCOLEDÌ":[
+    {time:"8.00",cat:"KZ2",label:"KZ2",session:"PROVE LIBERE — Turno 1",type:"parity",filter:"ODD"},
+    {time:"8.13",cat:"KZ2",label:"KZ2",session:"",type:"parity",filter:"EVEN"},
+    {time:"8.26",cat:"OK",label:"OK",session:"",type:"parity",filter:"ODD"},
+    {time:"8.39",cat:"OK",label:"OK",session:"",type:"parity",filter:"EVEN"},
+    {time:"8.52",cat:"OKJ",label:"OKJ",session:"",type:"parity",filter:"ODD"},
+    {time:"9.05",cat:"OKJ",label:"OKJ",session:"",type:"parity",filter:"EVEN"},
+    {time:"9.18",cat:"MINI U10",label:"MINI U10",session:"",type:"all"},
+    {time:"9.31",cat:"MINI GR3",label:"MINI GR3",session:"",type:"parity",filter:"ODD"},
+    {time:"9.44",cat:"MINI GR3",label:"MINI GR3",session:"",type:"parity",filter:"EVEN"},
+    {time:"9.57",cat:"OK-NJ",label:"OK-NJ",session:"",type:"parity",filter:"ODD"},
+    {time:"10.10",cat:"OK-NJ",label:"OK-NJ",session:"",type:"parity",filter:"EVEN"},
+    {time:"10.23",cat:"KZ2",label:"KZ2",session:"PROVE LIBERE — Turno 2",type:"parity",filter:"ODD"},
+    {time:"10.36",cat:"KZ2",label:"KZ2",session:"",type:"parity",filter:"EVEN"},
+    {time:"10.49",cat:"OK",label:"OK",session:"",type:"parity",filter:"ODD"},
+    {time:"11.02",cat:"OK",label:"OK",session:"",type:"parity",filter:"EVEN"},
+    {time:"11.15",cat:"OKJ",label:"OKJ",session:"",type:"parity",filter:"ODD"},
+    {time:"11.28",cat:"OKJ",label:"OKJ",session:"",type:"parity",filter:"EVEN"},
+    {time:"11.41",cat:"MINI U10",label:"MINI U10",session:"",type:"all"},
+    {time:"11.54",cat:"MINI GR3",label:"MINI GR3",session:"",type:"parity",filter:"ODD"},
+    {time:"12.07",cat:"MINI GR3",label:"MINI GR3",session:"",type:"parity",filter:"EVEN"},
+    {time:"12.20",cat:"OK-NJ",label:"OK-NJ",session:"",type:"parity",filter:"ODD"},
+    {time:"12.33",cat:"OK-NJ",label:"OK-NJ",session:"",type:"parity",filter:"EVEN"},
+    {time:"13.25",cat:"KZ2",label:"KZ2",session:"PROVE LIBERE — Turno 3",type:"parity",filter:"ODD"},
+    {time:"13.38",cat:"KZ2",label:"KZ2",session:"",type:"parity",filter:"EVEN"},
+    {time:"13.51",cat:"OK",label:"OK",session:"",type:"parity",filter:"ODD"},
+    {time:"14.04",cat:"OK",label:"OK",session:"",type:"parity",filter:"EVEN"},
+    {time:"14.17",cat:"OKJ",label:"OKJ",session:"",type:"parity",filter:"ODD"},
+    {time:"14.30",cat:"OKJ",label:"OKJ",session:"",type:"parity",filter:"EVEN"},
+    {time:"14.43",cat:"MINI U10",label:"MINI U10",session:"",type:"all"},
+    {time:"14.56",cat:"MINI GR3",label:"MINI GR3",session:"",type:"parity",filter:"ODD"},
+    {time:"15.09",cat:"MINI GR3",label:"MINI GR3",session:"",type:"parity",filter:"EVEN"},
+    {time:"15.22",cat:"OK-NJ",label:"OK-NJ",session:"",type:"parity",filter:"ODD"},
+    {time:"15.35",cat:"OK-NJ",label:"OK-NJ",session:"",type:"parity",filter:"EVEN"},
+    {time:"15.48",cat:"KZ2",label:"KZ2",session:"PROVE LIBERE — Turno 4",type:"parity",filter:"ODD"},
+    {time:"16.01",cat:"KZ2",label:"KZ2",session:"",type:"parity",filter:"EVEN"},
+    {time:"16.14",cat:"OK",label:"OK",session:"",type:"parity",filter:"ODD"},
+    {time:"16.27",cat:"OK",label:"OK",session:"",type:"parity",filter:"EVEN"},
+    {time:"16.40",cat:"OKJ",label:"OKJ",session:"",type:"parity",filter:"ODD"},
+    {time:"16.53",cat:"OKJ",label:"OKJ",session:"",type:"parity",filter:"EVEN"},
+    {time:"17.10",cat:"MINI U10",label:"MINI U10",session:"",type:"all"},
+    {time:"17.23",cat:"MINI GR3",label:"MINI GR3",session:"",type:"parity",filter:"ODD"},
+    {time:"17.36",cat:"MINI GR3",label:"MINI GR3",session:"",type:"parity",filter:"EVEN"},
+    {time:"17.49",cat:"OK-NJ",label:"OK-NJ",session:"",type:"parity",filter:"ODD"},
+    {time:"18.02",cat:"OK-NJ",label:"OK-NJ",session:"",type:"parity",filter:"EVEN"}
+  ],
+  "GIOVEDÌ":[
+    {time:"8.00",cat:"KZ2",label:"KZ2",session:"PROVE LIBERE — Turno 1",type:"parity",filter:"ODD"},
+    {time:"8.13",cat:"KZ2",label:"KZ2",session:"",type:"parity",filter:"EVEN"},
+    {time:"8.26",cat:"OK",label:"OK",session:"",type:"parity",filter:"ODD"},
+    {time:"8.39",cat:"OK",label:"OK",session:"",type:"parity",filter:"EVEN"},
+    {time:"8.52",cat:"OKJ",label:"OKJ",session:"",type:"parity",filter:"ODD"},
+    {time:"9.05",cat:"OKJ",label:"OKJ",session:"",type:"parity",filter:"EVEN"},
+    {time:"9.18",cat:"MINI U10",label:"MINI U10",session:"",type:"all"},
+    {time:"9.31",cat:"MINI GR3",label:"MINI GR3",session:"",type:"parity",filter:"ODD"},
+    {time:"9.44",cat:"MINI GR3",label:"MINI GR3",session:"",type:"parity",filter:"EVEN"},
+    {time:"9.57",cat:"OK-NJ",label:"OK-NJ",session:"",type:"parity",filter:"ODD"},
+    {time:"10.10",cat:"OK-NJ",label:"OK-NJ",session:"",type:"parity",filter:"EVEN"},
+    {time:"10.23",cat:"KZ2",label:"KZ2",session:"PROVE LIBERE — Turno 2",type:"parity",filter:"ODD"},
+    {time:"10.36",cat:"KZ2",label:"KZ2",session:"",type:"parity",filter:"EVEN"},
+    {time:"10.49",cat:"OK",label:"OK",session:"",type:"parity",filter:"ODD"},
+    {time:"11.02",cat:"OK",label:"OK",session:"",type:"parity",filter:"EVEN"},
+    {time:"11.15",cat:"OKJ",label:"OKJ",session:"",type:"parity",filter:"ODD"},
+    {time:"11.28",cat:"OKJ",label:"OKJ",session:"",type:"parity",filter:"EVEN"},
+    {time:"11.41",cat:"MINI U10",label:"MINI U10",session:"",type:"all"},
+    {time:"11.54",cat:"MINI GR3",label:"MINI GR3",session:"",type:"parity",filter:"ODD"},
+    {time:"12.07",cat:"MINI GR3",label:"MINI GR3",session:"",type:"parity",filter:"EVEN"},
+    {time:"12.20",cat:"OK-NJ",label:"OK-NJ",session:"",type:"parity",filter:"ODD"},
+    {time:"12.33",cat:"OK-NJ",label:"OK-NJ",session:"",type:"parity",filter:"EVEN"},
+    {time:"13.25",cat:"KZ2",label:"KZ2",session:"PROVE LIBERE — Turno 3",type:"parity",filter:"ODD"},
+    {time:"13.38",cat:"KZ2",label:"KZ2",session:"",type:"parity",filter:"EVEN"},
+    {time:"13.51",cat:"OK",label:"OK",session:"",type:"parity",filter:"ODD"},
+    {time:"14.04",cat:"OK",label:"OK",session:"",type:"parity",filter:"EVEN"},
+    {time:"14.17",cat:"OKJ",label:"OKJ",session:"",type:"parity",filter:"ODD"},
+    {time:"14.30",cat:"OKJ",label:"OKJ",session:"",type:"parity",filter:"EVEN"},
+    {time:"14.43",cat:"MINI U10",label:"MINI U10",session:"",type:"all"},
+    {time:"14.56",cat:"MINI GR3",label:"MINI GR3",session:"",type:"parity",filter:"ODD"},
+    {time:"15.09",cat:"MINI GR3",label:"MINI GR3",session:"",type:"parity",filter:"EVEN"},
+    {time:"15.22",cat:"OK-NJ",label:"OK-NJ",session:"",type:"parity",filter:"ODD"},
+    {time:"15.35",cat:"OK-NJ",label:"OK-NJ",session:"",type:"parity",filter:"EVEN"},
+    {time:"15.48",cat:"KZ2",label:"KZ2",session:"PROVE LIBERE — Turno 4",type:"parity",filter:"ODD"},
+    {time:"16.01",cat:"KZ2",label:"KZ2",session:"",type:"parity",filter:"EVEN"},
+    {time:"16.14",cat:"OK",label:"OK",session:"",type:"parity",filter:"ODD"},
+    {time:"16.27",cat:"OK",label:"OK",session:"",type:"parity",filter:"EVEN"},
+    {time:"16.40",cat:"OKJ",label:"OKJ",session:"",type:"parity",filter:"ODD"},
+    {time:"16.53",cat:"OKJ",label:"OKJ",session:"",type:"parity",filter:"EVEN"},
+    {time:"17.10",cat:"MINI U10",label:"MINI U10",session:"",type:"all"},
+    {time:"17.23",cat:"MINI GR3",label:"MINI GR3",session:"",type:"parity",filter:"ODD"},
+    {time:"17.36",cat:"MINI GR3",label:"MINI GR3",session:"",type:"parity",filter:"EVEN"},
+    {time:"17.49",cat:"OK-NJ",label:"OK-NJ",session:"",type:"parity",filter:"ODD"},
+    {time:"18.02",cat:"OK-NJ",label:"OK-NJ",session:"",type:"parity",filter:"EVEN"}
+  ],
+  "VENERDÌ":[
+    {time:"8.00",cat:"KZ2",label:"KZ2",session:"PROVE LIBERE 1x7'",type:"serie",filter:"1"},
+    {time:"8.10",cat:"KZ2",label:"KZ2",session:"",type:"serie",filter:"2"},
+    {time:"8.20",cat:"OK",label:"OK",session:"",type:"serie",filter:"1"},
+    {time:"8.30",cat:"OK",label:"OK",session:"",type:"serie",filter:"2"},
+    {time:"8.40",cat:"OK",label:"OK",session:"",type:"serie",filter:"3"},
+    {time:"8.50",cat:"OKJ",label:"OKJunior",session:"",type:"serie",filter:"1"},
+    {time:"9.00",cat:"OKJ",label:"OKJunior",session:"",type:"serie",filter:"2"},
+    {time:"9.10",cat:"OKJ",label:"OKJunior",session:"",type:"serie",filter:"3"},
+    {time:"9.20",cat:"MINI U10",label:"MINI U10",session:"",type:"serie",filter:"1"},
+    {time:"9.30",cat:"MINI U10",label:"MINI U10",session:"",type:"serie",filter:"2"},
+    {time:"9.40",cat:"MINI GR3",label:"MINI GR3",session:"",type:"serie",filter:"1"},
+    {time:"9.50",cat:"MINI GR3",label:"MINI GR3",session:"",type:"serie",filter:"2"},
+    {time:"10.00",cat:"OK-NJ",label:"OK-NJ",session:"",type:"serie",filter:"1"},
+    {time:"10.10",cat:"OK-NJ",label:"OK-NJ",session:"",type:"serie",filter:"2"},
+    {time:"10.20",cat:"KZ2",label:"KZ2",session:"PROVE CRONOMETRATE 6'",type:"serie",filter:"1"},
+    {time:"10.30",cat:"KZ2",label:"KZ2",session:"",type:"serie",filter:"2"},
+    {time:"10.40",cat:"OK",label:"OK",session:"",type:"serie",filter:"1"},
+    {time:"10.50",cat:"OK",label:"OK",session:"",type:"serie",filter:"2"},
+    {time:"11.00",cat:"OK",label:"OK",session:"",type:"serie",filter:"3"},
+    {time:"11.10",cat:"OKJ",label:"OKJunior",session:"",type:"serie",filter:"1"},
+    {time:"11.20",cat:"OKJ",label:"OKJunior",session:"",type:"serie",filter:"2"},
+    {time:"11.30",cat:"OKJ",label:"OKJunior",session:"",type:"serie",filter:"3"},
+    {time:"11.40",cat:"MINI U10",label:"MINI U10",session:"",type:"serie",filter:"1"},
+    {time:"11.50",cat:"MINI U10",label:"MINI U10",session:"",type:"serie",filter:"2"},
+    {time:"12.00",cat:"MINI GR3",label:"MINI GR3",session:"",type:"serie",filter:"1"},
+    {time:"12.10",cat:"MINI GR3",label:"MINI GR3",session:"",type:"serie",filter:"2"},
+    {time:"12.20",cat:"OK-NJ",label:"OK-NJ",session:"",type:"serie",filter:"1"},
+    {time:"12.30",cat:"OK-NJ",label:"OK-NJ",session:"",type:"serie",filter:"2"},
+    {time:"13.20",cat:"KZ2",label:"KZ2",session:"MANCHES ELIMINATOIRES",type:"group",filter:["A","B"]},
+    {time:"13.40",cat:"KZ2",label:"KZ2",session:"",type:"group",filter:["C","D"]},
+    {time:"14.00",cat:"OK",label:"OK",session:"",type:"group",filter:["C","E"]},
+    {time:"14.20",cat:"OK",label:"OK",session:"",type:"group",filter:["B","D"]},
+    {time:"14.40",cat:"OKJ",label:"OKJunior",session:"",type:"group",filter:["C","E"]},
+    {time:"15.00",cat:"OKJ",label:"OKJunior",session:"",type:"group",filter:["B","D"]},
+    {time:"15.20",cat:"MINI U10",label:"MINI U10",session:"",type:"group",filter:["A","B"]},
+    {time:"15.35",cat:"MINI U10",label:"MINI U10",session:"",type:"group",filter:["C","D"]},
+    {time:"15.50",cat:"MINI GR3",label:"MINI GR3",session:"",type:"group",filter:["A","B"]},
+    {time:"16.05",cat:"MINI GR3",label:"MINI GR3",session:"",type:"group",filter:["C","D"]},
+    {time:"16.20",cat:"OK-NJ",label:"OK-NJ",session:"",type:"group",filter:["A","B"]},
+    {time:"16.40",cat:"OK-NJ",label:"OK-NJ",session:"",type:"group",filter:["C","D"]},
+    {time:"17.00",cat:"OK",label:"OK",session:"",type:"group",filter:["A","E"]},
+    {time:"17.20",cat:"OK",label:"OK",session:"",type:"group",filter:["C","D"]},
+    {time:"17.40",cat:"OKJ",label:"OKJunior",session:"",type:"group",filter:["A","E"]},
+    {time:"18.00",cat:"OKJ",label:"OKJunior",session:"",type:"group",filter:["C","D"]}
+  ],
+  "SABATO":[
+    {time:"8.00",cat:"KZ2",label:"KZ2",session:"WARM UP 5'",type:"parity",filter:"ODD"},
+    {time:"8.08",cat:"KZ2",label:"KZ2",session:"",type:"parity",filter:"EVEN"},
+    {time:"8.16",cat:"OK",label:"OK",session:"",type:"parity",filter:"ODD"},
+    {time:"8.24",cat:"OK",label:"OK",session:"",type:"parity",filter:"EVEN"},
+    {time:"8.32",cat:"OKJ",label:"OKJ",session:"",type:"parity",filter:"ODD"},
+    {time:"8.40",cat:"OKJ",label:"OKJ",session:"",type:"parity",filter:"EVEN"},
+    {time:"8.48",cat:"MINI U10",label:"MINI U10",session:"",type:"parity",filter:"ODD"},
+    {time:"8.56",cat:"MINI U10",label:"MINI U10",session:"",type:"parity",filter:"EVEN"},
+    {time:"9.04",cat:"MINI GR3",label:"MINI GR3",session:"",type:"parity",filter:"ODD"},
+    {time:"9.12",cat:"MINI GR3",label:"MINI GR3",session:"",type:"parity",filter:"EVEN"},
+    {time:"9.20",cat:"OK-NJ",label:"OK-NJ",session:"",type:"parity",filter:"ODD"},
+    {time:"9.28",cat:"OK-NJ",label:"OK-NJ",session:"",type:"parity",filter:"EVEN"},
+    {time:"9.40",cat:"KZ2",label:"KZ2",session:"MANCHES ELIMINATOIRES",type:"group",filter:["A","C"]},
+    {time:"10.00",cat:"KZ2",label:"KZ2",session:"",type:"group",filter:["B","D"]},
+    {time:"10.20",cat:"OK",label:"OK",session:"",type:"group",filter:["A","B"]},
+    {time:"10.40",cat:"OK",label:"OK",session:"",type:"group",filter:["D","E"]},
+    {time:"11.00",cat:"OKJ",label:"OKJ",session:"",type:"group",filter:["A","B"]},
+    {time:"11.20",cat:"OKJ",label:"OKJ",session:"",type:"group",filter:["D","E"]},
+    {time:"11.40",cat:"MINI U10",label:"MINI U10",session:"",type:"group",filter:["A","C"]},
+    {time:"11.55",cat:"MINI U10",label:"MINI U10",session:"",type:"group",filter:["B","D"]},
+    {time:"12.10",cat:"MINI GR3",label:"MINI GR3",session:"",type:"group",filter:["A","C"]},
+    {time:"12.25",cat:"MINI GR3",label:"MINI GR3",session:"",type:"group",filter:["B","D"]},
+    {time:"12.40",cat:"OK-NJ",label:"OK-NJ",session:"",type:"group",filter:["A","C"]},
+    {time:"13.00",cat:"OK-NJ",label:"OK-NJ",session:"",type:"group",filter:["B","D"]},
+    {time:"13.20",cat:"KZ2",label:"KZ2",session:"",type:"group",filter:["A","D"]},
+    {time:"13.40",cat:"KZ2",label:"KZ2",session:"",type:"group",filter:["B","C"]},
+    {time:"14.00",cat:"OK",label:"OK",session:"",type:"group",filter:["A","C"]},
+    {time:"14.20",cat:"OK",label:"OK",session:"",type:"group",filter:["B","E"]},
+    {time:"14.40",cat:"OKJ",label:"OKJ",session:"",type:"group",filter:["A","C"]},
+    {time:"15.00",cat:"OKJ",label:"OKJ",session:"",type:"group",filter:["B","E"]},
+    {time:"15.20",cat:"MINI U10",label:"MINI U10",session:"",type:"group",filter:["A","D"]},
+    {time:"15.35",cat:"MINI U10",label:"MINI U10",session:"",type:"group",filter:["B","C"]},
+    {time:"15.50",cat:"MINI GR3",label:"MINI GR3",session:"",type:"group",filter:["A","D"]},
+    {time:"16.05",cat:"MINI GR3",label:"MINI GR3",session:"",type:"group",filter:["B","C"]},
+    {time:"16.20",cat:"OK-NJ",label:"OK-NJ",session:"",type:"group",filter:["A","D"]},
+    {time:"16.40",cat:"OK-NJ",label:"OK-NJ",session:"",type:"group",filter:["B","C"]},
+    {time:"17.00",cat:"OK",label:"OK",session:"",type:"group",filter:["A","D"]},
+    {time:"17.20",cat:"OK",label:"OK",session:"",type:"group",filter:["B","C"]},
+    {time:"17.40",cat:"OKJ",label:"OKJ",session:"",type:"group",filter:["A","D"]},
+    {time:"18.00",cat:"OKJ",label:"OKJ",session:"",type:"group",filter:["B","C"]}
+  ],
+  "DOMENICA":[
+    {time:"8.00",cat:"KZ2",label:"KZ2",session:"WARM UP — Prefinal A",type:"prefinal",filter:"A"},
+    {time:"8.08",cat:"KZ2",label:"KZ2",session:"",type:"prefinal",filter:"B"},
+    {time:"8.16",cat:"OK",label:"OK",session:"",type:"prefinal",filter:"A"},
+    {time:"8.24",cat:"OK",label:"OK",session:"",type:"prefinal",filter:"B"},
+    {time:"8.32",cat:"OKJ",label:"OKJ",session:"",type:"prefinal",filter:"A"},
+    {time:"8.40",cat:"OKJ",label:"OKJ",session:"",type:"prefinal",filter:"B"},
+    {time:"8.48",cat:"MINI U10",label:"MINI U10",session:"",type:"prefinal",filter:"A"},
+    {time:"8.56",cat:"MINI U10",label:"MINI U10",session:"",type:"prefinal",filter:"B"},
+    {time:"9.04",cat:"MINI GR3",label:"MINI GR3",session:"",type:"prefinal",filter:"A"},
+    {time:"9.12",cat:"MINI GR3",label:"MINI GR3",session:"",type:"prefinal",filter:"B"},
+    {time:"9.20",cat:"OK-NJ",label:"OK-NJ",session:"",type:"prefinal",filter:"A"},
+    {time:"9.28",cat:"OK-NJ",label:"OK-NJ",session:"",type:"prefinal",filter:"B"},
+    {time:"9.40",cat:"KZ2",label:"KZ2",session:"PREFINAL A",type:"prefinal",filter:"A"},
+    {time:"10.00",cat:"KZ2",label:"KZ2",session:"PREFINAL B",type:"prefinal",filter:"B"},
+    {time:"10.20",cat:"OK",label:"OK",session:"PREFINAL A",type:"prefinal",filter:"A"},
+    {time:"10.40",cat:"OK",label:"OK",session:"PREFINAL B",type:"prefinal",filter:"B"},
+    {time:"11.00",cat:"OKJ",label:"OKJ",session:"PREFINAL A",type:"prefinal",filter:"A"},
+    {time:"11.20",cat:"OKJ",label:"OKJ",session:"PREFINAL B",type:"prefinal",filter:"B"},
+    {time:"11.40",cat:"MINI U10",label:"MINI U10",session:"PREFINAL A",type:"prefinal",filter:"A"},
+    {time:"11.55",cat:"MINI U10",label:"MINI U10",session:"PREFINAL B",type:"prefinal",filter:"B"},
+    {time:"12.10",cat:"MINI GR3",label:"MINI GR3",session:"PREFINAL A",type:"prefinal",filter:"A"},
+    {time:"12.25",cat:"MINI GR3",label:"MINI GR3",session:"PREFINAL B",type:"prefinal",filter:"B"},
+    {time:"12.40",cat:"OK-NJ",label:"OK-NJ",session:"PREFINAL A",type:"prefinal",filter:"A"},
+    {time:"13.00",cat:"OK-NJ",label:"OK-NJ",session:"PREFINAL B",type:"prefinal",filter:"B"}
+  ]
+};
+
+// ── ENTRY LIST ──
+const ENTRY_LIST={
+"101":{lastName:"ORLOV",firstName:"MAX",team:"SODIKART",cat:"KZ2",parity:"EVEN"},
+"102":{lastName:"AUMAITRE",firstName:"MATHIS",team:"CPB SPORT",cat:"KZ2",parity:"EVEN"},
+"103":{lastName:"KASTL",firstName:"MANUEL",team:"CPB SPORT",cat:"KZ2",parity:"ODD"},
+"104":{lastName:"THIEN",firstName:"JAYDEN",team:"CPB SPORT",cat:"KZ2",parity:"EVEN"},
+"105":{lastName:"VAN WERVEN",firstName:"DION",team:"CPB SPORT",cat:"KZ2",parity:"ODD"},
+"106":{lastName:"SIIMESVAARA",firstName:"ALVAR",team:"CPB SPORT",cat:"KZ2",parity:"EVEN"},
+"107":{lastName:"VAVRA",firstName:"RADEK",team:"CPB SPORT",cat:"KZ2",parity:"ODD"},
+"108":{lastName:"KLEPIKAS",firstName:"HENRIKAS",team:"CPB SPORT",cat:"KZ2",parity:"EVEN"},
+"109":{lastName:"WESS",firstName:"ERIC",team:"WESS CHRISTIAN",cat:"KZ2",parity:"ODD"},
+"110":{lastName:"ZVARICH",firstName:"MARK",team:"CPB SPORT",cat:"KZ2",parity:"EVEN"},
+"112":{lastName:"VAN WALSTIJN",firstName:"SENNA",team:"SODIKART",cat:"KZ2",parity:"EVEN"},
+"113":{lastName:"GRAHAM",firstName:"JENSON",team:"CPB SPORT",cat:"KZ2",parity:"ODD"},
+"114":{lastName:"SIACHKO",firstName:"YAUHEN",team:"AKM MOTORSPORT",cat:"KZ2",parity:"EVEN"},
+"116":{lastName:"KNUDSEN",firstName:"MORGAN",team:"BIRELART RACING SRL",cat:"KZ2",parity:"EVEN"},
+"117":{lastName:"JIANG",firstName:"HOU ZAI",team:"LA MOTORSPORT",cat:"KZ2",parity:"ODD"},
+"121":{lastName:"SIZOV",firstName:"ANDREY",team:"MONSTERK FACTORY TEAM",cat:"KZ2",parity:"ODD"},
+"122":{lastName:"MARAGLIANO",firstName:"ALEX",team:"CL RACING - TEAM RENDA",cat:"KZ2",parity:"EVEN"},
+"123":{lastName:"BESSON",firstName:"HUGO",team:"CL RACING - TEAM RENDA",cat:"KZ2",parity:"ODD"},
+"127":{lastName:"SPIRGEL",firstName:"TOM",team:"CPB SPORT",cat:"KZ2",parity:"ODD"},
+"128":{lastName:"BACIUSKA",firstName:"SIMAS",team:"CPB SPORT",cat:"KZ2",parity:"EVEN"},
+"129":{lastName:"NOMBLOT",firstName:"JEAN",team:"CPB SPORT",cat:"KZ2",parity:"ODD"},
+"131":{lastName:"SKRIVAN",firstName:"MAREK",team:"CPB SPORT",cat:"KZ2",parity:"ODD"},
+"132":{lastName:"BERTUCA",firstName:"CRISTIAN",team:"BIRELART RACING SRL",cat:"KZ2",parity:"EVEN"},
+"133":{lastName:"HILTBRAND",firstName:"PEDRO",team:"BIRELART RACING SRL",cat:"KZ2",parity:"ODD"},
+"134":{lastName:"RITONEN",firstName:"MARTTI",team:"BIRELART RACING SRL",cat:"KZ2",parity:"EVEN"},
+"135":{lastName:"IDER",firstName:"MICHAEL",team:"BIRELART RACING SRL",cat:"KZ2",parity:"ODD"},
+"136":{lastName:"WOLFE",firstName:"NOAH",team:"BIRELART RACING SRL",cat:"KZ2",parity:"EVEN"},
+"138":{lastName:"SULEIMAN",firstName:"ZANFARI",team:"BIRELART RACING SRL",cat:"KZ2",parity:"EVEN"},
+"139":{lastName:"GUSHIKEN",firstName:"JAYDEN",team:"FORMULA K SRP FACTORY TEAM",cat:"KZ2",parity:"ODD"},
+"140":{lastName:"DENNER",firstName:"EMILIEN",team:"FORMULA K SRP FACTORY TEAM",cat:"KZ2",parity:"EVEN"},
+"141":{lastName:"KAJAK",firstName:"MARKUS",team:"FORMULA K SRP FACTORY TEAM",cat:"KZ2",parity:"ODD"},
+"143":{lastName:"YANKOV",firstName:"ILYAN",team:"FORMULA K SRP FACTORY TEAM",cat:"KZ2",parity:"ODD"},
+"144":{lastName:"BROVKO",firstName:"MARK",team:"FORMULA K SRP FACTORY TEAM",cat:"KZ2",parity:"EVEN"},
+"145":{lastName:"ALBANESE",firstName:"DANILO",team:"KR MOTORSPORT",cat:"KZ2",parity:"ODD"},
+"148":{lastName:"ZALLOCCO",firstName:"ALESSANDRO",team:"KCS RACING",cat:"KZ2",parity:"EVEN"},
+"151":{lastName:"VASILE",firstName:"DANIEL",team:"MARANELLO KART",cat:"KZ2",parity:"ODD"},
+"153":{lastName:"PALOMBA",firstName:"GIUSEPPE",team:"MARANELLO KART",cat:"KZ2",parity:"ODD"},
+"154":{lastName:"SCHLEIMER",firstName:"MAXIMILIAN",team:"CL RACING - TEAM RENDA",cat:"KZ2",parity:"EVEN"},
+"158":{lastName:"GUSTAFSSON",firstName:"VIKTOR",team:"CRG RACING TEAM",cat:"KZ2",parity:"EVEN"},
+"159":{lastName:"LUYET",firstName:"JEAN",team:"CRG RACING TEAM",cat:"KZ2",parity:"ODD"},
+"160":{lastName:"LUYET",firstName:"SAMUEL",team:"CRG RACING TEAM",cat:"KZ2",parity:"EVEN"},
+"161":{lastName:"GIRARDET",firstName:"ALOIS",team:"CRG RACING TEAM",cat:"KZ2",parity:"ODD"},
+"164":{lastName:"KNOPJES",firstName:"SEM",team:"BIRELART RACING SRL",cat:"KZ2",parity:"EVEN"},
+"167":{lastName:"VARBITZALIEV",firstName:"KALOYAN",team:"CPB SPORT",cat:"KZ2",parity:"ODD"},
+"169":{lastName:"JURSE",firstName:"KIPRAS",team:"PASKERACING",cat:"KZ2",parity:"ODD"},
+"170":{lastName:"LEUILLET",firstName:"TOM",team:"TONY KART RACING TEAM SRL",cat:"KZ2",parity:"EVEN"},
+"171":{lastName:"VIGANO",firstName:"MATTEO",team:"TONY KART RACING TEAM SRL",cat:"KZ2",parity:"ODD"},
+"172":{lastName:"CIVICO ESPONA",firstName:"GENIS",team:"TONY KART RACING TEAM SRL",cat:"KZ2",parity:"EVEN"},
+"175":{lastName:"ANDRIOTIS",firstName:"PAUL",team:"BIRELART RACING SRL",cat:"KZ2",parity:"ODD"},
+"177":{lastName:"MACIA",firstName:"DANIEL",team:"CRG RACING TEAM",cat:"KZ2",parity:"ODD"},
+"181":{lastName:"GOLDSTEIN",firstName:"ELIE",team:"TBKART RACING TEAM SRL",cat:"KZ2",parity:"ODD"},
+"183":{lastName:"FIORAVANTI",firstName:"PIETRO",team:"CPB SPORT",cat:"KZ2",parity:"ODD"},
+"185":{lastName:"DI BRIGIDA",firstName:"ANDREA",team:"CPB SPORT",cat:"KZ2",parity:"ODD"},
+"189":{lastName:"BOSS",firstName:"KILIAN",team:"SWIZZ EVENZZ",cat:"KZ2",parity:"ODD"},
+"190":{lastName:"LACREUSE",firstName:"ENZO",team:"LKR",cat:"KZ2",parity:"EVEN"},
+"191":{lastName:"LIWINSKI",firstName:"DAVID",team:"MP KARTRACING",cat:"KZ2",parity:"ODD"},
+"192":{lastName:"VAN LEEUWEN",firstName:"QUINTEN",team:"MP KARTRACING",cat:"KZ2",parity:"EVEN"},
+"193":{lastName:"VAN DER STRUIJS",firstName:"TOMMIE",team:"MP KARTRACING",cat:"KZ2",parity:"ODD"},
+"194":{lastName:"SPAGNI",firstName:"ANDREA",team:"KCS RACING",cat:"KZ2",parity:"EVEN"},
+"195":{lastName:"KROZSER",firstName:"MENYHERT",team:"CRG RACING TEAM",cat:"KZ2",parity:"ODD"},
+"196":{lastName:"TRAVISANUTTO",firstName:"LORENZO",team:"PAROLIN MOTORSPORT",cat:"KZ2",parity:"EVEN"},
+"198":{lastName:"STADTLER",firstName:"OLIVER",team:"FORMULA K SRP FACTORY TEAM",cat:"KZ2",parity:"EVEN"},
+"199":{lastName:"KIRKBY",firstName:"JESSE",team:"MULTICUT RACING",cat:"KZ2",parity:"ODD"},
+"900":{lastName:"SIMEK",firstName:"DOMINIK",team:"CPB SPORT",cat:"KZ2",parity:"EVEN"},
+"901":{lastName:"FRIGOMOSCA",firstName:"ETHAN",team:"CPB SPORT",cat:"KZ2",parity:"ODD"},
+"902":{lastName:"SALA",firstName:"FILIPPO",team:"CL RACING - TEAM",cat:"KZ2",parity:"EVEN"},
+"201":{lastName:"BAGLIN",firstName:"NOAH",team:"KR MOTORSPORT",cat:"OK",parity:"ODD"},
+"202":{lastName:"OWEN",firstName:"ARCHIE",team:"KR MOTORSPORT",cat:"OK",parity:"EVEN"},
+"203":{lastName:"MANNI",firstName:"ANDREA",team:"KR MOTORSPORT",cat:"OK",parity:"ODD"},
+"204":{lastName:"PESL",firstName:"JINDRICH",team:"TONY KART RACING TEAM SRL",cat:"OK",parity:"EVEN"},
+"205":{lastName:"CRISAN",firstName:"ILIE TRISTAN",team:"TONY KART RACING TEAM SRL",cat:"OK",parity:"ODD"},
+"206":{lastName:"ZULFIKARI",firstName:"ISKENDER",team:"TONY KART RACING TEAM SRL",cat:"OK",parity:"EVEN"},
+"207":{lastName:"CANAL",firstName:"GABRIEL",team:"TONY KART RACING TEAM SRL",cat:"OK",parity:"ODD"},
+"208":{lastName:"ARATA",firstName:"ENDO",team:"TONY KART RACING TEAM SRL",cat:"OK",parity:"EVEN"},
+"210":{lastName:"PRADIER",firstName:"THOMAS",team:"TONY KART RACING TEAM SRL",cat:"OK",parity:"EVEN"},
+"211":{lastName:"ANAGNOSTIADIS",firstName:"JAMES",team:"KR MOTORSPORT",cat:"OK",parity:"ODD"},
+"213":{lastName:"SZECSENYI",firstName:"TOBIAS",team:"KR MOTORSPORT",cat:"OK",parity:"ODD"},
+"214":{lastName:"NUNEZ",firstName:"PIER-LOUIS",team:"KR MOTORSPORT",cat:"OK",parity:"EVEN"},
+"215":{lastName:"SIMONS TORRES",firstName:"ANGELINA",team:"KR MOTORSPORT",cat:"OK",parity:"ODD"},
+"217":{lastName:"MANACH",firstName:"BENJAMIN",team:"WARD RACING",cat:"OK",parity:"ODD"},
+"218":{lastName:"MARSHALL",firstName:"WILLIAM",team:"WARD RACING",cat:"OK",parity:"EVEN"},
+"220":{lastName:"FIRHAND",firstName:"QARRAR",team:"WARD RACING",cat:"OK",parity:"EVEN"},
+"221":{lastName:"KERDAL",firstName:"FRANCOIS DARIO",team:"DPK RACING",cat:"OK",parity:"ODD"},
+"222":{lastName:"HERNANDEZ",firstName:"EMIL",team:"DPK RACING",cat:"OK",parity:"EVEN"},
+"223":{lastName:"SCARBROUGH",firstName:"LILLIAN",team:"RICKY FLYNN MOTORSPORT",cat:"OK",parity:"ODD"},
+"224":{lastName:"KORNDER",firstName:"LUKE",team:"RICKY FLYNN MOTORSPORT",cat:"OK",parity:"EVEN"},
+"225":{lastName:"WALZ",firstName:"DREW",team:"RICKY FLYNN MOTORSPORT",cat:"OK",parity:"ODD"},
+"226":{lastName:"WALZ",firstName:"DEVIN",team:"RICKY FLYNN MOTORSPORT",cat:"OK",parity:"EVEN"},
+"227":{lastName:"ARIAS",firstName:"BOSCO",team:"RICKY FLYNN MOTORSPORT",cat:"OK",parity:"ODD"},
+"228":{lastName:"LOPEZ",firstName:"MARIANO",team:"FUSION MOTORSPORT",cat:"OK",parity:"EVEN"},
+"229":{lastName:"GALAN",firstName:"OSKAR",team:"FUSION MOTORSPORT",cat:"OK",parity:"ODD"},
+"230":{lastName:"STALMACH",firstName:"WIKTOR",team:"FUSION MOTORSPORT",cat:"OK",parity:"EVEN"},
+"231":{lastName:"POKORNY",firstName:"DANIEL",team:"FUSION MOTORSPORT",cat:"OK",parity:"ODD"},
+"232":{lastName:"GALLO",firstName:"MATTEO",team:"FUSION MOTORSPORT",cat:"OK",parity:"EVEN"},
+"233":{lastName:"SIMEONOV",firstName:"SVETLEN",team:"FORZA RACING",cat:"OK",parity:"ODD"},
+"235":{lastName:"IVANNIKOV",firstName:"VLADIMIR",team:"BIRELART RACING SRL",cat:"OK",parity:"ODD"},
+"236":{lastName:"ROUSSEAU",firstName:"GIANMATTEO",team:"BIRELART RACING SRL",cat:"OK",parity:"EVEN"},
+"238":{lastName:"MAZZOLA",firstName:"LUDOVICO",team:"BIRELART RACING SRL",cat:"OK",parity:"EVEN"},
+"242":{lastName:"SOLOVOV",firstName:"GLEB",team:"CRG RACING TEAM",cat:"OK",parity:"EVEN"},
+"243":{lastName:"OCHSTEIN",firstName:"ASHER",team:"CRG RACING TEAM",cat:"OK",parity:"ODD"},
+"244":{lastName:"KOSMOPOULOS",firstName:"NEFELI",team:"CRG RACING TEAM",cat:"OK",parity:"EVEN"},
+"245":{lastName:"BUSATO",firstName:"RAFAEL",team:"CRG RACING TEAM",cat:"OK",parity:"ODD"},
+"246":{lastName:"HOOGENDOORN",firstName:"DEAN",team:"PAROLIN MOTORSPORT",cat:"OK",parity:"EVEN"},
+"247":{lastName:"CALLEJA",firstName:"WILLIAM",team:"PAROLIN MOTORSPORT",cat:"OK",parity:"ODD"},
+"248":{lastName:"RAYQAL",firstName:"ZARIEF",team:"PAROLIN MOTORSPORT",cat:"OK",parity:"EVEN"},
+"250":{lastName:"BLANCO",firstName:"BRUNO",team:"KR MOTORSPORT",cat:"OK",parity:"EVEN"},
+"251":{lastName:"SHARP",firstName:"ASTON",team:"VAR BY BIREL",cat:"OK",parity:"ODD"},
+"252":{lastName:"SEAH",firstName:"ISAAC",team:"JAMIE GREEN RACING",cat:"OK",parity:"EVEN"},
+"253":{lastName:"GREEN",firstName:"ZAC",team:"JAMIE GREEN RACING",cat:"OK",parity:"ODD"},
+"255":{lastName:"SCELLES",firstName:"LUKA",team:"VICTORYLANE KARTING",cat:"OK",parity:"ODD"},
+"256":{lastName:"PURCELL",firstName:"EVAN",team:"KR MOTORSPORT",cat:"OK",parity:"EVEN"},
+"258":{lastName:"KOWALCZYK",firstName:"KLARA",team:"VICTORYLANE KARTING",cat:"OK",parity:"EVEN"},
+"259":{lastName:"GONZALEZ",firstName:"MATIAS",team:"BEYOND RACING TEAM",cat:"OK",parity:"ODD"},
+"261":{lastName:"STANLEY",firstName:"NICOLA",team:"MP KARTRACING",cat:"OK",parity:"ODD"},
+"262":{lastName:"RIS",firstName:"YVES",team:"MP KARTRACING",cat:"OK",parity:"EVEN"},
+"263":{lastName:"TAAL",firstName:"LUUK",team:"MP KARTRACING",cat:"OK",parity:"ODD"},
+"264":{lastName:"DOMAIN",firstName:"HENRI",team:"MP KARTRACING",cat:"OK",parity:"EVEN"},
+"265":{lastName:"STILLER",firstName:"PETER",team:"MP KARTRACING",cat:"OK",parity:"ODD"},
+"266":{lastName:"GORECKI",firstName:"PIOTR",team:"KB RACING EXPERIENCE",cat:"OK",parity:"EVEN"},
+"267":{lastName:"GORECKI",firstName:"MICHAL",team:"KB RACING EXPERIENCE",cat:"OK",parity:"ODD"},
+"268":{lastName:"VISUET CRUZ",firstName:"FERNANDO",team:"MP ACADEMY GAMOTO",cat:"OK",parity:"EVEN"},
+"269":{lastName:"LEVAR",firstName:"JURE",team:"HAGEMANN RACING",cat:"OK",parity:"ODD"},
+"270":{lastName:"LEVAR",firstName:"ANJA",team:"HAGEMANN RACING",cat:"OK",parity:"EVEN"},
+"272":{lastName:"KARA",firstName:"OSMAN AMIN",team:"HAUPT RACING TEAM",cat:"OK",parity:"EVEN"},
+"273":{lastName:"DRUMMOND",firstName:"ZAC",team:"FUSION MOTORSPORT",cat:"OK",parity:"ODD"},
+"276":{lastName:"SCHAUFLER",firstName:"NIKLAS",team:"DPK RACING",cat:"OK",parity:"EVEN"},
+"277":{lastName:"SILKUNAITE",firstName:"VANESA",team:"DPK RACING",cat:"OK",parity:"ODD"},
+"278":{lastName:"FRIGG",firstName:"NICOLA",team:"VICTORYLANE KARTING",cat:"OK",parity:"EVEN"},
+"279":{lastName:"KRUTOGOLOV",firstName:"LEV",team:"ENERGY CORSE SRL",cat:"OK",parity:"ODD"},
+"280":{lastName:"GARST",firstName:"MARCO",team:"KOSKI MOTORSPORT",cat:"OK",parity:"EVEN"},
+"281":{lastName:"VIAPIANA",firstName:"VALERIO",team:"KOSKI MOTORSPORT",cat:"OK",parity:"ODD"},
+"282":{lastName:"MCGAUGHY",firstName:"MICHAEL",team:"KOSKI MOTORSPORT",cat:"OK",parity:"EVEN"},
+"283":{lastName:"RAJPOLD",firstName:"KACPER",team:"VDK RACING",cat:"OK",parity:"ODD"},
+"285":{lastName:"ALLEMANN",firstName:"DAN",team:"VDK RACING",cat:"OK",parity:"ODD"},
+"289":{lastName:"RUMLENOVA",firstName:"MARTINA",team:"MVM RACING",cat:"OK",parity:"ODD"},
+"292":{lastName:"CRISTEA",firstName:"MAX",team:"GULSTAR RACING",cat:"OK",parity:"EVEN"},
+"293":{lastName:"KIVILO",firstName:"ARON",team:"LIQUI-MOLY ROLI MOTORSPORT",cat:"OK",parity:"ODD"},
+"294":{lastName:"BOTTARO",firstName:"DAVIDE",team:"LENOVO KALI KART TEAM",cat:"OK",parity:"EVEN"},
+"296":{lastName:"RASSMUSEN",firstName:"OLIVER",team:"KB RACING EXPERIENCE",cat:"OK",parity:"EVEN"},
+"299":{lastName:"COCCHIANELLA",firstName:"ANTONIO",team:"BIRELART RACING SRL",cat:"OK",parity:"ODD"},
+"400":{lastName:"KRAFT",firstName:"VINCENT",team:"KART REPUBLIC SWEDEN",cat:"OK",parity:"EVEN"},
+"404":{lastName:"ERBERSDOBLER",firstName:"LIAS",team:"HAUPT RACING TEAM",cat:"OK",parity:"EVEN"},
+"407":{lastName:"MORELLI",firstName:"YURI",team:"CRG RACING TEAM",cat:"OK",parity:"ODD"},
+"409":{lastName:"THIRUMALAISWAMY",firstName:"JUDE",team:"VICTORYLANE KARTING",cat:"OK",parity:"ODD"},
+"411":{lastName:"HERMAN",firstName:"GILLES",team:"TONY KART RACING TEAM SRL",cat:"OK",parity:"ODD"},
+"413":{lastName:"MALO",firstName:"MATEO",team:"MP KARTRACING",cat:"OK",parity:"ODD"},
+"414":{lastName:"WYSZOMIRSKA",firstName:"AMELIA",team:"MP KARTRACING",cat:"OK",parity:"EVEN"},
+"415":{lastName:"KINNMARK",firstName:"OLIVER",team:"VDK RACING",cat:"OK",parity:"ODD"},
+"416":{lastName:"MIGUEZ",firstName:"MANUEL",team:"VICTORYLANE KARTING",cat:"OK",parity:"EVEN"},
+"417":{lastName:"BRYLA",firstName:"ADAM",team:"TEAM DRIVER RACING KART",cat:"OK",parity:"ODD"},
+"418":{lastName:"THOMPSON",firstName:"EDWARD",team:"IPERTI BY INTREPID ACADEMY",cat:"OK",parity:"EVEN"},
+"301":{lastName:"MIRON LORENTE",firstName:"DANIEL",team:"FUSION MOTORSPORT",cat:"OKJ",parity:"ODD"},
+"302":{lastName:"ROST",firstName:"KRISTIAN-ALEXANDER",team:"FUSION MOTORSPORT",cat:"OKJ",parity:"EVEN"},
+"304":{lastName:"POINT",firstName:"ALEXANDRE",team:"FUSION MOTORSPORT",cat:"OKJ",parity:"EVEN"},
+"305":{lastName:"DI PIETRANTONIO",firstName:"LORENZO",team:"KR MOTORSPORT",cat:"OKJ",parity:"ODD"},
+"306":{lastName:"PALACIO",firstName:"LUCAS",team:"KR MOTORSPORT",cat:"OKJ",parity:"EVEN"},
+"307":{lastName:"ROBERTSON",firstName:"MASON",team:"KR MOTORSPORT",cat:"OKJ",parity:"ODD"},
+"308":{lastName:"RATAJSKI",firstName:"STAN",team:"KR MOTORSPORT",cat:"OKJ",parity:"EVEN"},
+"309":{lastName:"NUVOLINI",firstName:"MANY",team:"KR MOTORSPORT",cat:"OKJ",parity:"ODD"},
+"310":{lastName:"XIE",firstName:"HUIFEI",team:"KR MOTORSPORT",cat:"OKJ",parity:"EVEN"},
+"311":{lastName:"KUMPEN",firstName:"HENRI-CONSTANT",team:"RICKY FLYNN MOTORSPORT",cat:"OKJ",parity:"ODD"},
+"312":{lastName:"FRASNELLI",firstName:"JULIAN",team:"TONY KART RACING TEAM SRL",cat:"OKJ",parity:"EVEN"},
+"313":{lastName:"WEN",firstName:"YUBO",team:"TONY KART RACING TEAM SRL",cat:"OKJ",parity:"ODD"},
+"314":{lastName:"POUJOL",firstName:"JEAN",team:"TONY KART RACING TEAM SRL",cat:"OKJ",parity:"EVEN"},
+"315":{lastName:"IANNI",firstName:"ANTONIO",team:"TONY KART RACING TEAM SRL",cat:"OKJ",parity:"ODD"},
+"316":{lastName:"BERTOLACCINI",firstName:"MARTIN LUIS",team:"TONY KART RACING TEAM SRL",cat:"OKJ",parity:"EVEN"},
+"317":{lastName:"VETTENRANTA",firstName:"OIVA",team:"TONY KART RACING TEAM SRL",cat:"OKJ",parity:"ODD"},
+"318":{lastName:"MAZEPIN",firstName:"STEPAN",team:"TONY KART RACING TEAM SRL",cat:"OKJ",parity:"EVEN"},
+"319":{lastName:"DIAZ DE LA VEGA",firstName:"SANTIAGO",team:"KR MOTORSPORT",cat:"OKJ",parity:"ODD"},
+"320":{lastName:"TRUCHOT",firstName:"ALESSANDRO",team:"KR MOTORSPORT",cat:"OKJ",parity:"EVEN"},
+"321":{lastName:"GREEN",firstName:"WILL",team:"KR MOTORSPORT",cat:"OKJ",parity:"ODD"},
+"322":{lastName:"SINI",firstName:"OLIVERI",team:"KR MOTORSPORT",cat:"OKJ",parity:"EVEN"},
+"324":{lastName:"BOBRESHOV",firstName:"MAXIM",team:"RICKY FLYNN MOTORSPORT",cat:"OKJ",parity:"EVEN"},
+"325":{lastName:"MANZANO SUAREZ",firstName:"MIGUEL ENRIQUE",team:"RICKY FLYNN MOTORSPORT",cat:"OKJ",parity:"ODD"},
+"326":{lastName:"VAN STAVEREN",firstName:"BILLY",team:"RICKY FLYNN MOTORSPORT",cat:"OKJ",parity:"EVEN"},
+"327":{lastName:"GORSKI",firstName:"LEO",team:"RICKY FLYNN MOTORSPORT",cat:"OKJ",parity:"ODD"},
+"328":{lastName:"SAMCZYK",firstName:"REMIGIUSZ",team:"FORZA RACING",cat:"OKJ",parity:"EVEN"},
+"329":{lastName:"PEZZUTTO",firstName:"ENEA",team:"FORZA RACING",cat:"OKJ",parity:"ODD"},
+"330":{lastName:"WESTWOOD",firstName:"BENJAMIN",team:"FORZA RACING",cat:"OKJ",parity:"EVEN"},
+"331":{lastName:"ZVARICH",firstName:"MARAT",team:"FORZA RACING",cat:"OKJ",parity:"ODD"},
+"332":{lastName:"ROCHA",firstName:"FRANCISCO",team:"FORZA RACING",cat:"OKJ",parity:"EVEN"},
+"333":{lastName:"LAZARUS",firstName:"ALEXANDER",team:"FORZA RACING",cat:"OKJ",parity:"ODD"},
+"334":{lastName:"NEWSTEAD",firstName:"AUSTIN",team:"FORZA RACING",cat:"OKJ",parity:"EVEN"},
+"335":{lastName:"CHELIDZE",firstName:"LEON",team:"FORZA RACING",cat:"OKJ",parity:"ODD"},
+"336":{lastName:"GESSESSE",firstName:"BWANA",team:"CRG RACING TEAM",cat:"OKJ",parity:"EVEN"},
+"337":{lastName:"PILIPENKO",firstName:"MARK",team:"FORZA RACING",cat:"OKJ",parity:"ODD"},
+"338":{lastName:"PIZZONIA",firstName:"ANTONIO",team:"WARD RACING",cat:"OKJ",parity:"EVEN"},
+"339":{lastName:"FELDE",firstName:"MAX",team:"WARD RACING",cat:"OKJ",parity:"ODD"},
+"340":{lastName:"SEDEK",firstName:"JAN",team:"WARD RACING",cat:"OKJ",parity:"EVEN"},
+"341":{lastName:"TAMM",firstName:"ALBERT",team:"PAROLIN MOTORSPORT",cat:"OKJ",parity:"ODD"},
+"342":{lastName:"GIRARDELLO",firstName:"GIOELE",team:"PAROLIN MOTORSPORT",cat:"OKJ",parity:"EVEN"},
+"343":{lastName:"GIUSTO",firstName:"GIACOMO",team:"PAROLIN MOTORSPORT",cat:"OKJ",parity:"ODD"},
+"344":{lastName:"WALLE",firstName:"OSKARI",team:"PAROLIN MOTORSPORT",cat:"OKJ",parity:"EVEN"},
+"345":{lastName:"GARCIARCE",firstName:"JUAN",team:"PAROLIN MOTORSPORT",cat:"OKJ",parity:"ODD"},
+"346":{lastName:"LEGENKYI",firstName:"OLEKSANDR",team:"CL RACING TEAM",cat:"OKJ",parity:"EVEN"},
+"347":{lastName:"ANGELARD",firstName:"JULIA",team:"BIRELART RACING SRL",cat:"OKJ",parity:"ODD"},
+"348":{lastName:"REA",firstName:"ACHILLE",team:"BIRELART RACING SRL",cat:"OKJ",parity:"EVEN"},
+"349":{lastName:"HUGON",firstName:"SAMUEL",team:"CRG RACING TEAM",cat:"OKJ",parity:"ODD"},
+"351":{lastName:"GUTH",firstName:"NICOLAS",team:"CRG RACING TEAM",cat:"OKJ",parity:"ODD"},
+"352":{lastName:"KOSMOPOULOS",firstName:"IASON",team:"CRG RACING TEAM",cat:"OKJ",parity:"EVEN"},
+"353":{lastName:"BUSATO",firstName:"GUILHERME",team:"CRG RACING TEAM",cat:"OKJ",parity:"ODD"},
+"354":{lastName:"NAGY",firstName:"ROLAND",team:"DPK RACING",cat:"OKJ",parity:"EVEN"},
+"355":{lastName:"SIMONE",firstName:"ROCCO",team:"DPK RACING",cat:"OKJ",parity:"ODD"},
+"356":{lastName:"ZHU",firstName:"ZACK",team:"DPK RACING",cat:"OKJ",parity:"EVEN"},
+"360":{lastName:"COBY",firstName:"CHRISTIAN",team:"MP KARTRACING",cat:"OKJ",parity:"EVEN"},
+"361":{lastName:"MAKINEN",firstName:"LENNI",team:"MP KARTRACING",cat:"OKJ",parity:"ODD"},
+"363":{lastName:"BABICEK",firstName:"ZDENEK",team:"TEPZ RACING TEAM",cat:"OKJ",parity:"ODD"},
+"364":{lastName:"PUNDYS",firstName:"JONAS",team:"VICTORYLANE KARTING",cat:"OKJ",parity:"EVEN"},
+"365":{lastName:"QUESSADA",firstName:"MARC ANDRIA",team:"VICTORYLANE KARTING",cat:"OKJ",parity:"ODD"},
+"366":{lastName:"PELFRENE",firstName:"TEO",team:"VICTORYLANE KARTING",cat:"OKJ",parity:"EVEN"},
+"367":{lastName:"NACHAWATI",firstName:"LIAM",team:"RICKY FLYNN MOTORSPORT",cat:"OKJ",parity:"ODD"},
+"368":{lastName:"SPENCER",firstName:"OLIVER",team:"BIRELART RACING SRL",cat:"OKJ",parity:"EVEN"},
+"369":{lastName:"MULLER",firstName:"TIBERIUS",team:"BEYOND RACING TEAM",cat:"OKJ",parity:"ODD"},
+"371":{lastName:"MOLOTA",firstName:"ALEX",team:"HAGEMANN RACING",cat:"OKJ",parity:"ODD"},
+"373":{lastName:"DUDKOWSKI",firstName:"KSAWERY",team:"KOSKI MOTORSPORT",cat:"OKJ",parity:"ODD"},
+"374":{lastName:"SVOBODA",firstName:"JINDRICH",team:"HAGEMANN RACING",cat:"OKJ",parity:"EVEN"},
+"375":{lastName:"OSADCHYI-SUSLOVSKYI",firstName:"VSEVOLOD",team:"KOSKI MOTORSPORT",cat:"OKJ",parity:"ODD"},
+"377":{lastName:"BOTTE",firstName:"NIKITA",team:"FORZA RACING",cat:"OKJ",parity:"ODD"},
+"378":{lastName:"KOSTRZEWA",firstName:"BLAZEJ",team:"WARD RACING",cat:"OKJ",parity:"EVEN"},
+"379":{lastName:"GARDZIELIK",firstName:"JAN",team:"ENERGY CORSE SRL",cat:"OKJ",parity:"ODD"},
+"380":{lastName:"SAYER",firstName:"JARLATH",team:"ENERGY CORSE SRL",cat:"OKJ",parity:"EVEN"},
+"381":{lastName:"SANCHES",firstName:"FELIPE",team:"ENERGY CORSE SRL",cat:"OKJ",parity:"ODD"},
+"382":{lastName:"LAWRENCE",firstName:"AVA JEAN",team:"DPK RACING",cat:"OKJ",parity:"EVEN"},
+"384":{lastName:"LOOMETS",firstName:"MARK",team:"LENOVO KALI KART TEAM",cat:"OKJ",parity:"EVEN"},
+"385":{lastName:"RIVERA",firstName:"JULIAN",team:"LENOVO KALI KART TEAM",cat:"OKJ",parity:"ODD"},
+"386":{lastName:"VLASAK",firstName:"LIBOR",team:"FUSION MOTORSPORT",cat:"OKJ",parity:"EVEN"},
+"387":{lastName:"VERBEKE",firstName:"JEF",team:"FORZA RACING",cat:"OKJ",parity:"ODD"},
+"389":{lastName:"SULIN",firstName:"MAX",team:"SULIN KIM",cat:"OKJ",parity:"ODD"},
+"393":{lastName:"PENTELL",firstName:"KEVIN",team:"WARD RACING",cat:"OKJ",parity:"ODD"},
+"396":{lastName:"PULIGHEDDU",firstName:"ALEX",team:"LENOVO KALI KART TEAM",cat:"OKJ",parity:"EVEN"},
+"397":{lastName:"DERGUNOV",firstName:"MATVEI",team:"PRIMA RACING",cat:"OKJ",parity:"ODD"},
+"399":{lastName:"WILLIAMS",firstName:"HARRY",team:"FORZA RACING",cat:"OKJ",parity:"ODD"},
+"801":{lastName:"PRIAM",firstName:"BRUNO",team:"VICTORYLANE KARTING",cat:"OKJ",parity:"ODD"},
+"802":{lastName:"KOGAY",firstName:"SAVELIY",team:"VICTORYLANE KARTING",cat:"OKJ",parity:"EVEN"},
+"803":{lastName:"IBBOTSON",firstName:"ZACHARY",team:"UBIQ RACING",cat:"OKJ",parity:"ODD"},
+"701":{lastName:"PERICO",firstName:"NICCOLO",team:"KR MOTORSPORT",cat:"OK-NJ",parity:"ODD"},
+"702":{lastName:"SCHNIEGENBERG",firstName:"COLTON",team:"WARD RACING",cat:"OK-NJ",parity:"EVEN"},
+"703":{lastName:"MANASSERO",firstName:"VALENTINO",team:"TONY KART RACING TEAM SRL",cat:"OK-NJ",parity:"ODD"},
+"704":{lastName:"LI",firstName:"LINGHAN",team:"TONY KART RACING TEAM SRL",cat:"OK-NJ",parity:"EVEN"},
+"705":{lastName:"FELIGIONI",firstName:"AUGUSTIN",team:"TONY KART RACING TEAM SRL",cat:"OK-NJ",parity:"ODD"},
+"706":{lastName:"GORUN",firstName:"VICTOR THOMAS",team:"TONY KART RACING TEAM SRL",cat:"OK-NJ",parity:"EVEN"},
+"707":{lastName:"HEDFORS",firstName:"ELTON",team:"MODENA KART RACING TEAM",cat:"OK-NJ",parity:"ODD"},
+"708":{lastName:"MIR",firstName:"ATIQA",team:"MODENA KART RACING TEAM SRL",cat:"OK-NJ",parity:"EVEN"},
+"709":{lastName:"BASESCU PRICOP",firstName:"RADU",team:"MODENA KART RACING TEAM",cat:"OK-NJ",parity:"ODD"},
+"711":{lastName:"NANNI",firstName:"ALESSANDRO",team:"MODENA KART RACING TEAM",cat:"OK-NJ",parity:"ODD"},
+"712":{lastName:"D ASCOLI",firstName:"LUIGI",team:"MODENA KART RACING TEAM",cat:"OK-NJ",parity:"EVEN"},
+"713":{lastName:"VERBA",firstName:"DANILA",team:"MODENA KART RACING TEAM",cat:"OK-NJ",parity:"ODD"},
+"715":{lastName:"CORSI",firstName:"TOMMASO",team:"MODENA KART RACING TEAM",cat:"OK-NJ",parity:"ODD"},
+"716":{lastName:"KRISTIANSEN",firstName:"PATRIK",team:"MP ACADEMY GAMOTO",cat:"OK-NJ",parity:"EVEN"},
+"717":{lastName:"OCIEPA",firstName:"ANTONI",team:"NOVALUX SRL",cat:"OK-NJ",parity:"ODD"},
+"718":{lastName:"COTOROBAI",firstName:"ILIA",team:"NOVALUX SRL",cat:"OK-NJ",parity:"EVEN"},
+"719":{lastName:"VIZITIU",firstName:"SERBAN",team:"NOVALUX SRL",cat:"OK-NJ",parity:"ODD"},
+"720":{lastName:"LAITINEN",firstName:"LEO",team:"PAROLIN FINLAND",cat:"OK-NJ",parity:"EVEN"},
+"721":{lastName:"VERDE",firstName:"MARCO",team:"TEAM DRIVER RACING KART",cat:"OK-NJ",parity:"ODD"},
+"722":{lastName:"RIEDEL",firstName:"SEBASTIAN",team:"TEAM DRIVER RACING KART",cat:"OK-NJ",parity:"EVEN"},
+"723":{lastName:"GORE",firstName:"AXEL",team:"TEAM DRIVER RACING KART",cat:"OK-NJ",parity:"ODD"},
+"724":{lastName:"KOLOSOV",firstName:"IOANNIS",team:"MODENA KART RACING TEAM",cat:"OK-NJ",parity:"EVEN"},
+"725":{lastName:"DI FILIPPO",firstName:"DAVIDE",team:"DR SRL",cat:"OK-NJ",parity:"ODD"},
+"727":{lastName:"CARRER",firstName:"GIOELE",team:"EMME RACING",cat:"OK-NJ",parity:"ODD"},
+"728":{lastName:"FARIA",firstName:"PEDRO",team:"FARIA ALEXANDRE",cat:"OK-NJ",parity:"EVEN"},
+"729":{lastName:"SIACHKO",firstName:"ARSENIY",team:"AKM MOTORSPORT",cat:"OK-NJ",parity:"ODD"},
+"730":{lastName:"WOJCIK",firstName:"DOMINIK",team:"TEAM DRIVER RACING KART",cat:"OK-NJ",parity:"EVEN"},
+"731":{lastName:"PULBERE",firstName:"ROBERT",team:"GULSTAR RACING",cat:"OK-NJ",parity:"ODD"},
+"732":{lastName:"COSTEA",firstName:"CALIN",team:"GULSTAR RACING",cat:"OK-NJ",parity:"EVEN"},
+"740":{lastName:"BRAGEOT",firstName:"MATTIS",team:"AKM MOTORSPORT",cat:"OK-NJ",parity:"EVEN"},
+"745":{lastName:"VASQUEZ ALBA",firstName:"DAVID LUIZ",team:"MP ACADEMY GAMOTO",cat:"OK-NJ",parity:"ODD"},
+"747":{lastName:"LINDEMAN",firstName:"SENN",team:"LA MOTORSPORT",cat:"OK-NJ",parity:"ODD"},
+"749":{lastName:"DZHLILOV",firstName:"NIKITA",team:"MODENA KART RACING TEAM",cat:"OK-NJ",parity:"ODD"},
+"750":{lastName:"KOVTUNENKO",firstName:"PLATON",team:"BORSCH RACING",cat:"OK-NJ",parity:"EVEN"},
+"751":{lastName:"NEKMOUCHE",firstName:"NEIL",team:"KIDIX DRIVER PERFORMANCE",cat:"OK-NJ",parity:"ODD"},
+"753":{lastName:"NOVIELLO",firstName:"GIUSEPPE",team:"TEAM DRIVER RACING KART",cat:"OK-NJ",parity:"ODD"},
+"757":{lastName:"MOEHRING",firstName:"HENRI",team:"DOERR MOTORSPORT",cat:"OK-NJ",parity:"ODD"},
+"758":{lastName:"CZUB",firstName:"ALEKSANDER",team:"KB RACING EXPERIENCE",cat:"OK-NJ",parity:"EVEN"},
+"764":{lastName:"KAHILA",firstName:"HUGO",team:"PAROLIN FINLAND",cat:"OK-NJ",parity:"EVEN"},
+"765":{lastName:"OJALA",firstName:"OSKAR",team:"PAROLIN FINLAND",cat:"OK-NJ",parity:"ODD"},
+"768":{lastName:"RASMUSSEN",firstName:"CHRISTIAN",team:"MULTICUT RACING",cat:"OK-NJ",parity:"EVEN"},
+"769":{lastName:"HAVLIK",firstName:"MATEJ",team:"KB RACING EXPERIENCE",cat:"OK-NJ",parity:"ODD"},
+"770":{lastName:"REINERT",firstName:"PATRICK RAY",team:"ARENA E TEAM",cat:"OK-NJ",parity:"EVEN"},
+"773":{lastName:"GUGO",firstName:"VLADIMIR",team:"BIRELART RACING SRL",cat:"OK-NJ",parity:"ODD"},
+"777":{lastName:"BUZAS",firstName:"GERGO",team:"GULSTAR RACING",cat:"OK-NJ",parity:"ODD"},
+"778":{lastName:"PETROSIAN",firstName:"GEORGII",team:"CRG RACING TEAM",cat:"OK-NJ",parity:"EVEN"},
+"782":{lastName:"MUZZOLON",firstName:"LUCA",team:"RED FURY KARTING TEAM",cat:"OK-NJ",parity:"EVEN"},
+"783":{lastName:"BOSCHETTO",firstName:"EMMA",team:"BOSCHETTO HENRI",cat:"OK-NJ",parity:"ODD"},
+"784":{lastName:"PEREMEN",firstName:"LAWRENCE",team:"WARD RACING",cat:"OK-NJ",parity:"EVEN"},
+"785":{lastName:"BRAND",firstName:"SEBASTIAN",team:"ARENA E TEAM",cat:"OK-NJ",parity:"ODD"},
+"786":{lastName:"URLASS",firstName:"EMILIA",team:"ARENA E TEAM",cat:"OK-NJ",parity:"EVEN"},
+"787":{lastName:"GEFWERT",firstName:"NOEL",team:"PAROLIN FINLAND",cat:"OK-NJ",parity:"ODD"},
+"788":{lastName:"MORENO",firstName:"IKER",team:"DR SRL",cat:"OK-NJ",parity:"EVEN"},
+"789":{lastName:"LONGHITANO",firstName:"AURELIO",team:"SPIRIT-KARTING.CH",cat:"OK-NJ",parity:"ODD"},
+"790":{lastName:"DAVOUST",firstName:"MOMCILO",team:"IPERTI BY INTREPID ACADEMY",cat:"OK-NJ",parity:"EVEN"},
+"791":{lastName:"SARADPON",firstName:"PHAETHON",team:"IPERTI BY INTREPID ACADEMY",cat:"OK-NJ",parity:"ODD"},
+"792":{lastName:"THOMPSON",firstName:"DAISY",team:"IPERTI BY INTREPID ACADEMY",cat:"OK-NJ",parity:"EVEN"},
+"793":{lastName:"ASMER",firstName:"ASTON",team:"WARD RACING",cat:"OK-NJ",parity:"ODD"},
+"501":{lastName:"GODSCHALK",firstName:"WYNN",team:"KIDIX DRIVER PERFORMANCE",cat:"MINI GR3",parity:"ODD"},
+"506":{lastName:"TITZ",firstName:"DEVIN",team:"KIDIX DRIVER PERFORMANCE",cat:"MINI GR3",parity:"EVEN"},
+"509":{lastName:"MUIJS",firstName:"CEES",team:"SODIKART",cat:"MINI GR3",parity:"ODD"},
+"511":{lastName:"SHEETOV",firstName:"DAVID",team:"BIRELART RACING SRL",cat:"MINI GR3",parity:"ODD"},
+"512":{lastName:"GILMORE",firstName:"GIOVANNI DAVID",team:"DR SRL",cat:"MINI GR3",parity:"EVEN"},
+"515":{lastName:"NARIO URIAS",firstName:"MAURO FABIAN",team:"BABYRACE DRIVER ACADEMY",cat:"MINI GR3",parity:"ODD"},
+"516":{lastName:"KOSE",firstName:"OSMAN SELIM",team:"BABYRACE DRIVER ACADEMY",cat:"MINI GR3",parity:"EVEN"},
+"517":{lastName:"LAUFER",firstName:"MAX",team:"BABYRACE DRIVER ACADEMY",cat:"MINI GR3",parity:"ODD"},
+"518":{lastName:"GARCIA",firstName:"MATEO",team:"LENOVO KALI KART TEAM",cat:"MINI GR3",parity:"EVEN"},
+"519":{lastName:"FRIGERIO",firstName:"FILIPPO",team:"BABYRACE DRIVER ACADEMY",cat:"MINI GR3",parity:"ODD"},
+"521":{lastName:"CHANG",firstName:"SHUO TING",team:"BABYRACE DRIVER ACADEMY",cat:"MINI GR3",parity:"ODD"},
+"526":{lastName:"EL GAHOUDI",firstName:"NAHYL",team:"BABYRACE DRIVER ACADEMY",cat:"MINI GR3",parity:"EVEN"},
+"527":{lastName:"PAPAGEORGIOU",firstName:"ANDREAS",team:"CRG RACING TEAM",cat:"MINI GR3",parity:"ODD"},
+"529":{lastName:"MADZHAROV",firstName:"MAXIM",team:"CRG RACING TEAM",cat:"MINI GR3",parity:"ODD"},
+"532":{lastName:"SCHELVIS MORON",firstName:"ABRAHAM",team:"CRG RACING TEAM",cat:"MINI GR3",parity:"EVEN"},
+"534":{lastName:"EBERGENYI",firstName:"GUIDO",team:"TEAM DRIVER RACING KART",cat:"MINI GR3",parity:"EVEN"},
+"537":{lastName:"FERGUSON",firstName:"DANIEL",team:"TEAM DRIVER RACING KART",cat:"MINI GR3",parity:"ODD"},
+"538":{lastName:"BUFFO",firstName:"ANDREA",team:"BABYRACE DRIVER ACADEMY",cat:"MINI GR3",parity:"EVEN"},
+"539":{lastName:"KRALEV",firstName:"LEO",team:"TEAM DRIVER RACING KART",cat:"MINI GR3",parity:"ODD"},
+"540":{lastName:"PACE",firstName:"ZANE",team:"TONY KART RACING TEAM SRL",cat:"MINI GR3",parity:"EVEN"},
+"541":{lastName:"PADOVANI",firstName:"NAHIL",team:"TONY KART RACING TEAM SRL",cat:"MINI GR3",parity:"ODD"},
+"543":{lastName:"BERETTA DUGAT",firstName:"FAREL",team:"TONY KART RACING TEAM SRL",cat:"MINI GR3",parity:"ODD"},
+"544":{lastName:"ALMEKDAD",firstName:"GHAZI",team:"TEAM DRIVER RACING KART",cat:"MINI GR3",parity:"EVEN"},
+"545":{lastName:"AAGTEN",firstName:"DAVID JOHANNES",team:"TONY KART RACING TEAM SRL",cat:"MINI GR3",parity:"ODD"},
+"546":{lastName:"MAIR",firstName:"ALFIE RICHARD",team:"TONY KART RACING TEAM SRL",cat:"MINI GR3",parity:"EVEN"},
+"547":{lastName:"MEDEIROS",firstName:"ALVARO",team:"TONY KART RACING TEAM SRL",cat:"MINI GR3",parity:"ODD"},
+"548":{lastName:"TAMM",firstName:"JOONAS",team:"BABYRACE DRIVER ACADEMY",cat:"MINI GR3",parity:"EVEN"},
+"549":{lastName:"DI MUNNO",firstName:"RYAN",team:"BORSCH RACING",cat:"MINI GR3",parity:"ODD"},
+"550":{lastName:"MORTA",firstName:"WILLIAM",team:"MP ACADEMY GAMOTO",cat:"MINI GR3",parity:"EVEN"},
+"551":{lastName:"GOMEZ CASTRO",firstName:"MATEO",team:"MP ACADEMY GAMOTO",cat:"MINI GR3",parity:"ODD"},
+"552":{lastName:"STEINDAL",firstName:"THEO",team:"MP ACADEMY GAMOTO",cat:"MINI GR3",parity:"EVEN"},
+"553":{lastName:"MIRARCHI",firstName:"ANTONIO MATTIA",team:"MONSTERK FACTORY TEAM",cat:"MINI GR3",parity:"ODD"},
+"554":{lastName:"HALILOVIC",firstName:"DEMIR",team:"DPK RACING",cat:"MINI GR3",parity:"EVEN"},
+"557":{lastName:"LENZO",firstName:"ANTONINO ROQUE",team:"NOVALUX SRL",cat:"MINI GR3",parity:"ODD"},
+"558":{lastName:"KARJUS",firstName:"KONRAD",team:"NOVALUX SRL",cat:"MINI GR3",parity:"EVEN"},
+"561":{lastName:"KORAMO",firstName:"EETU",team:"PAROLIN FINLAND",cat:"MINI GR3",parity:"ODD"},
+"562":{lastName:"MACHAC",firstName:"ALEXANDR",team:"PAROLIN MOTORSPORT",cat:"MINI GR3",parity:"EVEN"},
+"565":{lastName:"PHAROAH",firstName:"ARTHUR",team:"KIDIX DRIVER PERFORMANCE",cat:"MINI GR3",parity:"ODD"},
+"567":{lastName:"GARRETT",firstName:"ALFIE",team:"SODIKART",cat:"MINI GR3",parity:"ODD"},
+"569":{lastName:"TUZUNER",firstName:"CAN GUNFER",team:"BABYRACE DRIVER ACADEMY",cat:"MINI GR3",parity:"ODD"},
+"571":{lastName:"PANTOLI",firstName:"AMINE",team:"SODIKART",cat:"MINI GR3",parity:"ODD"},
+"572":{lastName:"PIRVU",firstName:"ADAM",team:"CRG RACING TEAM",cat:"MINI GR3",parity:"EVEN"},
+"573":{lastName:"CUETO DOETS",firstName:"PEDRO MARCO",team:"MP ACADEMY GAMOTO",cat:"MINI GR3",parity:"ODD"},
+"575":{lastName:"WARAKITSUPACHOK",firstName:"PHAWIN",team:"BABYRACE DRIVER ACADEMY",cat:"MINI GR3",parity:"ODD"},
+"576":{lastName:"KLINKERS",firstName:"MIK",team:"ENERGY CORSE SRL",cat:"MINI GR3",parity:"EVEN"},
+"577":{lastName:"STEC",firstName:"FILIP",team:"ENERGY CORSE SRL",cat:"MINI GR3",parity:"ODD"},
+"578":{lastName:"SAGOO",firstName:"RUBEN",team:"TEAM DRIVER RACING KART",cat:"MINI GR3",parity:"EVEN"},
+"584":{lastName:"VAN DE COTERLET",firstName:"JULIAN",team:"LENOVO KALI KART TEAM",cat:"MINI GR3",parity:"EVEN"},
+"597":{lastName:"OTTAVIANI",firstName:"ALESSIO",team:"OTTAVIANI",cat:"MINI GR3",parity:"ODD"},
+"603":{lastName:"LAIDVEE",firstName:"JOHANN",team:"NOVALUX SRL",cat:"MINI GR3",parity:"ODD"},
+"605":{lastName:"TROULIS",firstName:"FILIPPOS",team:"LENOVO KALI KART TEAM",cat:"MINI GR3",parity:"ODD"},
+"606":{lastName:"SOOFI",firstName:"TARIQ",team:"LENOVO KALI KART TEAM",cat:"MINI GR3",parity:"EVEN"},
+"615":{lastName:"SULITKA",firstName:"NOE",team:"SULITKA DUSAN",cat:"MINI GR3",parity:"ODD"},
+"616":{lastName:"SKALHAMMAR",firstName:"ELTON",team:"WARD RACING",cat:"MINI GR3",parity:"EVEN"},
+"617":{lastName:"RUGET",firstName:"EDOUARD",team:"WARD RACING",cat:"MINI GR3",parity:"ODD"},
+"620":{lastName:"DANYLIV",firstName:"NIKOLAI",team:"MVM RACING",cat:"MINI GR3",parity:"EVEN"},
+"621":{lastName:"LEPP",firstName:"SIIM",team:"AIX RACING TEAM",cat:"MINI GR3",parity:"ODD"},
+"630":{lastName:"BARBO",firstName:"LIAM",team:"SODIKART",cat:"MINI GR3",parity:"EVEN"},
+"631":{lastName:"MATIUNIN",firstName:"YEHOR",team:"LA MOTORSPORT",cat:"MINI GR3",parity:"ODD"},
+"632":{lastName:"LUTU ARIS",firstName:"ANDREI",team:"BIRELART RACING SRL",cat:"MINI GR3",parity:"EVEN"},
+"642":{lastName:"PRABU",firstName:"AARUTHARAN",team:"KART CAMPUS SSD A R.L.",cat:"MINI GR3",parity:"EVEN"},
+"643":{lastName:"KLEINER",firstName:"BASTIAN",team:"PANDA KART RACING",cat:"MINI GR3",parity:"ODD"},
+"644":{lastName:"PIETRAS",firstName:"NICOLAJ",team:"LA MOTORSPORT",cat:"MINI GR3",parity:"EVEN"},
+"645":{lastName:"GOMEZ",firstName:"AXEL",team:"EMILIA KART SRL",cat:"MINI GR3",parity:"ODD"},
+"646":{lastName:"SARZINA",firstName:"FRANCESCO",team:"SODIKART",cat:"MINI GR3",parity:"EVEN"},
+"647":{lastName:"YOON",firstName:"ISAAC",team:"BABYRACE DRIVER ACADEMY",cat:"MINI GR3",parity:"ODD"},
+"655":{lastName:"LOTRIONTE",firstName:"NATHAN",team:"LOTRIONTE GIOVANNI",cat:"MINI GR3",parity:"ODD"},
+"502":{lastName:"GODSCHALK",firstName:"ZEV",team:"KIDIX DRIVER PERFORMANCE",cat:"MINI U10",parity:"EVEN"},
+"503":{lastName:"WOLFF",firstName:"JACK FYNN",team:"KR MOTORSPORT",cat:"MINI U10",parity:"ODD"},
+"504":{lastName:"BOS",firstName:"DENVER",team:"KIDIX DRIVER PERFORMANCE",cat:"MINI U10",parity:"EVEN"},
+"505":{lastName:"TICIANELLI",firstName:"ENRICO",team:"KIDIX DRIVER PERFORMANCE",cat:"MINI U10",parity:"ODD"},
+"507":{lastName:"BROWN",firstName:"BRODY",team:"KIDIX DRIVER PERFORMANCE",cat:"MINI U10",parity:"ODD"},
+"510":{lastName:"TORCHIA",firstName:"FERDINANDO",team:"BIRELART RACING SRL",cat:"MINI U10",parity:"EVEN"},
+"513":{lastName:"SPINA",firstName:"MIGUEL",team:"BORSCH RACING",cat:"MINI U10",parity:"ODD"},
+"514":{lastName:"EL HAOUTI",firstName:"ISAAC",team:"BABYRACE DRIVER ACADEMY",cat:"MINI U10",parity:"EVEN"},
+"520":{lastName:"MIRAS Y MUNOZ",firstName:"SASHA",team:"BABYRACE DRIVER ACADEMY",cat:"MINI U10",parity:"EVEN"},
+"525":{lastName:"FRANCISCO",firstName:"JAYDEN",team:"BABYRACE DRIVER ACADEMY",cat:"MINI U10",parity:"ODD"},
+"530":{lastName:"MOREIRA",firstName:"AIDEN",team:"CRG RACING TEAM",cat:"MINI U10",parity:"EVEN"},
+"531":{lastName:"BRONIKOWSKI",firstName:"OSKAR",team:"CRG RACING TEAM",cat:"MINI U10",parity:"ODD"},
+"533":{lastName:"DUBININ",firstName:"OLEKSANDR",team:"BORSCH RACING",cat:"MINI U10",parity:"ODD"},
+"535":{lastName:"VENTORINO",firstName:"GIOVANNI",team:"BABYRACE DRIVER ACADEMY",cat:"MINI U10",parity:"ODD"},
+"536":{lastName:"WEYTJENS",firstName:"OLIVER",team:"TEAM DRIVER RACING KART",cat:"MINI U10",parity:"EVEN"},
+"542":{lastName:"HSUEH",firstName:"BLAKE",team:"TONY KART RACING TEAM SRL",cat:"MINI U10",parity:"EVEN"},
+"556":{lastName:"HEJNAR",firstName:"HUGO",team:"MONSTERK FACTORY TEAM",cat:"MINI U10",parity:"EVEN"},
+"559":{lastName:"DIACONU",firstName:"ADAM",team:"NOVALUX SRL",cat:"MINI U10",parity:"ODD"},
+"560":{lastName:"BORTOV",firstName:"NIKITA",team:"NOVALUX SRL",cat:"MINI U10",parity:"EVEN"},
+"563":{lastName:"BURGESS",firstName:"ZAYNE",team:"PAROLIN MOTORSPORT",cat:"MINI U10",parity:"ODD"},
+"564":{lastName:"PHAROAH",firstName:"ALBERT",team:"KIDIX DRIVER PERFORMANCE",cat:"MINI U10",parity:"EVEN"},
+"568":{lastName:"SCHUBERT",firstName:"MAXIMILIAN",team:"MP ACADEMY GAMOTO",cat:"MINI U10",parity:"EVEN"},
+"579":{lastName:"MICALLEF",firstName:"JAKE JORDAN",team:"NOVALUX SRL",cat:"MINI U10",parity:"ODD"},
+"580":{lastName:"BERGER",firstName:"JOHAN",team:"BABYRACE DRIVER ACADEMY",cat:"MINI U10",parity:"EVEN"},
+"581":{lastName:"ZVARICH",firstName:"MAX",team:"BABYRACE DRIVER ACADEMY",cat:"MINI U10",parity:"ODD"},
+"588":{lastName:"BURDA",firstName:"MYKHAILO",team:"BORSCH RACING",cat:"MINI U10",parity:"EVEN"},
+"590":{lastName:"SIMONE",firstName:"LEO",team:"PANTANO BY DAM",cat:"MINI U10",parity:"EVEN"},
+"596":{lastName:"STASIONIS",firstName:"LUKAS",team:"NOVALUX SRL",cat:"MINI U10",parity:"EVEN"},
+"598":{lastName:"CIUEANU",firstName:"DRAGOS",team:"7MOTORSPORT",cat:"MINI U10",parity:"EVEN"},
+"599":{lastName:"TODORAN",firstName:"MATEI",team:"7MOTORSPORT",cat:"MINI U10",parity:"ODD"},
+"604":{lastName:"JARTTU",firstName:"JAAKKO",team:"PAROLIN FINLAND",cat:"MINI U10",parity:"EVEN"},
+"614":{lastName:"MIHAILOV",firstName:"STEN",team:"AIX RACING TEAM",cat:"MINI U10",parity:"EVEN"},
+"625":{lastName:"RUMLENA",firstName:"VACLAV",team:"MVM RACING",cat:"MINI U10",parity:"ODD"},
+"627":{lastName:"BERNHARD",firstName:"BEN",team:"ENERGY CORSE SRL",cat:"MINI U10",parity:"ODD"},
+"635":{lastName:"FALAT",firstName:"HENDRIX",team:"PANTANO BY DAM",cat:"MINI U10",parity:"ODD"},
+"636":{lastName:"WOODHALL",firstName:"OLIVER",team:"PANTANO BY DAM",cat:"MINI U10",parity:"EVEN"},
+"648":{lastName:"YOON",firstName:"DANIEL",team:"BABYRACE DRIVER ACADEMY",cat:"MINI U10",parity:"EVEN"},
+"649":{lastName:"FINEAS",firstName:"MICHAIL",team:"BABYRACE DRIVER ACADEMY",cat:"MINI U10",parity:"ODD"},
+"650":{lastName:"PREVILLE",firstName:"CHARLIE",team:"BABYRACE DRIVER ACADEMY",cat:"MINI U10",parity:"EVEN"},
+"651":{lastName:"ALLERSKOG",firstName:"WILLIAM",team:"WARD RACING",cat:"MINI U10",parity:"ODD"},
+"652":{lastName:"VAVRA",firstName:"JAN",team:"MONSTERK FACTORY TEAM",cat:"MINI U10",parity:"EVEN"},
+"653":{lastName:"IANNI",firstName:"STEFANO",team:"IANNI RICCARDO",cat:"MINI U10",parity:"ODD"},
+"654":{lastName:"KOTOWSKI",firstName:"JACK",team:"BIRELART RACING SRL",cat:"MINI U10",parity:"EVEN"}
+};
+
+const FINALS=[
+  {cat:"KZ2",time:"13.35",label:"KZ2 FINAL"},
+  {cat:"OK",time:"14.05",label:"OK FINAL"},
+  {cat:"OKJ",time:"14.35",label:"OKJ FINAL"},
+  {cat:"MINI U10",time:"15.05",label:"MINI U10 FINAL"},
+  {cat:"MINI GR3",time:"15.35",label:"MINI GR3 FINAL"},
+  {cat:"OK-NJ",time:"16.05",label:"OK-NJ FINAL"}
+];
+
+
+// ── MULTI-RACE STATE ──
+let races={};          // {raceId: {name, circuit, entryList, schedule, finals, days}}
+let activeRaceId=localStorage.getItem('rt_race')||'';
+let pilots=[];
+let statuses={};
+let notes={};          // notes for MY pilots AND external pilot notes
+let trackSections=["PARTENZA","CURVA 1","RETTILINEO 1","CURVA 2","ESSE","RETTILINEO 2","ARRIVO"];
+let trackStatus={};
+let initialized=false;
+let activeTab=localStorage.getItem('rt_tab')||'piloti';
+let activeDay=localStorage.getItem('rt_day')||'';
+let pistaView=localStorage.getItem('rt_pista')||'pilota';
+let currentEntryList={};  // entry list for current race
+let currentSchedule={};   // schedule for current race
+let currentDays=[];       // day names for current race
+let currentFinals=[];     // finals for current race
+
+// ── THEME ──
+if(localStorage.getItem('rt_theme')==='light') document.body.classList.add('light');
+function applyThemeIcon(){document.getElementById('theme-btn').textContent=document.body.classList.contains('light')?'🌙':'☀️';}
+applyThemeIcon();
+function toggleTheme(){
+  document.body.classList.toggle('light');
+  document.getElementById('theme-btn').textContent=document.body.classList.contains('light')?'🌙':'☀️';
+  localStorage.setItem('rt_theme',document.body.classList.contains('light')?'light':'dark');
+}
+window.toggleTheme=toggleTheme;
+
+// ── SYNC ──
+function setSyncStatus(s){
+  const el=document.getElementById('sync-status');const dot=document.getElementById('conn-dot');if(!el)return;
+  if(s==='ok'){el.textContent='LIVE';el.className='sync-status ok';dot.className='header-dot connected';}
+  else if(s==='saving'){el.textContent='SAVING';el.className='sync-status';}
+  else{el.textContent='OFFLINE';el.className='sync-status err';dot.className='header-dot';}
+}
+
+// ── FIREBASE: RACE LIST ──
+let raceListUnsub=null;
+let raceDataUnsub=null;
+
+function listenRaces(){
+  onValue(ref(db,'races_index'),snap=>{
+    races=snap.val()||{};
+    dlog('races_index ricevuto: '+Object.keys(races).length+' gare','ok');
+    setSyncStatus('ok');
+    // If no active race but races exist, pick first
+    if(!activeRaceId||!races[activeRaceId]){
+      const ids=Object.keys(races);
+      if(ids.length) switchRace(ids[0]);
+      else{ initialized=true; renderAll(); }
+    } else {
+      updateRaceHeader();
+      if(activeTab==='gare') renderGare();
+    }
+  },err=>{setSyncStatus('err');dlog('❌ races_index: '+err.message,'err');console.error(err);});
+}
+
+function listenRaceData(raceId){
+  // Unsubscribe previous
+  if(raceDataUnsub) raceDataUnsub();
+  const raceRef=ref(db,'races/'+raceId);
+  const unsub=onValue(raceRef,snap=>{
+    const data=snap.val()||{};
+    dlog('Dati gara ricevuti: '+Object.keys(data).join(', '),'ok');
+    pilots=data.pilots?Object.values(data.pilots):[];
+    statuses=data.statuses||{};
+    notes=data.notes||{};
+    trackSections=data.trackSections||["PARTENZA","CURVA 1","RETTILINEO 1","CURVA 2","ESSE","RETTILINEO 2","ARRIVO"];
+    trackStatus=data.trackStatus||{};
+    currentEntryList=data.entryList||{};
+    currentSchedule=data.schedule||{};
+    currentDays=data.days||Object.keys(currentSchedule);
+    currentFinals=data.finals||[];
+    // Init pilot defaults
+    pilots.forEach(p=>{
+      if(!p.group)p.group='';if(!p.prefinal)p.prefinal='';if(!p.serie)p.serie='';
+      if(!statuses[p.num])statuses[p.num]={};
+      TASKS.forEach(t=>{if(!statuses[p.num][t])statuses[p.num][t]='none';});
+      if(!trackStatus[p.num])trackStatus[p.num]={};
+      if(notes[p.num]===undefined)notes[p.num]='';
+    });
+    if(!activeDay||!currentDays.includes(activeDay)) activeDay=currentDays[0]||'';
+    setSyncStatus('ok');
+    initialized=true;
+    renderAll();
+  },err=>{setSyncStatus('err');dlog('❌ race data: '+err.message,'err');console.error(err);});
+  raceDataUnsub=()=>off(raceRef);
+}
+
+function switchRace(raceId){
+  activeRaceId=raceId;
+  localStorage.setItem('rt_race',raceId);
+  updateRaceHeader();
+  listenRaceData(raceId);
+}
+
+function updateRaceHeader(){
+  const el=document.getElementById('race-header-name');
+  if(el&&races[activeRaceId]) el.textContent=races[activeRaceId].name||'RACE TRACKER';
+}
+
+// Start listening
+dlog('App avviata — ascolto gare...','info');
+listenRaces();
+// If we have a saved race, start listening immediately
+if(activeRaceId) listenRaceData(activeRaceId);
+
+// ── SAVE HELPERS ──
+function racePath(){return 'races/'+activeRaceId;}
+function saveAll(){
+  if(!activeRaceId)return;
+  setSyncStatus('saving');
+  const pilotsObj={};pilots.forEach(p=>pilotsObj[p.num]=p);
+  const data={pilots:pilotsObj,statuses,notes,trackSections,trackStatus,entryList:currentEntryList,schedule:currentSchedule,days:currentDays,finals:currentFinals};
+  set(ref(db,racePath()),data).then(()=>setSyncStatus('ok')).catch(e=>{setSyncStatus('err');console.error(e);});
+}
+function saveField(field,value){
+  if(!activeRaceId)return;
+  setSyncStatus('saving');
+  const u={};u[racePath()+'/'+field]=value;
+  update(ref(db),u).then(()=>setSyncStatus('ok')).catch(e=>{setSyncStatus('err');console.error(e);});
+}
+
+// ── HELPERS ──
+function cycleStatus(cur){const i=STATUS_CYCLE.indexOf(cur);return STATUS_CYCLE[(i+1)%STATUS_CYCLE.length];}
+function catClass(cat){
+  if(cat==='KZ2')return'cat-kz2';if(cat==='OK')return'cat-ok';if(cat==='OKJ')return'cat-okj';
+  if(cat==='MINI GR3')return'cat-gr3';if(cat==='MINI U10')return'cat-u10';if(cat==='OK-NJ')return'cat-nj';return'';
+}
+function autoParity(num){return parseInt(num)%2===0?'EVEN':'ODD';}
+function lookupByNum(num){return currentEntryList[num.toString()]||null;}
+
+function pilotsForSlot(slot){
+  return pilots.filter(p=>{
+    if(p.cat!==slot.cat)return false;
+    if(slot.type==='all')return true;
+    if(slot.type==='parity')return p.parity===slot.filter;
+    if(slot.type==='serie'){if(!p.serie)return true;return p.serie===slot.filter;}
+    if(slot.type==='group'){if(!p.group)return true;return slot.filter.includes(p.group.toUpperCase());}
+    if(slot.type==='prefinal'){if(!p.prefinal)return true;return p.prefinal===slot.filter;}
+    return false;
+  });
+}
+function slotFilterLabel(slot){
+  if(slot.type==='parity')return slot.filter;
+  if(slot.type==='serie')return'SERIE '+slot.filter;
+  if(slot.type==='group')return'GRP '+slot.filter.join('+');
+  if(slot.type==='prefinal')return'PREF '+slot.filter;
+  return'ALL';
+}
+function taskBtn(num,task,small){
+  const s=statuses[num]?.[task]||'none';
+  const sz=small?'style="padding:4px 8px;font-size:10px"':'';
+  return'<button class="task-btn '+(s==='none'?'':s)+'" '+sz+' onclick="toggleTask(\''+num+'\',\''+task+'\')">'+task+'</button>';
+}
+
+// ── TOGGLE ──
+function toggleTask(num,task){
+  if(!statuses[num])statuses[num]={};
+  statuses[num][task]=cycleStatus(statuses[num][task]||'none');
+  saveField('statuses',statuses);renderAll();
+}
+window.toggleTask=toggleTask;
+
+function toggleTrack(num,section){
+  if(!trackStatus[num])trackStatus[num]={};
+  trackStatus[num][section]=cycleStatus(trackStatus[num][section]||'none');
+  saveField('trackStatus',trackStatus);renderPista();
+}
+window.toggleTrack=toggleTrack;
+
+function saveNote(num){
+  const el=document.getElementById('note-'+num);
+  if(el){notes[num]=el.value;saveField('notes',notes);}
+}
+window.saveNote=saveNote;
+
+// ── EXPORT/IMPORT ──
+function exportData(){
+  const data={pilots,statuses,notes,trackSections,trackStatus,entryList:currentEntryList,schedule:currentSchedule,days:currentDays,finals:currentFinals,exportedAt:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='race-tracker-backup.json';a.click();URL.revokeObjectURL(url);
+}
+window.exportData=exportData;
+
+function importData(event){
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(data.pilots)pilots=Array.isArray(data.pilots)?data.pilots:Object.values(data.pilots);
+      if(data.statuses)statuses=data.statuses;
+      if(data.notes)notes=data.notes;
+      if(data.trackSections)trackSections=data.trackSections;
+      if(data.trackStatus)trackStatus=data.trackStatus;
+      if(data.entryList)currentEntryList=data.entryList;
+      if(data.schedule)currentSchedule=data.schedule;
+      if(data.days)currentDays=data.days;
+      if(data.finals)currentFinals=data.finals;
+      saveAll();alert('✅ Dati importati!');
+    }catch(err){alert('❌ File non valido');}
+  };
+  reader.readAsText(file);event.target.value='';
+}
+window.importData=importData;
+
+// ── TABS ──
+function showTab(tab){
+  activeTab=tab;localStorage.setItem('rt_tab',tab);
+  ALL_TABS.forEach(t=>{
+    const el=document.getElementById('tab-'+t);if(el)el.style.display=t===tab?'':'none';
+  });
+  document.querySelectorAll('.tab').forEach((b,i)=>{b.classList.toggle('active',ALL_TABS[i]===tab);});
+  if(tab==='gare')renderGare();
+  if(tab==='piloti')renderPilots();
+  if(tab==='programma')renderSchedule();
+  if(tab==='pista')renderPista();
+  if(tab==='debug')renderDebug();
+}
+window.showTab=showTab;
+
+// ══════════════════════════════════════
+// DEBUG TAB
+// ══════════════════════════════════════
+async function runFirebaseTest(){
+  debugLogs=[];
+  dlog('🚀 Inizio test Firebase...','info');
+
+  // Step 1: REST API test on root
+  dlog('Step 1: Test REST API root (shallow)...','info');
+  try{
+    const r=await fetch('https://karting-tools-default-rtdb.firebaseio.com/.json?shallow=true');
+    if(r.ok){const d=await r.json();dlog('✅ REST root OK — chiavi: '+Object.keys(d||{}).join(', '),'ok');}
+    else{dlog('❌ REST root HTTP '+r.status,'err');}
+  }catch(e){dlog('❌ REST root: '+e.message,'err');}
+
+  // Step 2: REST on /tracker (old path)
+  dlog('Step 2: Test REST /tracker...','info');
+  try{
+    const r=await fetch('https://karting-tools-default-rtdb.firebaseio.com/tracker.json?shallow=true');
+    if(r.ok){const d=await r.json();dlog(d?'✅ /tracker esiste — chiavi: '+Object.keys(d).join(', '):'⚠️ /tracker è vuoto/null','ok');}
+    else{dlog('❌ /tracker HTTP '+r.status,'err');}
+  }catch(e){dlog('❌ /tracker: '+e.message,'err');}
+
+  // Step 3: REST on /races_index
+  dlog('Step 3: Test REST /races_index...','info');
+  try{
+    const r=await fetch('https://karting-tools-default-rtdb.firebaseio.com/races_index.json');
+    if(r.ok){const d=await r.json();dlog(d?'✅ /races_index esiste — '+Object.keys(d).length+' gare':'⚠️ /races_index vuoto — nessuna gara creata','ok');}
+    else{dlog('❌ /races_index HTTP '+r.status,'err');}
+  }catch(e){dlog('❌ /races_index: '+e.message,'err');}
+
+  // Step 4: REST on active race
+  if(activeRaceId){
+    dlog('Step 4: Test REST /races/'+activeRaceId+'...','info');
+    try{
+      const r=await fetch('https://karting-tools-default-rtdb.firebaseio.com/races/'+activeRaceId+'.json?shallow=true');
+      if(r.ok){const d=await r.json();dlog(d?'✅ Gara attiva OK — chiavi: '+Object.keys(d).join(', '):'⚠️ Gara attiva vuota','ok');}
+      else{dlog('❌ Gara attiva HTTP '+r.status,'err');}
+    }catch(e){dlog('❌ Gara attiva: '+e.message,'err');}
+  } else {
+    dlog('Step 4: Nessuna gara attiva selezionata','warn');
+  }
+
+  // Step 5: SDK WebSocket test
+  dlog('Step 5: Test SDK .info/connected...','info');
+  onValue(ref(db,'.info/connected'),snap=>{
+    if(snap.val()===true)dlog('✅ WebSocket CONNESSO','ok');
+    else dlog('⚠️ WebSocket non connesso','warn');
+  },{onlyOnce:true});
+
+  // Step 6: SDK write test
+  dlog('Step 6: Test SDK scrittura...','info');
+  try{
+    await set(ref(db,'_test_ping'),{t:Date.now()});
+    dlog('✅ Scrittura SDK OK','ok');
+    await set(ref(db,'_test_ping'),null); // cleanup
+  }catch(e){
+    dlog('❌ Scrittura SDK fallita: '+e.message,'err');
+    if(e.message.includes('PERMISSION_DENIED'))dlog('→ Le Firebase Rules bloccano la scrittura! Controlla le rules nella console Firebase.','err');
+  }
+
+  // Step 7: State summary
+  dlog('Step 7: Stato app...','info');
+  dlog('Race ID: '+(activeRaceId||'NESSUNA'),'info');
+  dlog('Gare caricate: '+Object.keys(races).length,'info');
+  dlog('Piloti: '+pilots.length,'info');
+  dlog('Entry list: '+Object.keys(currentEntryList).length+' piloti','info');
+  dlog('Schedule: '+currentDays.length+' giorni','info');
+  dlog('URL: '+location.href,'info');
+  dlog('Test completato ✓','ok');
+}
+window.runFirebaseTest=runFirebaseTest;
+
+// ══════════════════════════════════════
+// TAB GARE
+// ══════════════════════════════════════
+function renderGare(){
+  const el=document.getElementById('gare-content');
+  const raceIds=Object.keys(races);
+  let html='<div style="margin-bottom:16px">'
+    +'<button class="mgmt-btn" onclick="openNewRace()" style="border-color:#22c55e;color:#22c55e">+ NUOVA GARA</button></div>';
+
+  if(!raceIds.length){
+    html+='<div class="empty-state"><p>Nessuna gara. Creane una!</p><p style="margin-top:8px;font-size:11px">Oppure i dati della gara WSK attuale verranno migrati automaticamente.</p></div>';
+  } else {
+    html+='<div style="font-size:10px;color:var(--text4);font-weight:700;letter-spacing:1px;margin-bottom:10px">'+raceIds.length+' GARE</div>';
+    raceIds.forEach(id=>{
+      const r=races[id];
+      const isActive=id===activeRaceId;
+      const entryCount=r.entryCount||0;
+      const pilotCount=r.pilotCount||0;
+      html+='<div class="race-card'+(isActive?' active-race':'')+'" onclick="switchRaceAndRender(\''+id+'\')">'
+        +'<div class="race-name">'+r.name+(isActive?'<span class="race-badge">ATTIVA</span>':'')+'</div>'
+        +'<div class="race-meta">'+(r.circuit||'')+' · '+pilotCount+' miei piloti · '+entryCount+' in entry list</div>'
+        +'<div style="display:flex;gap:6px;margin-top:10px">'
+        +'<button class="io-btn" style="font-size:10px;padding:8px" onclick="event.stopPropagation();openRaceSettings(\''+id+'\')">⚙ IMPOSTAZIONI</button>'
+        +(isActive?'':'<button class="io-btn" style="font-size:10px;padding:8px;border-color:#ef4444;color:#ef4444" onclick="event.stopPropagation();deleteRace(\''+id+'\')">✕ ELIMINA</button>')
+        +'</div></div>';
+    });
+  }
+  el.innerHTML=html;
+}
+
+function switchRaceAndRender(id){switchRace(id);renderGare();}
+window.switchRaceAndRender=switchRaceAndRender;
+
+function openNewRace(){
+  openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
+    +'<div class="modal-title">Nuova Gara</div>'
+    +'<div class="form-group"><label class="form-label">Nome Gara</label>'
+    +'<input class="form-input" id="nr-name" placeholder="es. WSK Super Master R1"></div>'
+    +'<div class="form-group"><label class="form-label">Circuito</label>'
+    +'<input class="form-input" id="nr-circuit" placeholder="es. Franciacorta"></div>'
+    +'<button class="form-submit" onclick="createRace()">CREA GARA</button>');
+}
+window.openNewRace=openNewRace;
+
+function createRace(){
+  const name=document.getElementById('nr-name').value.trim();
+  const circuit=document.getElementById('nr-circuit').value.trim();
+  if(!name){alert('Inserisci il nome');return;}
+  const id='race_'+Date.now();
+  // Save race index
+  const raceIndex={name,circuit,entryCount:0,pilotCount:0,createdAt:new Date().toISOString()};
+  const u={};
+  u['races_index/'+id]=raceIndex;
+  // Initialize empty race data
+  u['races/'+id]={pilots:{},statuses:{},notes:{},trackSections:["PARTENZA","CURVA 1","RETTILINEO 1","CURVA 2","ESSE","RETTILINEO 2","ARRIVO"],trackStatus:{},entryList:{},schedule:{},days:[],finals:[]};
+  update(ref(db),u).then(()=>{
+    switchRace(id);
+    closeModal();
+    showTab('gare');
+  });
+}
+window.createRace=createRace;
+
+function openRaceSettings(raceId){
+  const r=races[raceId];if(!r)return;
+  openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
+    +'<div class="modal-title">⚙ '+r.name+'</div>'
+    +'<div class="form-group"><label class="form-label">Nome Gara</label>'
+    +'<input class="form-input" id="rs-name" value="'+r.name+'"></div>'
+    +'<div class="form-group"><label class="form-label">Circuito</label>'
+    +'<input class="form-input" id="rs-circuit" value="'+(r.circuit||'')+'"></div>'
+    +'<button class="form-submit" onclick="saveRaceSettings(\''+raceId+'\')">SALVA</button>'
+    +'<div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">'
+    +'<div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:12px;letter-spacing:1px">CARICA DATI</div>'
+    +'<div class="upload-zone" onclick="document.getElementById(\'ul-entry\').click()">'
+    +'<div class="upload-zone-label">📋 ENTRY LIST</div>'
+    +'<div class="upload-zone-hint">JSON con tutti i piloti iscritti</div>'
+    +'<input type="file" id="ul-entry" accept=".json" style="display:none" onchange="uploadEntryList(event,\''+raceId+'\')"></div>'
+    +'<div class="upload-zone" onclick="document.getElementById(\'ul-mypilots\').click()">'
+    +'<div class="upload-zone-label">⭐ I MIEI PILOTI</div>'
+    +'<div class="upload-zone-hint">JSON con la lista dei tuoi piloti da seguire</div>'
+    +'<input type="file" id="ul-mypilots" accept=".json" style="display:none" onchange="uploadMyPilots(event,\''+raceId+'\')"></div>'
+    +'<div class="upload-zone" onclick="document.getElementById(\'ul-schedule\').click()">'
+    +'<div class="upload-zone-label">📅 PROGRAMMA</div>'
+    +'<div class="upload-zone-hint">JSON con orari e sessioni per giorno</div>'
+    +'<input type="file" id="ul-schedule" accept=".json" style="display:none" onchange="uploadSchedule(event,\''+raceId+'\')"></div>'
+    +'<button class="mgmt-btn" style="margin-top:8px;border-color:#60a5fa;color:#60a5fa" onclick="loadDefaultWSK(\''+raceId+'\')">🔄 CARICA DATI WSK PREDEFINITI</button>'
+    +'</div>');
+}
+window.openRaceSettings=openRaceSettings;
+
+function saveRaceSettings(raceId){
+  const name=document.getElementById('rs-name').value.trim();
+  const circuit=document.getElementById('rs-circuit').value.trim();
+  if(!name)return;
+  const u={};
+  u['races_index/'+raceId+'/name']=name;
+  u['races_index/'+raceId+'/circuit']=circuit;
+  update(ref(db),u).then(()=>{closeModal();});
+}
+window.saveRaceSettings=saveRaceSettings;
+
+function uploadEntryList(event,raceId){
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      // Accept either {num:{...}} or [{num,lastName,...}]
+      let entryList={};
+      if(Array.isArray(data)){
+        data.forEach(d=>{if(d.num)entryList[d.num.toString()]=d;});
+      } else {
+        entryList=data;
+      }
+      const count=Object.keys(entryList).length;
+      const u={};
+      u['races/'+raceId+'/entryList']=entryList;
+      u['races_index/'+raceId+'/entryCount']=count;
+      update(ref(db),u).then(()=>{alert('✅ Entry list caricata: '+count+' piloti');closeModal();});
+    }catch(err){alert('❌ File non valido');}
+  };
+  reader.readAsText(file);event.target.value='';
+}
+window.uploadEntryList=uploadEntryList;
+
+function uploadMyPilots(event,raceId){
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      // Accept [{num, serie?, group?, ...}] or {num:{...}}
+      let pilotsList=[];
+      if(Array.isArray(data)){
+        pilotsList=data;
+      } else {
+        pilotsList=Object.values(data);
+      }
+      // For each pilot, look up in entry list to fill details
+      const pilotsObj={};const newStatuses={};const newNotes={};const newTrack={};
+      // First fetch current entry list
+      fetch('https://karting-tools-default-rtdb.firebaseio.com/races/'+raceId+'/entryList.json')
+        .then(r=>r.json()).then(el=>{
+          el=el||{};
+          pilotsList.forEach(mp=>{
+            const num=mp.num?mp.num.toString():(mp.number?mp.number.toString():'');
+            if(!num)return;
+            const entry=el[num]||{};
+            const name=mp.name||(entry.lastName&&entry.firstName?entry.lastName+' '+entry.firstName:'')||'';
+            const team=mp.team||entry.team||'';
+            const cat=mp.cat||entry.cat||'OK';
+            pilotsObj[num]={num,name:name.toUpperCase(),team:team.toUpperCase(),cat,parity:autoParity(num),group:mp.group||'',prefinal:mp.prefinal||'',serie:mp.serie?mp.serie.toString():''};
+            newStatuses[num]={};TASKS.forEach(t=>newStatuses[num][t]='none');
+            newNotes[num]=mp.notes||'';
+            newTrack[num]={};
+          });
+          const count=Object.keys(pilotsObj).length;
+          const u={};
+          u['races/'+raceId+'/pilots']=pilotsObj;
+          u['races/'+raceId+'/statuses']=newStatuses;
+          u['races/'+raceId+'/notes']=newNotes;
+          u['races/'+raceId+'/trackStatus']=newTrack;
+          u['races_index/'+raceId+'/pilotCount']=count;
+          update(ref(db),u).then(()=>{alert('✅ '+count+' piloti caricati');closeModal();});
+        });
+    }catch(err){alert('❌ File non valido');}
+  };
+  reader.readAsText(file);event.target.value='';
+}
+window.uploadMyPilots=uploadMyPilots;
+
+function uploadSchedule(event,raceId){
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      // Accept {days:[], schedule:{}, finals:[]} or just {DAY_NAME:[slots...]}
+      let schedule,days,finals;
+      if(data.schedule){
+        schedule=data.schedule;days=data.days||Object.keys(data.schedule);finals=data.finals||[];
+      } else {
+        schedule=data;days=Object.keys(data);finals=[];
+      }
+      const u={};
+      u['races/'+raceId+'/schedule']=schedule;
+      u['races/'+raceId+'/days']=days;
+      u['races/'+raceId+'/finals']=finals;
+      update(ref(db),u).then(()=>{alert('✅ Programma caricato: '+days.length+' giorni');closeModal();});
+    }catch(err){alert('❌ File non valido');}
+  };
+  reader.readAsText(file);event.target.value='';
+}
+window.uploadSchedule=uploadSchedule;
+
+function loadDefaultWSK(raceId){
+  if(!confirm('Caricare i dati WSK Super Master Franciacorta predefiniti?'))return;
+  const u={};
+  u['races/'+raceId+'/entryList']=ENTRY_LIST;
+  u['races/'+raceId+'/schedule']=SCHEDULE;
+  u['races/'+raceId+'/days']=DAYS;
+  u['races/'+raceId+'/finals']=FINALS;
+  u['races_index/'+raceId+'/entryCount']=Object.keys(ENTRY_LIST).length;
+  update(ref(db),u).then(()=>{alert('✅ Dati WSK caricati');closeModal();});
+}
+window.loadDefaultWSK=loadDefaultWSK;
+
+function deleteRace(raceId){
+  if(!confirm('Eliminare questa gara? Tutti i dati verranno persi.'))return;
+  const u={};u['races_index/'+raceId]=null;u['races/'+raceId]=null;
+  update(ref(db),u);
+}
+window.deleteRace=deleteRace;
+
+// ══════════════════════════════════════
+// SEARCH — my pilots first + detail sheet
+// ══════════════════════════════════════
+function filterPilots(q){
+  const resultsEl=document.getElementById('pilots-search-results');
+  const listEl=document.getElementById('pilots-list');
+  const clearBtn=document.getElementById('search-clear-btn');
+  if(!q||!q.trim()){resultsEl.style.display='none';listEl.style.display='';if(clearBtn)clearBtn.style.display='none';return;}
+  if(clearBtn)clearBtn.style.display='block';
+  listEl.style.display='none';resultsEl.style.display='';
+  const query=q.trim().toUpperCase();
+  const matches=[];
+  Object.entries(currentEntryList).forEach(([num,e])=>{
+    const nameStr=((e.lastName||'')+' '+(e.firstName||'')).toUpperCase();
+    const teamStr=(e.team||'').toUpperCase();
+    if(num.startsWith(query)||nameStr.includes(query)||teamStr.includes(query)){
+      matches.push({num,name:(e.lastName||'')+' '+(e.firstName||''),team:e.team||'',cat:e.cat||'',parity:e.parity||autoParity(num),isMyPilot:!!pilots.find(p=>p.num===num)});
+    }
+  });
+  if(!matches.length){resultsEl.innerHTML='<div class="empty-state"><p>Nessun risultato</p></div>';return;}
+  matches.sort((a,b)=>{if(a.isMyPilot&&!b.isMyPilot)return-1;if(!a.isMyPilot&&b.isMyPilot)return 1;return a.team.localeCompare(b.team)||parseInt(a.num)-parseInt(b.num);});
+  const myP=matches.filter(m=>m.isMyPilot);
+  const others=matches.filter(m=>!m.isMyPilot);
+  const otherGroups={};
+  others.forEach(m=>{if(!otherGroups[m.team])otherGroups[m.team]=[];otherGroups[m.team].push(m);});
+  let html='<div style="font-size:10px;color:var(--text4);font-weight:700;letter-spacing:1px;margin-bottom:8px">'+matches.length+' RISULTATI</div>';
+  if(myP.length){
+    html+='<div class="search-group-label" style="color:#22c55e">★ I MIEI PILOTI ('+myP.length+')</div>';
+    myP.forEach(m=>{html+=searchResultItem(m);});
+  }
+  Object.entries(otherGroups).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([team,members])=>{
+    html+='<div class="search-group-label">'+team+' ('+members.length+')</div>';
+    members.sort((a,b)=>parseInt(a.num)-parseInt(b.num)).forEach(m=>{html+=searchResultItem(m);});
+  });
+  resultsEl.innerHTML=html;
+}
+function searchResultItem(m){
+  const catCls=catClass(m.cat);const isMine=m.isMyPilot;
+  return'<div class="search-result-item" style="'+(isMine?'border-color:#22c55e;background:rgba(34,197,94,.06)':'')+'" onclick="openPilotDetail(\''+m.num+'\')">'
+    +'<span class="sr-num" style="'+(isMine?'color:#22c55e':'')+'">#'+m.num+'</span>'
+    +'<div style="flex:1;min-width:0">'
+    +'<div class="sr-name">'+m.name+(isMine?' <span style="font-size:10px;color:#22c55e;font-weight:800">★ TUO</span>':'')+'</div>'
+    +'<div class="sr-team">'+m.team+'</div></div>'
+    +'<span class="sr-cat '+catCls+'" style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800">'+m.cat+'</span></div>';
+}
+window.filterPilots=filterPilots;
+function clearPilotsSearch(){const inp=document.getElementById('pilots-search');if(inp)inp.value='';filterPilots('');}
+window.clearPilotsSearch=clearPilotsSearch;
+
+// ── PILOT DETAIL SHEET (from search) ──
+function openPilotDetail(num){
+  const entry=lookupByNum(num);
+  const myPilot=pilots.find(p=>p.num===num);
+  const isMine=!!myPilot;
+  const name=entry?(entry.lastName+' '+entry.firstName):(myPilot?myPilot.name:'#'+num);
+  const team=entry?entry.team:(myPilot?myPilot.team:'');
+  const cat=entry?entry.cat:(myPilot?myPilot.cat:'');
+  const parity=autoParity(num);
+  const catCls=catClass(cat);
+  const existingNote=notes[num]||'';
+
+  openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
+    +'<div class="detail-sheet">'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
+    +'<span style="font-size:28px;font-weight:900">#'+num+'</span>'
+    +(isMine?'<span style="font-size:11px;color:#22c55e;font-weight:800;border:1px solid #22c55e;padding:2px 8px;border-radius:4px">★ TUO PILOTA</span>':'')
+    +'</div>'
+    +'<div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">'+name+'</div>'
+    +'<div style="font-size:15px;font-weight:700;color:var(--text3);margin-bottom:8px">'+team+'</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:16px">'
+    +'<span class="'+catCls+'" style="font-size:12px;padding:3px 10px;border-radius:6px;font-weight:800;border:1px solid">'+cat+'</span>'
+    +'<span class="parity-badge">'+parity+'</span></div>'
+    +'<div class="form-group"><label class="form-label">Note su questo pilota</label>'
+    +'<textarea class="form-textarea" id="detail-note" placeholder="Appunti, info, osservazioni...">'+existingNote+'</textarea></div>'
+    +'<div class="detail-actions">'
+    +'<button class="btn-note-pilot" onclick="saveDetailNote(\''+num+'\')">💾 SALVA NOTE</button>'
+    +(isMine?'':'<button class="btn-add-pilot" onclick="addPilotFromDetail(\''+num+'\')">+ AGGIUNGI AI MIEI</button>')
+    +'</div>'
+    +(isMine?'<div style="margin-top:10px"><button class="pilot-edit-btn" style="width:100%;padding:10px;text-align:center" onclick="closeModal();openEditPilot(\''+num+'\')">✎ MODIFICA PILOTA</button></div>':'')
+    +'</div>');
+}
+window.openPilotDetail=openPilotDetail;
+
+function saveDetailNote(num){
+  const el=document.getElementById('detail-note');
+  if(el){notes[num]=el.value;saveField('notes',notes);alert('✅ Note salvate');}
+}
+window.saveDetailNote=saveDetailNote;
+
+function addPilotFromDetail(num){
+  if(pilots.find(p=>p.num===num)){alert('Già nei tuoi piloti');return;}
+  const entry=lookupByNum(num);
+  const noteEl=document.getElementById('detail-note');
+  const note=noteEl?noteEl.value.trim():'';
+  const name=entry?(entry.lastName+' '+entry.firstName).toUpperCase():'PILOTA '+num;
+  const team=entry?(entry.team||'').toUpperCase():'';
+  const cat=entry?entry.cat:'OK';
+  pilots.push({num:num.toString(),name,team,cat,parity:autoParity(num),group:'',prefinal:'',serie:''});
+  statuses[num]={};TASKS.forEach(t=>statuses[num][t]='none');
+  trackStatus[num]={};notes[num]=note;
+  // Update pilot count in race index
+  const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;
+  update(ref(db),u);
+  saveAll();closeModal();
+}
+window.addPilotFromDetail=addPilotFromDetail;
+
+// ══════════════════════════════════════
+// RENDER PILOTS
+// ══════════════════════════════════════
+function renderPilots(){
+  if(!initialized)return;
+  if(!activeRaceId){document.getElementById('pilots-list').innerHTML='<div class="empty-state"><p>Seleziona una gara dalla tab GARE</p></div>';return;}
+  const el=document.getElementById('pilots-list');
+  if(!pilots.length){el.innerHTML='<p class="no-pilots">Nessun pilota. Aggiungine uno!</p>';return;}
+  const total=pilots.length;
+  const counter='<div style="font-size:11px;font-weight:700;color:var(--text4);margin-bottom:14px;letter-spacing:1px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">TOTALE PILOTI <span style="color:var(--text);font-size:18px;font-weight:900;margin-left:8px;">'+total+'</span></div>';
+  el.innerHTML=counter+pilots.map((p,i)=>{
+    return'<div class="card">'
+    +'<div class="pilot-header">'
+    +'<div style="display:flex;align-items:flex-start;gap:10px;">'
+    +'<span class="pilot-index">'+(i+1)+'.</span><div>'
+    +'<div class="pilot-cat '+catClass(p.cat)+'">'+p.cat+'</div>'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-top:3px">'
+    +'<span class="pilot-num">#'+p.num+'</span>'
+    +'<span class="pilot-name">'+p.name+'</span></div>'
+    +'<div class="pilot-team">'+p.team+'</div></div></div>'
+    +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">'
+    +'<span class="parity-badge">'+p.parity+'</span>'
+    +'<span class="group-badge '+(p.group?'set':'')+'">'+(p.group?'GRP '+p.group:'GRP ?')+'</span>'
+    +'<button class="pilot-edit-btn" onclick="openEditPilot(\''+p.num+'\')">✎ modifica</button>'
+    +'</div></div>'
+    +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,false)).join('')+'</div>'
+    +'<div class="note-wrap"><span class="note-label">Note</span>'
+    +'<textarea class="note-area" id="note-'+p.num+'" placeholder="Aggiungi una nota..." onblur="saveNote(\''+p.num+'\')">'+(notes[p.num]||'')+'</textarea></div></div>';
+  }).join('');
+}
+
+// ══════════════════════════════════════
+// RENDER SCHEDULE with auto-scroll
+// ══════════════════════════════════════
+function getCurrentSlotIndex(slots){
+  const now=new Date();const nowMins=now.getHours()*60+now.getMinutes();
+  let closest=-1;let closestDiff=Infinity;
+  for(let i=0;i<slots.length;i++){
+    const parts=slots[i].time.split('.');
+    const slotMins=parseInt(parts[0])*60+parseInt(parts[1]);
+    const diff=nowMins-slotMins;
+    if(diff>=0&&diff<closestDiff){closestDiff=diff;closest=i;}
+  }
+  return closest===-1?0:closest;
+}
+
+function renderSchedule(){
+  const dt=document.getElementById('day-tabs');
+  dt.innerHTML=currentDays.map(d=>'<button class="day-tab '+(d===activeDay?'active':'')+'" onclick="setDay(\''+d+'\')">'+d+'</button>').join('');
+  const el=document.getElementById('schedule-content');
+  if(!initialized){el.innerHTML='<div class="loading">Caricamento…</div>';return;}
+  if(!currentDays.length){el.innerHTML='<div class="empty-state"><p>Nessun programma caricato.<br>Vai in GARE → Impostazioni per caricare il programma.</p></div>';return;}
+  const slots=currentSchedule[activeDay];
+  if(!slots){el.innerHTML='<div class="empty-state"><p>Nessun programma per questo giorno</p></div>';return;}
+  const currentIdx=getCurrentSlotIndex(slots);
+  let html='';let lastSession='';
+  slots.forEach((slot,idx)=>{
+    const ps=pilotsForSlot(slot);const isNow=idx===currentIdx;
+    if(slot.session&&slot.session!==lastSession){html+='<div class="session-divider">'+slot.session+'</div>';lastSession=slot.session;}
+    if(!ps.length){
+      html+='<div class="card'+(isNow?' slot-now':'')+'" style="opacity:.45" '+(isNow?'id="slot-now"':'')+'><div class="slot-header">'
+        +'<span class="slot-time">'+slot.time+'</span>'+(isNow?'<span class="now-badge">ORA</span>':'')
+        +'<span class="slot-label '+catClass(slot.cat)+'">'+slot.label+'</span>'
+        +'<span class="slot-type">'+slotFilterLabel(slot)+'</span></div>'
+        +'<div style="font-size:11px;font-weight:700;color:var(--text4);padding:2px 0">— NESSUNO —</div></div>';
+      return;
+    }
+    const noGroup=ps.filter(p=>slot.type==='group'&&!p.group);
+    html+='<div class="card'+(isNow?' slot-now':'')+'" '+(isNow?'id="slot-now"':'')+'><div class="slot-header">'
+      +'<span class="slot-time">'+slot.time+'</span>'+(isNow?'<span class="now-badge">ORA</span>':'')
+      +'<span class="slot-label '+catClass(slot.cat)+'">'+slot.label+'</span>'
+      +'<span class="slot-type">'+slotFilterLabel(slot)+'</span></div>'
+      +(noGroup.length?'<div class="no-group-warning">⚠ '+noGroup.length+' pilota/i senza gruppo</div>':'')
+      +'<div style="margin-top:8px">';
+    ps.forEach(p=>{
+      html+='<div class="card-inner"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
+        +'<span class="inner-num">#'+p.num+'</span><span class="inner-name">'+p.name+'</span>'
+        +(p.group?'<span class="inner-group">GRP '+p.group+'</span>':'<span style="font-size:10px;color:#fbbf24;font-weight:700">?</span>')
+        +'<span class="inner-team">'+p.team+'</span></div>'
+        +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+'</div>'
+        +(notes[p.num]?'<div style="margin-top:6px;font-size:11px;color:var(--text4);font-style:italic">📝 '+notes[p.num]+'</div>':'')+'</div>';
+    });
+    html+='</div></div>';
+  });
+  if(activeDay===currentDays[currentDays.length-1]&&currentFinals.length){
+    html+='<div class="session-divider">FINALI</div>';
+    const myCats=[...new Set(pilots.map(p=>p.cat))];
+    currentFinals.filter(f=>myCats.includes(f.cat)).forEach(f=>{
+      const ps=pilots.filter(p=>p.cat===f.cat);
+      html+='<div class="final-card"><div class="final-title">🏆 '+f.label+'</div>'
+        +'<div class="final-row"><span>Partenza</span><span class="final-time">'+f.time+'</span></div>';
+      ps.forEach(p=>{
+        html+='<div class="card-inner" style="margin-top:8px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
+          +'<span class="inner-num">#'+p.num+'</span><span class="inner-name">'+p.name+'</span>'
+          +'<span class="inner-team">'+p.team+'</span></div>'
+          +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+'</div></div>';
+      });
+      html+='</div>';
+    });
+  }
+  el.innerHTML=html||'<div class="empty-state"><p>Nessun tuo pilota in questa giornata</p></div>';
+  setTimeout(()=>{const nowEl=document.getElementById('slot-now');if(nowEl)nowEl.scrollIntoView({behavior:'smooth',block:'center'});},100);
+}
+function setDay(d){activeDay=d;localStorage.setItem('rt_day',d);renderSchedule();}
+window.setDay=setDay;
+
+// ══════════════════════════════════════
+// RENDER PISTA
+// ══════════════════════════════════════
+function showPistaView(v){pistaView=v;localStorage.setItem('rt_pista',v);document.querySelectorAll('.subtab').forEach((b,i)=>b.classList.toggle('active',['pilota','sessione'][i]===v));renderPista();}
+window.showPistaView=showPistaView;
+
+function renderPista(){
+  const sl=document.getElementById('sections-list');
+  if(sl)sl.innerHTML=trackSections.map((s,i)=>'<div class="section-chip" ondblclick="editSectionInline('+i+')">'
+    +'<span>'+s+'</span><span class="del" onclick="deleteSection('+i+')">✕</span></div>').join('');
+  const el=document.getElementById('pista-content');
+  if(!pilots.length){el.innerHTML='<div class="empty-state"><p>Nessun pilota</p></div>';return;}
+  if(pistaView==='pilota'){
+    el.innerHTML=pilots.map(p=>'<div class="card">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
+      +'<span class="pilot-num">#'+p.num+'</span><span class="pilot-name">'+p.name+'</span>'
+      +'<span class="pilot-cat '+catClass(p.cat)+'" style="margin-left:auto">'+p.cat+'</span></div>'
+      +'<div class="track-grid">'+trackSections.map(s=>{
+        const st=trackStatus[p.num]?.[s]||'none';
+        return'<button class="track-btn '+(st==='none'?'':st)+'" onclick="toggleTrack(\''+p.num+"','"+s+"')\">"+s+'</button>';
+      }).join('')+'</div></div>').join('');
+  } else {
+    el.innerHTML=trackSections.map(s=>{
+      const covered=pilots.filter(p=>(trackStatus[p.num]?.[s]||'none')!=='none');
+      return'<div class="card"><div style="font-size:13px;font-weight:800;margin-bottom:8px">'+s
+        +' <span style="font-size:11px;color:var(--text4);font-weight:600">'+covered.length+'/'+pilots.length+'</span></div>'
+        +'<div class="track-session-grid">'+pilots.map(p=>{
+          const st=trackStatus[p.num]?.[s]||'none';
+          return'<button class="track-pilot-btn '+(st==='none'?'':st)+'" onclick="toggleTrack(\''+p.num+"','"+s+"')\">#"+p.num+'</button>';
+        }).join('')+'</div></div>';
+    }).join('');
+  }
+}
+function addSection(){const inp=document.getElementById('new-section-input');const v=inp.value.trim().toUpperCase();if(!v)return;trackSections.push(v);inp.value='';saveField('trackSections',trackSections);renderPista();}
+window.addSection=addSection;
+function deleteSection(i){if(!confirm('Eliminare?'))return;trackSections.splice(i,1);saveField('trackSections',trackSections);renderPista();}
+window.deleteSection=deleteSection;
+function editSectionInline(i){const chips=document.querySelectorAll('.section-chip');const chip=chips[i];if(!chip)return;const old=trackSections[i];const inp=document.createElement('input');inp.value=old;inp.className='add-input';inp.style.width='100%';chip.innerHTML='';chip.appendChild(inp);inp.focus();inp.select();const finish=()=>{const v=inp.value.trim().toUpperCase();if(v&&v!==old){trackSections[i]=v;saveField('trackSections',trackSections);}renderPista();};inp.onblur=finish;inp.onkeydown=e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape')renderPista();};}
+window.editSectionInline=editSectionInline;
+
+// ══════════════════════════════════════
+// MODAL + ADD/EDIT PILOT
+// ══════════════════════════════════════
+function openModal(html){document.getElementById('modal-inner').innerHTML=html;document.getElementById('modal').style.display='flex';}
+function closeModal(){document.getElementById('modal').style.display='none';}
+function closeModalOutside(e){if(e.target===document.getElementById('modal'))closeModal();}
+window.closeModal=closeModal;window.closeModalOutside=closeModalOutside;
+
+let _entryPreview=null;
+function openAddPilot(){
+  if(!activeRaceId){alert('Seleziona prima una gara dalla tab GARE');return;}
+  openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
+    +'<div class="modal-title">Aggiungi Pilota</div>'
+    +'<div class="form-group"><label class="form-label">Numero Kart</label>'
+    +'<input class="form-input" id="f-num" placeholder="es. 342" type="number" oninput="previewFromNum(this.value)" autocomplete="off" style="font-size:22px;font-weight:900"></div>'
+    +'<div id="f-preview" style="display:none;background:var(--bg3);border:2px solid #22c55e;border-radius:10px;padding:12px;margin-bottom:12px">'
+    +'<div style="font-size:10px;color:#22c55e;letter-spacing:2px;font-weight:700;margin-bottom:8px">✓ TROVATO IN ENTRY LIST</div>'
+    +'<div id="f-preview-content"></div>'
+    +'<div class="form-group" style="margin-top:10px;margin-bottom:10px"><label class="form-label">Note — opzionale</label>'
+    +'<textarea class="form-textarea" id="f-note" placeholder="Note opzionali..."></textarea></div>'
+    +'<button onclick="confirmFromEntryList()" style="width:100%;padding:12px;background:#22c55e;color:#000;border:none;border-radius:8px;font-family:inherit;font-weight:900;font-size:13px;letter-spacing:2px;cursor:pointer">AGGIUNGI</button></div>'
+    +'<div id="f-manual" style="display:none">'
+    +'<div style="font-size:10px;color:#f59e0b;letter-spacing:2px;font-weight:700;margin-bottom:10px;padding:8px;background:rgba(245,158,11,.1);border-radius:6px">⚠ NON IN ENTRY LIST — INSERIMENTO MANUALE</div>'
+    +'<div class="form-group"><label class="form-label">Nome Cognome</label><input class="form-input" id="f-name" placeholder="es. ROSSI MARIO"></div>'
+    +'<div class="form-group"><label class="form-label">Scuderia</label><input class="form-input" id="f-team" placeholder="es. TEAM NAME"></div>'
+    +'<div class="form-group"><label class="form-label">Categoria</label>'
+    +'<select class="form-select" id="f-cat"><option>KZ2</option><option>OK</option><option>OKJ</option><option>MINI GR3</option><option>MINI U10</option><option>OK-NJ</option></select></div>'
+    +'<div id="f-parity-display" style="font-size:11px;color:var(--text4);margin-bottom:10px"></div>'
+    +'<div class="form-group"><label class="form-label">Note</label>'
+    +'<textarea class="form-textarea" id="f-note-m" placeholder="Note opzionali..."></textarea></div>'
+    +'<button class="form-submit" onclick="savePilotManual()">AGGIUNGI MANUALMENTE</button></div>');
+}
+window.openAddPilot=openAddPilot;
+
+function previewFromNum(val){
+  const num=val.trim();const preview=document.getElementById('f-preview');const manual=document.getElementById('f-manual');
+  const parDisp=document.getElementById('f-parity-display');
+  if(parDisp&&num)parDisp.textContent='Parità: '+autoParity(num)+' (automatica)';
+  if(!num||num.length<2){preview.style.display='none';manual.style.display='none';_entryPreview=null;return;}
+  const entry=lookupByNum(num);
+  if(entry){
+    _entryPreview={num,...entry};
+    document.getElementById('f-preview-content').innerHTML=
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      +'<span style="font-size:22px;font-weight:900">#'+num+'</span>'
+      +'<span style="font-size:16px;font-weight:800">'+(entry.lastName||'')+' '+(entry.firstName||'')+'</span></div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<span class="'+catClass(entry.cat)+'" style="font-size:11px;padding:2px 8px;border-radius:6px;font-weight:800">'+(entry.cat||'')+'</span>'
+      +'<span style="font-size:11px;color:var(--text4);font-weight:700">'+(entry.parity||autoParity(num))+'</span>'
+      +'<span style="font-size:11px;color:var(--text4)">'+(entry.team||'')+'</span></div>';
+    preview.style.display='block';manual.style.display='none';
+  } else {_entryPreview=null;preview.style.display='none';if(num.length>=3)manual.style.display='block';}
+}
+window.previewFromNum=previewFromNum;
+
+function confirmFromEntryList(){
+  if(!_entryPreview)return;const num=_entryPreview.num.toString();
+  if(pilots.find(p=>p.num===num)){alert('Numero già presente');return;}
+  const note=document.getElementById('f-note')?document.getElementById('f-note').value.trim():'';
+  pilots.push({num,name:(_entryPreview.lastName||'')+' '+(_entryPreview.firstName||''),team:_entryPreview.team||'',cat:_entryPreview.cat||'OK',parity:_entryPreview.parity||autoParity(num),group:'',prefinal:'',serie:''});
+  statuses[num]={};TASKS.forEach(t=>statuses[num][t]='none');trackStatus[num]={};notes[num]=note;
+  const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;update(ref(db),u);
+  saveAll();closeModal();
+}
+window.confirmFromEntryList=confirmFromEntryList;
+
+function savePilotManual(){
+  const num=document.getElementById('f-num').value.trim();
+  const name=(document.getElementById('f-name')?document.getElementById('f-name').value.trim().toUpperCase():'');
+  const team=(document.getElementById('f-team')?document.getElementById('f-team').value.trim().toUpperCase():'');
+  const cat=document.getElementById('f-cat')?document.getElementById('f-cat').value:'OK';
+  const note=document.getElementById('f-note-m')?document.getElementById('f-note-m').value.trim():'';
+  if(!num||!name||!team){alert('Compila tutti i campi');return;}
+  if(pilots.find(p=>p.num===num)){alert('Numero già presente');return;}
+  pilots.push({num,name,team,cat,parity:autoParity(num),group:'',prefinal:'',serie:''});
+  statuses[num]={};TASKS.forEach(t=>statuses[num][t]='none');trackStatus[num]={};notes[num]=note;
+  const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;update(ref(db),u);
+  saveAll();closeModal();
+}
+window.savePilotManual=savePilotManual;
+
+function openEditPilot(num){
+  const p=pilots.find(x=>x.num===num);if(!p)return;
+  const cats=['KZ2','OK','OKJ','MINI GR3','MINI U10','OK-NJ'];
+  openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
+    +'<div class="modal-title">Modifica #'+p.num+'</div>'
+    +'<div class="form-group"><label class="form-label">Nome</label><input class="form-input" id="ef-name" value="'+p.name+'"></div>'
+    +'<div class="form-group"><label class="form-label">Scuderia</label><input class="form-input" id="ef-team" value="'+p.team+'"></div>'
+    +'<div class="form-group"><label class="form-label">Categoria</label>'
+    +'<select class="form-select" id="ef-cat">'+cats.map(c=>'<option'+(c===p.cat?' selected':'')+'>'+c+'</option>').join('')+'</select></div>'
+    +'<div style="font-size:11px;color:var(--text4);margin-bottom:14px;padding:8px 12px;background:var(--bg3);border-radius:6px">Parità: <strong style="color:var(--text)">'+p.parity+'</strong> <span style="font-size:9px">(auto da #'+p.num+')</span></div>'
+    +'<div class="form-group"><label class="form-label">Gruppo (A-E)</label>'
+    +'<select class="form-select" id="ef-group"><option value=""'+(!p.group?' selected':'')+'>—</option>'+['A','B','C','D','E'].map(g=>'<option'+(p.group===g?' selected':'')+'>'+g+'</option>').join('')+'</select></div>'
+    +'<div class="form-group"><label class="form-label">Prefinal (A/B)</label>'
+    +'<select class="form-select" id="ef-prefinal"><option value=""'+(!p.prefinal?' selected':'')+'>—</option>'+['A','B'].map(g=>'<option'+(p.prefinal===g?' selected':'')+'>'+g+'</option>').join('')+'</select></div>'
+    +'<div class="form-group"><label class="form-label">Serie (1/2/3)</label>'
+    +'<select class="form-select" id="ef-serie"><option value=""'+(!p.serie?' selected':'')+'>—</option>'+['1','2','3'].map(g=>'<option'+(p.serie===g?' selected':'')+'>'+g+'</option>').join('')+'</select></div>'
+    +'<button class="form-submit" onclick="updatePilot(\''+num+'\')">SALVA</button>'
+    +'<button class="form-delete" onclick="deletePilot(\''+num+'\')">Elimina pilota</button>');
+}
+window.openEditPilot=openEditPilot;
+
+function updatePilot(num){
+  const p=pilots.find(x=>x.num===num);if(!p)return;
+  p.name=document.getElementById('ef-name').value.trim().toUpperCase();
+  p.team=document.getElementById('ef-team').value.trim().toUpperCase();
+  p.cat=document.getElementById('ef-cat').value;
+  p.group=document.getElementById('ef-group').value;
+  p.prefinal=document.getElementById('ef-prefinal').value;
+  p.serie=document.getElementById('ef-serie').value;
+  saveAll();closeModal();
+}
+window.updatePilot=updatePilot;
+
+function deletePilot(num){
+  if(!confirm('Eliminare?'))return;
+  pilots=pilots.filter(p=>p.num!==num);
+  delete statuses[num];delete trackStatus[num];delete notes[num];
+  const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;update(ref(db),u);
+  saveAll();closeModal();
+}
+window.deletePilot=deletePilot;
+
+function renderAll(){
+  if(activeTab==='gare')renderGare();
+  if(activeTab==='piloti')renderPilots();
+  if(activeTab==='programma')renderSchedule();
+  if(activeTab==='pista')renderPista();
+}
+
+// ── MIGRATION: if old data exists at /tracker, offer to migrate ──
+onValue(ref(db,'tracker'),snap=>{
+  const old=snap.val();
+  if(old&&old.pilots&&!Object.keys(races).length){
+    // Show migration banner instead of blocking confirm
+    const banner=document.createElement('div');
+    banner.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#1c1003;border-top:2px solid #fbbf24;padding:16px;z-index:300;text-align:center;font-family:Courier New,monospace;';
+    banner.innerHTML='<div style="font-size:12px;font-weight:700;color:#fbbf24;margin-bottom:8px">Trovati dati esistenti ('+Object.keys(old.pilots).length+' piloti)</div>'
+      +'<button onclick="doMigrate()" style="padding:10px 20px;background:#fbbf24;color:#000;border:none;border-radius:8px;font-weight:900;font-family:inherit;cursor:pointer;margin-right:8px">MIGRA ALLA V4</button>'
+      +'<button onclick="this.parentElement.remove()" style="padding:10px 20px;background:none;color:#fbbf24;border:1px solid #fbbf24;border-radius:8px;font-weight:700;font-family:inherit;cursor:pointer">IGNORA</button>';
+    document.body.appendChild(banner);
+    window.doMigrate=function(){
+      banner.innerHTML='<div style="color:#fbbf24;font-weight:700">Migrazione in corso...</div>';
+      const id='race_'+Date.now();
+      const u={};
+      u['races_index/'+id]={name:'WSK Super Master Franciacorta',circuit:'Franciacorta',entryCount:Object.keys(ENTRY_LIST).length,pilotCount:Object.keys(old.pilots).length,createdAt:new Date().toISOString()};
+      u['races/'+id]={...old,entryList:ENTRY_LIST,schedule:SCHEDULE,days:DAYS,finals:FINALS};
+      update(ref(db),u).then(()=>{banner.remove();switchRace(id);showTab('piloti');});
+    };
+  }
+},{onlyOnce:true});
+
+// Init: show correct tab
+showTab(activeTab);
+
+</script>
+</body>
+</html>
