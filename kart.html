@@ -44,7 +44,7 @@ html,body{overscroll-behavior-x:none;}
 .nav-current{font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--text);flex:1;}
 .menu-btn{display:none;}
 /* FLOATING HAMBURGER */
-.fab-menu{position:fixed;top:18px;right:16px;width:42px;height:42px;border-radius:50%;background:var(--bg2);border:1px solid var(--border2);color:var(--text);font-size:16px;cursor:pointer;z-index:101;box-shadow:0 2px 10px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-family:inherit;-webkit-tap-highlight-color:transparent;}
+.fab-menu{position:fixed;top:62px;right:16px;width:38px;height:38px;border-radius:50%;background:var(--bg2);border:1px solid var(--border2);color:var(--text);font-size:15px;cursor:pointer;z-index:101;box-shadow:0 2px 10px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-family:inherit;-webkit-tap-highlight-color:transparent;}
 .nav-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:150;display:none;align-items:flex-end;}
 .nav-overlay.open{display:flex;}
 .nav-menu{background:var(--modal-bg);border-radius:16px 16px 0 0;width:100%;padding:20px;border-top:1px solid var(--border);}
@@ -355,7 +355,7 @@ body.light .scuderia-item.selected{color:#2563eb;background:rgba(37,99,235,.08);
       <button class="io-btn import" onclick="document.getElementById('import-input').click()">⬆ IMPORTA</button>
       <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(event)">
     </div>
-    <button class="mgmt-btn" onclick="openAddPilot()">+ AGGIUNGI PILOTA</button>
+    <button class="mgmt-btn" style="border-color:#f472b6;color:#f472b6" onclick="copyAllForEditor()">📋 COPIA TUTTI PER EDITOR</button>
     <div class="filter-section">
       <div class="filter-row">
         <span class="filter-row-label">TASK</span>
@@ -1291,7 +1291,8 @@ function listenRaceData(raceId){
     trackStatus=userData.trackStatus||{};
     pilots.forEach(p=>{
       if(!p.group)p.group='';if(!p.prefinal)p.prefinal='';if(!p.serie)p.serie='';if(!p.eliminated)p.eliminated=false;
-      if(!p.heats)p.heats=[];  // nuovo campo — array di coppie heat es. ["A-B","A-D"]
+      if(!p.heats)p.heats=[];
+      if(!p.inFinal)p.inFinal=false;  // nuovo campo — array di coppie heat es. ["A-B","A-D"]
       if(!statuses[p.num])statuses[p.num]={};
       TASKS.forEach(t=>{if(!statuses[p.num][t])statuses[p.num][t]='red';});
       if(!trackStatus[p.num])trackStatus[p.num]={};
@@ -1857,8 +1858,9 @@ function applyWSKHeats(raceId){
     pilots.forEach(p=>{
       const a=assignMap[p.num];
       if(a){
-        p.heats=Array.isArray(a.heats)?a.heats.map(h=>String(h).trim().toUpperCase()):[String(a.heats).trim().toUpperCase()];
-        p.group='';
+        if(a.heats&&a.heats.length){p.heats=a.heats.map(h=>String(h).trim().toUpperCase());p.group='';}
+        if(a.prefinal!==undefined)p.prefinal=a.prefinal;
+        if(a.inFinal!==undefined)p.inFinal=a.inFinal;
         updated++;
       } else {
         notFound++;
@@ -1888,8 +1890,8 @@ function showWSKBookmarklet(){
     +'const base=\'https://www.wskarting.it/\'+sResultsPath;'
     +'const links=[];'
     +'document.querySelectorAll(\'[onclick*="openResult"]\').forEach(a=>{'
-    +'const t=a.textContent.trim();const m=t.match(/Eliminatory Heats ([A-E]-[A-E])/);if(!m)return;'
-    +'const fm=a.getAttribute(\'onclick\').match(/openResult\\(\'(.+?)\'\)/);if(!fm)return;'
+    +'const t=a.textContent.trim();'
+    +'const fm=a.getAttribute(\'onclick\').match(/openResult\\(\'(.+?)\'\\)/);if(!fm)return;'
     +'const f=fm[1];let cat=null;'
     +'if(f.startsWith(\'miniu10\'))cat=\'MINI U10\';'
     +'else if(f.startsWith(\'minigr3\'))cat=\'MINI GR3\';'
@@ -1897,7 +1899,13 @@ function showWSKBookmarklet(){
     +'else if(f.startsWith(\'ok-njunior\'))cat=\'OK-NJ\';'
     +'else if(f.startsWith(\'kz2\'))cat=\'KZ2\';'
     +'else if(f.startsWith(\'ok_\'))cat=\'OK\';'
-    +'if(cat)links.push({url:base+f,pair:m[1],cat});'
+    +'if(!cat)return;'
+    +'const hm=t.match(/Eliminatory Heats ([A-E]-[A-E])/);'
+    +'const wpm=t.match(/Warm UP Prefinal ([AB])/);'
+    +'const isFinal=t.trim()===\'FINAL\';'
+    +'if(hm)links.push({url:base+f,type:\'heat\',pair:hm[1],cat});'
+    +'else if(wpm)links.push({url:base+f,type:\'prefinal\',prefinal:wpm[1],cat});'
+    +'else if(isFinal)links.push({url:base+f,type:\'final\',cat});'
     +'});'
     +'const ph={};'
     +'for(const l of links){'
@@ -1905,17 +1913,19 @@ function showWSKBookmarklet(){
     +'const pdf=await pdfjsLib.getDocument(l.url).promise;'
     +'const page=await pdf.getPage(1);'
     +'const c=await page.getTextContent();'
-    +'c.items.filter(i=>Math.round(i.height)===11&&/^\\d{3}$/.test(i.str.trim())).forEach(i=>{'
-    +'const n=i.str.trim();'
-    +'if(!ph[n])ph[n]={heats:[]};'
-    +'if(!ph[n].heats.includes(l.pair))ph[n].heats.push(l.pair);'
+    +'const nums=c.items.filter(i=>{const h=Math.round(i.height);const v=i.str.trim();if(!v||!/^\\d{3}$/.test(v))return false;if(l.type===\'heat\')return h===11;return h===7;}).map(i=>i.str.trim());'
+    +'nums.forEach(n=>{'
+    +'if(!ph[n])ph[n]={heats:[],prefinal:\'\',inFinal:false};'
+    +'if(l.type===\'heat\'&&!ph[n].heats.includes(l.pair))ph[n].heats.push(l.pair);'
+    +'if(l.type===\'prefinal\')ph[n].prefinal=l.prefinal;'
+    +'if(l.type===\'final\')ph[n].inFinal=true;'
     +'});'
     +'}catch(e){}'
     +'}'
-    +'const result=Object.entries(ph).map(([num,d])=>({num,heats:d.heats.sort()})).sort((a,b)=>parseInt(a.num)-parseInt(b.num));'
+    +'const result=Object.entries(ph).map(([num,d])=>{const o={num};if(d.heats.length)o.heats=d.heats.sort();if(d.prefinal)o.prefinal=d.prefinal;if(d.inFinal)o.inFinal=true;return o;}).sort((a,b)=>parseInt(a.num)-parseInt(b.num));'
     +'const json=JSON.stringify(result);'
-    +'navigator.clipboard.writeText(json).then(()=>alert(\'✅ \'+Object.keys(ph).length+\' piloti trovati!\\nJSON copiato negli appunti.\\nTorna sull\\\'app e incolla nelle impostazioni gara.\')).catch(()=>{prompt(\'Copia questo JSON:\',json);});'
-    +'})();';
+    +'navigator.clipboard.writeText(json).then(()=>alert(\'✅ \'+Object.keys(ph).length+\' piloti. Torna nell\\\'app e incolla.\')).catch(()=>{prompt(\'Copia:\',json);});'
+    +'})();;';
 
   const bookmarklet='javascript:'+encodeURIComponent(script);
 
@@ -2268,6 +2278,20 @@ function addPilotFromDetail(num){
 }
 window.addPilotFromDetail=addPilotFromDetail;
 
+// ── COPIA TUTTI PER EDITOR ──
+function copyAllForEditor(){
+  if(!pilots.length){alert('Nessun pilota da copiare');return;}
+  const active=pilots.filter(p=>!p.eliminated);
+  const text=active.map(p=>{
+    const note=notes[p.num]?notes[p.num].trim():'';
+    return'#'+p.num+' '+p.name+(note?'\nNote: '+note:'');
+  }).join('\n\n');
+  navigator.clipboard.writeText(text)
+    .then(()=>alert('✅ Copiato! '+active.length+' piloti negli appunti.'))
+    .catch(()=>{prompt('Copia questo testo:',text);});
+}
+window.copyAllForEditor=copyAllForEditor;
+
 // ══════════════════════════════════════
 // ADVANCED SEARCH — shared helpers
 // ══════════════════════════════════════
@@ -2558,9 +2582,9 @@ function renderEntryList(){
   let html='';
   Object.entries(groups).forEach(([cat,members])=>{
     const catCls=catClass(cat);
-    html+='<div style="font-size:10px;font-weight:800;color:var(--text4);letter-spacing:2px;padding:10px 0 4px;border-top:1px solid var(--border);margin-top:4px">'
+    html+='<div style="font-size:14px;font-weight:900;letter-spacing:2px;padding:14px 0 6px;border-top:1px solid var(--border);margin-top:6px">'
       +'<span class="'+catCls+'">'+cat+'</span>'
-      +' <span style="font-weight:600;color:var(--text4)">'+members.length+'</span></div>';
+      +' <span style="font-size:11px;font-weight:600;color:var(--text4)">'+members.length+'</span></div>';
     members.forEach(p=>{
       const isMine=!!pilots.find(x=>x.num===p.num);
       html+='<div class="entry-item'+(isMine?' is-mine':'')+'" onclick="openPilotDetail(\''+p.num+'\')">'
@@ -2611,6 +2635,7 @@ function renderPilots(){
     +(p.heats&&p.heats.length?p.heats.join(' '):(p.group?'GRP '+p.group:'GRP ?'))
     +'</span>'
     +'<button class="pilot-edit-btn" onclick="openEditPilot(\''+p.num+'\')">✎ modifica</button>'
+    +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="deletePilot(\''+p.num+'\')">✕ rimuovi</button>'
     +'</div></div>'
     +(isElim?'':'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,false)).join('')+'</div>')
     +'<div class="note-wrap"><span class="note-label">Note</span>'
@@ -2712,7 +2737,9 @@ function renderSchedule(){
     html+='<div class="session-divider">FINALI</div>';
     const myCats=[...new Set(pilots.map(p=>p.cat))];
     currentFinals.filter(f=>myCats.includes(f.cat)).forEach(f=>{
-      const ps=pilots.filter(p=>p.cat===f.cat);
+      const allCat=pilots.filter(p=>p.cat===f.cat);
+      const finalists=allCat.filter(p=>p.inFinal);
+      const ps=finalists.length?finalists:allCat;
       html+='<div class="final-card"><div class="final-title">🏆 '+f.label+'</div>'
         +'<div class="final-row"><span>Partenza</span><span class="final-time">'+f.time+'</span></div>';
       ps.forEach(p=>{
