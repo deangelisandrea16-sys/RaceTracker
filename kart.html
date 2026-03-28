@@ -1323,6 +1323,9 @@ function listenRaceData(raceId){
       if(!p.group)p.group='';if(!p.prefinal)p.prefinal='';if(!p.serie)p.serie='';if(!p.eliminated)p.eliminated=false;
       if(!p.heats)p.heats=[];
       if(!p.inFinal)p.inFinal=false;  // nuovo campo — array di coppie heat es. ["A-B","A-D"]
+      // Normalize highlight: ensure it's always array or empty string
+      if(p.highlight&&typeof p.highlight==='string')p.highlight=[p.highlight];
+      if(!p.highlight||!Array.isArray(p.highlight))p.highlight=[];
       if(!statuses[p.num])statuses[p.num]={};
       TASKS.forEach(t=>{if(!statuses[p.num][t])statuses[p.num][t]='red';});
       if(!trackStatus[p.num])trackStatus[p.num]={};
@@ -2650,7 +2653,7 @@ function renderPilots(){
     +' <span style="color:var(--text);font-size:18px;font-weight:900;margin-left:8px;">'+showing+((filterTask!=='all'||filterStatus!=='all')?'/'+total:'')+'</span></div>';
   el.innerHTML=counter+filtered.map((p,i)=>{
     const isElim=p.eliminated;
-    const hlArr=Array.isArray(p.highlight)?p.highlight:(p.highlight?[p.highlight]:[]);
+    const hlArr=p.highlight||[];
     const hlLabels={foto:'📷 FOTO',video:'🎬 VIDEO',priority:'⭐ PRIORITÀ'};
     const hlCardClass=hlArr.includes('foto')&&hlArr.includes('video')?'hl-both':hlArr.length===1?'hl-'+hlArr[0]:'';
     return'<div class="card '+hlCardClass+'" style="'+(isElim?'opacity:.4;border-style:dashed':'')+'">'
@@ -2759,7 +2762,7 @@ function renderSchedule(){
       +'<div style="margin-top:8px">';
     ps.forEach(p=>{
       const hlScheduleLabels={foto:'📷',video:'🎬',priority:'⭐'};
-      const shlArr=Array.isArray(p.highlight)?p.highlight:(p.highlight?[p.highlight]:[]);
+      const shlArr=p.highlight||[];
       const shlClass=shlArr.includes('foto')&&shlArr.includes('video')?'hl-both':shlArr.length===1?'hl-'+shlArr[0]:'';
       html+='<div class="card-inner'+(shlClass?' '+shlClass:'')+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
         +(shlArr.length?shlArr.map(h=>'<span class="hl-badge hl-'+h+'" style="padding:1px 5px;font-size:8px">'+hlScheduleLabels[h]+'</span>').join(''):'')
@@ -3011,8 +3014,7 @@ window.savePilotManual=savePilotManual;
 function openEditPilot(num){
   const p=pilots.find(x=>x.num===num);if(!p)return;
   const cats=['KZ2','OK','OKJ','MINI GR3','MINI U10','OK-NJ'];
-  // Normalize highlight: support old string format and new array format
-  const hlArr=Array.isArray(p.highlight)?p.highlight:(p.highlight?[p.highlight]:[]);
+  const hlArr=p.highlight||[];
   openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
     +'<div class="modal-title">Modifica #'+p.num+'</div>'
     +(p.eliminated?'<div style="background:#1c0303;border:1px solid #dc2626;border-radius:8px;padding:10px;margin-bottom:14px;font-size:11px;font-weight:700;color:#f87171;letter-spacing:1px;display:flex;justify-content:space-between;align-items:center"><span>🚫 ELIMINATO</span><button style="font-size:10px;color:#f87171;background:none;border:1px solid #dc2626;border-radius:6px;padding:4px 10px;cursor:pointer;font-family:inherit;font-weight:700" onclick="toggleEliminated(\''+num+'\')">RIATTIVA</button></div>':'')
