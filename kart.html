@@ -274,7 +274,7 @@ body.light .scuderia-item.selected{color:#2563eb;background:rgba(37,99,235,.08);
 <div class="header">
   <div>
     <div class="header-sub"><span class="header-dot" id="conn-dot"></span><span id="race-header-name">RACE TRACKER</span></div>
-    <div class="header-title">RACE TRACKER <span style="font-size:9px;color:var(--text4);font-weight:500">v4.0</span></div>
+    <div class="header-title">RACE TRACKER <span style="font-size:9px;color:var(--text4);font-weight:500">v4.1</span></div>
   </div>
   <div class="header-right">
     <span class="sync-status" id="sync-status">SYNC...</span>
@@ -1488,6 +1488,7 @@ function pilotsForSlot(slot){
     if(slot.type==='serie'){if(!p.serie)return false;return String(p.serie).trim()===String(slot.filter).trim();}
     if(slot.type==='group')return pilotInGroup(p,slot.filter);
     if(slot.type==='prefinal'){if(!p.prefinal)return false;return String(p.prefinal).trim().toUpperCase()===String(slot.filter).trim().toUpperCase();}
+    if(slot.type==='list'){if(!Array.isArray(slot.filter))return false;return slot.filter.map(String).includes(String(p.num));}
     return false;
   });
 }
@@ -1507,6 +1508,7 @@ function slotFilterLabel(slot){
   if(slot.type==='serie')return'SERIE '+slot.filter;
   if(slot.type==='group')return'GRP '+slot.filter.join('+');
   if(slot.type==='prefinal')return'PREF '+slot.filter;
+  if(slot.type==='list')return'LIST '+(Array.isArray(slot.filter)?slot.filter.length:0);
   return'ALL';
 }
 function taskBtn(num,task,small){
@@ -2517,6 +2519,7 @@ function buildProgResultsHtml(fakePilots){
       if(slot.type==='serie'){if(!p.serie)return false;return String(p.serie).trim()===String(slot.filter).trim();}
       if(slot.type==='group')return pilotInGroup(p,slot.filter);
       if(slot.type==='prefinal'){if(!p.prefinal)return false;return String(p.prefinal).trim().toUpperCase()===String(slot.filter).trim().toUpperCase();}
+      if(slot.type==='list'){if(!Array.isArray(slot.filter))return false;return slot.filter.map(String).includes(String(p.num));}
       return false;
     });
     if(!ps.length)return;
