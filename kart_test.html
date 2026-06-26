@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Race Tracker">
@@ -24,7 +24,7 @@
   --shadow-pop:0 26px 60px -22px rgba(0,0,0,.85);
   --glass:rgba(14,16,24,.72);
   --ease:cubic-bezier(.22,.85,.26,1);
-  --tab-h:60px;
+  --tab-h:64px;--safe-b:max(env(safe-area-inset-bottom),12px);
 }
 body.light{
   --bg:#eceef2;--bg2:#ffffff;--bg3:#f4f6fa;
@@ -42,7 +42,7 @@ body.light{
 }
 html{background:var(--bg);overflow-x:hidden;overflow-y:auto;height:100%;}
 html,body{overscroll-behavior-x:none;}
-body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;padding-bottom:calc(var(--tab-h) + env(safe-area-inset-bottom) + 12px);transition:background .25s,color .25s;-webkit-text-size-adjust:100%;overflow-x:hidden;overflow-y:auto;letter-spacing:-.01em;}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;padding-bottom:calc(var(--tab-h) + var(--safe-b) + 12px);transition:background .25s,color .25s;-webkit-text-size-adjust:100%;overflow-x:hidden;overflow-y:auto;letter-spacing:-.01em;}
 .pilot-num,.inner-num,.sr-num,.entry-num,.slot-time,.final-time,.race-name{font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;letter-spacing:-.02em;}
 /* HEADER (frosted) */
 .header{padding:calc(env(safe-area-inset-top) + 12px) 18px 12px;position:sticky;top:0;background:var(--glass);-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);border-bottom:1px solid var(--border);z-index:100;display:flex;align-items:center;justify-content:space-between;}
@@ -62,7 +62,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Inter','Segoe U
 .nav-current{font-size:12px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:var(--text3);flex:1;}
 .menu-btn{display:none;}
 /* hamburger kept as secondary (debug/overflow) */
-.fab-menu{position:fixed;top:calc(env(safe-area-inset-top) + 14px);right:18px;width:38px;height:38px;border-radius:var(--pill);background:var(--bg2);border:1px solid var(--border);color:var(--text);font-size:15px;cursor:pointer;z-index:101;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;transition:transform .15s var(--ease);}
+.fab-menu{display:none!important;position:fixed;top:calc(env(safe-area-inset-top) + 14px);right:18px;width:38px;height:38px;border-radius:var(--pill);background:var(--bg2);border:1px solid var(--border);color:var(--text);font-size:15px;cursor:pointer;z-index:101;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;transition:transform .15s var(--ease);}
 .fab-menu:active{transform:scale(.9);}
 .nav-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);z-index:150;display:none;align-items:flex-end;}
 .nav-overlay.open{display:flex;}
@@ -255,13 +255,16 @@ body.light .form-submit{color:#fff;}
 .cat-u10{color:#3bdcf0;} body.light .cat-u10{color:#0891b2;}
 .cat-nj{color:#ffce4a;} body.light .cat-nj{color:#d97706;}
 /* FABs (raised above tab bar) */
-.fab-now{position:fixed;bottom:calc(var(--tab-h) + env(safe-area-inset-bottom) + 16px);right:18px;width:52px;height:52px;border-radius:var(--pill);background:var(--accent);color:#04150a;border:none;font-size:11px;font-weight:800;cursor:pointer;z-index:90;box-shadow:0 10px 26px -8px var(--accent);letter-spacing:.5px;display:none;transition:transform .15s var(--ease);}
+.fab-now{position:fixed;bottom:calc(var(--tab-h) + var(--safe-b) + 16px);right:18px;width:52px;height:52px;border-radius:var(--pill);background:var(--accent);color:#04150a;border:none;font-size:11px;font-weight:800;cursor:pointer;z-index:90;box-shadow:0 10px 26px -8px var(--accent);letter-spacing:.5px;display:none;transition:transform .15s var(--ease);}
 .fab-now.visible{display:flex;align-items:center;justify-content:center;}
 .fab-now:active{transform:scale(.9);}
-.fab-top{position:fixed;bottom:calc(var(--tab-h) + env(safe-area-inset-bottom) + 78px);right:18px;width:44px;height:44px;border-radius:var(--pill);background:var(--bg2);border:1px solid var(--border2);color:var(--text3);font-size:17px;cursor:pointer;z-index:90;box-shadow:var(--shadow);display:none;align-items:center;justify-content:center;}
+.fab-top{position:fixed;bottom:calc(var(--tab-h) + var(--safe-b) + 78px);right:18px;width:44px;height:44px;border-radius:var(--pill);background:var(--bg2);border:1px solid var(--border2);color:var(--text3);font-size:17px;cursor:pointer;z-index:90;box-shadow:var(--shadow);display:none;align-items:center;justify-content:center;}
 .fab-top.visible{display:flex;}
 /* LIVE TIMING */
-.live-timing-frame{width:100%;height:calc(100vh - 180px);min-height:420px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);overflow:hidden;}
+.lt-wrap{position:relative;overflow:hidden;width:100%;height:calc(100vh - 210px);min-height:420px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);}
+.live-timing-frame{position:absolute;top:0;left:0;width:100%;height:100%;border:none;background:var(--bg2);}
+.lt-nudge{font-size:16px;font-weight:800;width:36px;height:32px;display:flex;align-items:center;justify-content:center;background:var(--bg2);color:var(--text2);border:1px solid var(--border2);border-radius:8px;cursor:pointer;font-family:inherit;}
+.lt-nudge:active{transform:scale(.92);}
 .inner-team-big{font-size:13px;font-weight:700;color:var(--text2);}
 body.light .inner-team-big{color:var(--text3);}
 /* FILTER EXPANDED */
@@ -308,7 +311,7 @@ body.light .adv-cat-btn.cat-nj{border-color:#d97706;color:#d97706;}
 .entry-team{font-size:12px;font-weight:600;color:var(--text3);}
 .entry-badges{display:flex;flex-direction:column;align-items:flex-end;gap:5px;margin-left:auto;}
 /* BOTTOM TAB BAR (iOS) */
-.tabbar{position:fixed;left:0;right:0;bottom:0;height:calc(var(--tab-h) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);display:flex;align-items:stretch;background:var(--glass);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);border-top:1px solid var(--border);z-index:120;}
+.tabbar{position:fixed;left:0;right:0;bottom:0;height:calc(var(--tab-h) + var(--safe-b));padding-bottom:var(--safe-b);display:flex;align-items:stretch;background:var(--glass);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);border-top:1px solid var(--border);z-index:120;}
 .tabbar-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;cursor:pointer;color:var(--text4);font-family:inherit;padding:8px 2px;transition:color .15s var(--ease);}
 .tabbar-btn:active{opacity:.6;}
 .tabbar-ico{font-size:21px;line-height:1;}
@@ -330,7 +333,7 @@ body.light .adv-cat-btn.cat-nj{border-color:#d97706;color:#d97706;}
 <div class="header">
   <div>
     <div class="header-sub"><span class="header-dot" id="conn-dot"></span><span id="race-header-name">RACE TRACKER</span></div>
-    <div class="header-title">RACE TRACKER <span style="font-size:9px;color:var(--text4);font-weight:500">v4.1</span></div>
+    <div class="header-title">RACE TRACKER <span onclick="navTo('debug')" style="font-size:9px;color:var(--text4);font-weight:500;cursor:pointer;padding:2px 4px;border-radius:5px" title="debug">v4.1</span></div>
   </div>
   <div class="header-right">
     <span class="sync-status" id="sync-status">SYNC...</span>
@@ -503,14 +506,24 @@ body.light .adv-cat-btn.cat-nj{border-color:#d97706;color:#d97706;}
 <!-- TAB LIVE TIMING -->
 <div id="tab-livetiming" class="tab-content" style="display:none">
   <div class="content" style="padding:8px">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">
       <div id="live-timing-label" style="font-size:11px;font-weight:700;color:var(--text4);letter-spacing:1px">⏱ LIVE TIMING</div>
-      <div style="display:flex;gap:6px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button id="lt-compact-btn" onclick="toggleLiveCompact()" style="font-size:11px;font-weight:700;background:var(--bg2);color:var(--text2);border:1px solid var(--border2);border-radius:6px;padding:7px 12px;cursor:pointer;font-family:inherit">⊟ Solo classifica</button>
         <button onclick="setLiveTimingSrc()" style="font-size:11px;font-weight:700;background:var(--bg2);color:var(--text2);border:1px solid var(--border2);border-radius:6px;padding:7px 12px;cursor:pointer;font-family:inherit">↻ Aggiorna</button>
         <button onclick="openLiveTimingTab()" style="font-size:11px;font-weight:700;background:var(--bg2);color:var(--text2);border:1px solid var(--border2);border-radius:6px;padding:7px 12px;cursor:pointer;font-family:inherit">↗ Scheda</button>
       </div>
     </div>
-    <iframe class="live-timing-frame" id="live-timing-frame" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" loading="lazy" referrerpolicy="no-referrer"></iframe>
+    <div id="lt-adjust" style="display:none;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="font-size:10px;font-weight:700;color:var(--text4);letter-spacing:1.5px">RITAGLIO ALTO</span>
+      <button class="lt-nudge" onclick="nudgeLiveCrop(-20)">−</button>
+      <span id="lt-crop-val" style="font-size:12px;font-weight:800;color:var(--text2);min-width:52px;text-align:center;font-variant-numeric:tabular-nums">0px</span>
+      <button class="lt-nudge" onclick="nudgeLiveCrop(20)">+</button>
+      <button onclick="nudgeLiveCrop(0,true)" style="font-size:10px;font-weight:700;color:var(--text4);background:none;border:none;cursor:pointer;font-family:inherit;text-decoration:underline;margin-left:4px">reset</button>
+    </div>
+    <div class="lt-wrap" id="lt-wrap">
+      <iframe class="live-timing-frame" id="live-timing-frame" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" loading="lazy" referrerpolicy="no-referrer"></iframe>
+    </div>
   </div>
 </div>
 
@@ -1519,6 +1532,17 @@ function normalizeGroup(v){
 }
 // Restituisce true se il pilota appartiene a uno dei gruppi nell'array filterArr
 // filterArr è sempre un array di lettere, es. ['A','B']
+function canonCat(c){
+  // Normalizza le diciture categoria tra competizioni (WSK/ACI/ecc.)
+  // es. "MINI U10"=="MINI GR3 U10"=="MINI GR.3 U10"; "OK"=="OK-N"; "OKJ"=="OK-N JUNIOR"
+  var s=String(c||'').toUpperCase().replace(/[.\-_]/g,'').replace(/\s+/g,'');
+  if(s.indexOf('U10')>=0)return 'U10';
+  if(s.indexOf('MINI')>=0)return 'MINIGR3';
+  if(s.indexOf('KZ2')>=0)return 'KZ2';
+  if(s.indexOf('OK')>=0)return s.indexOf('J')>=0?'OKNJ':'OKN';
+  return s;
+}
+window.canonCat=canonCat;
 function pilotInGroup(pilot,filterArr){
   // NUOVO: se il pilota ha heats[], controlla se questa coppia di gruppi è nella lista
   // es. filterArr=['A','B'] → cerca 'A-B' in pilot.heats
@@ -1544,7 +1568,7 @@ function pilotHasGroupData(pilot){
 function pilotsForSlot(slot){
   return pilots.filter(p=>{
     if(p.eliminated)return false;
-    if(p.cat!==slot.cat)return false;
+    if(canonCat(p.cat)!==canonCat(slot.cat))return false;
     if(slot.type==='all')return true;
     if(slot.type==='parity')return p.parity===slot.filter;
     if(slot.type==='serie'){if(!p.serie)return false;return String(p.serie).trim()===String(slot.filter).trim();}
@@ -1558,7 +1582,7 @@ function pilotsForSlot(slot){
 function pilotsAwaitingData(slot){
   return pilots.filter(p=>{
     if(p.eliminated)return false;
-    if(p.cat!==slot.cat)return false;
+    if(canonCat(p.cat)!==canonCat(slot.cat))return false;
     if(slot.type==='serie'&&!String(p.serie||'').trim())return true;
     if(slot.type==='group'&&!pilotHasGroupData(p))return true;
     if(slot.type==='prefinal'&&!String(p.prefinal||'').trim())return true;
@@ -1638,7 +1662,7 @@ function toggleMenu(){document.getElementById('nav-overlay').classList.toggle('o
 window.toggleMenu=toggleMenu;
 function closeMenu(e){if(e.target===document.getElementById('nav-overlay'))document.getElementById('nav-overlay').classList.remove('open');}
 window.closeMenu=closeMenu;
-function navTo(tab){document.getElementById('nav-overlay').classList.remove('open');showTab(tab);}
+function navTo(tab){try{navigator.vibrate&&navigator.vibrate(8)}catch(e){}var ov=document.getElementById('nav-overlay');if(ov)ov.classList.remove('open');showTab(tab);}
 window.navTo=navTo;
 
 function hideFabs(){
@@ -1888,6 +1912,7 @@ function setLiveTimingSrc(){
   const lbl=document.getElementById('live-timing-label');
   if(url){ if(f.getAttribute('src')!==url)f.setAttribute('src',url); if(lbl)lbl.textContent='⏱ '+((cfg&&cfg.label)||'')+' LIVE TIMING'; }
   else { f.removeAttribute('src'); if(lbl)lbl.textContent='⏱ LIVE TIMING — imposta organizzazione/URL nelle impostazioni gara'; }
+  f.onload=applyLiveCrop; applyLiveCrop();
 }
 window.setLiveTimingSrc=setLiveTimingSrc;
 function openLiveTimingTab(){
@@ -1898,6 +1923,34 @@ function openLiveTimingTab(){
   else alert('Nessun URL live timing impostato per questa gara. Impostalo nelle impostazioni gara o scegli un\'organizzazione.');
 }
 window.openLiveTimingTab=openLiveTimingTab;
+
+// ── LIVE TIMING: modalità compatta (ritaglia l'intestazione apex, mostra dalla classifica in giù) ──
+function ltGet(k,d){try{const v=localStorage.getItem(k);return v==null?d:v;}catch(e){return d;}}
+function ltSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+function liveCropPx(){return parseInt(ltGet('rt_lt_crop','0'),10)||0;}
+function liveCompactOn(){return ltGet('rt_lt_compact','0')==='1';}
+function applyLiveCrop(){
+  const f=document.getElementById('live-timing-frame');if(!f)return;
+  const on=liveCompactOn();const px=on?liveCropPx():0;
+  f.style.top=(-px)+'px';
+  f.style.height='calc(100% + '+px+'px)';
+  const adj=document.getElementById('lt-adjust');if(adj)adj.style.display=on?'flex':'none';
+  const val=document.getElementById('lt-crop-val');if(val)val.textContent=px+'px';
+  const btn=document.getElementById('lt-compact-btn');
+  if(btn){btn.style.borderColor=on?'var(--accent)':'var(--border2)';btn.style.color=on?'var(--accent)':'var(--text2)';}
+}
+function toggleLiveCompact(){
+  const on=!liveCompactOn();
+  ltSet('rt_lt_compact',on?'1':'0');
+  if(on&&!liveCropPx())ltSet('rt_lt_crop','300');
+  applyLiveCrop();
+}
+function nudgeLiveCrop(d,reset){
+  if(reset){ltSet('rt_lt_crop','0');applyLiveCrop();return;}
+  let px=liveCropPx()+d;if(px<0)px=0;if(px>2000)px=2000;
+  ltSet('rt_lt_crop',String(px));applyLiveCrop();
+}
+window.applyLiveCrop=applyLiveCrop;window.toggleLiveCompact=toggleLiveCompact;window.nudgeLiveCrop=nudgeLiveCrop;
 
 function openNewRace(){
   openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
@@ -2620,7 +2673,7 @@ function buildProgResultsHtml(fakePilots){
   let html='';
   slots.forEach(slot=>{
     const ps=fakePilots.filter(p=>{
-      if(p.cat!==slot.cat)return false;
+      if(canonCat(p.cat)!==canonCat(slot.cat))return false;
       if(slot.type==='all')return true;
       if(slot.type==='parity')return p.parity===slot.filter;
       if(slot.type==='serie'){if(!p.serie)return false;return String(p.serie).trim()===String(slot.filter).trim();}
