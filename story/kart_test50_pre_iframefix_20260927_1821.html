@@ -530,7 +530,7 @@ body.light .adv-cat-btn.cat-nj{border-color:#d97706;color:#d97706;}
     </div>
     <div id="lt-mynums" style="display:none;margin-bottom:8px"></div>
     <div class="lt-wrap" id="lt-wrap">
-      <iframe class="live-timing-frame" id="live-timing-frame" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" loading="eager" referrerpolicy="no-referrer"></iframe>
+      <iframe class="live-timing-frame" id="live-timing-frame" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" loading="lazy" referrerpolicy="no-referrer"></iframe>
     </div>
   </div>
 </div>
@@ -1968,12 +1968,7 @@ function setLiveTimingSrc(){
   const lbl=document.getElementById('live-timing-label');
   if(url){ if(f.getAttribute('src')!==url)f.setAttribute('src',url); if(lbl)lbl.textContent='⏱ '+((cfg&&cfg.label)||'')+' LIVE TIMING'; }
   else { f.removeAttribute('src'); if(lbl)lbl.textContent='⏱ LIVE TIMING — imposta organizzazione/URL nelle impostazioni gara'; }
-  /* FIX SCHERMO NERO (27/09/2026): l'iframe veniva creato con la tab nascosta e su mobile restava nero
-     finche' non si premeva 'Aggiorna'. Ora: flag data-loaded impostato su onload; se entrando nel tab
-     l'iframe non risulta caricato, si riassegna src (about:blank -> url) per forzare il load. */
-  f.onload=function(){ if(f.getAttribute('src')&&f.getAttribute('src')!=='about:blank')f.dataset.loaded='1'; applyLiveCrop(); };
-  if(url&&f.dataset.loaded!=='1'){ f.setAttribute('src','about:blank'); setTimeout(function(){f.setAttribute('src',url);},60); }
-  applyLiveCrop();
+  f.onload=applyLiveCrop; applyLiveCrop();
 }
 window.setLiveTimingSrc=setLiveTimingSrc;
 let _ltTimer=null,_ltPaused=false;
