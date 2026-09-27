@@ -1951,7 +1951,7 @@ window.switchRaceAndRender=switchRaceAndRender;
 
 // ── ORGANIZZAZIONI (estendibile: nuova org = nuova voce, zero logica da toccare) ──
 const ORG_CONFIG={
-  ACI:  {label:'ACI Karting', tyre:'MG', liveTiming:'https://www.apex-timing.com/live-timing/wsk/index.html', /* live Apex diretto (non YouCrono): vedi nota in applyLiveCrop */ cats:['OK-N','OK-N JUNIOR','MINI GR.3','MINI GR.3 U10','KZ2']},
+  ACI:  {label:'ACI Karting', tyre:'MG', liveTiming:'', cats:['OK-N','OK-N JUNIOR','MINI GR.3','MINI GR.3 U10','KZ2']},
   WSK:  {label:'WSK',         tyre:'',   liveTiming:'https://www.wskarting.it/livetiming.asp?s=WSK_superMaster', cats:[]},
   ROK:  {label:'ROK Cup',     tyre:'',   liveTiming:'', cats:[]},
   IAME: {label:'IAME',        tyre:'',   liveTiming:'', cats:[]},
@@ -2041,15 +2041,7 @@ function liveCropPx(){return parseInt(ltGet('rt_lt_crop','300'),10)||0;}
 function liveCompactOn(){return ltGet('rt_lt_compact','0')==='1';}
 function applyLiveCrop(){
   const f=document.getElementById('live-timing-frame');if(!f)return;
-  /* LIVE TIMING - RITAGLIO ALTO DISATTIVATO (27/09/2026, gara Viterbo).
-   Motivo: le pagine degli organizzatori (es. YouCrono) sono contenitori con banner/header che
-   incorporano il vero live timing Apex/LSTiming in un iframe. Il tasto "fullscreen" (4 frecce) del
-   live Apex apre la pagina interna a se stante (link_fullscreen con href vuoto, vedi
-   apex-timing.com/live-timing/commonv2/javascript/javascript_live_timing.min.js, fn tzfhv).
-   Embeddando DIRETTAMENTE l'URL interno (es. https://www.apex-timing.com/live-timing/wsk/index.html)
-   la pagina e' gia' pulita: nessun ritaglio necessario. Crop forzato a 0 e controlli nascosti.
-   Per una nuova gara: nel campo URL Live Timing mettere l'<iframe src> interno, non la pagina contenitore. */
-  const on=false;const px=0;
+  const on=true;const px=liveCropPx();
   f.style.top=(-px)+'px';
   f.style.height='calc(100% + '+px+'px)';
   const adj=document.getElementById('lt-adjust');if(adj)adj.style.display=on?'flex':'none';
