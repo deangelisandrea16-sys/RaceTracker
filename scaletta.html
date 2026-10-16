@@ -48,26 +48,26 @@ h2{font-family:var(--f-display);font-weight:800;font-size:20px;text-transform:up
 
 <h2>Rimandati a domani</h2>
 <div class="list tomorrow" id="domani"></div>
-<div class="note">Il programma di sabato arriva stasera, con le prefinali A/B.</div>
+<div class="note">Regola: la bilancia di un pilota solo nei turni in cui non lo segui in pista (non c'è tempo per spostarsi). Il programma di sabato arriva stasera, con le prefinali A/B.</div>
 
 <script>
 const OGGI=[
- ["13:28","13:42","Pista · parte bassa","13:30 <b>#154</b> ⚠️ rischio: tutti i giri"],
- ["13:42","13:47","→ bilancia",null],
- ["13:47","13:52","Bilancia","<b>#152</b> ⚠️ e <b>#154</b> ⚠️: arrivo, casco tolto, faccia"],
- ["13:52","13:57","→ pista bassa",null],
- ["14:00","14:12","Pista · parte bassa","<b>#22</b>, <b>#30</b>, <b>#42</b> (U10 B-D)"],
- ["14:12","14:17","→ bilancia / pregriglia",null],
- ["14:17","14:45","Bilancia + pregriglia","bilancia <b>#22 #30 #42</b> · pregriglia Super <b>#622</b> · bilancia Super <b>#602 #622</b> (~14:30)"],
+ ["13:50","14:12","Pista · parte bassa","14:00 <b>#22</b>, <b>#30</b>, <b>#42</b> (U10 B-D)"],
+ ["14:12","14:17","→ pregriglia / bilancia",null],
+ ["14:17","14:45","Pregriglia + bilancia","pregriglia Super <b>#622</b> (14:15) · bilancia Super <b>#602 #622</b> (~14:30)"],
  ["14:45","14:50","→ paddock",null],
- ["14:50","15:10","Paddock","PRIMA i ⚠️: <b>#152</b> paddock + reportage · <b>#154</b> tutto · <b>#248</b> paddock · poi <b>#32</b> viso, reportage <b>#30 #42 #26 #22 #41</b>, tenda <b>#622</b>"],
+ ["14:50","15:10","Paddock","PRIMA i ⚠️: <b>#152</b> paddock + reportage · <b>#154</b> paddock + reportage + team · <b>#248</b> paddock · poi <b>#32</b> viso, reportage <b>#30 #42 #26 #22 #41</b>, tenda <b>#622</b>"],
  ["15:10","15:15","→ pregriglia",null],
- ["15:15","15:42","Pregriglia → pista","15:15 pregriglia <b>#248</b> ⚠️ <b>#236</b> ⚠️ <b>#221</b> · 15:27 pista <b>#236</b> sotto+sopra"],
- ["15:42","15:47","→ paddock",null],
- ["15:47","16:20","Paddock","PRIMA i ⚠️: <b>#216</b> paddock + bilancia (dopo 15:54) · <b>#236</b> bilancia + paddock · poi <b>#221</b> paddock, reportage <b>#465</b>"]
+ ["15:15","15:39","Pregriglia → pista","15:15 pregriglia <b>#248</b> ⚠️ <b>#236</b> ⚠️ <b>#221</b> · 15:27 pista <b>#236</b> sotto+sopra"],
+ ["15:39","15:44","→ bilancia",null],
+ ["15:44","16:00","Bilancia","<b>#216</b> ⚠️ (arriva ~15:54, non l'hai seguito in pista)"],
+ ["16:00","16:20","Paddock","<b>#216</b> ⚠️ paddock · <b>#236</b> ⚠️ paddock · <b>#221</b> paddock · reportage <b>#465</b>"]
 ];
 const DOMANI=[
  ["#154 ⚠️","pista ALTA + pregriglia · prefinale Mini (ultima occasione)"],
+ ["#152 #154 ⚠️","bilancia (in un turno in cui non li segui in pista)"],
+ ["#236 ⚠️","bilancia"],
+ ["#22 #42","bilancia"],
  ["#16","pista alta, bilancia, reportage"],
  ["#26","pista alta interno"],
  ["#41 #32","bilancia"],
