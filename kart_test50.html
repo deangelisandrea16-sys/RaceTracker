@@ -1400,8 +1400,12 @@ function listenRaces(){
     setSyncStatus('ok');
     // If no active race but races exist, pick first
     if(!activeRaceId||!races[activeRaceId]){
-      const ids=Object.keys(races);
-      if(ids.length) switchRace(ids[0]);
+      /* FIX 16/10/2026: niente piu' "prima gara della lista" (era la piu' vecchia, es. ACI con live WSK).
+         Si sceglie la gara in corso oggi (startDate<=oggi<=endDate), altrimenti la piu' recente per createdAt. */
+      const today=new Date().toISOString().slice(0,10);
+      const ids=Object.keys(races).sort((a,b)=>String((races[b]||{}).createdAt||'').localeCompare(String((races[a]||{}).createdAt||'')));
+      const live=ids.find(id=>{const r=races[id]||{};return r.startDate&&r.endDate&&r.startDate<=today&&today<=r.endDate;});
+      if(ids.length) switchRace(live||ids[0]);
       else{ initialized=true; renderAll(); }
     } else {
       updateRaceHeader();
