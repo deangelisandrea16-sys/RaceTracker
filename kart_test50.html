@@ -3413,7 +3413,8 @@ window.savePilotManual=savePilotManual;
 
 function openEditPilot(num){
   const p=pilots.find(x=>x.num===num);if(!p)return;
-  const cats=['KZ2','OK','OKJ','MINI GR3','MINI U10','OK-NJ'];
+  /* FIX 16/10/2026 (ROK Superfinal): categorie dalla gara attiva + categoria attuale del pilota, cosi' SALVA non la sovrascrive con KZ2 */
+  const cats=[...new Set([p.cat].concat(Object.values(currentEntryList||{}).map(e=>e&&e.cat),pilots.map(x=>x.cat),['KZ2','OK','OKJ','MINI GR3','MINI U10','OK-NJ']).filter(Boolean))];
   const hl=p.highlight||[];
   openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
     +'<div class="modal-title">Modifica #'+p.num+'</div>'
