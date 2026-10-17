@@ -46,21 +46,27 @@ h2{font-family:var(--f-display);font-weight:800;font-size:20px;text-transform:up
 <h2>Mattina</h2>
 <div class="list" id="oggi"></div>
 
-<h2>Strategia</h2>
+<h2>Messi peggio (dal peggiore)</h2>
 <div class="list tomorrow" id="domani"></div>
 <div class="note">Prefinali: Junior A #206 #236 · Junior B #215 #216 #221 #248 · U10 A #22 #26 #30 #41 · U10 B #16 #32 #42 · Mini A #130 #152 · Mini B #154 · Senior B #465. Finali: solo arrivi e premiazioni.</div>
 
 <script>
 const OGGI=[
- ["9:45","10:05","PADDOCK U10 A","⭐ <b>#22</b> Zera · ⭐ <b>#26</b> Cichucki — volto, famiglia, preparazione (corrono 10:49)"],
- ["10:05","10:30","PADDOCK U10 B","⭐ <b>#42</b> Naperty (10 clip!) · ⭐ <b>#32</b> Czernicki SENZA CASCO (corrono 11:04)"],
- ["10:30","11:00","libero","solo se avanzi: #41 (U10 A) · #154 (paddock, corre 11:34)"],
- ["11:00","11:20","BILANCIA","~11:02 ⭐ <b>#22</b> (+ volto ⭐ #26) · ~11:17 ⭐ <b>#32</b> ⭐ <b>#42</b> — poi hai finito"]
+ ["9:50","10:05","PADDOCK · tenda LA MOTOSPORT ASD","⭐ <b>#22 Zera</b> — paddock + reportage (corre 10:49)"],
+ ["10:05","10:25","PADDOCK · tenda AV RACING","⭐ <b>#32 Czernicki</b> — paddock + reportage, VOLTO SENZA CASCO · <b>#41 Zanochkin</b> — paddock + reportage"],
+ ["10:25","10:40","PADDOCK · tenda KUC MAREK (max 10 min)","⭐ <b>#42 Naperty</b> — paddock + reportage · <b>#154 Safarzynski</b> — paddock + reportage (stessa tenda). Se non la trovi: lascia, li prendi in bilancia"],
+ ["10:40","11:00","libero","margine"],
+ ["11:00","11:50","BILANCIA (resta lì)","~11:02 U10 A: ⭐ <b>#22</b> bilancia · <b>#41</b> bilancia · ⭐ <b>#26 Cichucki</b> solo reportage/volto (tenda privata) · ~11:17 U10 B: ⭐ <b>#42</b> bilancia+reportage · ⭐ <b>#32</b> bilancia · ~11:47 Mini B: <b>#154</b> bilancia"]
 ];
 const DOMANI=[
- ["Solo questi","⭐ #42 #32 #22 #26"],
- ["Se avanzi tempo","#41 #154 #236 #248"],
- ["Lasciati","tutti gli altri"]
+ ["1 ⭐ #42 Naperty","KUC MAREK · 10 clip · manca paddock, reportage, bilancia"],
+ ["2 ⭐ #32 Czernicki","AV RACING · 15 clip · paddock, reportage (senza casco), bilancia"],
+ ["3 ⭐ #22 Zera","LA MOTOSPORT ASD · 18 clip · paddock, reportage, bilancia"],
+ ["4 ⭐ #26 Cichucki","privata (Cichucki Daniel) · 18 clip · solo reportage → in bilancia"],
+ ["5 #41 Zanochkin","AV RACING · 24 clip · paddock, reportage, bilancia"],
+ ["6 #154 Safarzynski","KUC MAREK · 24 nuove · paddock, reportage, bilancia"],
+ ["7 #236 Reimer","privata (Reimer Tatjana) · prefinale finita: solo se va in finale"],
+ ["8 #248 Perifan","CKC RACING · prefinale in corso: solo se va in finale"]
 ];
 const KEY='scaletta_sab_1710';
 let done={};try{done=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){}
