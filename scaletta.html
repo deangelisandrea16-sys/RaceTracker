@@ -52,21 +52,25 @@ h2{font-family:var(--f-display);font-weight:800;font-size:20px;text-transform:up
 
 <script>
 const OGGI=[
- ["9:50","10:05","PADDOCK · tenda LA MOTOSPORT ASD","⭐ <b>#22 Zera</b> — paddock + reportage (corre 10:49)"],
- ["10:05","10:25","PADDOCK · tenda AV RACING","⭐ <b>#32 Czernicki</b> — paddock + reportage, VOLTO SENZA CASCO · <b>#41 Zanochkin</b> — paddock + reportage"],
- ["10:25","10:40","PADDOCK · tenda KUC MAREK (max 10 min)","⭐ <b>#42 Naperty</b> — paddock + reportage · <b>#154 Safarzynski</b> — paddock + reportage (stessa tenda). Se non la trovi: lascia, li prendi in bilancia"],
- ["10:40","11:00","libero","margine"],
- ["11:00","11:50","BILANCIA (resta lì)","~11:02 U10 A: ⭐ <b>#22</b> bilancia · <b>#41</b> bilancia · ⭐ <b>#26 Cichucki</b> solo reportage/volto (tenda privata) · ~11:17 U10 B: ⭐ <b>#42</b> bilancia+reportage · ⭐ <b>#32</b> bilancia · ~11:47 Mini B: <b>#154</b> bilancia"]
+ ["9:52","10:05","TENDA LA MOTOSPORT ASD","⭐ <b>#22 Zera</b> — paddock + reportage (corre 10:49)"],
+ ["10:05","10:20","TENDA AV RACING","⭐ <b>#32 Czernicki</b> paddock + reportage SENZA CASCO · <b>#41 Zanochkin</b> paddock + reportage"],
+ ["10:20","10:30","TENDA TEAM DRIVER RACING KART","<b>#16 Spina</b> — reportage, tanti video (2 reel: 30''+60'')"],
+ ["10:30","10:40","TENDA KUC MAREK (max 10 min)","⭐ <b>#42 Naperty</b> + <b>#154 Safarzynski</b> — paddock + reportage. Non la trovi? lascia: li prendi in bilancia"],
+ ["10:40","11:00","margine","pausa"],
+ ["11:00","11:50","BILANCIA (resta lì)","~11:02 U10 A: ⭐ <b>#22</b> bil · <b>#41</b> bil · ⭐ <b>#26</b> volto/reportage (privata) · <b>#30</b> volto/reportage (privata)<br>~11:17 U10 B: ⭐ <b>#42</b> bil+reportage · ⭐ <b>#32</b> bil · <b>#16</b> bil<br>~11:32 Mini A: <b>#152</b> bil+reportage (privata)<br>~11:47 Mini B: <b>#154</b> bil"]
 ];
 const DOMANI=[
- ["1 ⭐ #42 Naperty","KUC MAREK · 10 clip · manca paddock, reportage, bilancia"],
- ["2 ⭐ #32 Czernicki","AV RACING · 15 clip · paddock, reportage (senza casco), bilancia"],
+ ["1 ⭐ #42 Naperty","KUC MAREK · 10 clip · paddock, reportage, bilancia"],
+ ["2 ⭐ #32 Czernicki","AV RACING · 15 clip · paddock, reportage, bilancia"],
  ["3 ⭐ #22 Zera","LA MOTOSPORT ASD · 18 clip · paddock, reportage, bilancia"],
- ["4 ⭐ #26 Cichucki","privata (Cichucki Daniel) · 18 clip · solo reportage → in bilancia"],
- ["5 #41 Zanochkin","AV RACING · 24 clip · paddock, reportage, bilancia"],
- ["6 #154 Safarzynski","KUC MAREK · 24 nuove · paddock, reportage, bilancia"],
- ["7 #236 Reimer","privata (Reimer Tatjana) · prefinale finita: solo se va in finale"],
- ["8 #248 Perifan","CKC RACING · prefinale in corso: solo se va in finale"]
+ ["4 ⭐ #26 Cichucki","PRIVATA (Cichucki Daniel) · 18 clip · reportage → bilancia 11:02"],
+ ["5 #236 Reimer","PRIVATA (Reimer Tatjana) · 23 clip · prefinale finita → solo se in finale"],
+ ["6 #41 Zanochkin","AV RACING · 24 clip · paddock, reportage, bilancia"],
+ ["7 #154 Safarzynski","KUC MAREK · 24 nuove · paddock, reportage, bilancia"],
+ ["8 #248 Perifan","CKC RACING · 26 clip · → solo se in finale"],
+ ["9 #30 Venter","PRIVATA (Venter Ronald) · 27 clip · reportage → bilancia 11:02"],
+ ["10 #16 Spina","TEAM DRIVER RACING KART · 41 clip ma 2 reel · reportage, bilancia"],
+ ["11 #152 Brokos","PRIVATA (Krencisz Jan) · 34 clip · reportage, bilancia → 11:32"]
 ];
 const KEY='scaletta_sab_1710';
 let done={};try{done=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){}
