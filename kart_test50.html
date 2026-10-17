@@ -518,7 +518,7 @@ body.light .adv-cat-btn.cat-nj{border-color:#d97706;color:#d97706;}
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">
       <div id="live-timing-label" style="font-size:11px;font-weight:700;color:var(--text4);letter-spacing:1px">⏱ LIVE TIMING</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button onclick="setLiveTimingSrc()" style="font-size:11px;font-weight:700;background:var(--bg2);color:var(--text2);border:1px solid var(--border2);border-radius:6px;padding:7px 12px;cursor:pointer;font-family:inherit">↻ Aggiorna</button>
+        <button onclick="reloadLiveTiming()" style="font-size:11px;font-weight:700;background:var(--bg2);color:var(--text2);border:1px solid var(--border2);border-radius:6px;padding:7px 12px;cursor:pointer;font-family:inherit">↻ Aggiorna</button>
         <button onclick="openLiveTimingTab()" style="font-size:11px;font-weight:700;background:var(--bg2);color:var(--text2);border:1px solid var(--border2);border-radius:6px;padding:7px 12px;cursor:pointer;font-family:inherit">↗ Scheda</button>
       </div>
     </div>
@@ -1760,7 +1760,7 @@ function showTab(tab){
   }
   if(tab==='entrylist')renderEntryList();
   if(tab==='debug')renderDebug();
-  if(tab==='livetiming'){setLiveTimingSrc();renderLtMyNums();}
+  if(tab==='livetiming'){reloadLiveTiming();renderLtMyNums();}
 }
 window.showTab=showTab;
 
@@ -1986,6 +1986,19 @@ function setLiveTimingSrc(){
   applyLiveCrop();
 }
 window.setLiveTimingSrc=setLiveTimingSrc;
+/* FIX LIVE BLOCCATO (17/10/2026, Lonato): il tasto Aggiorna non ricaricava (src uguale + loaded=1)
+   e su iPhone il socket Apex nell'iframe resta congelato dopo blocco schermo/cambio app.
+   Ora: Aggiorna forza il reload; rientrando nell'app sul tab Live l'iframe si ricarica da solo. */
+function reloadLiveTiming(){
+  const f=document.getElementById('live-timing-frame');if(!f)return;
+  f.dataset.loaded='';setLiveTimingSrc();
+}
+window.reloadLiveTiming=reloadLiveTiming;
+let _ltHiddenAt=0;
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden){_ltHiddenAt=Date.now();return;}
+  if(typeof activeTab!=='undefined'&&activeTab==='livetiming'&&Date.now()-_ltHiddenAt>3000)reloadLiveTiming();
+});
 let _ltTimer=null,_ltPaused=false;
 function renderLtMyNums(){
   const box=document.getElementById('lt-mynums');if(!box)return;
