@@ -52,16 +52,15 @@ h2{font-family:var(--f-display);font-weight:800;font-size:20px;text-transform:up
 
 <script>
 const OGGI=[
- ["9:45","10:05","PADDOCK U10 A","corrono 10:49 · ⭐ <b>#22</b> Zera · ⭐ <b>#26</b> Cichucki · <b>#41</b> Zanochkin — volto, famiglia, preparazione"],
- ["10:05","10:30","PADDOCK U10 B","corrono 11:04 · ⭐ <b>#42</b> Naperty (10 clip!) · ⭐ <b>#32</b> Czernicki (SENZA CASCO) — prenditi tempo"],
- ["10:30","10:40","pausa / margine",""],
- ["10:40","10:58","PADDOCK Mini B","corre 11:34 · <b>#154</b> Safarzynski"],
- ["11:00","11:50","BILANCIA (resta lì)","~11:02 U10 A: ⭐ <b>#22</b> + <b>#41</b> (+ volto ⭐ #26) · ~11:17 U10 B: ⭐ <b>#32</b> ⭐ <b>#42</b> · ~11:47 Mini B: <b>#154</b>"]
+ ["9:45","10:05","PADDOCK U10 A","⭐ <b>#22</b> Zera · ⭐ <b>#26</b> Cichucki — volto, famiglia, preparazione (corrono 10:49)"],
+ ["10:05","10:30","PADDOCK U10 B","⭐ <b>#42</b> Naperty (10 clip!) · ⭐ <b>#32</b> Czernicki SENZA CASCO (corrono 11:04)"],
+ ["10:30","11:00","libero","solo se avanzi: #41 (U10 A) · #154 (paddock, corre 11:34)"],
+ ["11:00","11:20","BILANCIA","~11:02 ⭐ <b>#22</b> (+ volto ⭐ #26) · ~11:17 ⭐ <b>#32</b> ⭐ <b>#42</b> — poi hai finito"]
 ];
 const DOMANI=[
- ["Priorità","⭐ #42 #32 #22 #26 (meno clip) poi #41 #154 #236 #248"],
- ["Lasciati","#130 #152 #215 #216 #221 #206 (34-46 clip): solo se li incroci"],
- ["#42","pregriglia 🔴: non fattibile senza pettorina"]
+ ["Solo questi","⭐ #42 #32 #22 #26"],
+ ["Se avanzi tempo","#41 #154 #236 #248"],
+ ["Lasciati","tutti gli altri"]
 ];
 const KEY='scaletta_sab_1710';
 let done={};try{done=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){}
