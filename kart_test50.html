@@ -1408,8 +1408,12 @@ function listenRaces(){
       if(ids.length) switchRace(live||ids[0]);
       else{ initialized=true; renderAll(); }
     } else {
-      updateRaceHeader();
-      if(activeTab==='gare') renderGare();
+      /* FIX 17/10/2026: se la gara salvata e' gia' finita (endDate passata) e c'e' una gara in corso oggi, passa a quella */
+      const _t=new Date().toISOString().slice(0,10);
+      const _cur=races[activeRaceId]||{};
+      const _live=Object.keys(races).find(id=>{const r=races[id]||{};return r.startDate&&r.endDate&&r.startDate<=_t&&_t<=r.endDate;});
+      if(_live&&_live!==activeRaceId&&_cur.endDate&&_cur.endDate<_t){ switchRace(_live); }
+      else { updateRaceHeader(); if(activeTab==='gare') renderGare(); }
     }
   },err=>{setSyncStatus('err');dlog('❌ races_index: '+err.message,'err');console.error(err);});
 }
