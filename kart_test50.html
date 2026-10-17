@@ -3134,7 +3134,8 @@ function renderSchedule(){
         html+='<div class="card-inner" style="margin-top:8px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
           +'<span class="inner-num">#'+p.num+'</span><span class="inner-name">'+p.name+'</span>'
           +'<span class="inner-team-big">'+p.team+'</span></div>'
-          +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+'</div></div>';
+          +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+'</div>'
+          +(notes[p.num]?'<div style="margin-top:6px;font-size:11px;color:var(--text4);font-style:italic">📝 '+notes[p.num]+'</div>':'')+'</div>';
       });
       html+='</div>';
     });
