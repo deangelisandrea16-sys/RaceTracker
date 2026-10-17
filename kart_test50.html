@@ -1412,8 +1412,9 @@ function listenRaces(){
       const _t=new Date().toISOString().slice(0,10);
       const _cur=races[activeRaceId]||{};
       const _live=Object.keys(races).find(id=>{const r=races[id]||{};return r.startDate&&r.endDate&&r.startDate<=_t&&_t<=r.endDate;});
-      if(_live&&_live!==activeRaceId&&_cur.endDate&&_cur.endDate<_t){ switchRace(_live); }
-      else { updateRaceHeader(); if(activeTab==='gare') renderGare(); }
+      /* 17/10 v2 (idea di Andrea): all'apertura segue il badge IN CORSO (stessa regola: startDate<=oggi<=endDate). Solo al primo caricamento, cosi' una scelta manuale successiva resta. */
+      if(_live&&_live!==activeRaceId&&!window._rtAutoPicked){ window._rtAutoPicked=true; switchRace(_live); }
+      else { window._rtAutoPicked=true; updateRaceHeader(); if(activeTab==='gare') renderGare(); }
     }
   },err=>{setSyncStatus('err');dlog('❌ races_index: '+err.message,'err');console.error(err);});
 }
