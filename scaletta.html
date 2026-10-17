@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Scaletta Lonato Venerdì</title>
+<title>Scaletta Lonato Sabato</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;600&display=swap">
@@ -40,42 +40,41 @@ h2{font-family:var(--f-display);font-weight:800;font-size:20px;text-transform:up
 </head><body>
 <a class="back" href="kart_test50.html">← Torna all'app</a>
 
-<h1>Scaletta venerdì</h1>
-<div class="sub">ROK Superfinal · Lonato · pettorina dalle 13:10 · tocca ✓ quando hai fatto</div>
+<h1>Scaletta sabato</h1>
+<div class="sub">ROK Superfinal · Lonato · warm-up con pettorina, prefinali paddock+bilancia · tocca ✓ quando hai fatto</div>
 
-<h2>Oggi pomeriggio</h2>
+<h2>Mattina</h2>
 <div class="list" id="oggi"></div>
 
-<h2>Rimandati a domani</h2>
+<h2>Scoperti (se capita)</h2>
 <div class="list tomorrow" id="domani"></div>
-<div class="note">Pomeriggio solo paddock + bilancia (niente pista/pregriglia). Vincoli: paddock 30-40 min prima della gara del pilota · in pista si resta in pista · bilancia e paddock si possono fare di fila, pista e bilancia no. Domani: paddock #152 #154 prima della prefinale Mini. Il programma di sabato arriva stasera.</div>
+<div class="note">Prefinali: Junior A #206 #236 · Junior B #215 #216 #221 #248 · U10 A #22 #26 #30 #41 · U10 B #16 #32 #42 · Mini A #130 #152 · Mini B #154 · Senior B #465. Finali: solo arrivi e premiazioni.</div>
 
 <script>
 const OGGI=[
- ["15:00","15:10","PADDOCK Junior A-D","corrono 15:27 · pregriglia ~15:15 → VAI SUBITO: <b>#236</b> ⚠️ <b>#248</b> ⚠️ <b>#221</b>"],
- ["15:10","15:20","PADDOCK Junior B-C","corrono 15:42: <b>#216</b> ⚠️ (#215 saltato: tenda introvabile → prendilo in bilancia ~15:55)"],
- ["15:20","15:28","PADDOCK VLR","prefinale 15:57: <b>#954</b> (kart azzurro)"],
- ["15:28","15:35","PADDOCK VLR Junior","prefinale 16:15: <b>#918</b>"],
- ["15:35","15:40","→ bilancia",null],
- ["15:40","16:35","BILANCIA (resta lì)","~15:40 Junior A-D: <b>#236</b> ⚠️ · ~15:55 Junior B-C: <b>#216</b> ⚠️ + <b>#215</b> volto/reportage · ~16:12 <b>#954</b> · ~16:30 <b>#918</b> — fine manche, controlla il live"]
+ ["8:08","8:25","PREGRIGLIA Junior (pettorina)","A 8:20: <b>#236</b> Reimer ⚠️ · B 8:25: <b>#248</b> Perifan ⚠️ <b>#221</b> Karalim <b>#215</b> Rungta"],
+ ["8:25","8:32","PISTA BASSA Junior B","<b>#215</b> Rungta (pista 🟠) — poi torni giù"],
+ ["8:32","8:48","libero","Senior/Shifter/Expert: nessuno da fare. Avvicinati alla pregriglia U10"],
+ ["8:48","8:58","PREGRIGLIA U10","A 8:55: <b>#30</b> Venter · B 9:00: <b>#42</b> Naperty ⚠️"],
+ ["8:58","9:10","PREGRIGLIA Mini","A 9:05: <b>#152</b> Brokos ⚠️ · B 9:10: <b>#154</b> Safarzynski ⚠️"],
+ ["9:10","9:25","PISTA ALTA (resta su)","9:10 Mini B: <b>#154</b> ⚠️ · 9:15 VLR <b>#954</b> Morice · 9:20 VLR Jr <b>#918</b> Kravchenko → POI PETTORINA AL COLLEGA"],
+ ["9:25","9:35","PADDOCK Junior A","prefinale 9:43: <b>#236</b> Reimer ⚠️ <b>#206</b> Iacomi"],
+ ["9:35","9:45","PADDOCK Junior B","prefinale 9:58: <b>#248</b> Perifan (CKC) ⚠️ <b>#221</b> Karalim (Team Driver) · #216/#215 tenda privata: salta"],
+ ["9:45","10:05","pausa","nessun paddock/bilancia utile"],
+ ["10:05","10:20","PADDOCK U10 A","prefinale 10:49: <b>#22</b> Zera <b>#41</b> Zanochkin <b>#30</b> Venter <b>#26</b> Cichucki"],
+ ["10:20","10:35","PADDOCK U10 B","prefinale 11:04: <b>#42</b> Naperty ⚠️ <b>#32</b> Czernicki (volto senza casco!) · #16 reportage"],
+ ["10:35","10:50","PADDOCK Mini A","prefinale 11:19: <b>#152</b> Brokos ⚠️ <b>#130</b> Racianu"],
+ ["10:50","10:58","PADDOCK Mini B","prefinale 11:34: <b>#154</b> Safarzynski ⚠️ (fare tutto)"],
+ ["11:00","11:50","BILANCIA (resta lì)","~11:02 U10 A: <b>#22 #41</b> · ~11:17 U10 B: <b>#16 #32 #42</b> · ~11:32 Mini A: <b>#152</b> ⚠️ · ~11:47 Mini B: <b>#154</b> ⚠️"]
 ];
 const DOMANI=[
- ["#154 ⚠️","pista ALTA + pregriglia · prefinale Mini (ultima occasione)"],
- ["#152 #154 ⚠️","bilancia (in un turno in cui non li segui in pista)"],
- ["#236 ⚠️","bilancia"],
- ["#42 ⚠️","TUTTO: pista al warm-up U10 · paddock+reportage 30-40' prima prefinale · pregriglia · bilancia"],
- ["#22","paddock · reportage · bilancia"],
- ["#30","paddock · pregriglia · reportage"],
- ["#16","bilancia, reportage (pista alta ✓ fatta venerdì)"],
- ["#26","pista alta interno · paddock · reportage"],
- ["#32 #41","paddock · reportage (#32 senza casco) · bilancia"],
- ["#215","pregriglia"],
- ["#954","pista + pregriglia · warm-up 9:15"],
- ["#918","pista + pregriglia · warm-up 9:20"],
- ["#206","reportage · prefinale Junior"],
- ["#602","pista sotto · prefinale Super 9:25 (#622 pista ok)"]
+ ["#26","pista alta interno — sacrificato (non fondamentale)"],
+ ["#236 #42","pista 🟠 non completata nel warm-up"],
+ ["#602 #622","paddock/reportage: prefinale Super 9:25 durante il warm-up"],
+ ["#814 #819","paddock/reportage: prefinale Shifter 11:49 durante la bilancia"],
+ ["#215 #216","tenda privata: solo se li incroci"]
 ];
-const KEY='scaletta_ven_1610';
+const KEY='scaletta_sab_1710';
 let done={};try{done=JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(done))}catch(e){}}
 const mins=s=>{const[a,b]=s.split(':').map(Number);return a*60+b};
