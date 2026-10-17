@@ -52,26 +52,27 @@ h2{font-family:var(--f-display);font-weight:800;font-size:20px;text-transform:up
 
 <script>
 const OGGI=[
- ["8:08","8:25","PREGRIGLIA Junior (pettorina)","A 8:20: <b>#236</b> Reimer ⚠️ · B 8:25: <b>#248</b> Perifan ⚠️ <b>#221</b> Karalim <b>#215</b> Rungta"],
- ["8:25","8:32","PISTA BASSA Junior B","<b>#215</b> Rungta (pista 🟠) — poi torni giù"],
- ["8:32","8:48","libero","Senior/Shifter/Expert: nessuno da fare. Avvicinati alla pregriglia U10"],
- ["8:48","8:58","PREGRIGLIA U10","A 8:55: <b>#30</b> Venter · B 9:00: <b>#42</b> Naperty ⚠️"],
- ["8:58","9:10","PREGRIGLIA Mini","A 9:05: <b>#152</b> Brokos ⚠️ · B 9:10: <b>#154</b> Safarzynski ⚠️"],
- ["9:10","9:25","PISTA ALTA (resta su)","9:10 Mini B: <b>#154</b> ⚠️ · 9:15 VLR <b>#954</b> Morice · 9:20 VLR Jr <b>#918</b> Kravchenko → POI PETTORINA AL COLLEGA"],
- ["9:25","9:35","PADDOCK Junior A","prefinale 9:43: <b>#236</b> Reimer ⚠️ <b>#206</b> Iacomi"],
- ["9:35","9:45","PADDOCK Junior B","prefinale 9:58: <b>#248</b> Perifan (CKC) ⚠️ <b>#221</b> Karalim (Team Driver) · #216/#215 tenda privata: salta"],
+ ["8:08","8:18","PREGRIGLIA Junior A (pettorina)","warm-up 8:20: <b>#236</b> Reimer ⚠️ (pregriglia 🔴)"],
+ ["8:18","8:25","PREGRIGLIA Junior B","warm-up 8:25: <b>#248</b> Perifan ⚠️ (soprattutto pregriglia) · <b>#215</b> Rungta · <b>#221</b> Karalim (volto senza casco!)"],
+ ["8:25","8:32","PISTA BASSA Junior B","<b>#215</b> Rungta (pista 🟠)"],
+ ["8:32","8:48","libero","Senior/Shifter/Expert: niente da fare"],
+ ["8:48","8:58","PREGRIGLIA U10","A 8:55: <b>#30</b> Venter (pregriglia 🔴) · B 9:00: <b>#42</b> Naperty ⚠️ (pregriglia 🔴)"],
+ ["9:00","9:08","PISTA BASSA","9:00 U10 B: <b>#42</b> ⚠️ pista bassa · 9:05 Mini A: <b>#130</b> Racianu parte bassa"],
+ ["9:08","9:25","PISTA ALTA (resta su)","9:10 Mini B: <b>#154</b> Safarzynski ⚠️ (soprattutto pista) · 9:15 <b>#954</b> Morice · 9:20 <b>#918</b> Kravchenko → POI PETTORINA AL COLLEGA"],
+ ["9:25","9:35","PADDOCK Junior A","prefinale 9:43: <b>#236</b> Reimer ⚠️ · <b>#206</b> Iacomi"],
+ ["9:35","9:45","PADDOCK Junior B","prefinale 9:58: <b>#248</b> Perifan (CKC) · <b>#221</b> Karalim (Team Driver, senza casco) · #216/#215 tenda privata: solo se li vedi"],
  ["9:45","10:05","pausa","nessun paddock/bilancia utile"],
- ["10:05","10:20","PADDOCK U10 A","prefinale 10:49: <b>#22</b> Zera <b>#41</b> Zanochkin <b>#30</b> Venter <b>#26</b> Cichucki"],
- ["10:20","10:35","PADDOCK U10 B","prefinale 11:04: <b>#42</b> Naperty ⚠️ <b>#32</b> Czernicki (volto senza casco!) · #16 reportage"],
- ["10:35","10:50","PADDOCK Mini A","prefinale 11:19: <b>#152</b> Brokos ⚠️ <b>#130</b> Racianu"],
- ["10:50","10:58","PADDOCK Mini B","prefinale 11:34: <b>#154</b> Safarzynski ⚠️ (fare tutto)"],
+ ["10:05","10:20","PADDOCK U10 A","prefinale 10:49: <b>#22</b> Zera · <b>#41</b> Zanochkin · <b>#30</b> Venter · <b>#26</b> Cichucki"],
+ ["10:20","10:35","PADDOCK U10 B","prefinale 11:04: <b>#42</b> Naperty ⚠️ · <b>#32</b> Czernicki (volto senza casco!) · <b>#16</b> Spina (tanti video)"],
+ ["10:35","10:50","PADDOCK Mini A","prefinale 11:19: <b>#152</b> Brokos ⚠️ · <b>#130</b> Racianu"],
+ ["10:50","10:58","PADDOCK Mini B","prefinale 11:34: <b>#154</b> Safarzynski ⚠️"],
  ["11:00","11:50","BILANCIA (resta lì)","~11:02 U10 A: <b>#22 #41</b> · ~11:17 U10 B: <b>#16 #32 #42</b> · ~11:32 Mini A: <b>#152</b> ⚠️ · ~11:47 Mini B: <b>#154</b> ⚠️"]
 ];
 const DOMANI=[
- ["#26","pista alta interno — sacrificato (non fondamentale)"],
- ["#236 #42","pista 🟠 non completata nel warm-up"],
- ["#602 #622","paddock/reportage: prefinale Super 9:25 durante il warm-up"],
- ["#814 #819","paddock/reportage: prefinale Shifter 11:49 durante la bilancia"],
+ ["#236","pista sotto/sopra/interno: nel warm-up hai scelto la pregriglia Junior (3 piloti contro 1). Se preferisci la pista: 8:20 pista bassa per lui e salti la pregriglia B"],
+ ["#26","pista alta interno — sacrificato"],
+ ["#602 #622","paddock/tenda: prefinale Super 9:25 cade nel warm-up"],
+ ["#814 #819","paddock: prefinale Shifter 11:49 cade nella bilancia"],
  ["#215 #216","tenda privata: solo se li incroci"]
 ];
 const KEY='scaletta_sab_1710';
