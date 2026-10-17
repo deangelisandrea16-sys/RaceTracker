@@ -3056,7 +3056,19 @@ function renderSchedule(){
   if(!slotsArr.length){el.innerHTML='<div class="empty-state"><p>Nessun programma per questo giorno</p></div>';return;}
   // Fix filter arrays inside slots
   slotsArr.forEach(function(s){if(s.filter&&!Array.isArray(s.filter)&&typeof s.filter==='object')s.filter=Object.values(s.filter);});
-  const currentIdx=getCurrentSlotIndex(slotsArr);
+  let currentIdx=getCurrentSlotIndex(slotsArr);
+  /* FIX 17/10/2026: cornice verde e tasto ORA anche sulle FINALI. Se l'ultima finale (delle mie categorie) gia' partita
+     e' dopo l'ultimo turno del programma, la cornice va sulla finale e non sul turno. */
+  const _toM=t=>{const m=String(t||'').match(/(\d{1,2})[.:](\d{2})/);return m?(+m[1])*60+(+m[2]):-1;};
+  const _nowM=new Date().getHours()*60+new Date().getMinutes()-(typeof scheduleDelay==='number'?scheduleDelay:0);
+  let _finalNowKey=null;
+  if(activeDay===currentDays[currentDays.length-1]&&currentFinals.length){
+    const _myC=new Set(pilots.map(p=>canonCat(p.cat)));
+    let _best=-1;
+    currentFinals.filter(f=>_myC.has(canonCat(f.cat))).forEach(f=>{const m=_toM(f.time);if(m>=0&&m<=_nowM&&m>_best){_best=m;_finalNowKey=f.label+'|'+f.time;}});
+    const _slotM=_toM((slotsArr[currentIdx]||{}).time);
+    if(_finalNowKey&&_best>=_slotM)currentIdx=-1; else _finalNowKey=null;
+  }
   let html='';let lastSession='';
   slotsArr.forEach((slot,idx)=>{
     const ps=pilotsForSlot(slot);const isNow=idx===currentIdx;
@@ -3115,7 +3127,8 @@ function renderSchedule(){
       const allCat=pilots.filter(p=>canonCat(p.cat)===canonCat(f.cat));
       const finalists=allCat.filter(p=>p.inFinal);
       const ps=finalists.length?finalists:allCat;
-      html+='<div class="final-card"><div class="final-title">🏆 '+f.label+'</div>'
+      const _fNow=_finalNowKey===(f.label+'|'+f.time);
+      html+='<div class="final-card'+(_fNow?' slot-now':'')+'"'+(_fNow?' id="slot-now"':'')+'><div class="final-title">🏆 '+f.label+(_fNow?' <span class="now-badge">ORA</span>':'')+'</div>'
         +'<div class="final-row"><span>Partenza</span><span class="final-time">'+f.time+'</span></div>';
       ps.forEach(p=>{
         html+='<div class="card-inner" style="margin-top:8px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
