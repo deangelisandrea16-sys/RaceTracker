@@ -258,6 +258,30 @@ body.light .form-submit{color:#fff;}
 .cat-gr3{color:#42e0a6;} body.light .cat-gr3{color:#059669;}
 .cat-u10{color:#3bdcf0;} body.light .cat-u10{color:#0891b2;}
 .cat-nj{color:#ffce4a;} body.light .cat-nj{color:#d97706;}
+.cat-okn{color:#f472b6;} body.light .cat-okn{color:#db2777;}
+/* TEAM */
+.pv-switch{display:flex;gap:8px;margin-bottom:12px;}
+.pv-btn{flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--border2);background:none;color:var(--text4);font-family:inherit;font-weight:900;font-size:12px;letter-spacing:1px;cursor:pointer;}
+.pv-btn.active{border-color:#22c55e;color:#22c55e;background:rgba(34,197,94,.08);}
+.team-card{border-left:4px solid #a78bfa;}
+.team-nums{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
+.team-num{font-size:10px;font-weight:800;padding:2px 6px;border-radius:5px;border:1px solid var(--border2);color:var(--text3);cursor:pointer;}
+.team-num.mine{border-color:#22c55e;color:#22c55e;}
+.team-inner{border-left:3px solid #a78bfa;}
+.btn-add-team{width:100%;padding:11px;border-radius:8px;border:none;background:#a78bfa;color:#000;font-family:inherit;font-weight:900;font-size:12px;letter-spacing:1px;cursor:pointer;margin-bottom:10px;}
+.btn-add-team.done{background:none;border:1.5px solid #a78bfa;color:#a78bfa;}
+/* VISTA GENERALE */
+.ov-btn{width:100%;padding:10px;border-radius:10px;border:1.5px solid #60a5fa;background:none;color:#60a5fa;font-family:inherit;font-weight:900;font-size:12px;letter-spacing:1px;cursor:pointer;margin-bottom:8px;}
+.ov-row{display:flex;align-items:flex-start;gap:8px;padding:5px 2px;border-bottom:1px solid var(--border);}
+.ov-row.past{opacity:.35;}
+.ov-row.now{background:rgba(34,197,94,.10);border-radius:6px;}
+.ov-time{font-size:12px;font-weight:900;min-width:40px;color:var(--text);}
+.ov-cat{font-size:10px;font-weight:800;min-width:74px;}
+.ov-nums{display:flex;flex-wrap:wrap;gap:4px;flex:1;}
+.ov-n{font-size:12px;font-weight:900;padding:1px 6px;border-radius:5px;border:1px solid var(--border2);cursor:pointer;}
+.ov-n.red{border-color:#dc2626;color:#f87171;}.ov-n.orange{border-color:#d97706;color:#fbbf24;}.ov-n.green{border-color:#16a34a;color:#4ade80;}
+.ov-t{font-size:10px;font-weight:800;padding:1px 6px;border-radius:5px;border:1px dashed #a78bfa;color:#a78bfa;cursor:pointer;}
+.ov-t.green{border-style:solid;border-color:#16a34a;color:#4ade80;}.ov-t.orange{border-style:solid;border-color:#d97706;color:#fbbf24;}
 /* FABs (raised above tab bar) */
 .fab-now{position:fixed;bottom:calc(var(--tab-h) + var(--safe-b) + 16px);right:18px;width:52px;height:52px;border-radius:var(--pill);background:var(--accent);color:#04150a;border:none;font-size:11px;font-weight:800;cursor:pointer;z-index:90;box-shadow:0 10px 26px -8px var(--accent);letter-spacing:.5px;display:none;transition:transform .15s var(--ease);}
 .fab-now.visible{display:flex;align-items:center;justify-content:center;}
@@ -291,6 +315,7 @@ body.light .adv-mode-btn.active{color:#fff;}
 .adv-cat-btn.cat-gr3{border-color:#42e0a6;color:#42e0a6;}.adv-cat-btn.cat-gr3.active{background:rgba(66,224,166,.16);}
 .adv-cat-btn.cat-u10{border-color:#3bdcf0;color:#3bdcf0;}.adv-cat-btn.cat-u10.active{background:rgba(59,220,240,.16);}
 .adv-cat-btn.cat-nj{border-color:#ffce4a;color:#ffce4a;}.adv-cat-btn.cat-nj.active{background:rgba(255,206,74,.16);}
+.adv-cat-btn.cat-okn{border-color:#f472b6;color:#f472b6;}.adv-cat-btn.cat-okn.active{background:rgba(244,114,182,.12);}
 body.light .adv-cat-btn.cat-kz2{border-color:#dc2626;color:#dc2626;}
 body.light .adv-cat-btn.cat-ok{border-color:#2563eb;color:#2563eb;}
 body.light .adv-cat-btn.cat-okj{border-color:#7c3aed;color:#7c3aed;}
@@ -439,6 +464,10 @@ body.light .adv-cat-btn.cat-nj{border-color:#d97706;color:#d97706;}
         <button class="filter-chip f-green" onclick="setFilterStatus('green')">🟢</button>
       </div>
     </div>
+    <div class="pv-switch">
+      <button class="pv-btn" id="pv-piloti" onclick="setPilotsView('piloti')">👤 PILOTI</button>
+      <button class="pv-btn" id="pv-team" onclick="setPilotsView('team')">🏭 TEAM</button>
+    </div>
     <!-- Advanced search pilots -->
     <div class="adv-search-wrap">
       <div class="adv-search-mode">
@@ -485,7 +514,7 @@ body.light .adv-cat-btn.cat-nj{border-color:#d97706;color:#d97706;}
     </div>
   </div>
   <div class="content" style="padding-top:8px;padding-bottom:0">
-    <a href="scaletta.html" style="display:block;text-align:center;margin-bottom:10px;padding:12px;border-radius:12px;border:2px solid var(--accent);color:var(--accent);font-weight:900;letter-spacing:1px;text-decoration:none;font-size:14px">📋 APRI SCALETTA DI OGGI</a>
+    <button class="ov-btn" onclick="openOverview()">📋 VISTA GENERALE GIORNATA</button>
     <div class="adv-search-wrap">
       <div class="adv-search-mode">
         <button class="adv-mode-btn active" onclick="setProgSearchMode('text')" id="prog-mode-text">🔤 NOME/NUM</button>
@@ -1352,6 +1381,10 @@ let statuses={};
 let notes={};
 let trackSections=["PARTENZA","CURVA 1","RETTILINEO 1","CURVA 2","ESSE","RETTILINEO 2","ARRIVO"];
 let trackStatus={};
+let teams=[];          // team seguiti dall'utente {key,name}
+let teamStatuses={};   // pillole dei team
+let teamNotes={};      // note dei team
+let pilotsView=localStorage.getItem('rt_pview')||'piloti';
 let initialized=false;
 let activeTab=localStorage.getItem('rt_tab')||'piloti';
 if(!ALL_TABS.includes(activeTab))activeTab='piloti';
@@ -1444,6 +1477,14 @@ function listenRaceData(raceId){
     statuses=userData.statuses||{};
     notes=userData.notes||{};
     trackStatus=userData.trackStatus||{};
+    teams=userData.teams?Object.values(userData.teams):[];
+    teamStatuses=userData.teamStatuses||{};
+    teamNotes=userData.teamNotes||{};
+    teams.forEach(t=>{
+      if(!teamStatuses[t.key])teamStatuses[t.key]={};
+      TASKS.forEach(k=>{if(!teamStatuses[t.key][k])teamStatuses[t.key][k]='red';});
+      if(teamNotes[t.key]===undefined)teamNotes[t.key]='';
+    });
     pilots.forEach(p=>{
       if(!p.group)p.group='';if(!p.prefinal)p.prefinal='';if(!p.serie)p.serie='';if(!p.eliminated)p.eliminated=false;
       if(!p.heats)p.heats=[];
@@ -1512,7 +1553,8 @@ function saveAll(){
   setSyncStatus('saving');
   const pilotsObj={};pilots.forEach(p=>pilotsObj[p.num]=p);
   // Save user-specific data
-  const uData={pilots:pilotsObj,statuses,notes,trackStatus};
+  const teamsObj={};teams.forEach(t=>teamsObj[t.key]=t);
+  const uData={pilots:pilotsObj,statuses,notes,trackStatus,teams:teamsObj,teamStatuses,teamNotes};
   // Save shared data
   const sData={entryList:currentEntryList,schedule:currentSchedule,days:currentDays,finals:currentFinals,trackSections};
   const u={};
@@ -1541,7 +1583,14 @@ function saveSharedField(field,value){
 function cycleStatus(cur){const i=STATUS_CYCLE.indexOf(cur);return STATUS_CYCLE[(i+1)%STATUS_CYCLE.length];}
 function catClass(cat){
   if(cat==='KZ2')return'cat-kz2';if(cat==='OK')return'cat-ok';if(cat==='OKJ')return'cat-okj';
-  if(cat==='MINI GR3')return'cat-gr3';if(cat==='MINI U10')return'cat-u10';if(cat==='OK-NJ')return'cat-nj';return'';
+  if(cat==='MINI GR3')return'cat-gr3';if(cat==='MINI U10')return'cat-u10';if(cat==='OK-NJ')return'cat-nj';if(cat==='OKN')return'cat-okn';return'';
+}
+// Normalizza i nomi categoria scritti in modi diversi dagli organizzatori
+function normCat(c){
+  const s=String(c||'').trim().toUpperCase().replace(/\s+/g,' ');
+  if(s==='OK-N'||s==='OK N'||s==='OKN')return'OKN';
+  if(s==='OKNJ'||s==='OK-N J'||s==='OKN J'||s==='OK-N JUNIOR'||s==='OKN JUNIOR')return'OK-NJ';
+  return s;
 }
 function autoParity(num){return parseInt(num)%2===0?'EVEN':'ODD';}
 function lookupByNum(num){return currentEntryList[num.toString()]||null;}
@@ -2348,6 +2397,7 @@ function uploadEntryList(event,raceId){
       } else {
         entryList=data;
       }
+      Object.values(entryList).forEach(d=>{if(d&&d.cat)d.cat=normCat(d.cat);});
       const count=Object.keys(entryList).length;
       const u={};
       u['races/'+raceId+'/entryList']=entryList;
@@ -2418,6 +2468,8 @@ function uploadSchedule(event,raceId){
       } else {
         schedule=data;days=Object.keys(data);finals=[];
       }
+      Object.values(schedule).forEach(sl=>{(Array.isArray(sl)?sl:Object.values(sl||{})).forEach(x=>{if(x&&x.cat)x.cat=normCat(x.cat);});});
+      (Array.isArray(finals)?finals:Object.values(finals||{})).forEach(f=>{if(f&&f.cat)f.cat=normCat(f.cat);});
       const u={};
       u['races/'+raceId+'/schedule']=schedule;
       u['races/'+raceId+'/days']=days;
@@ -2575,13 +2627,19 @@ function filterPilots(q){
   });
   resultsEl.innerHTML=html;
 }
+// Riga note del pilota, uguale in tutte le schermate
+function noteLine(num){
+  const n=String((notes&&notes[num])||'').trim();if(!n)return'';
+  const e=n.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return'<div style="margin-top:4px;font-size:11px;color:var(--text4);font-style:italic;white-space:pre-wrap">📝 '+e+'</div>';
+}
 function searchResultItem(m){
   const catCls=catClass(m.cat);const isMine=m.isMyPilot;
   return'<div class="search-result-item" style="'+(isMine?'border-color:#22c55e;background:rgba(34,197,94,.06)':'')+'" onclick="openPilotDetail(\''+m.num+'\')">'
     +'<span class="sr-num" style="'+(isMine?'color:#22c55e':'')+'">#'+m.num+'</span>'
     +'<div style="flex:1;min-width:0">'
     +'<div class="sr-name">'+m.name+(isMine?' <span style="font-size:10px;color:#22c55e;font-weight:800">★ TUO</span>':'')+'</div>'
-    +'<div class="sr-team">'+m.team+'</div></div>'
+    +'<div class="sr-team">'+m.team+'</div>'+noteLine(m.num)+'</div>'
     +'<span class="sr-cat '+catCls+'" style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800">'+m.cat+'</span></div>';
 }
 window.filterPilots=filterPilots;
@@ -2647,8 +2705,192 @@ function addPilotFromDetail(num){
   const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;
   update(ref(db),u);
   saveAll();closeModal();
+  refreshPilotSearch();
 }
 window.addPilotFromDetail=addPilotFromDetail;
+
+// Ridisegna subito i risultati della ricerca piloti (es. dopo aver aggiunto un pilota)
+function refreshPilotSearch(){
+  const res=document.getElementById('pilots-search-results');
+  if(!res||res.style.display==='none')return;
+  if(pilotSearchMode==='text'){
+    const inp=document.getElementById('pilots-search');
+    if(inp&&inp.value.trim())filterPilots(inp.value);
+  } else {
+    renderPilotSearchResults();
+  }
+}
+window.refreshPilotSearch=refreshPilotSearch;
+
+// ══════════════════════════════════════
+// TEAM
+// ══════════════════════════════════════
+function teamKey(name){return String(name||'').trim().toUpperCase().replace(/[.#$\[\]\/]/g,'_')||'_';}
+function escAttr(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');}
+// Piloti dell'entry list che appartengono al team, come oggetti simili ai piloti
+function teamEntrants(t){
+  const out=[];
+  Object.entries(currentEntryList).forEach(([num,e])=>{
+    if(!e||teamKey(e.team)!==t.key)return;
+    let h=e.heats||[];if(!Array.isArray(h))h=typeof h==='object'?Object.values(h):[];
+    out.push({num,cat:e.cat||'',parity:e.parity||autoParity(num),serie:e.serie||'',group:e.group||'',prefinal:e.prefinal||'',heats:h,name:(e.lastName||'')+' '+(e.firstName||'')});
+  });
+  return out.sort((a,b)=>parseInt(a.num)-parseInt(b.num));
+}
+function entrantInSlot(p,slot){
+  if(canonCat(p.cat)!==canonCat(slot.cat))return false;
+  if(slot.type==='all')return true;
+  if(slot.type==='parity')return p.parity===slot.filter;
+  if(slot.type==='serie')return!!p.serie&&String(p.serie).trim()===String(slot.filter).trim();
+  if(slot.type==='group')return pilotInGroup(p,Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{}));
+  if(slot.type==='prefinal')return!!p.prefinal&&String(p.prefinal).trim().toUpperCase()===String(slot.filter).trim().toUpperCase();
+  if(slot.type==='list')return Array.isArray(slot.filter)&&slot.filter.map(String).includes(String(p.num));
+  return false;
+}
+// Team con almeno un pilota nello slot; se mancano le assegnazioni conta i piloti della categoria in attesa
+function teamsForSlot(slot){
+  const res=[];
+  teams.forEach(t=>{
+    const ents=teamEntrants(t).filter(p=>canonCat(p.cat)===canonCat(slot.cat));
+    if(!ents.length)return;
+    const inSlot=ents.filter(p=>entrantInSlot(p,slot));
+    let waiting=[];
+    if(slot.type==='serie')waiting=ents.filter(p=>!String(p.serie||'').trim());
+    if(slot.type==='group')waiting=ents.filter(p=>!pilotHasGroupData(p));
+    if(slot.type==='prefinal')waiting=ents.filter(p=>!String(p.prefinal||'').trim());
+    if(inSlot.length||waiting.length)res.push({t,inSlot,waiting});
+  });
+  return res;
+}
+function teamTaskBtn(key,task,small){
+  const s=(teamStatuses[key]||{})[task]||'red';
+  const sz=small?'style="padding:4px 8px;font-size:10px"':'';
+  return'<button class="task-btn '+s+'" '+sz+' onclick="toggleTeamTask(\''+escAttr(key)+'\',\''+task+'\')">'+task+'</button>';
+}
+function teamsSlotHtml(slot){
+  const list=teamsForSlot(slot);if(!list.length)return'';
+  return list.map(({t,inSlot,waiting})=>'<div class="card-inner team-inner"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">'
+    +'<span class="inner-num">🏭</span><span class="inner-name">'+t.name+'</span>'
+    +'<span style="font-size:10px;font-weight:800;color:#a78bfa">'+(inSlot.length?inSlot.length+' in pista: '+inSlot.map(p=>'#'+p.num).join(' '):'')
+    +(waiting.length?(inSlot.length?' · ':'')+'⏳ '+waiting.length+' in attesa':'')+'</span></div>'
+    +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,true)).join('')+'</div>'
+    +(teamNotes[t.key]?'<div style="margin-top:6px;font-size:11px;color:var(--text4);font-style:italic">📝 '+teamNotes[t.key]+'</div>':'')+'</div>').join('');
+}
+function addTeam(name){
+  const key=teamKey(name);
+  if(teams.some(t=>t.key===key)){setPilotsView('team');return;}
+  teams.push({key,name:String(name).trim().toUpperCase()});
+  teamStatuses[key]={};TASKS.forEach(k=>teamStatuses[key][k]='red');
+  teamNotes[key]='';
+  saveAll();renderPilotSearchResults();
+}
+window.addTeam=addTeam;
+function removeTeam(key){
+  if(!confirm('Rimuovere il team?'))return;
+  teams=teams.filter(t=>t.key!==key);
+  delete teamStatuses[key];delete teamNotes[key];
+  saveAll();renderPilots();
+}
+window.removeTeam=removeTeam;
+function toggleTeamTask(key,task){
+  if(!teamStatuses[key])teamStatuses[key]={};
+  teamStatuses[key][task]=cycleStatus(teamStatuses[key][task]||'red');
+  saveUserField('teamStatuses',teamStatuses);renderAll();
+  if(document.getElementById('ov-body'))renderOverviewBody();
+}
+window.toggleTeamTask=toggleTeamTask;
+function saveTeamNote(key){
+  const el=document.getElementById('tnote-'+key);if(!el)return;
+  teamNotes[key]=el.value;saveUserField('teamNotes',teamNotes);
+}
+window.saveTeamNote=saveTeamNote;
+function setPilotsView(v){
+  pilotsView=v;localStorage.setItem('rt_pview',v);
+  if(pilotSearchMode!=='text')setPilotSearchMode('text');
+  clearPilotsSearch();
+  renderPilots();window.scrollTo({top:0});
+}
+window.setPilotsView=setPilotsView;
+function teamMatchesFilter(t){
+  if(filterStatus==='all')return true;
+  const s=teamStatuses[t.key]||{};
+  if(filterTask!=='all')return s[filterTask]===filterStatus;
+  return TASKS.some(k=>s[k]===filterStatus);
+}
+function renderTeams(){
+  const el=document.getElementById('pilots-list');
+  if(!teams.length){el.innerHTML='<p class="no-pilots">Nessun team. Cerca per 🏭 SCUDERIA e premi ➕ AGGIUNGI TEAM.</p>';return;}
+  const filtered=teams.filter(teamMatchesFilter).sort((a,b)=>a.name.localeCompare(b.name));
+  const counter='<div style="font-size:11px;font-weight:700;color:var(--text4);margin-bottom:14px;letter-spacing:1px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">'
+    +(filterStatus!=='all'?'FILTRO':'TOTALE TEAM')+' <span style="color:var(--text);font-size:18px;font-weight:900;margin-left:8px;">'+filtered.length+(filterStatus!=='all'?'/'+teams.length:'')+'</span></div>';
+  el.innerHTML=counter+filtered.map(t=>{
+    const ents=teamEntrants(t);
+    const cats=[...new Set(ents.map(p=>p.cat))];
+    return'<div class="card team-card"><div class="pilot-header"><div>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+cats.map(c=>'<span class="pilot-cat '+catClass(c)+'">'+c+'</span>').join('')+'</div>'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-top:3px"><span class="pilot-num">🏭</span><span class="pilot-name">'+t.name+'</span></div>'
+      +'<div class="pilot-team">'+ents.length+' piloti iscritti</div>'
+      +'<div class="team-nums">'+ents.map(p=>'<span class="team-num'+(pilots.some(x=>x.num===p.num)?' mine':'')+'" onclick="openPilotDetail(\''+p.num+'\')">#'+p.num+'</span>').join('')+'</div>'
+      +'</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">'
+      +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="removeTeam(\''+escAttr(t.key)+'\')">✕ rimuovi</button></div></div>'
+      +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,false)).join('')+'</div>'
+      +'<div class="note-wrap"><span class="note-label">Note</span>'
+      +'<textarea class="note-area" id="tnote-'+t.key+'" placeholder="Es. tenda dietro box 12..." onblur="saveTeamNote(\''+escAttr(t.key)+'\')">'+(teamNotes[t.key]||'')+'</textarea></div></div>';
+  }).join('');
+}
+
+// ══════════════════════════════════════
+// VISTA GENERALE GIORNATA
+// ══════════════════════════════════════
+let ovShowAll=false;
+function slotMins(t){const p=String(t).split('.');return parseInt(p[0])*60+parseInt(p[1]||'0');}
+function openOverview(){
+  openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
+    +'<div style="font-size:14px;font-weight:900;margin-bottom:4px">📋 '+activeDay+'</div>'
+    +'<div style="font-size:10px;color:var(--text4);font-weight:700;margin-bottom:10px">Colore = pillola PISTA · tocca un numero per la scheda</div>'
+    +'<button class="pv-btn" id="ov-all" style="width:100%;margin-bottom:10px" onclick="ovShowAll=!ovShowAll;renderOverviewBody()"></button>'
+    +'<div id="ov-body"></div>');
+  renderOverviewBody();
+  setTimeout(()=>{const n=document.querySelector('.ov-row.now');if(n)n.scrollIntoView({block:'center'});},100);
+}
+window.openOverview=openOverview;
+function renderOverviewBody(){
+  const body=document.getElementById('ov-body');if(!body)return;
+  const btn=document.getElementById('ov-all');if(btn)btn.textContent=ovShowAll?'NASCONDI SESSIONI SENZA MIEI':'MOSTRA TUTTE LE SESSIONI';
+  let slots=currentSchedule[activeDay]||[];slots=Array.isArray(slots)?slots:Object.values(slots);
+  slots.forEach(s=>{if(s.filter&&!Array.isArray(s.filter)&&typeof s.filter==='object')s.filter=Object.values(s.filter);});
+  const rows=slots.map(s=>({time:s.time,cat:s.cat,label:s.label||s.cat,sub:slotFilterLabel(s),ps:pilotsForSlot(s),aw:pilotsAwaitingData(s),ts:teamsForSlot(s)}));
+  if(activeDay===currentDays[currentDays.length-1]){
+    currentFinals.forEach(f=>{
+      const allCat=pilots.filter(p=>canonCat(p.cat)===canonCat(f.cat)&&!p.eliminated);const fin=allCat.filter(p=>p.inFinal);
+      rows.push({time:f.time,cat:f.cat,label:f.label||f.cat,sub:'FINALE',ps:fin.length?fin:allCat,aw:[],ts:teams.filter(t=>teamEntrants(t).some(p=>canonCat(p.cat)===canonCat(f.cat))).map(t=>({t,inSlot:[],waiting:[]}))});
+    });
+  }
+  const isToday=autoDayName()===activeDay;
+  const nowM=new Date().getHours()*60+new Date().getMinutes()-scheduleDelay;
+  let nowIdx=-1;if(isToday)rows.forEach((r,i)=>{if(slotMins(r.time)<=nowM)nowIdx=i;});
+  const html=rows.map((r,i)=>{
+    const empty=!r.ps.length&&!r.aw.length&&!r.ts.length;
+    if(empty&&!ovShowAll)return'';
+    const cls=i===nowIdx?' now':(isToday&&i<nowIdx?' past':'');
+    const nums=r.ps.map(p=>{const st=(statuses[p.num]||{}).PISTA||'red';return'<span class="ov-n '+st+'" onclick="ovOpenPilot(\''+p.num+'\')">'+p.num+'</span>';}).join('')
+      +(r.aw.length?'<span class="ov-n" style="opacity:.5;border-style:dashed">⏳'+r.aw.length+'</span>':'')
+      +r.ts.map(({t})=>{const st=(teamStatuses[t.key]||{}).PISTA||'red';return'<span class="ov-t '+st+'" onclick="toggleTeamTask(\''+escAttr(t.key)+'\',\'PISTA\')">🏭 '+t.name+'</span>';}).join('');
+    return'<div class="ov-row'+cls+'"><span class="ov-time">'+r.time+'</span><span class="ov-cat '+catClass(r.cat)+'">'+r.label+'<br><span style="color:var(--text4);font-size:9px">'+r.sub+'</span></span>'
+      +'<div class="ov-nums">'+(nums||'<span style="font-size:10px;color:var(--text4)">—</span>')
+      +r.ps.filter(p=>String(notes[p.num]||'').trim()).map(p=>'<div style="width:100%;font-size:10px;color:var(--text4);font-style:italic">#'+p.num+' 📝 '+String(notes[p.num]).replace(/</g,'&lt;')+'</div>').join('')+'</div></div>';
+  }).join('');
+  body.innerHTML=html||'<div class="empty-state"><p>Nessun tuo pilota o team in questa giornata</p></div>';
+}
+window.renderOverviewBody=renderOverviewBody;
+function ovOpenPilot(num){closeModal();openPilotDetail(num);}
+window.ovOpenPilot=ovOpenPilot;
+function autoDayName(){
+  const names=['DOMENICA','LUNEDÌ','MARTEDÌ','MERCOLEDÌ','GIOVEDÌ','VENERDÌ','SABATO'];
+  const n=names[new Date().getDay()];
+  const plain=s=>String(s).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  return currentDays.find(d=>plain(d).startsWith(plain(n)))||'';
+}
 
 // ── COPIA TUTTI PER EDITOR ──
 function copyAllForEditor(){
@@ -2667,7 +2909,7 @@ window.copyAllForEditor=copyAllForEditor;
 // ══════════════════════════════════════
 // ADVANCED SEARCH — shared helpers
 // ══════════════════════════════════════
-const CATS=['KZ2','OK','OKJ','MINI GR3','MINI U10','OK-NJ'];
+const CATS=['KZ2','OK','OKN','OKJ','MINI GR3','MINI U10','OK-NJ'];
 
 function getTeamsFromEntryList(){
   const teams={};
@@ -2751,6 +2993,11 @@ function renderPilotSearchResults(){
   const myP=matches.filter(m=>m.isMyPilot);
   const others=matches.filter(m=>!m.isMyPilot);
   let html='<div style="font-size:10px;color:var(--text4);font-weight:700;letter-spacing:1px;margin-bottom:8px">'+matches.length+' RISULTATI</div>';
+  if(pilotSearchMode==='team'&&pilotSearchTeam){
+    const tk=teamKey(pilotSearchTeam);const has=teams.some(t=>t.key===tk);
+    html=(has?'<button class="btn-add-team done" onclick="setPilotsView(\'team\')">★ TEAM GIÀ SEGUITO — APRI TEAM</button>'
+      :'<button class="btn-add-team" onclick="addTeam(\''+pilotSearchTeam.replace(/'/g,"\\'")+'\')">➕ AGGIUNGI TEAM</button>')+html;
+  }
   if(myP.length){html+='<div class="search-group-label" style="color:#22c55e">★ I MIEI PILOTI ('+myP.length+')</div>';myP.forEach(m=>{html+=searchResultItem(m);});}
   if(others.length){html+='<div class="search-group-label">TUTTI GLI ALTRI ('+others.length+')</div>';others.forEach(m=>{html+=searchResultItem(m);});}
   if(!matches.length)html='<div class="empty-state"><p>Nessun risultato</p></div>';
@@ -2842,7 +3089,7 @@ function buildProgResultsHtml(fakePilots){
       html+='<div class="card-inner" style="'+(isMine?'border-color:#22c55e':'')+'"><div style="display:flex;align-items:center;gap:6px">'
         +'<span class="inner-num" style="'+(isMine?'color:#22c55e':'')+'">#'+p.num+'</span>'
         +'<span class="inner-name">'+p.name+(isMine?' <span style="font-size:9px;color:#22c55e;font-weight:800">★</span>':'')+'</span>'
-        +'<span class="inner-team-big">'+p.team+'</span></div></div>';
+        +'<span class="inner-team-big">'+p.team+'</span></div>'+noteLine(p.num)+'</div>';
     });
     html+='</div></div>';
   });
@@ -2964,7 +3211,7 @@ function renderEntryList(){
         +'<span class="entry-num" style="'+(isMine?'color:#22c55e':'')+'">#'+p.num+'</span>'
         +'<div style="flex:1;min-width:0">'
         +'<div class="entry-name">'+(p.lastName||'')+' '+(p.firstName||'')+(isMine?' <span style="font-size:9px;color:#22c55e;font-weight:800">★ TUO</span>':'')+'</div>'
-        +'<div class="entry-team">'+( p.team||'')+'</div></div>'
+        +'<div class="entry-team">'+( p.team||'')+'</div>'+noteLine(p.num)+'</div>'
         +'<div class="entry-badges">'
         +'<span style="font-size:9px;font-weight:700;color:var(--text4);padding:2px 6px;border:1px solid var(--border);border-radius:4px">'+( p.parity||autoParity(p.num))+'</span>'
         +(p.group?'<span style="font-size:9px;font-weight:900;color:#60a5fa;padding:2px 6px;border:1px solid #60a5fa;border-radius:4px">GRP '+p.group+'</span>':'')
@@ -2982,6 +3229,8 @@ window.renderEntryList=renderEntryList;
 // ══════════════════════════════════════
 function renderPilots(){
   if(!initialized)return;
+  ['piloti','team'].forEach(v=>{const b=document.getElementById('pv-'+v);if(b)b.classList.toggle('active',pilotsView===v);});
+  if(pilotsView==='team'&&activeRaceId){renderTeams();return;}
   if(!activeRaceId){document.getElementById('pilots-list').innerHTML='<div class="empty-state"><p>Seleziona una gara dalla tab GARE</p></div>';return;}
   const el=document.getElementById('pilots-list');
   if(!pilots.length){el.innerHTML='<p class="no-pilots">Nessun pilota. Aggiungine uno!</p>';return;}
@@ -3090,10 +3339,11 @@ function renderSchedule(){
   slotsArr.forEach((slot,idx)=>{
     const ps=pilotsForSlot(slot);const isNow=idx===currentIdx;
     const awaiting=pilotsAwaitingData(slot);
+    const tHtml=teamsSlotHtml(slot);
     if(slot.session&&slot.session!==lastSession){html+='<div class="session-divider">'+slot.session+'</div>';lastSession=slot.session;}
 
     // No pilots matched AND some are waiting for data assignment
-    if(!ps.length&&awaiting.length){
+    if(!ps.length&&awaiting.length&&!tHtml){
       const typeLabel=slot.type==='serie'?'serie':slot.type==='group'?'gruppo':slot.type==='prefinal'?'prefinal':'';
       html+='<div class="card'+(isNow?' slot-now':'')+'" style="opacity:.35;padding:10px 14px" '+(isNow?'id="slot-now"':'')+'>'
         +'<div style="display:flex;align-items:center;gap:8px">'
@@ -3105,7 +3355,7 @@ function renderSchedule(){
     }
 
     // No pilots at all for this slot
-    if(!ps.length){
+    if(!ps.length&&!tHtml){
       html+='<div class="card'+(isNow?' slot-now':'')+'" style="opacity:.45" '+(isNow?'id="slot-now"':'')+'><div class="slot-header">'
         +'<span class="slot-time">'+slot.time+'</span>'+(isNow?'<span class="now-badge">ORA</span>':'')
         +'<span class="slot-label '+catClass(slot.cat)+'">'+slot.label+'</span>'
@@ -3134,7 +3384,7 @@ function renderSchedule(){
         +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+'</div>'
         +(notes[p.num]?'<div style="margin-top:6px;font-size:11px;color:var(--text4);font-style:italic">📝 '+notes[p.num]+'</div>':'')+'</div>';
     });
-    html+='</div></div>';
+    html+=tHtml+'</div></div>';
   });
   updateProgTicker(slotsArr,currentIdx);
   if(activeDay===currentDays[currentDays.length-1]&&currentFinals.length){
@@ -3169,7 +3419,7 @@ function renderSchedule(){
           +'<span class="inner-num" style="color:var(--text4)">#'+p.num+'</span>'
           +'<span class="inner-name">'+p.name+'</span>'
           +'<span class="'+catClass(p.cat)+'" style="font-size:9px;font-weight:800;margin-left:auto">'+p.cat+'</span>'
-          +'</div></div>';
+          +'</div>'+noteLine(p.num)+'</div>';
       });
     }
     html+='</div>';
@@ -3377,6 +3627,7 @@ function renderPista(){
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
       +'<span class="pilot-num">#'+p.num+'</span><span class="pilot-name">'+p.name+'</span>'
       +'<span class="pilot-cat '+catClass(p.cat)+'" style="margin-left:auto">'+p.cat+'</span></div>'
+      +noteLine(p.num)
       +'<div class="track-grid">'+trackSections.map(s=>{
         const st=trackStatus[p.num]?.[s]||'none';
         return'<button class="track-btn '+(st==='none'?'':st)+'" onclick="toggleTrack(\''+p.num+"','"+s+"')\">"+s+'</button>';
@@ -3426,7 +3677,7 @@ function openAddPilot(){
     +'<div class="form-group"><label class="form-label">Nome Cognome</label><input class="form-input" id="f-name" placeholder="es. ROSSI MARIO"></div>'
     +'<div class="form-group"><label class="form-label">Scuderia</label><input class="form-input" id="f-team" placeholder="es. TEAM NAME"></div>'
     +'<div class="form-group"><label class="form-label">Categoria</label>'
-    +'<select class="form-select" id="f-cat"><option>KZ2</option><option>OK</option><option>OKJ</option><option>MINI GR3</option><option>MINI U10</option><option>OK-NJ</option></select></div>'
+    +'<select class="form-select" id="f-cat"><option>KZ2</option><option>OK</option><option>OKN</option><option>OKJ</option><option>MINI GR3</option><option>MINI U10</option><option>OK-NJ</option></select></div>'
     +'<div id="f-parity-display" style="font-size:11px;color:var(--text4);margin-bottom:10px"></div>'
     +'<div class="form-group"><label class="form-label">Note</label>'
     +'<textarea class="form-textarea" id="f-note-m" placeholder="Note opzionali..."></textarea></div>'
@@ -3487,7 +3738,7 @@ window.savePilotManual=savePilotManual;
 function openEditPilot(num){
   const p=pilots.find(x=>x.num===num);if(!p)return;
   /* FIX 16/10/2026 (ROK Superfinal): categorie dalla gara attiva + categoria attuale del pilota, cosi' SALVA non la sovrascrive con KZ2 */
-  const cats=[...new Set([p.cat].concat(Object.values(currentEntryList||{}).map(e=>e&&e.cat),pilots.map(x=>x.cat),['KZ2','OK','OKJ','MINI GR3','MINI U10','OK-NJ']).filter(Boolean))];
+  const cats=[...new Set([p.cat].concat(Object.values(currentEntryList||{}).map(e=>e&&e.cat),pilots.map(x=>x.cat),['KZ2','OK','OKN','OKJ','MINI GR3','MINI U10','OK-NJ']).filter(Boolean))];
   const hl=p.highlight||[];
   openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
     +'<div class="modal-title">Modifica #'+p.num+'</div>'
@@ -3547,6 +3798,7 @@ function deletePilot(num){
   delete statuses[num];delete trackStatus[num];delete notes[num];
   const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;update(ref(db),u);
   saveAll();closeModal();
+  refreshPilotSearch();
 }
 window.deletePilot=deletePilot;
 
