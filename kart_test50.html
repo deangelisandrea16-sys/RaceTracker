@@ -2712,6 +2712,16 @@ function filterPilots(q){
   resultsEl.innerHTML=html;
 }
 // Riga note del pilota, uguale in tutte le schermate
+// Posizione in griglia dalle liste ufficiali Apex (entryList/{num}/grid = {"A-B":1,...}); nessuna stima
+function gridPos(num,slot){
+  try{
+    if(!slot||slot.type!=='group')return 0;
+    const f=Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{});
+    const key=f.map(x=>String(x).trim().toUpperCase()).sort().join('-');
+    const g=(currentEntryList[num]||{}).grid;return(g&&g[key])||0;
+  }catch(e){return 0;}
+}
+function gridBadge(num,slot){const n=gridPos(num,slot);return n?'<span title="Posizione in griglia (lista ufficiale)" style="font-size:11px;font-weight:900;color:#0a0a0b;background:#fbbf24;border-radius:6px;padding:1px 6px;flex-shrink:0">🏁 P'+n+'</span>':'';}
 function noteLine(num){
   const n=String((notes&&notes[num])||'').trim();if(!n)return'';
   const e=n.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -3487,7 +3497,7 @@ function renderSchedule(){
       var shIco={foto:'📷',video:'🎬',priority:'⭐'};
       html+='<div class="card-inner'+(shCls?' '+shCls:'')+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
         +(sh.length?sh.map(function(h){return'<span class="hl-badge hl-'+h+'" style="padding:1px 5px;font-size:8px">'+(shIco[h]||'')+'</span>';}).join(''):'')
-        +'<span class="inner-num">#'+p.num+'</span><span class="inner-name">'+p.name+'</span>'
+        +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,slot)+'<span class="inner-name">'+p.name+'</span>'
         +(p.group?'<span class="inner-group">GRP '+p.group+'</span>':'')
         +'<span class="inner-team-big">'+p.team+'</span>'
         +'<button onclick="editPilotNote(\''+p.num+'\')" style="margin-left:6px;background:none;border:none;color:var(--text4);font-size:14px;cursor:pointer;padding:0 2px;flex-shrink:0">✎</button></div>'
@@ -4031,7 +4041,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1335';
+const APP_BUILD='2026-11-13-1345';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
