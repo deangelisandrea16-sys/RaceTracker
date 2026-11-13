@@ -1474,6 +1474,8 @@ function listenRaceData(raceId){
     currentFinals=sharedData.finals||[];
     if(!Array.isArray(currentFinals))currentFinals=typeof currentFinals==='object'?Object.values(currentFinals):[];
     trackSections=sharedData.trackSections||["PARTENZA","CURVA 1","RETTILINEO 1","CURVA 2","ESSE","RETTILINEO 2","ARRIVO"];
+    // Ritardo e AUTO condivisi per tutta la gara (AUTO acceso di default)
+    applySharedDelay(sharedData.schedDelay,sharedData.apexAuto!==false);
     pilots=userData.pilots?Object.values(userData.pilots):[];
     statuses=userData.statuses||{};
     notes=userData.notes||{};
@@ -1812,6 +1814,7 @@ function showTab(tab){
     if(dd)dd.textContent=(scheduleDelay>0?'+':'')+scheduleDelay+' min';
     renderSchedule();
     if(typeof nowSlotKey==='function')_lastNowKey=nowSlotKey();
+    applyDelayPerms();
   }
   if(tab==='entrylist')renderEntryList();
   if(tab==='debug')renderDebug();
@@ -3276,7 +3279,31 @@ function renderPilots(){
 // ══════════════════════════════════════
 let scheduleDelay=parseInt(localStorage.getItem('rt_delay')||'0');
 
-function setDelay(d){
+// Ritardo condiviso: lo cambia solo l'admin (o l'AUTO da Apex); tutti lo ricevono da Firebase
+const DELAY_ADMIN='andrea';
+function isDelayAdmin(){return String(currentUserId||'').toLowerCase()===DELAY_ADMIN;}
+function applySharedDelay(d,auto){
+  const nd=parseInt(d)||0;
+  const changed=nd!==scheduleDelay||auto!==apexAuto;
+  apexAuto=auto;
+  if(nd!==scheduleDelay){setDelayLocal(nd);}
+  else if(changed&&typeof renderApexDelay==='function')renderApexDelay();
+  applyDelayPerms();
+}
+function applyDelayPerms(){
+  const adm=isDelayAdmin();
+  document.querySelectorAll('[onclick^="setDelay("]').forEach(b=>{b.style.display=adm?'':'none';});
+  const dd=document.getElementById('delay-display');
+  if(dd){dd.style.pointerEvents=adm?'':'none';}
+}
+window.applyDelayPerms=applyDelayPerms;
+function setDelay(d,fromAuto){
+  if(!fromAuto&&!isDelayAdmin())return;
+  const v=parseInt(d)||0;
+  if(activeRaceId)saveSharedField('schedDelay',v);
+  setDelayLocal(v);
+}
+function setDelayLocal(d){
   scheduleDelay=parseInt(d)||0;
   localStorage.setItem('rt_delay',scheduleDelay);
   const el=document.getElementById('delay-display');
@@ -3288,6 +3315,7 @@ function setDelay(d){
 window.setDelay=setDelay;
 
 function editDelayManual(){
+  if(!isDelayAdmin())return;
   const val=prompt('Inserisci ritardo in minuti (negativo se in anticipo):', scheduleDelay);
   if(val===null)return;
   const n=parseInt(val);
@@ -3559,7 +3587,7 @@ startScheduleAutoRefresh();
 const APEX_LIVE_PORTS={southgardakarting:7440};
 let apexWs=null,apexWsKey='',apexState={cat:'',sess:'',start:'',red:'',at:0},apexRetry=null;
 let apexSeen=new Set(),apexIgnore=new Set();
-let apexAuto=localStorage.getItem('rt_apex_auto')==='1';
+let apexAuto=true;
 let apexLastApplied='';
 function apexLiveName(){
   const r=(typeof races!=='undefined'&&races[activeRaceId])?races[activeRaceId]:{};
@@ -3658,14 +3686,16 @@ function renderApexDelay(){
   const d=m.delay;const lbl=(d>0?'+':'')+d+' min';
   const same=d===scheduleDelay;
   const key=apexState.cat+'|'+apexState.sess+'|'+apexState.start;
-  if(apexAuto&&!same&&Math.abs(d)<=120&&apexLastApplied!==key){apexLastApplied=key;setDelay(d);return;}
+  if(apexAuto&&!same&&Math.abs(d)<=120&&apexLastApplied!==key){apexLastApplied=key;setDelay(d,true);return;}
   box.innerHTML=head+'<div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">'
     +'<span>Previsto '+m.slot.time+' → <b style="color:'+(d>0?'#f87171':d<0?'#60a5fa':'#4ade80')+'">'+(d===0?'in orario':lbl)+'</b></span>'
-    +(same?'<span style="color:#4ade80">✓ applicato</span>':'<button onclick="setDelay('+d+')" style="padding:5px 10px;border-radius:7px;border:none;background:#22c55e;color:#000;font-weight:900;font-size:11px;cursor:pointer;font-family:inherit">APPLICA '+lbl+'</button>')
-    +'<button onclick="toggleApexAuto()" style="margin-left:auto;padding:5px 8px;border-radius:7px;border:1px solid '+(apexAuto?'#22c55e':'var(--border2)')+';background:none;color:'+(apexAuto?'#22c55e':'var(--text4)')+';font-weight:800;font-size:10px;cursor:pointer;font-family:inherit">AUTO '+(apexAuto?'ON':'OFF')+'</button>'
+    +(same?'<span style="color:#4ade80">✓ applicato</span>':(isDelayAdmin()?'<button onclick="setDelay('+d+')" style="padding:5px 10px;border-radius:7px;border:none;background:#22c55e;color:#000;font-weight:900;font-size:11px;cursor:pointer;font-family:inherit">APPLICA '+lbl+'</button>':''))
+    +(isDelayAdmin()
+      ?'<button onclick="toggleApexAuto()" style="margin-left:auto;padding:5px 8px;border-radius:7px;border:1px solid '+(apexAuto?'#22c55e':'var(--border2)')+';background:none;color:'+(apexAuto?'#22c55e':'var(--text4)')+';font-weight:800;font-size:10px;cursor:pointer;font-family:inherit">AUTO '+(apexAuto?'ON':'OFF')+'</button>'
+      :'<span style="margin-left:auto;font-size:10px;font-weight:800;color:'+(apexAuto?'#22c55e':'var(--text4)')+'">AUTO '+(apexAuto?'ON':'OFF')+'</span>')
     +'</div></div>';
 }
-function toggleApexAuto(){apexAuto=!apexAuto;localStorage.setItem('rt_apex_auto',apexAuto?'1':'0');apexLastApplied='';renderApexDelay();}
+function toggleApexAuto(){if(!isDelayAdmin())return;apexAuto=!apexAuto;apexLastApplied='';if(activeRaceId)saveSharedField('apexAuto',apexAuto);renderApexDelay();}
 window.toggleApexAuto=toggleApexAuto;
 setInterval(()=>{if(!document.hidden&&activeRaceId)apexConnect();},20000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&activeRaceId){apexConnect();renderApexDelay();}});
@@ -3674,7 +3704,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1105';
+const APP_BUILD='2026-11-13-1115';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
