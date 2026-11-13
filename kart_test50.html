@@ -3689,12 +3689,12 @@ function renderLtMyTable(){
       const gap=txt(r,C('gap','13'));
       const ent=(currentEntryList&&currentEntryList[no])||{};
       const pl=pilots.find(x=>String(x.num)===no)||{};
-      const team=pl.team||ent.team||'';const chs=ent.chassis||'';
+      const team=pl.team||ent.team||'';
       const nt=String((notes&&notes[no])||'').trim();
       return'<div class="ltbig'+(tm?' team':'')+'"'+(tm?'':' onclick="openPilotDetail(\''+no+'\')"')+'>'
         +'<div class="pos">'+(txt(r,C('rk','3'))||'–')+'</div>'
         +'<div style="flex:1;min-width:0"><div><span class="num">#'+no+'</span> <span class="nm">'+nm+'</span></div>'
-        +'<div style="font-size:12px;font-weight:800;color:#fbbf24;margin-top:2px">'+[team,chs?'🏎 '+chs:''].filter(Boolean).join(' · ')+'</div>'
+        +'<div style="font-size:12px;font-weight:800;color:#fbbf24;margin-top:2px">'+team+'</div>'
         +'<div class="sub">Ultimo '+(txt(r,C('llp','10'))||'–')+' · Migliore '+(txt(r,C('blp','12'))||'–')+(gap?' · Gap '+gap:'')+' · Giri '+(txt(r,C('tlp','14'))||'0')+'</div>'
         +(nt?'<div style="font-size:11px;color:var(--text4);font-style:italic;margin-top:2px">📝 '+nt.replace(/</g,'&lt;')+'</div>':'')+'</div></div>';
     }).join(''):'<div class="empty-state"><p>Nessun tuo pilota in questa sessione</p></div>');
@@ -3708,7 +3708,8 @@ function renderLtMyTable(){
       return'<tr class="'+(mine?'mine':tm?'team':'')+'"'+(mine?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
         +'<td>'+txt(r,C('rk','3'))+'</td><td class="n">'+no+'</td><td class="d">'+txt(r,C('dr','5'))+'</td>'
         +'<td class="'+(/tb/.test(llc)?'best':/ti|ib/.test(llc)?'pb':'')+'">'+txt(r,C('llp','10'))+'</td>'
-        +'<td>'+txt(r,C('blp','12'))+'</td><td>'+txt(r,C('gap','13'))+'</td><td>'+txt(r,C('tlp','14'))+'</td></tr>';
+        +'<td>'+txt(r,C('blp','12'))+'</td><td>'+txt(r,C('gap','13'))+'</td><td>'+txt(r,C('tlp','14'))+'</td></tr>'
+        +(mine&&String((notes&&notes[no])||'').trim()?'<tr class="mine"><td></td><td colspan="6" style="font-size:11px;font-style:italic;font-weight:600;white-space:normal">📝 '+String(notes[no]).replace(/</g,'&lt;')+'</td></tr>':'');
     }).join('')+'</table>'
     +'<div style="font-size:10px;color:var(--text4);margin-top:6px">Verde = tuoi piloti · viola = piloti dei tuoi team · tocca un tuo pilota per la scheda</div>';
 }
@@ -3811,7 +3812,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1140';
+const APP_BUILD='2026-11-13-1150';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
