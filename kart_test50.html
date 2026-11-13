@@ -3773,9 +3773,26 @@ function askNotifOnce(){
     if(!('Notification' in window)||Notification.permission!=='default')return;
     if(localStorage.getItem('rt_notif_asked')==='1')return;
     localStorage.setItem('rt_notif_asked','1');
-    Notification.requestPermission().then(updateNotifBtn);
+    Notification.requestPermission().then(p=>{updateNotifBtn();if(p==='granted')subscribePush();});
   }catch(e){}
 }
+// ── Iscrizione alle notifiche push del server (chiave pubblica VAPID: non è un segreto) ──
+const PUSH_PUBLIC_KEY='BD_R-eZh5lukTHhIS5Vnp2RYrswxR9v_zGMZACft8Ump8f_3y3zAMztHzA8j9Zc7hl6XXOale3zVCBn46VKSEpw';
+function b64ToU8(b){const p='='.repeat((4-b.length%4)%4);const s=atob((b+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...s].map(c=>c.charCodeAt(0)));}
+function subKey(ep){let h=0;for(let i=0;i<ep.length;i++){h=((h<<5)-h+ep.charCodeAt(i))|0;}return'k'+(h>>>0).toString(36)+ep.length;}
+async function subscribePush(){
+  try{
+    if(!currentUserId||!('serviceWorker' in navigator)||!('PushManager' in window)||Notification.permission!=='granted')return;
+    const reg=await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToU8(PUSH_PUBLIC_KEY)});
+    const j=sub.toJSON();
+    const u={};u['pushSubs/'+currentUserId+'/'+subKey(j.endpoint)]={sub:j,ua:navigator.userAgent.slice(0,120),at:new Date().toISOString()};
+    update(ref(db),u);
+  }catch(e){console.warn('push',e);}
+}
+window.subscribePush=subscribePush;
+setTimeout(subscribePush,4000);
 document.addEventListener('click',askNotifOnce,{once:true,capture:true});
 function enableRtNotifications(){try{localStorage.removeItem('rt_notif_asked');}catch(e){}askNotifOnce();}
 window.enableRtNotifications=enableRtNotifications;
@@ -3985,7 +4002,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1240';
+const APP_BUILD='2026-11-13-1250';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
