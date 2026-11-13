@@ -3940,6 +3940,20 @@ function apexEvaluate(why){
   const snap=apexSnapshot();if(!snap.length)return;
   apexEvaluatedKey=key;
   const mine=new Map(pilots.map(p=>[String(p.num),p]));
+  // Arrivo delle manche dal live: la pillola della griglia diventa subito verde con la posizione d'arrivo.
+  // Provvisorio: il controllo dai risultati ufficiali Apex lo corregge se cambia (reclami/penalità).
+  try{
+    const mh=ss.match(/HEATS?\s+([A-D])\s*-\s*([A-D])/);
+    if(mh&&activeRaceId){
+      const pair=[mh[1],mh[2]].sort().join('-');const u={};
+      snap.forEach(x=>{
+        if(!x.pos||x.pos>=999)return;const e=currentEntryList[x.num];if(!e||apexCat(e.cat)!==cat)return;
+        e.result=e.result||{};
+        if(!e.result[pair]){e.result[pair]=String(x.pos);u['races/'+activeRaceId+'/entryList/'+x.num+'/result/'+pair]=String(x.pos);}
+      });
+      if(Object.keys(u).length){update(ref(db),u);if(activeTab==='programma')renderSchedule();}
+    }
+  }catch(e){console.warn('arrivi live',e);}
   if(/QUALIF/.test(ss)){
     // classifica combinata delle serie: miglior giro per pilota
     const st=qualiStore();st[cat]=st[cat]||{};
@@ -4308,7 +4322,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1610';
+const APP_BUILD='2026-11-13-1615';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
