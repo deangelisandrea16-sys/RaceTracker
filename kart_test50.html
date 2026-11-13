@@ -3940,7 +3940,10 @@ function apexParse(txt){
       }
       const reds=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*data-flag="([^"]*)"[^>]*><\/span>\s*([^<]*)/gi)]
         .filter(x=>!apexIgnore.has(x[1])&&(/red|rouge|rossa/i.test(x[2])||/RED|ROSSA|ROUGE/i.test(x[3])))
-        .map(x=>x[1]);
+        .map(x=>x[1])
+        // la bandiera rossa conta solo a sessione in corso: quella data dopo l'arrivo è la chiusura della pista
+        .filter(t=>{const tm=slotMins(t.replace(':','.'));const st=apexState.start?slotMins(apexState.start.replace(':','.')):-1;
+          const fin=fins.length?Math.min(...fins.map(f=>slotMins(f.replace(':','.')))):Infinity;return tm>=st&&tm<fin;});
       const lastRed=reds.length?reds.sort((a,b)=>slotMins(b.replace(':','.'))-slotMins(a.replace(':','.')))[0]:'';
       if(apexState.red!==lastRed){apexState.red=lastRed;changed=true;}
     }
@@ -4014,7 +4017,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1310';
+const APP_BUILD='2026-11-13-1315';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
