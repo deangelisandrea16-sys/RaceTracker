@@ -287,6 +287,10 @@ body.light .form-submit{color:#fff;}
 .ltbig.team .num{color:#c4b5fd}
 .ltbig .nm{font-size:13px;font-weight:800;color:var(--text)}
 .ltbig .sub{font-size:12px;color:var(--text3);font-variant-numeric:tabular-nums;margin-top:3px}
+.rt-alerts{position:fixed;top:8px;left:8px;right:8px;z-index:9999;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.rt-alert{pointer-events:auto;padding:12px 14px;border-radius:12px;background:#111827;border:2px solid #fbbf24;color:#fff;font-size:13px;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.5);display:flex;gap:10px;align-items:flex-start}
+.rt-alert.gold{border-color:#facc15;background:#3b2f05}.rt-alert.final{border-color:#22c55e;background:#052e16}
+.rt-alert small{display:block;font-weight:600;color:#d1d5db;margin-top:2px;font-size:11px}
 .ov-row{display:flex;align-items:flex-start;gap:8px;padding:5px 2px;border-bottom:1px solid var(--border);}
 .ov-row.past{opacity:.35;}
 .ov-row.now{background:rgba(34,197,94,.10);border-radius:6px;}
@@ -583,6 +587,11 @@ body.light .adv-cat-btn.cat-nj{border-color:#d97706;color:#d97706;}
       <button class="pv-btn" id="ltv-mia" onclick="setLtView('mia')">⭐ MIA CLASSIFICA</button>
       <button class="pv-btn" id="ltv-apex" onclick="setLtView('apex')">APEX ORIGINALE</button>
     </div>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <button class="pv-btn" id="notif-btn" onclick="enableRtNotifications()" style="flex:1">🔔 ATTIVA NOTIFICHE</button>
+      <button class="pv-btn" onclick="toggleAlertLog()" style="flex:1">📜 AVVISI</button>
+    </div>
+    <div id="alert-log" style="display:none;margin-bottom:8px"></div>
     <div id="lt-mytable" style="display:none"></div>
     <div class="lt-wrap" id="lt-wrap">
       <iframe class="live-timing-frame" id="live-timing-frame" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" loading="eager" referrerpolicy="no-referrer"></iframe>
@@ -1508,6 +1517,7 @@ function listenRaceData(raceId){
       TASKS.forEach(k=>{if(!teamStatuses[t.key][k])teamStatuses[t.key][k]='red';});
       if(teamNotes[t.key]===undefined)teamNotes[t.key]='';
     });
+    try{checkEliminations();}catch(e){}
     pilots.forEach(p=>{
       if(!p.group)p.group='';if(!p.prefinal)p.prefinal='';if(!p.serie)p.serie='';if(!p.eliminated)p.eliminated=false;
       if(!p.heats)p.heats=[];
@@ -1838,7 +1848,7 @@ function showTab(tab){
   }
   if(tab==='entrylist')renderEntryList();
   if(tab==='debug')renderDebug();
-  if(tab==='livetiming'){reloadLiveTiming();renderLtMyNums();if(typeof apexConnect==='function'&&activeRaceId)apexConnect();renderLtMyTable();}
+  if(tab==='livetiming'){reloadLiveTiming();renderLtMyNums();if(typeof apexConnect==='function'&&activeRaceId)apexConnect();renderLtMyTable();renderAlertLog();}
 }
 window.showTab=showTab;
 
@@ -3647,6 +3657,100 @@ function apexConnect(){
   }catch(e){}
 }
 const apexGrid=document.createElement('tbody');
+// ══════════════════════════════════════
+// AVVISI PIAZZAMENTI (qualifiche top 3 combinata, finale top 5, manche/prefinali top 5)
+// Dati live Apex: sempre PROVVISORI (reclami e penalità possono cambiare le posizioni).
+// ══════════════════════════════════════
+let apexFinished='',apexEvalT=null,apexEvaluatedKey='',apexGridSess='';
+function lapMs(t){const m=String(t||'').trim().match(/^(?:(\d+):)?(\d+)\.(\d+)$/);if(!m)return Infinity;return(parseInt(m[1]||'0')*60+parseInt(m[2]))*1000+parseInt((m[3]+'00').slice(0,3));}
+function apexSnapshot(){
+  const head=apexGrid.querySelector('tr[data-id="r0"]');const col={};
+  if(head)head.querySelectorAll('td[data-type]').forEach(td=>{col[td.getAttribute('data-type')]=(td.getAttribute('data-id')||'').replace('c','');});
+  const g=(r,t,d)=>{const el=r.querySelector('[data-id="'+r.getAttribute('data-id')+'c'+(col[t]||d)+'"]');return el?el.textContent.trim():'';};
+  return[...apexGrid.querySelectorAll('tr[data-id]')].filter(r=>r.getAttribute('data-id')!=='r0')
+    .map(r=>({pos:parseInt(g(r,'rk','3'))||parseInt(r.getAttribute('data-pos'))||999,num:g(r,'no','4'),name:g(r,'dr','5'),best:g(r,'blp','12')}))
+    .filter(x=>x.num).sort((a,b)=>a.pos-b.pos);
+}
+function qualiStore(){try{return JSON.parse(localStorage.getItem('rt_quali_'+activeRaceId)||'{}');}catch(e){return{};}}
+function apexEvaluate(why){
+  clearTimeout(apexEvalT);
+  const cat=apexCat(apexState.cat);const ss=String(apexState.sess||'').toUpperCase();
+  if(!cat||!ss||!apexState.start)return;
+  const key=activeRaceId+'|'+cat+'|'+ss+'|'+apexState.start;
+  if(apexEvaluatedKey===key)return;
+  if(apexGridSess!==apexState.cat+'|'+apexState.sess)return; // griglia non di questa sessione
+  const snap=apexSnapshot();if(!snap.length)return;
+  apexEvaluatedKey=key;
+  const mine=new Map(pilots.map(p=>[String(p.num),p]));
+  if(/QUALIF/.test(ss)){
+    // classifica combinata delle serie: miglior giro per pilota
+    const st=qualiStore();st[cat]=st[cat]||{};
+    snap.forEach(x=>{const ms=lapMs(x.best);if(ms<Infinity)st[cat][x.num]=Math.min(st[cat][x.num]||Infinity,ms);});
+    const ser=(ss.match(/S\s*(\d)/)||[])[1]||'';
+    st[cat]['_series_'+ser]=1;
+    try{localStorage.setItem('rt_quali_'+activeRaceId,JSON.stringify(st));}catch(e){}
+    const done=Object.keys(st[cat]).filter(k=>k.startsWith('_series_')).length;
+    const rank=Object.entries(st[cat]).filter(([k])=>!k.startsWith('_')).sort((a,b)=>a[1]-b[1]);
+    rank.slice(0,3).forEach(([num],i)=>{
+      if(!mine.has(num))return;
+      const p=mine.get(num);
+      rtAlert('quali|'+cat+'|'+num+'|'+(i+1)+'|'+done,(i===0?'🏆 POLE':'🥇 P'+(i+1))+' qualifiche '+cat+': #'+num+' '+p.name,
+        (done>=2?'Classifica combinata S1+S2':'Dopo la serie '+ser+', manca l\'altra serie')+' · PROVVISORIO, verifica reclami',i===0?'gold':'');
+    });
+    return;
+  }
+  const isFinal=/FINAL/.test(ss)&&!/PREFINAL/.test(ss);
+  snap.filter(x=>x.pos<=5).forEach(x=>{
+    if(!mine.has(x.num))return;
+    const p=mine.get(x.num);
+    rtAlert('res|'+key+'|'+x.num,(isFinal?'🏁 FINALE ':'')+'P'+x.pos+' '+cat+' '+apexState.sess+': #'+x.num+' '+p.name,
+      'PROVVISORIO da live timing, verifica reclami',isFinal?'final':'');
+  });
+}
+window.apexEvaluate=apexEvaluate;
+// Avviso quando un mio pilota passa a eliminato (dati ufficiali caricati nell'app)
+function checkEliminations(){
+  if(!activeRaceId)return;
+  const k='rt_elim_'+activeRaceId+'_'+currentUserId;
+  let prev=null;try{prev=JSON.parse(localStorage.getItem(k)||'null');}catch(e){}
+  const now={};pilots.forEach(p=>{now[p.num]=!!p.eliminated;});
+  if(prev){pilots.forEach(p=>{if(now[p.num]&&prev[p.num]===false)rtAlert('elim|'+activeRaceId+'|'+p.num,'❌ ELIMINATO: #'+p.num+' '+p.name+' ('+p.cat+')','Da classifica ufficiale caricata · verifica eventuali reclami','');});}
+  try{localStorage.setItem(k,JSON.stringify(now));}catch(e){}
+}
+function alertLog(){try{return JSON.parse(localStorage.getItem('rt_alerts_'+activeRaceId)||'[]');}catch(e){return[];}}
+function rtAlert(id,title,sub,kind){
+  const log=alertLog();if(log.some(a=>a.id===id))return;
+  const t=new Date();const hm=String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
+  log.unshift({id,title,sub,kind,hm});
+  try{localStorage.setItem('rt_alerts_'+activeRaceId,JSON.stringify(log.slice(0,100)));}catch(e){}
+  let wrap=document.getElementById('rt-alerts');
+  if(!wrap){wrap=document.createElement('div');wrap.id='rt-alerts';wrap.className='rt-alerts';document.body.appendChild(wrap);}
+  const el=document.createElement('div');el.className='rt-alert '+(kind||'');
+  el.innerHTML='<div style="flex:1">'+title+'<small>'+sub+' · '+hm+'</small></div><span style="cursor:pointer;font-size:16px">✕</span>';
+  el.onclick=()=>el.remove();wrap.prepend(el);
+  setTimeout(()=>{if(el.parentNode)el.remove();},kind==='final'||kind==='gold'?60000:25000);
+  try{if(navigator.vibrate)navigator.vibrate(kind?[300,150,300,150,300]:[200,100,200]);}catch(e){}
+  try{const a=new (window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator();o.frequency.value=kind?1046:880;o.connect(a.destination);o.start();o.stop(a.currentTime+0.25);}catch(e){}
+  try{if('Notification' in window&&Notification.permission==='granted'&&navigator.serviceWorker){navigator.serviceWorker.ready.then(r=>r.showNotification(title.replace(/<[^>]+>/g,''),{body:sub,tag:id,renotify:true,vibrate:[300,150,300]}));}}catch(e){}
+  renderAlertLog();
+}
+window.rtAlert=rtAlert;
+function enableRtNotifications(){
+  if(!('Notification' in window)){alert('Questo telefono non supporta le notifiche dal browser. Su iPhone installa la PWA (Condividi → Aggiungi alla schermata Home).');return;}
+  Notification.requestPermission().then(p=>{updateNotifBtn();if(p==='granted')rtAlert('test|'+Date.now(),'🔔 Notifiche attive','Riceverai gli avvisi dei tuoi piloti','');});
+}
+window.enableRtNotifications=enableRtNotifications;
+function updateNotifBtn(){const b=document.getElementById('notif-btn');if(!b)return;const ok='Notification' in window&&Notification.permission==='granted';b.textContent=ok?'🔔 NOTIFICHE ATTIVE':'🔔 ATTIVA NOTIFICHE';b.classList.toggle('active',ok);}
+let alertLogOpen=false;
+function toggleAlertLog(){alertLogOpen=!alertLogOpen;renderAlertLog();}
+window.toggleAlertLog=toggleAlertLog;
+function renderAlertLog(){
+  const box=document.getElementById('alert-log');if(!box)return;
+  updateNotifBtn();
+  if(!alertLogOpen){box.style.display='none';return;}
+  const log=alertLog();box.style.display='';
+  box.innerHTML=log.length?log.map(a=>'<div class="card-inner" style="margin-bottom:6px"><div style="font-size:12px;font-weight:800">'+a.title+'</div><div style="font-size:10px;color:var(--text4)">'+a.hm+' · '+a.sub+'</div></div>').join(''):'<div style="font-size:11px;color:var(--text4)">Nessun avviso per ora</div>';
+}
 let _ltRenderT=null;
 function apexGridDirty(){if(_ltRenderT)return;_ltRenderT=setTimeout(()=>{_ltRenderT=null;renderLtMyTable();},100);}
 let ltView=localStorage.getItem('rt_ltview')||'mia';
@@ -3718,15 +3822,15 @@ function apexParse(txt){
   let changed=false;
   txt.split('\n').forEach(line=>{
     const p=line.split('|');const k=p[0];const v=p.slice(2).join('|');
-    if(k==='grid'){apexGrid.innerHTML=v;apexGridDirty();return;}
+    if(k==='grid'){apexGrid.innerHTML=v;apexGridSess=apexState.cat+'|'+apexState.sess;apexGridDirty();return;}
     const mc=k.match(/^r(\d+)c(\d+)$/);
     if(mc){const el=apexGrid.querySelector('[data-id="'+k+'"]');if(el){el.className=p[1]||'';el.innerHTML=v;apexGridDirty();}return;}
     if(/^r\d+$/.test(k)&&p[1]==='#'){const row=apexGrid.querySelector('tr[data-id="'+k+'"]');if(row){row.setAttribute('data-pos',p[2]);apexGridDirty();}return;}
-    if(k==='title1'){if(apexState.cat!==v){apexState.cat=v;changed=true;}}
+    if(k==='title1'){if(apexState.cat!==v){if(apexState.sess&&apexState.start){apexEvaluate('change');apexState.start='';}apexState.cat=v;changed=true;}}
     else if(k==='title2'){if(apexState.sess!==v){
       // cambio sessione: le partenze già viste appartengono alla sessione precedente
-      if(apexState.sess)apexIgnore=new Set(apexSeen);
-      apexState.sess=v;apexState.start='';apexState.red='';changed=true;}}
+      if(apexState.sess){apexEvaluate('change');apexIgnore=new Set(apexSeen);}
+      apexState.sess=v;apexFinished='';clearTimeout(apexEvalT);apexState.start='';apexState.red='';changed=true;}}
     else if(k==='com'){
       // ultima partenza registrata: <b>10:43</b><span data-flag="green"></span>START
       const all=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*data-flag="green"[^>]*><\/span>\s*START/gi)].map(x=>x[1]).filter(t=>!apexIgnore.has(t));
@@ -3735,6 +3839,12 @@ function apexParse(txt){
       if(all.length){
         const first=all.sort((a,b)=>slotMins(a.replace(':','.'))-slotMins(b.replace(':','.')))[0];
         if(apexState.start!==first){apexState.start=first;changed=true;}
+      }
+      const fins=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*><\/span>\s*FINISH/gi)].map(x=>x[1]).filter(t=>!apexIgnore.has(t));
+      if(fins.length&&apexState.start&&!apexFinished){
+        apexFinished=fins[0];clearTimeout(apexEvalT);
+        // aspetta che tutti passino sotto la bandiera a scacchi, poi valuta
+        apexEvalT=setTimeout(()=>apexEvaluate('finish'),75000);
       }
       const reds=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*data-flag="([^"]*)"[^>]*><\/span>\s*([^<]*)/gi)]
         .filter(x=>!apexIgnore.has(x[1])&&(/red|rouge|rossa/i.test(x[2])||/RED|ROSSA|ROUGE/i.test(x[3])))
@@ -3812,7 +3922,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1150';
+const APP_BUILD='2026-11-13-1205';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
