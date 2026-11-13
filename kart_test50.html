@@ -3786,8 +3786,8 @@ window.rtChime=rtChime;
 function askNotifOnce(){
   try{
     if(!('Notification' in window)||Notification.permission!=='default')return;
-    if(localStorage.getItem('rt_notif_asked')==='1')return;
-    localStorage.setItem('rt_notif_asked','1');
+    if(sessionStorage.getItem('rt_notif_asked')==='1')return;
+    sessionStorage.setItem('rt_notif_asked','1');
     Notification.requestPermission().then(p=>{updateNotifBtn();if(p==='granted')subscribePush();});
   }catch(e){}
 }
@@ -3809,7 +3809,7 @@ async function subscribePush(){
 window.subscribePush=subscribePush;
 setTimeout(subscribePush,4000);
 document.addEventListener('click',askNotifOnce,{once:true,capture:true});
-function enableRtNotifications(){try{localStorage.removeItem('rt_notif_asked');}catch(e){}askNotifOnce();}
+function enableRtNotifications(){try{sessionStorage.removeItem('rt_notif_asked');}catch(e){}askNotifOnce();}
 window.enableRtNotifications=enableRtNotifications;
 // Solo un'indicazione piccola, e solo se le notifiche non sono attive
 function updateNotifBtn(){
@@ -4020,7 +4020,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1320';
+const APP_BUILD='2026-11-13-1325';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
