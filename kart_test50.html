@@ -520,6 +520,30 @@ button,input,textarea,select{font-family:inherit}
 .fab-now{width:56px!important;height:56px!important;background:rgba(255,90,31,.88)!important;color:#0d0d0f!important;font-family:'Saira Condensed';font-weight:900!important;font-size:14px!important;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 8px 24px -10px rgba(255,90,31,.7)!important}
 .fab-top{width:48px!important;height:48px!important;align-items:center;justify-content:center;background:rgba(29,29,34,.55)!important;border:1px solid rgba(255,255,255,.08)!important;color:var(--text2)!important;font-size:20px!important;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
 .fab-top:active,.fab-now:active{transform:scale(.92)}
+
+/* Selettori a due parti: indicatore che scorre */
+.pv-switch{position:relative;isolation:isolate}
+.pv-switch::before{content:'';position:absolute;z-index:0;top:3px;bottom:3px;left:3px;width:calc(50% - 3px);border-radius:8px;background:var(--bg2);box-shadow:0 4px 12px -6px rgba(0,0,0,.6);transition:transform .28s cubic-bezier(.22,.85,.26,1)}
+.pv-switch:has(.pv-btn:last-child.active)::before{transform:translateX(100%)}
+.pv-switch .pv-btn{position:relative;z-index:1;transition:color .25s}
+.pv-switch .pv-btn.active{background:transparent!important;box-shadow:none!important}
+.pv-switch.anim-r::before{animation:pvR .28s cubic-bezier(.22,.85,.26,1)}
+.pv-switch.anim-l::before{animation:pvL .28s cubic-bezier(.22,.85,.26,1)}
+@keyframes pvR{from{transform:none}to{transform:translateX(100%)}}
+@keyframes pvL{from{transform:translateX(100%)}to{transform:none}}
+#lt-mytable.swap-r .ltbig,#lt-mytable.swap-r .ltc{animation:swapR .3s ease-out}
+#lt-mytable.swap-l .ltbig,#lt-mytable.swap-l .ltc{animation:swapL .3s ease-out}
+@keyframes swapR{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@keyframes swapL{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
+
+/* Selettore a tre parti (Nome/Num · Team · Categoria) con indicatore che scorre */
+.adv-search-mode{position:relative;isolation:isolate;display:grid!important;grid-template-columns:repeat(3,1fr);gap:0!important;background:var(--bg3);border-radius:10px;padding:3px;overflow:visible!important}
+.adv-search-mode::before{content:'';position:absolute;z-index:0;top:3px;bottom:3px;left:3px;width:calc((100% - 6px)/3);border-radius:8px;background:var(--bg2);box-shadow:0 4px 12px -6px rgba(0,0,0,.6);transition:transform .28s cubic-bezier(.22,.85,.26,1)}
+.adv-search-mode:has(.adv-mode-btn:nth-child(2).active)::before{transform:translateX(100%)}
+.adv-search-mode:has(.adv-mode-btn:nth-child(3).active)::before{transform:translateX(200%)}
+.adv-search-mode .adv-mode-btn{position:relative;z-index:1;background:transparent!important;border:none!important;box-shadow:none!important;border-radius:8px;color:var(--text4)!important;font-family:'Saira Condensed';font-weight:800;font-size:13px;padding:9px 4px;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;transition:color .25s}
+.adv-search-mode .adv-mode-btn.active{color:var(--text)!important}
+.view-swap-r{animation:swapR .3s ease-out}.view-swap-l{animation:swapL .3s ease-out}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .nav-item-icon .ic{width:20px;height:20px}
 .card-inner>div:first-child{flex-wrap:wrap;row-gap:0}
@@ -3080,6 +3104,7 @@ function saveTeamNote(key){
 }
 window.saveTeamNote=saveTeamNote;
 function setPilotsView(v){
+  if(pilotsView!==v)setTimeout(()=>viewSwap(['pilots-list'],v==='team'?'r':'l'),0);
   pilotsView=v;localStorage.setItem('rt_pview',v);
   if(pilotSearchMode!=='text')setPilotSearchMode('text');
   clearPilotsSearch();
@@ -4052,9 +4077,17 @@ let _ltRenderT=null;
 function apexGridDirty(){if(_ltRenderT)return;_ltRenderT=setTimeout(()=>{_ltRenderT=null;renderLtMyTable();},100);}
 let ltView=localStorage.getItem('rt_ltview')||'mia';
 let ltOnlyMine=localStorage.getItem('rt_ltmine')!=='0';
-function toggleLtMine(v){ltOnlyMine=v;localStorage.setItem('rt_ltmine',v?'1':'0');renderLtMyTable();}
+function toggleLtMine(v){
+  if(ltOnlyMine===v)return;
+  ltOnlyMine=v;localStorage.setItem('rt_ltmine',v?'1':'0');
+  const box=document.getElementById('lt-mytable');const dir=v?'l':'r';
+  if(box){box.classList.remove('swap-r','swap-l');void box.offsetWidth;box.classList.add('swap-'+dir);clearTimeout(window._ltSwT);window._ltSwT=setTimeout(()=>box.classList.remove('swap-r','swap-l'),350);}
+  window._ltSwAnim=dir;renderLtMyTable();window._ltSwAnim='';
+}
 window.toggleLtMine=toggleLtMine;
-function setLtView(v){ltView=v;localStorage.setItem('rt_ltview',v);renderLtMyTable();}
+// Animazione del contenuto quando si cambia vista con un selettore
+function viewSwap(ids,dir){ids.forEach(id=>{const el=document.getElementById(id);if(!el)return;el.classList.remove('view-swap-r','view-swap-l');void el.offsetWidth;el.classList.add('view-swap-'+dir);setTimeout(()=>el.classList.remove('view-swap-'+dir),350);});}
+function setLtView(v){if(ltView===v)return;const d=v==='apex'?'r':'l';ltView=v;localStorage.setItem('rt_ltview',v);renderLtMyTable();viewSwap(['lt-mytable','lt-wrap'],d);}
 window.setLtView=setLtView;
 // Classifica live ricostruita dai dati Apex, con i piloti dell'account evidenziati
 // Giro attuale / tempo rimanente come su Apex (messaggi dyn1/dyn2 del live)
@@ -4121,7 +4154,7 @@ function renderLtMyTable(){
   try{teams.forEach(t=>teamEntrants(t).forEach(e=>teamNums.add(String(e.num))));}catch(e){}
   const sorted=rows.map(r=>({r,pos:parseInt(r.getAttribute('data-pos'))||999})).sort((a,b)=>a.pos-b.pos);
   const mineCount=sorted.filter(x=>myNums.has(txt(x.r,C('no','4')))).length;
-  const sw='<div class="pv-switch" style="margin-bottom:8px">'
+  const sw='<div class="pv-switch'+(window._ltSwAnim?' anim-'+window._ltSwAnim:'')+'" style="margin-bottom:8px">'
     +'<button class="pv-btn'+(ltOnlyMine?' active':'')+'" onclick="toggleLtMine(true)">SOLO MIEI</button>'
     +'<button class="pv-btn'+(!ltOnlyMine?' active':'')+'" onclick="toggleLtMine(false)">TUTTI</button></div>';
   const title='<div style="font-size:11px;font-weight:800;color:var(--text3);margin-bottom:6px">'+(apexState.cat||'')+' · '+(apexState.sess||'')
@@ -4266,7 +4299,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1550';
+const APP_BUILD='2026-11-13-1600';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
