@@ -563,6 +563,14 @@ button,input,textarea,select{font-family:inherit}
 .header-right{gap:8px;flex-shrink:0}
 #sb-conn{display:none}
 #rt-statusbar{justify-content:flex-start;gap:22px}
+
+.scuderia-item{padding:14px 16px!important;font-size:17px!important;font-weight:700!important;display:flex;align-items:center;font-family:'Barlow Condensed'}
+.scuderia-item span:last-child{font-size:13px!important}
+.scuderia-item.selected{background:var(--bg3)!important;color:var(--text)!important;box-shadow:inset 3px 0 0 var(--rt-orange)}
+.scuderia-list{max-height:280px!important}
+.prog-filter-chip{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 8px;padding:10px 14px;border-radius:12px;background:var(--bg3);font-size:16px;font-weight:700;text-transform:uppercase}
+.prog-filter-chip button{background:none;border:1px solid var(--border2);color:var(--text2);border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;min-height:40px}
+.now-badge{color:var(--rt-live)!important}.now-badge::before{content:'● ';color:var(--rt-live)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .nav-item-icon .ic{width:20px;height:20px}
 .card-inner>div:first-child{flex-wrap:wrap;row-gap:0}
@@ -1924,8 +1932,10 @@ function pilotHasGroupData(pilot){
 }
 
 function pilotsForSlot(slot){
+  let _pf=false;try{_pf=progFilterOn();}catch(e){}
   return pilots.filter(p=>{
     if(p.eliminated)return false;
+    if(_pf&&!myPilotMatches(p,progSearchMode,progSearchTeam,progSearchCat))return false;
     if(canonCat(p.cat)!==canonCat(slot.cat))return false;
     if(slot.type==='all')return true;
     if(slot.type==='parity')return p.parity===slot.filter;
@@ -3232,6 +3242,15 @@ window.copyAllForEditor=copyAllForEditor;
 // ══════════════════════════════════════
 const CATS=['KZ2','OK','OKN','OKJ','MINI GR3','MINI U10','OK-NJ'];
 
+function getMyTeams(){
+  const t={};pilots.forEach(p=>{const tm=p.team||((currentEntryList[p.num]||{}).team)||'';if(tm)t[tm]=(t[tm]||0)+1;});
+  return Object.entries(t).sort((a,b)=>a[0].localeCompare(b[0]));
+}
+function myPilotMatches(p,mode,team,cat){
+  if(mode==='team')return!!team&&((p.team||((currentEntryList[p.num]||{}).team)||'')===team);
+  if(mode==='cat')return!!cat&&canonCat(p.cat)===canonCat(cat);
+  return true;
+}
 function getTeamsFromEntryList(){
   const teams={};
   Object.values(currentEntryList).forEach(e=>{
@@ -3270,7 +3289,7 @@ window.setPilotSearchMode=setPilotSearchMode;
 
 function renderPilotTeamList(){
   const q=(document.getElementById('p-team-input')?document.getElementById('p-team-input').value.toUpperCase():'');
-  const teams=getTeamsFromEntryList().filter(([t])=>t.toUpperCase().includes(q));
+  const teams=getMyTeams().filter(([t])=>t.toUpperCase().includes(q));
   const el=document.getElementById('p-team-list');if(!el)return;
   if(!teams.length){el.innerHTML='<div style="padding:14px;font-size:12px;color:var(--text4);text-align:center">Nessun team</div>';return;}
   el.innerHTML=teams.map(([t,cnt])=>'<div class="scuderia-item'+(pilotSearchTeam===t?' selected':'')+'" onclick="selectPilotTeam(\''+t.replace(/'/g,"\\'")+'\')">'
@@ -3311,9 +3330,10 @@ function renderPilotSearchResults(){
     listEl.style.display='none';resEl.style.display='';return;
   }
   matches.sort((a,b)=>{if(a.isMyPilot&&!b.isMyPilot)return-1;if(!a.isMyPilot&&b.isMyPilot)return 1;return parseInt(a.num)-parseInt(b.num);});
-  const myP=matches.filter(m=>m.isMyPilot);
-  const others=matches.filter(m=>!m.isMyPilot);
-  let html='<div style="font-size:10px;color:var(--text4);font-weight:700;letter-spacing:1px;margin-bottom:8px">'+matches.length+' RISULTATI</div>';
+  // Scheda Piloti: solo i MIEI piloti (gli altri si cercano in Entry list)
+  const myP=matches.filter(m=>m.isMyPilot).sort((a,b)=>parseInt(a.num)-parseInt(b.num));
+  const others=[];matches=myP;
+  let html='<div style="font-size:12px;color:var(--text4);font-weight:700;letter-spacing:1px;margin-bottom:8px">'+myP.length+' TUOI PILOTI</div>';
   if(pilotSearchMode==='team'&&pilotSearchTeam){
     const tk=teamKey(pilotSearchTeam);const has=teams.some(t=>t.key===tk);
     html=(has?'<button class="btn-add-team done" onclick="setPilotsView(\'team\')"><i class="ic ic-star"></i> TEAM GIÀ SEGUITO — APRI TEAM</button>'
@@ -3321,7 +3341,7 @@ function renderPilotSearchResults(){
   }
   if(myP.length){html+='<div class="search-group-label" style="color:#22c55e"><i class="ic ic-star"></i> I MIEI PILOTI ('+myP.length+')</div>';myP.forEach(m=>{html+=searchResultItem(m);});}
   if(others.length){html+='<div class="search-group-label">TUTTI GLI ALTRI ('+others.length+')</div>';others.forEach(m=>{html+=searchResultItem(m);});}
-  if(!matches.length)html='<div class="empty-state"><p>Nessun risultato</p></div>';
+  if(!matches.length)html='<div class="empty-state"><p>Nessuno dei tuoi piloti</p></div>';
   resEl.style.display='';listEl.style.display='none';
   resEl.innerHTML=html;
 }
@@ -3339,7 +3359,7 @@ function setProgSearchMode(mode){
     const wrap=document.getElementById('prog-search-'+m+'-wrap');if(wrap)wrap.style.display=m===mode?'':'none';
   });
   const resEl=document.getElementById('prog-search-results');
-  if(mode==='text'){resEl.style.display='none';}
+  if(mode==='text'){resEl.style.display='none';try{renderSchedule();}catch(e){}}
   else if(mode==='team'){renderProgTeamList();resEl.style.display='';}
   else if(mode==='cat'){buildCatGrid('prog-cat-grid','selectProgCat',progSearchCat);resEl.style.display='';}
 }
@@ -3347,7 +3367,7 @@ window.setProgSearchMode=setProgSearchMode;
 
 function renderProgTeamList(){
   const q=(document.getElementById('prog-team-input')?document.getElementById('prog-team-input').value.toUpperCase():'');
-  const teams=getTeamsFromEntryList().filter(([t])=>t.toUpperCase().includes(q));
+  const teams=getMyTeams().filter(([t])=>t.toUpperCase().includes(q));
   const el=document.getElementById('prog-team-list');if(!el)return;
   if(!teams.length){el.innerHTML='<div style="padding:14px;font-size:12px;color:var(--text4);text-align:center">Nessun team</div>';return;}
   el.innerHTML=teams.map(([t,cnt])=>'<div class="scuderia-item'+(progSearchTeam===t?' selected':'')+'" onclick="selectProgTeam(\''+t.replace(/'/g,"\\'")+'\')">'
@@ -3369,8 +3389,15 @@ function selectProgCat(cat){
 }
 window.selectProgCat=selectProgCat;
 
+function progFilterOn(){return(progSearchMode==='team'&&!!progSearchTeam)||(progSearchMode==='cat'&&!!progSearchCat);}
 function renderProgSearchResults(){
   const resEl=document.getElementById('prog-search-results');if(!resEl)return;
+  // Il filtro team/categoria agisce sul programma stesso, mostrando solo i MIEI piloti distribuiti negli orari
+  if(progSearchMode==='team'||progSearchMode==='cat'){
+    const n=pilots.filter(p=>!p.eliminated&&myPilotMatches(p,progSearchMode,progSearchTeam,progSearchCat)).length;
+    resEl.innerHTML=progFilterOn()?'<div class="prog-filter-chip"><span>'+(progSearchMode==='team'?progSearchTeam:progSearchCat)+' · '+n+' tuoi piloti</span><button onclick="setProgSearchMode(\'text\');renderSchedule()">Togli filtro</button></div>':'';
+    renderSchedule();return;
+  }
   let targets=[];
   if(progSearchMode==='team'&&progSearchTeam){
     Object.entries(currentEntryList).forEach(([num,e])=>{if((e.team||'')===progSearchTeam)targets.push(num);});
@@ -3686,7 +3713,9 @@ function renderSchedule(){
   slotsArr.forEach((slot,idx)=>{
     const ps=pilotsForSlot(slot);const isNow=idx===currentIdx;
     const awaiting=pilotsAwaitingData(slot);
-    const tHtml=teamsSlotHtml(slot);
+    let _pf=false;try{_pf=progFilterOn();}catch(e){}
+    const tHtml=_pf?'':teamsSlotHtml(slot);
+    if(_pf&&!ps.length)return; // con il filtro attivo si vedono solo gli orari dei piloti filtrati
     if(slot.session&&slot.session!==lastSession){html+='<div class="session-divider">'+slot.session+'</div>';lastSession=slot.session;}
 
     // No pilots matched AND some are waiting for data assignment
@@ -4334,7 +4363,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1620';
+const APP_BUILD='2026-11-13-1630';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
