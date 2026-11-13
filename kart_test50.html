@@ -1574,7 +1574,17 @@ function listenRaceData(raceId){
     mergeAndRender();
   },err=>{setSyncStatus('err');dlog('❌ user data: '+err.message,'err');});
 
-  raceDataUnsub=()=>{off(sharedRef);off(userRef);};
+  // Storico avvisi condiviso fra i dispositivi dello stesso utente (tel + PC)
+  const alertsRef=ref(db,'alertsLog/'+raceId+'/'+currentUserId);
+  onValue(alertsRef,snap=>{try{
+    const remote=Object.values(snap.val()||{}).filter(a=>a&&a.id);if(!remote.length)return;
+    const log=alertLog();const have=new Set(log.map(a=>a.id));let added=false;
+    remote.forEach(a=>{if(!have.has(a.id)){log.push({id:a.id,title:a.title,sub:a.sub,kind:a.kind||'',hm:a.hm||'',ts:a.ts||0});added=true;}});
+    if(!added)return;
+    log.sort((x,y)=>(y.ts||0)-(x.ts||0)||String(y.hm).localeCompare(String(x.hm)));
+    localStorage.setItem('rt_alerts_'+raceId,JSON.stringify(log.slice(0,100)));renderAlertLog();
+  }catch(e){}});
+  raceDataUnsub=()=>{off(sharedRef);off(userRef);off(alertsRef);};
 }
 
 function switchRace(raceId){
@@ -3745,8 +3755,9 @@ function alertLog(){try{return JSON.parse(localStorage.getItem('rt_alerts_'+acti
 function rtAlert(id,title,sub,kind){
   const log=alertLog();if(log.some(a=>a.id===id))return;
   const t=new Date();const hm=String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
-  log.unshift({id,title,sub,kind,hm});
+  log.unshift({id,title,sub,kind,hm,ts:Date.now()});
   try{localStorage.setItem('rt_alerts_'+activeRaceId,JSON.stringify(log.slice(0,100)));}catch(e){}
+  try{if(currentUserId&&activeRaceId){const k=id.replace(/[.#$\[\]\/]/g,'_');const u={};u['alertsLog/'+activeRaceId+'/'+currentUserId+'/'+k]={id,title,sub,kind:kind||'',hm,ts:Date.now()};update(ref(db),u);}}catch(e){}
   let wrap=document.getElementById('rt-alerts');
   if(!wrap){wrap=document.createElement('div');wrap.id='rt-alerts';wrap.className='rt-alerts';document.body.appendChild(wrap);}
   const el=document.createElement('div');el.className='rt-alert '+(kind||'');
@@ -4020,7 +4031,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1325';
+const APP_BUILD='2026-11-13-1330';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
