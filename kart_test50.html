@@ -4143,16 +4143,20 @@ function renderAlertLog(){
   const box=document.getElementById('alert-log');if(!box)return;
   updateNotifBtn();
   if(!alertLogOpen){box.style.display='none';return;}
-  const log=alertLog();box.style.display='';
+  // Solo avvisi dei piloti che sono ADESSO tra i miei (il numero è nel penultimo/ultimo campo dell'id)
+  const myNums=new Set(pilots.map(p=>String(p.num)));
+  const alNum=a=>{const m=String(a.title||'').match(/#(\d+)/);return m?m[1]:'';};
+  const log=alertLog().filter(a=>{const n=alNum(a);return!n||myNums.has(n);});box.style.display='';
+  const cleanSub=t=>String(t||'').replace(/\s*·?\s*PROVVISORIO,?\s*verifica (eventuali )?reclami/ig,'').replace(/\s*·?\s*verifica (eventuali )?reclami/ig,'').replace(/^\s*·\s*|\s*·\s*$/g,'');
   const F=[['all','TUTTI'],['quali','QUALIFICHE'],['race','MANCHE/PREF.'],['final','FINALI'],['elim','ELIMINATI']];
   const count=t=>t==='all'?log.length:log.filter(a=>alertType(a)===t).length;
   const chips='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+F.map(([k,l])=>
     '<button class="pv-btn'+(alertFilter===k?' active':'')+'" style="flex:0 0 auto;padding:7px 10px;font-size:11px" onclick="setAlertFilter(\''+k+'\')">'+l+' '+count(k)+'</button>').join('')+'</div>';
   const list=log.filter(a=>alertFilter==='all'||alertType(a)===alertFilter);
-  box.innerHTML=chips+(list.length?list.map(a=>'<div class="card-inner" style="margin-bottom:8px;padding:12px;border-left:4px solid '
+  box.innerHTML='<div style="font-size:13px;font-weight:600;color:var(--text3);background:var(--bg3);border-radius:10px;padding:9px 12px;margin-bottom:10px">Gli avvisi sono provvisori: verifica eventuali reclami.</div>'+chips+(list.length?list.map(a=>'<div class="card-inner" style="margin-bottom:8px;padding:12px;border-left:4px solid '
       +({quali:'#facc15',final:'#22c55e',elim:'#ef4444',race:'#60a5fa'}[alertType(a)])+'">'
       +'<div style="font-size:16px;font-weight:900;line-height:1.3">'+a.title+'</div>'
-      +'<div style="font-size:12px;color:var(--text4);margin-top:4px">'+a.hm+' · '+a.sub+'</div></div>').join('')
+      +'<div style="font-size:12px;color:var(--text4);margin-top:4px">'+a.hm+(cleanSub(a.sub)?' · '+cleanSub(a.sub):'')+'</div></div>').join('')
     :'<div style="font-size:13px;color:var(--text4);padding:8px 0">Nessun avviso in questa categoria</div>');
 }
 let _ltRenderT=null;
@@ -4381,7 +4385,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1650';
+const APP_BUILD='2026-11-13-1655';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
