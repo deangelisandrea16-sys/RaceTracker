@@ -579,6 +579,8 @@ button,input,textarea,select{font-family:inherit}
 button[onclick="reloadLiveTiming()"]{display:none!important}
 /* Transizione al cambio scheda */
 .tab-content.tab-in-r{animation:swapR .28s ease-out}.tab-content.tab-in-l{animation:swapL .28s ease-out}
+.run-chip{font-family:'Chakra Petch';font-size:11px;font-weight:700;color:var(--text2);background:var(--bg3);border-radius:5px;padding:2px 6px;white-space:nowrap;flex-shrink:0}
+.run-chip.done{color:var(--text4)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .nav-item-icon .ic{width:20px;height:20px}
 .card-inner>div:first-child{flex-wrap:wrap;row-gap:0}
@@ -3721,6 +3723,11 @@ function renderSchedule(){
     if(_finalNowKey&&_best>=_slotM)currentIdx=-1; else _finalNowKey=null;
   }
   let html='';let lastSession='';
+  // Quante volte corre oggi ogni mio pilota e quale di queste è lo slot (es. Gara 2/3)
+  const _runs={};
+  slotsArr.forEach((sl,i)=>{pilots.forEach(p=>{if(!p.eliminated&&entrantInSlot(p,sl))(_runs[p.num]=_runs[p.num]||[]).push(i);});});
+  const runChip=(num,i)=>{const l=_runs[num]||[];const k=l.indexOf(i)+1;if(!k||!l.length)return'';
+    return'<span class="run-chip'+(i<currentIdx?' done':'')+'" title="Gare di oggi">Gara '+k+'/'+l.length+'</span>';};
   slotsArr.forEach((slot,idx)=>{
     const ps=pilotsForSlot(slot);const isNow=idx===currentIdx;
     const awaiting=pilotsAwaitingData(slot);
@@ -3764,7 +3771,7 @@ function renderSchedule(){
       var shIco={foto:'<i class="ic ic-camera"></i>',video:'<i class="ic ic-video"></i>',priority:'<i class="ic ic-star"></i>'};
       html+='<div class="card-inner'+(shCls?' '+shCls:'')+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
         +(sh.length?sh.map(function(h){return'<span class="hl-badge hl-'+h+'" style="padding:1px 5px;font-size:8px">'+(shIco[h]||'')+'</span>';}).join(''):'')
-        +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,slot)+'<span class="inner-name">'+p.name+'</span>'
+        +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,slot)+'<span class="inner-name">'+p.name+'</span>'+runChip(p.num,idx)
         +(p.group?'<span class="inner-group">GRP '+p.group+'</span>':'')
         +'<span class="inner-team-big">'+p.team+'</span>'
         +'<button onclick="editPilotNote(\''+p.num+'\')" style="margin-left:6px;background:none;border:none;color:var(--text4);font-size:14px;cursor:pointer;padding:0 2px;flex-shrink:0"><i class="ic ic-note"></i></button></div>'
@@ -4374,7 +4381,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1640';
+const APP_BUILD='2026-11-13-1650';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
