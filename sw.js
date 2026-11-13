@@ -1,9 +1,33 @@
-/* Service worker "passante" (12/11/2026): serve solo a rendere l'app installabile.
-   NON mette nulla in cache: ogni richiesta va in rete come senza service worker,
-   quindi niente versioni vecchie. Per rimuoverlo basta cancellare questo file e la registrazione. */
-self.addEventListener('install', function(){ self.skipWaiting(); });
-self.addEventListener('activate', function(e){ e.waitUntil(self.clients.claim()); });
-self.addEventListener('fetch', function(){ /* nessun respondWith: il browser gestisce la richiesta normalmente */ });
+/* Service worker Race Tracker.
+   13/11/2026 — modalità senza rete: RETE PRIMA, copia salvata solo se la rete manca.
+   Con la rete si riceve sempre l'ultima versione (niente versioni vecchie); la copia serve solo offline. */
+var CACHE='rt-offline-v1';
+var SHELL=['kart_test50.html','manifest.webmanifest','favicon.ico','icons/rt2-180.png','icons/rt2-192.png','icons/rt2-512.png',
+  'vendor/firebase-app-compat.js','vendor/firebase-database-compat.js'];
+self.addEventListener('install', function(e){
+  self.skipWaiting();
+  e.waitUntil(caches.open(CACHE).then(function(c){return Promise.all(SHELL.map(function(u){return c.add(new Request(u,{cache:'reload'})).catch(function(){});}));}));
+});
+self.addEventListener('activate', function(e){
+  e.waitUntil(caches.keys().then(function(k){return Promise.all(k.filter(function(n){return n.indexOf('rt-offline-')===0&&n!==CACHE;}).map(function(n){return caches.delete(n);}));}).then(function(){return self.clients.claim();}));
+});
+function cacheable(req){
+  if(req.method!=='GET')return false;
+  var u=new URL(req.url);
+  if(u.origin===self.location.origin)return u.search==='';            // pagine/icone senza parametri (il controllo versione ?build= resta solo in rete)
+  return u.hostname==='www.gstatic.com'&&u.pathname.indexOf('/firebasejs/')===0;
+}
+self.addEventListener('fetch', function(e){
+  var req=e.request;
+  if(req.mode==='navigate'&&new URL(req.url).origin===self.location.origin){
+    e.respondWith(fetch(req).then(function(r){if(r.ok&&new URL(req.url).search===''){var c=r.clone();caches.open(CACHE).then(function(ca){ca.put(req,c);});}return r;})
+      .catch(function(){return caches.match(req,{ignoreSearch:true}).then(function(m){return m||caches.match('kart_test50.html');});}));
+    return;
+  }
+  if(!cacheable(req))return;   // tutto il resto (Firebase, Apex, ecc.) va in rete normalmente
+  e.respondWith(fetch(req).then(function(r){if(r&&(r.ok||r.type==='opaque')){var c=r.clone();caches.open(CACHE).then(function(ca){ca.put(req,c);});}return r;})
+    .catch(function(){return caches.match(req).then(function(m){return m||Response.error();});}));
+});
 
 /* Notifiche push (13/11/2026): mostra gli avvisi inviati dal server notifiche del Race Tracker.
    Il tag uguale a quello degli avvisi in app evita doppioni. */

@@ -634,8 +634,8 @@ body.light .adv-cat-btn.cat-nj{border-color:#d97706;color:#d97706;}
   <div class="modal" id="modal-inner"></div>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="vendor/firebase-app-compat.js"></script>
+<script src="vendor/firebase-database-compat.js"></script>
 <script>
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
@@ -1472,6 +1472,23 @@ function setSyncStatus(s){
   else{el.textContent='OFFLINE';el.className='sync-status err';dot.className='header-dot';}
 }
 
+// ── Banner "senza rete": le modifiche fatte offline restano in coda e partono al ritorno della rete ──
+let _rtOfflineTimer=null;
+function showOfflineBanner(on){
+  let el=document.getElementById('rt-offline');
+  if(!on){if(el)el.remove();return;}
+  if(!el){el=document.createElement('div');el.id='rt-offline';el.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#7c2d12;color:#fff;font-size:12px;font-weight:700;text-align:center;padding:6px 10px;padding-top:calc(6px + env(safe-area-inset-top))';document.body.appendChild(el);}
+  const t=window._rtSnapAt?new Date(window._rtSnapAt):null;
+  el.textContent='📴 Senza rete — dati'+(t?' delle '+String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0'):' salvati')+'. Le modifiche partono appena torna la rete.';
+}
+function watchConnection(){
+  try{onValue(ref(db,'.info/connected'),snap=>{
+    clearTimeout(_rtOfflineTimer);
+    if(snap.val()===true){showOfflineBanner(false);if(initialized)setSyncStatus('ok');}
+    else _rtOfflineTimer=setTimeout(()=>{showOfflineBanner(true);setSyncStatus('err');},4000);
+  });}catch(e){}
+  window.addEventListener('offline',()=>{showOfflineBanner(true);setSyncStatus('err');});
+}
 // ── FIREBASE: RACE LIST ──
 let raceListUnsub=null;
 let raceDataUnsub=null;
@@ -1515,6 +1532,11 @@ function listenRaceData(raceId){
   const sharedRef=ref(db,'races/'+raceId);
   const userRef=ref(db,'races/'+raceId+'/users/'+currentUserId);
   let sharedData={};let userData={};let sharedReady=false;let userReady=false;
+  // Modalità senza rete: ultima copia dei dati salvata sul dispositivo, mostrata subito e poi sostituita dai dati live
+  window._rtLiveSeen=false;window._rtSnapAt=0;
+  const snapKey='rt_snap_'+raceId+'_'+currentUserId;
+  function saveSnap(){try{localStorage.setItem(snapKey,JSON.stringify({s:sharedData,u:userData,at:Date.now()}));}catch(e){}}
+  try{const c=JSON.parse(localStorage.getItem(snapKey)||'null');if(c&&c.s&&c.u){sharedData=c.s;userData=c.u;sharedReady=true;userReady=true;window._rtSnapAt=c.at;setTimeout(()=>{if(!window._rtLiveSeen)mergeAndRender();},0);}}catch(e){}
 
   function mergeAndRender(){
     if(!sharedReady||!userReady)return;
@@ -1561,14 +1583,14 @@ function listenRaceData(raceId){
   }
 
   const unsub1=onValue(sharedRef,snap=>{
-    sharedData=snap.val()||{};
+    sharedData=snap.val()||{};window._rtLiveSeen=true;saveSnap();
     dlog('Dati gara condivisi: entryList='+Object.keys(sharedData.entryList||{}).length+', days='+(sharedData.days||[]).length,'ok');
     sharedReady=true;
     mergeAndRender();
   },err=>{setSyncStatus('err');dlog('❌ shared data: '+err.message,'err');});
 
   const unsub2=onValue(userRef,snap=>{
-    userData=snap.val()||{};
+    userData=snap.val()||{};saveSnap();
     dlog('Dati utente ['+currentUserId+']: pilots='+Object.keys(userData.pilots||{}).length,'ok');
     userReady=true;
     mergeAndRender();
@@ -1603,6 +1625,7 @@ function updateRaceHeader(){
 dlog('App avviata — utente: '+(currentUserId||'NON IMPOSTATO'),'info');
 dlog('Ascolto gare...','info');
 listenRaces();
+watchConnection();
 if(activeRaceId&&currentUserId) listenRaceData(activeRaceId);
 updateUserHeader();
 // If no user set, show picker after a short delay
@@ -2721,7 +2744,16 @@ function gridPos(num,slot){
     const g=(currentEntryList[num]||{}).grid;return(g&&g[key])||0;
   }catch(e){return 0;}
 }
-function gridBadge(num,slot){const n=gridPos(num,slot);return n?'<span title="Posizione in griglia (lista ufficiale)" style="font-size:11px;font-weight:900;color:#0a0a0b;background:#fbbf24;border-radius:6px;padding:1px 6px;flex-shrink:0">🏁 P'+n+'</span>':'';}
+// Dopo la manche: posizione d'arrivo dai risultati Apex (entryList/{num}/result = {"A-B":"3"}), badge verde
+function slotKeyOf(slot){if(!slot||slot.type!=='group')return'';const f=Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{});return f.map(x=>String(x).trim().toUpperCase()).sort().join('-');}
+function gridBadge(num,slot){
+  const k=slotKeyOf(slot);if(!k)return'';
+  const e=currentEntryList[num]||{};const r=e.result&&e.result[k];
+  if(r!==undefined&&r!==null&&r!==''){const t=/^\d+$/.test(String(r))?String(r)+'°':String(r).toUpperCase();
+    return'<span title="Posizione d\'arrivo (risultati Apex)" style="font-size:11px;font-weight:900;color:#0a0a0b;background:#22c55e;border-radius:6px;padding:1px 6px;flex-shrink:0">🏁 '+t+'</span>';}
+  const n=gridPos(num,slot);
+  return n?'<span title="Posizione in griglia (lista ufficiale)" style="font-size:11px;font-weight:900;color:#0a0a0b;background:#fbbf24;border-radius:6px;padding:1px 6px;flex-shrink:0">🏁 P'+n+'</span>':'';
+}
 function noteLine(num){
   const n=String((notes&&notes[num])||'').trim();if(!n)return'';
   const e=n.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -4041,7 +4073,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1345';
+const APP_BUILD='2026-11-13-1405';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
