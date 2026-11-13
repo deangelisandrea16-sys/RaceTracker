@@ -513,6 +513,7 @@ body.light .adv-cat-btn.cat-nj{border-color:#d97706;color:#d97706;}
       <button onclick="setDelay(0)" style="font-size:10px;font-weight:700;color:var(--text4);background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;cursor:pointer;font-family:inherit;white-space:nowrap">RESET</button>
     </div>
   </div>
+  <div class="content" id="apex-delay-box" style="display:none;padding-top:8px;padding-bottom:0"></div>
   <div class="content" style="padding-top:8px;padding-bottom:0">
     <button class="ov-btn" onclick="openOverview()">📋 VISTA GENERALE GIORNATA</button>
     <div class="adv-search-wrap">
@@ -3282,6 +3283,7 @@ function setDelay(d){
   if(el)el.textContent=(scheduleDelay>0?'+':'')+scheduleDelay+' min';
   scheduleNeedsScroll=true;
   renderSchedule();
+  if(typeof renderApexDelay==='function')renderApexDelay();
 }
 window.setDelay=setDelay;
 
@@ -3549,10 +3551,123 @@ window.addEventListener('focus',()=>refreshNowHighlight(true));
 window.addEventListener('pageshow',()=>refreshNowHighlight(true));
 startScheduleAutoRefresh();
 
+// ══════════════════════════════════════
+// RITARDO AUTOMATICO DA APEX LIVE TIMING
+// Legge dal flusso live di Apex la sessione in pista e l'ora reale della partenza,
+// la abbina allo slot del programma e propone (o applica, se AUTO) il ritardo.
+// ══════════════════════════════════════
+const APEX_LIVE_PORTS={southgardakarting:7440};
+let apexWs=null,apexWsKey='',apexState={cat:'',sess:'',start:'',at:0},apexRetry=null;
+let apexSeen=new Set(),apexIgnore=new Set();
+let apexAuto=localStorage.getItem('rt_apex_auto')==='1';
+let apexLastApplied='';
+function apexLiveName(){
+  const r=(typeof races!=='undefined'&&races[activeRaceId])?races[activeRaceId]:{};
+  const cfg=ORG_CONFIG[r.org]||null;
+  const url=(r.liveTiming&&r.liveTiming.trim())?r.liveTiming.trim():(cfg&&cfg.liveTiming?cfg.liveTiming:'');
+  const m=url.match(/apex-timing\.com\/live-timing\/([a-z0-9\-]+)\//i);
+  return m?m[1].toLowerCase():'';
+}
+function apexConnect(){
+  const name=apexLiveName();const port=APEX_LIVE_PORTS[name];
+  const key=name&&port?name+':'+port:'';
+  if(key===apexWsKey&&apexWs&&apexWs.readyState<=1)return;
+  try{if(apexWs)apexWs.close();}catch(e){}
+  apexWs=null;apexWsKey=key;apexState={cat:'',sess:'',start:'',at:0};apexSeen=new Set();apexIgnore=new Set();
+  if(!key){renderApexDelay();return;}
+  try{
+    apexWs=new WebSocket('wss://live-data.apex-timing.com:'+(port+3)+'/');
+    apexWs.onmessage=ev=>apexParse(String(ev.data));
+    apexWs.onclose=()=>{apexWs=null;clearTimeout(apexRetry);apexRetry=setTimeout(()=>{if(!document.hidden){apexWsKey='';apexConnect();}},15000);};
+    apexWs.onerror=()=>{};
+  }catch(e){}
+}
+function apexParse(txt){
+  let changed=false;
+  txt.split('\n').forEach(line=>{
+    const p=line.split('|');const k=p[0];const v=p.slice(2).join('|');
+    if(k==='title1'){if(apexState.cat!==v){apexState.cat=v;changed=true;}}
+    else if(k==='title2'){if(apexState.sess!==v){
+      // cambio sessione: le partenze già viste appartengono alla sessione precedente
+      if(apexState.sess)apexIgnore=new Set(apexSeen);
+      apexState.sess=v;apexState.start='';changed=true;}}
+    else if(k==='com'){
+      // ultima partenza registrata: <b>10:43</b><span data-flag="green"></span>START
+      const all=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*data-flag="green"[^>]*><\/span>\s*START/gi)].map(x=>x[1]).filter(t=>!apexIgnore.has(t));
+      [...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>/g)].forEach(x=>apexSeen.add(x[1]));
+      if(all.length){
+        const latest=all.sort((a,b)=>slotMins(b.replace(':','.'))-slotMins(a.replace(':','.')))[0];
+        if(apexState.start!==latest){apexState.start=latest;changed=true;}
+      }
+    }
+  });
+  if(changed){apexState.at=Date.now();renderApexDelay();}
+}
+// Traduce categoria e sessione Apex nello slot del programma di oggi
+function apexCat(t){
+  const s=String(t||'').toUpperCase().replace(/\s+/g,' ').trim();
+  if(/U10/.test(s))return'MINI U10';
+  if(/MINI/.test(s))return'MINI GR3';
+  if(/OK-?N\s*J|OKN\s*J|JUNIOR/.test(s)&&/OK/.test(s))return'OK-NJ';
+  if(/^OK-?N\b|^OKN$/.test(s))return'OKN';
+  if(/KZ2/.test(s))return'KZ2';
+  if(/^OKJ|OK JUNIOR/.test(s))return'OKJ';
+  if(/^OK\b/.test(s))return'OK';
+  return normCat(s);
+}
+function apexMatchSlot(){
+  const cat=apexCat(apexState.cat);const ss=String(apexState.sess||'').toUpperCase();
+  if(!cat||!ss)return null;
+  const today=typeof autoDayName==='function'?autoDayName():activeDay;
+  let arr=currentSchedule[today]||[];arr=Array.isArray(arr)?arr:Object.values(arr);
+  const want=x=>{
+    if(canonCat(x.cat)!==canonCat(cat))return false;
+    const f=Array.isArray(x.filter)?x.filter.join('-'):String(x.filter||'');
+    let m;
+    if(/QUALIF/.test(ss)&&(m=ss.match(/S\s*(\d)/)))return x.type==='serie'&&f===m[1];
+    if(/(FREE|PRACT|WARM)/.test(ss)&&/EVEN|PARI/.test(ss))return x.type==='parity'&&f==='EVEN'&&(/WARM/.test(ss)===/WARM/i.test((x.session||'')+(x.label||''))||true);
+    if(/(FREE|PRACT|WARM)/.test(ss)&&/ODD|DISPARI/.test(ss))return x.type==='parity'&&f==='ODD';
+    if(/HEAT|MANCHE/.test(ss)&&(m=ss.match(/\b([A-D])\s*-\s*([A-D])\b/)))return x.type==='group'&&f.toUpperCase().replace(/\s/g,'')===(m[1]+'-'+m[2]);
+    if(/PREFINAL/.test(ss)&&(m=ss.match(/PREFINAL[E]?\s+([AB])\b/)))return x.type==='prefinal'&&f.toUpperCase()===m[1];
+    return false;
+  };
+  // tra gli slot compatibili prende quello con orario più vicino alla partenza reale
+  const cands=arr.filter(want);
+  if(!cands.length)return null;
+  const st=apexState.start?slotMins(apexState.start.replace(':','.')):null;
+  if(st===null)return{slot:cands[0],delay:null};
+  cands.sort((a,b)=>Math.abs(slotMins(a.time)-st)-Math.abs(slotMins(b.time)-st));
+  const slot=cands[0];
+  return{slot,delay:st-slotMins(slot.time)};
+}
+function renderApexDelay(){
+  const box=document.getElementById('apex-delay-box');if(!box)return;
+  if(!apexWsKey||!apexState.sess){box.style.display='none';return;}
+  const m=apexMatchSlot();
+  box.style.display='';
+  const head='<div style="font-size:11px;font-weight:800;color:var(--text3);padding:8px 10px;border:1px solid var(--border2);border-radius:10px;background:var(--bg2)">'
+    +'📡 APEX: '+apexState.cat+' · '+apexState.sess+(apexState.start?' · partita '+apexState.start:'');
+  if(!m||m.delay===null){box.innerHTML=head+'<div style="color:var(--text4);margin-top:4px">'+(m?'In attesa della partenza':'Sessione non trovata nel programma di oggi')+'</div></div>';return;}
+  const d=m.delay;const lbl=(d>0?'+':'')+d+' min';
+  const same=d===scheduleDelay;
+  const key=apexState.cat+'|'+apexState.sess+'|'+apexState.start;
+  if(apexAuto&&!same&&Math.abs(d)<=120&&apexLastApplied!==key){apexLastApplied=key;setDelay(d);return;}
+  box.innerHTML=head+'<div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">'
+    +'<span>Previsto '+m.slot.time+' → <b style="color:'+(d>0?'#f87171':d<0?'#60a5fa':'#4ade80')+'">'+(d===0?'in orario':lbl)+'</b></span>'
+    +(same?'<span style="color:#4ade80">✓ applicato</span>':'<button onclick="setDelay('+d+')" style="padding:5px 10px;border-radius:7px;border:none;background:#22c55e;color:#000;font-weight:900;font-size:11px;cursor:pointer;font-family:inherit">APPLICA '+lbl+'</button>')
+    +'<button onclick="toggleApexAuto()" style="margin-left:auto;padding:5px 8px;border-radius:7px;border:1px solid '+(apexAuto?'#22c55e':'var(--border2)')+';background:none;color:'+(apexAuto?'#22c55e':'var(--text4)')+';font-weight:800;font-size:10px;cursor:pointer;font-family:inherit">AUTO '+(apexAuto?'ON':'OFF')+'</button>'
+    +'</div></div>';
+}
+function toggleApexAuto(){apexAuto=!apexAuto;localStorage.setItem('rt_apex_auto',apexAuto?'1':'0');apexLastApplied='';renderApexDelay();}
+window.toggleApexAuto=toggleApexAuto;
+setInterval(()=>{if(!document.hidden&&activeRaceId)apexConnect();},20000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&activeRaceId){apexConnect();renderApexDelay();}});
+setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
+
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1040';
+const APP_BUILD='2026-11-13-1130';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
