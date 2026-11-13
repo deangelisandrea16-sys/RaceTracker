@@ -369,12 +369,18 @@ body.light .adv-cat-btn.cat-nj{border-color:#d97706;color:#d97706;}
 .tabbar-btn.active .tabbar-ico{transform:translateY(-1px);}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 @media(min-width:768px){
-  .content{max-width:820px;margin:0 auto;}
+  /* Desktop: tutta la larghezza dello schermo, con le schede affiancate in più colonne */
+  .content{max-width:none;margin:0;padding-left:24px;padding-right:24px;}
+  #pilots-list,#schedule-content{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:12px;align-items:start;}
+  #pilots-list>*,#schedule-content>*{margin-bottom:0!important;}
+  #pilots-list>:not(.card),#schedule-content>:not(.card){grid-column:1/-1;}
+  #lt-mytable .ltbig{display:inline-flex;width:calc(50% - 6px);margin-right:6px;vertical-align:top}
+  .modal{max-width:720px;}
   .card:hover{border-color:var(--border2);}
   .task-btn:hover{filter:brightness(1.12);}
   .track-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));}
   #tab-programma .content,#tab-programma #schedule-content{overflow-y:auto;}
-  .tabbar{max-width:600px;left:50%;transform:translateX(-50%);border-radius:20px 20px 0 0;border-left:1px solid var(--border);border-right:1px solid var(--border);}
+  .tabbar{max-width:none;}
 }
 </style>
 </head>
@@ -4002,7 +4008,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1250';
+const APP_BUILD='2026-11-13-1300';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
