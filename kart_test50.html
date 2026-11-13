@@ -3557,7 +3557,7 @@ startScheduleAutoRefresh();
 // la abbina allo slot del programma e propone (o applica, se AUTO) il ritardo.
 // ══════════════════════════════════════
 const APEX_LIVE_PORTS={southgardakarting:7440};
-let apexWs=null,apexWsKey='',apexState={cat:'',sess:'',start:'',at:0},apexRetry=null;
+let apexWs=null,apexWsKey='',apexState={cat:'',sess:'',start:'',red:'',at:0},apexRetry=null;
 let apexSeen=new Set(),apexIgnore=new Set();
 let apexAuto=localStorage.getItem('rt_apex_auto')==='1';
 let apexLastApplied='';
@@ -3573,7 +3573,7 @@ function apexConnect(){
   const key=name&&port?name+':'+port:'';
   if(key===apexWsKey&&apexWs&&apexWs.readyState<=1)return;
   try{if(apexWs)apexWs.close();}catch(e){}
-  apexWs=null;apexWsKey=key;apexState={cat:'',sess:'',start:'',at:0};apexSeen=new Set();apexIgnore=new Set();
+  apexWs=null;apexWsKey=key;apexState={cat:'',sess:'',start:'',red:'',at:0};apexSeen=new Set();apexIgnore=new Set();
   if(!key){renderApexDelay();return;}
   try{
     apexWs=new WebSocket('wss://live-data.apex-timing.com:'+(port+3)+'/');
@@ -3590,15 +3590,21 @@ function apexParse(txt){
     else if(k==='title2'){if(apexState.sess!==v){
       // cambio sessione: le partenze già viste appartengono alla sessione precedente
       if(apexState.sess)apexIgnore=new Set(apexSeen);
-      apexState.sess=v;apexState.start='';changed=true;}}
+      apexState.sess=v;apexState.start='';apexState.red='';changed=true;}}
     else if(k==='com'){
       // ultima partenza registrata: <b>10:43</b><span data-flag="green"></span>START
       const all=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*data-flag="green"[^>]*><\/span>\s*START/gi)].map(x=>x[1]).filter(t=>!apexIgnore.has(t));
       [...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>/g)].forEach(x=>apexSeen.add(x[1]));
+      // PRIMA partenza della sessione: le ripartenze dopo una bandiera rossa non falsano il ritardo
       if(all.length){
-        const latest=all.sort((a,b)=>slotMins(b.replace(':','.'))-slotMins(a.replace(':','.')))[0];
-        if(apexState.start!==latest){apexState.start=latest;changed=true;}
+        const first=all.sort((a,b)=>slotMins(a.replace(':','.'))-slotMins(b.replace(':','.')))[0];
+        if(apexState.start!==first){apexState.start=first;changed=true;}
       }
+      const reds=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*data-flag="([^"]*)"[^>]*><\/span>\s*([^<]*)/gi)]
+        .filter(x=>!apexIgnore.has(x[1])&&(/red|rouge|rossa/i.test(x[2])||/RED|ROSSA|ROUGE/i.test(x[3])))
+        .map(x=>x[1]);
+      const lastRed=reds.length?reds.sort((a,b)=>slotMins(b.replace(':','.'))-slotMins(a.replace(':','.')))[0]:'';
+      if(apexState.red!==lastRed){apexState.red=lastRed;changed=true;}
     }
   });
   if(changed){apexState.at=Date.now();renderApexDelay();}
@@ -3646,7 +3652,8 @@ function renderApexDelay(){
   const m=apexMatchSlot();
   box.style.display='';
   const head='<div style="font-size:11px;font-weight:800;color:var(--text3);padding:8px 10px;border:1px solid var(--border2);border-radius:10px;background:var(--bg2)">'
-    +'📡 APEX: '+apexState.cat+' · '+apexState.sess+(apexState.start?' · partita '+apexState.start:'');
+    +'📡 APEX: '+apexState.cat+' · '+apexState.sess+(apexState.start?' · partita '+apexState.start:'')
+    +(apexState.red?'<div style="color:#f87171;margin-top:4px">🚩 Bandiera rossa alle '+apexState.red+': le prossime sessioni probabilmente slittano</div>':'');
   if(!m||m.delay===null){box.innerHTML=head+'<div style="color:var(--text4);margin-top:4px">'+(m?'In attesa della partenza':'Sessione non trovata nel programma di oggi')+'</div></div>';return;}
   const d=m.delay;const lbl=(d>0?'+':'')+d+' min';
   const same=d===scheduleDelay;
@@ -3667,7 +3674,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1130';
+const APP_BUILD='2026-11-13-1105';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
