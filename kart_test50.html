@@ -629,6 +629,8 @@ body.lt-full-open #rt-alerts,body.lt-full-open #rt-offline,body.lt-full-open .fa
 .cal-pending{font-size:11px;opacity:.6;margin-top:12px}
 .al-row{display:flex;gap:12px;align-items:flex-start;margin-bottom:8px;padding:12px}
 .al-time{flex:0 0 auto;font-family:'Chakra Petch',monospace;font-weight:700;font-size:15px;color:var(--text);background:var(--bg3);border-radius:8px;padding:4px 8px}
+.cal-sers .cal-org{min-height:40px;font-size:12px;font-weight:600;background:var(--bg3)}
+.cal-sers .cal-org.on{background:#fff;color:#111;border-color:#fff}
 </style>
 </head>
 <body>
@@ -2369,7 +2371,12 @@ const ORG_CONFIG={
   IAME: {label:'IAME',        tyre:'',   liveTiming:'', cats:[]},
   ROTAX:{label:'Rotax MAX',   tyre:'',   liveTiming:'', cats:[]},
   FIA:  {label:'FIA Karting', tyre:'',   liveTiming:'', cats:[]},
-  TROFEI:{label:'Trofei',     tyre:'',   liveTiming:'', cats:[]}
+  TROFEI:{label:'Trofei',     tyre:'',   liveTiming:'', cats:[]},
+  COTF: {label:'Champions of the Future', tyre:'', liveTiming:'', cats:[]},
+  EASYKART:{label:'Easykart',  tyre:'',   liveTiming:'', cats:[]},
+  TILLOTSON:{label:'Tillotson T4', tyre:'', liveTiming:'', cats:[]},
+  BNL:  {label:'BNL Karting', tyre:'',   liveTiming:'', cats:[]},
+  ESTERO:{label:'Estero',     tyre:'',   liveTiming:'', cats:[]}
 };
 const ORG_KEYS=Object.keys(ORG_CONFIG);
 function orgOptions(sel){return '<option value="">— organizzazione —</option>'+ORG_KEYS.map(k=>'<option value="'+k+'"'+(k===sel?' selected':'')+'>'+ORG_CONFIG[k].label+'</option>').join('');}
@@ -2522,7 +2529,8 @@ window.applyLiveCrop=applyLiveCrop;window.toggleLiveCompact=toggleLiveCompact;wi
 
 
 // ── CALENDARIO GARE DISPONIBILI (dati da calendar.json, solo fonti ufficiali) ──
-let calData=null,calOrg='';
+let calData=null,calOrg='',calSer='';
+const calSeriesOf=e=>String(e.name).replace(/\s+R\d+$/,'').replace(/\s+20\d\d$/,'').replace(/^\d+°\s+/,'');
 const CAL_MONTHS=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 function calFmt(ev){
   if(!ev.dateFrom)return 'Data da annunciare';
@@ -2542,11 +2550,14 @@ function openCalendar(){
     const el=document.getElementById('cal-body');if(el)el.innerHTML='<div class="empty-state"><p>Calendario non disponibile offline.</p></div>';
   });
 }
-function setCalOrg(o){calOrg=o;renderCalendar();}
+function setCalOrg(o){calOrg=o;calSer='';renderCalendar();}
+function setCalSer(i){const l=window._calSerList||[];calSer=i<0?'':l[i];renderCalendar();}
 function renderCalendar(){
   const el=document.getElementById('cal-body');if(!el||!calData)return;
   const today=new Date().toISOString().slice(0,10);
-  const evs=calData.events.filter(e=>!(e.dateTo&&e.dateTo<today)&&(!calOrg||e.org===calOrg));
+  const base=calData.events.filter(e=>!(e.dateTo&&e.dateTo<today)&&(!calOrg||e.org===calOrg));
+  const sers=calOrg?[...new Set(base.map(calSeriesOf))]:[];window._calSerList=sers;
+  const evs=base.filter(e=>!calSer||calSeriesOf(e)===calSer);
   const orgs=[...new Set(calData.events.map(e=>e.org))];
   const h=[];
   h.push('<div class="cal-orgs">');
@@ -2555,12 +2566,18 @@ function renderCalendar(){
     h.push(`<button class="cal-org${o===calOrg?' on':''}" onclick="setCalOrg('${o}')">${lab}</button>`);
   });
   h.push('</div>');
+  if(sers.length>1){
+    h.push('<div class="cal-orgs cal-sers">');
+    h.push(`<button class="cal-org${calSer?'':' on'}" onclick="setCalSer(-1)">Tutte</button>`);
+    sers.forEach((x,i)=>h.push(`<button class="cal-org${x===calSer?' on':''}" onclick="setCalSer(${i})">${x.replace(new RegExp('^('+calOrg+'|Rotax MAX Challenge|Champions of the Future|Tillotson|FIA Karting)\\s+','i'),'')}</button>`));
+    h.push('</div>');
+  }
   const groups={};
   evs.forEach(e=>{const k=e.month||'zz';(groups[k]=groups[k]||[]).push(e);});
   Object.keys(groups).sort().forEach(k=>{
     const t=k==='zz'?'Data da annunciare':[CAL_MONTHS[+k.slice(5,7)-1],k.slice(0,4)].join(' ');
     h.push(`<div class="cal-month">${t}</div>`);
-    groups[k].sort((x,y)=>(x.dateFrom||'9').localeCompare(y.dateFrom||'9')).forEach(e=>{
+    groups[k].sort((x,y)=>(x.dateFrom||'9').localeCompare(y.dateFrom||'9')||String(x.org).localeCompare(String(y.org))).forEach(e=>{
       const added=calAdded(e);
       const cats=(e.cats||[]).join(' · ');
       h.push(`<div class="cal-item"><div class="cal-date">${calFmt(e)}</div><div class="cal-main">`);
@@ -2573,7 +2590,7 @@ function renderCalendar(){
     });
   });
   if(!evs.length)h.push('<div class="empty-state"><p>Nessuna gara.</p></div>');
-  if(calData.pending&&calData.pending.length)h.push(`<div class="cal-pending">Non ancora pubblicati: ${calData.pending.join(', ')}</div>`);
+  if(calData.pending&&calData.pending.length)h.push(`<div class="cal-pending">${calData.pending.join(' · ')}</div>`);
   h.push(`<div class="cal-pending">Aggiornato al ${calData.updated.split('-').reverse().join('/')} · verifica sempre sul sito ufficiale</div>`);
   el.innerHTML=h.join('');
 }
@@ -2585,7 +2602,7 @@ function addFromCalendar(id){
   set('nr-start',e.dateFrom);set('nr-end',e.dateTo);
   window._calPendingId=e.id;
 }
-window.openCalendar=openCalendar;window.setCalOrg=setCalOrg;window.addFromCalendar=addFromCalendar;
+window.openCalendar=openCalendar;window.setCalOrg=setCalOrg;window.setCalSer=setCalSer;window.addFromCalendar=addFromCalendar;
 function openNewRace(){
   openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
     +'<div class="modal-title">Nuova Gara</div>'
@@ -4568,7 +4585,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1930';
+const APP_BUILD='2026-11-13-2000';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
