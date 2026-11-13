@@ -583,19 +583,21 @@ body.light .adv-cat-btn.cat-nj{border-color:#d97706;color:#d97706;}
       <button onclick="nudgeLiveCrop(0,true)" style="font-size:10px;font-weight:700;color:var(--text4);background:none;border:none;cursor:pointer;font-family:inherit;text-decoration:underline;margin-left:4px">reset</button>
     </div>
     <div id="lt-mynums" style="display:none;margin-bottom:8px"></div>
-    <div class="pv-switch" style="margin-bottom:8px">
-      <button class="pv-btn" id="ltv-mia" onclick="setLtView('mia')">⭐ MIA CLASSIFICA</button>
-      <button class="pv-btn" id="ltv-apex" onclick="setLtView('apex')">APEX ORIGINALE</button>
+    <div class="lt-wrap" id="lt-wrap">
+      <iframe class="live-timing-frame" id="live-timing-frame" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" loading="eager" referrerpolicy="no-referrer"></iframe>
     </div>
+  </div>
+</div>
+
+<!-- TAB GARA: classifica live con i miei piloti, avvisi -->
+<div id="tab-gara" class="tab-content" style="display:none">
+  <div class="content" style="padding:8px">
     <div style="display:flex;gap:6px;margin-bottom:8px">
       <button class="pv-btn" id="notif-btn" onclick="enableRtNotifications()" style="flex:1">🔔 ATTIVA NOTIFICHE</button>
       <button class="pv-btn" onclick="toggleAlertLog()" style="flex:1">📜 AVVISI</button>
     </div>
     <div id="alert-log" style="display:none;margin-bottom:8px"></div>
-    <div id="lt-mytable" style="display:none"></div>
-    <div class="lt-wrap" id="lt-wrap">
-      <iframe class="live-timing-frame" id="live-timing-frame" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" loading="eager" referrerpolicy="no-referrer"></iframe>
-    </div>
+    <div id="lt-mytable"></div>
   </div>
 </div>
 
@@ -675,7 +677,7 @@ function _fixArrays(obj){
 // ── CONSTANTS ──
 const TASKS=["PADDOK","PREGRIGLIA","BILANCIA","PISTA","REPORTAGE"];
 const STATUS_CYCLE=["red","green","orange"];
-const ALL_TABS=['gare','piloti','programma','entrylist','livetiming','debug'];
+const ALL_TABS=['gare','piloti','programma','entrylist','gara','livetiming','debug'];
 
 // ── DEBUG LOGGING (must be defined early) ──
 let debugLogs=[];
@@ -1803,7 +1805,7 @@ function importData(event){
 window.importData=importData;
 
 // ── TABS + MENU ──
-const NAV_LABELS={gare:'🏁 GARE',piloti:'👤 PILOTI',programma:'📅 PROGRAMMA',entrylist:'📋 ENTRY LIST',livetiming:'⏱ LIVE TIMING',debug:'🔧 DEBUG'};
+const NAV_LABELS={gara:'🏆 GARA',gare:'🏁 GARE',piloti:'👤 PILOTI',programma:'📅 PROGRAMMA',entrylist:'📋 ENTRY LIST',livetiming:'⏱ LIVE TIMING',debug:'🔧 DEBUG'};
 
 function toggleMenu(){document.getElementById('nav-overlay').classList.toggle('open');}
 window.toggleMenu=toggleMenu;
@@ -1848,7 +1850,8 @@ function showTab(tab){
   }
   if(tab==='entrylist')renderEntryList();
   if(tab==='debug')renderDebug();
-  if(tab==='livetiming'){reloadLiveTiming();renderLtMyNums();if(typeof apexConnect==='function'&&activeRaceId)apexConnect();renderLtMyTable();renderAlertLog();}
+  if(tab==='livetiming'){reloadLiveTiming();renderLtMyNums();}
+  if(tab==='gara'){if(typeof apexConnect==='function'&&activeRaceId)apexConnect();renderLtMyTable();renderAlertLog();}
 }
 window.showTab=showTab;
 
@@ -3761,12 +3764,8 @@ function setLtView(v){ltView=v;localStorage.setItem('rt_ltview',v);renderLtMyTab
 window.setLtView=setLtView;
 // Classifica live ricostruita dai dati Apex, con i piloti dell'account evidenziati
 function renderLtMyTable(){
-  ['mia','apex'].forEach(x=>{const b=document.getElementById('ltv-'+x);if(b)b.classList.toggle('active',ltView===x);});
-  const box=document.getElementById('lt-mytable');const wrap=document.getElementById('lt-wrap');
-  if(!box)return;
-  if(ltView!=='mia'){box.style.display='none';if(wrap)wrap.style.display='';return;}
-  box.style.display='';if(wrap)wrap.style.display='none';
-  if(activeTab!=='livetiming')return;
+  const box=document.getElementById('lt-mytable');
+  if(!box||activeTab!=='gara')return;
   const rows=[...apexGrid.querySelectorAll('tr[data-id]')].filter(r=>r.getAttribute('data-id')!=='r0');
   if(!rows.length){box.innerHTML='<div class="empty-state"><p>'+(apexWsKey?'In attesa dei dati live di Apex…':'Live timing Apex non disponibile per questa gara')+'</p></div>';return;}
   const txt=(r,c)=>{const el=r.querySelector('[data-id="'+r.getAttribute('data-id')+'c'+c+'"]');return el?el.textContent.trim():'';};
@@ -3922,7 +3921,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1205';
+const APP_BUILD='2026-11-13-1210';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
@@ -4262,6 +4261,7 @@ showTab(activeTab);
   <button class="tabbar-btn" data-tab="piloti" onclick="navTo('piloti')"><span class="tabbar-ico">👤</span><span class="tabbar-lbl">Piloti</span></button>
   <button class="tabbar-btn" data-tab="programma" onclick="navTo('programma')"><span class="tabbar-ico">📅</span><span class="tabbar-lbl">Programma</span></button>
   <button class="tabbar-btn" data-tab="entrylist" onclick="navTo('entrylist')"><span class="tabbar-ico">📋</span><span class="tabbar-lbl">Entry</span></button>
+  <button class="tabbar-btn" data-tab="gara" onclick="navTo('gara')"><span class="tabbar-ico">🏆</span><span class="tabbar-lbl">Gara</span></button>
   <button class="tabbar-btn" data-tab="livetiming" onclick="navTo('livetiming')"><span class="tabbar-ico">⏱</span><span class="tabbar-lbl">Live</span></button>
 </nav>
 </body>
