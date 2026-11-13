@@ -1810,6 +1810,7 @@ function showTab(tab){
     const dd=document.getElementById('delay-display');
     if(dd)dd.textContent=(scheduleDelay>0?'+':'')+scheduleDelay+' min';
     renderSchedule();
+    if(typeof nowSlotKey==='function')_lastNowKey=nowSlotKey();
   }
   if(tab==='entrylist')renderEntryList();
   if(tab==='debug')renderDebug();
@@ -3547,6 +3548,31 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshNow
 window.addEventListener('focus',()=>refreshNowHighlight(true));
 window.addEventListener('pageshow',()=>refreshNowHighlight(true));
 startScheduleAutoRefresh();
+
+// ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
+// Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
+// così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
+const APP_BUILD='2026-11-13-1040';
+let _lastUpdateCheck=0;
+async function checkAppUpdate(){
+  if(Date.now()-_lastUpdateCheck<60000)return;
+  _lastUpdateCheck=Date.now();
+  try{
+    const r=await fetch(location.pathname+'?build='+Date.now(),{cache:'no-store'});
+    if(!r.ok)return;
+    const t=await r.text();
+    const m=t.match(/const APP_BUILD='([^']+)'/);
+    if(m&&m[1]!==APP_BUILD){
+      const ae=document.activeElement;
+      if(ae&&(ae.tagName==='TEXTAREA'||ae.tagName==='INPUT')&&ae.value)return; // non interrompere mentre scrivi
+      location.replace(location.pathname+'?v='+m[1]+location.hash);
+    }
+  }catch(e){}
+}
+window.checkAppUpdate=checkAppUpdate;
+setInterval(checkAppUpdate,120000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkAppUpdate();});
+setTimeout(checkAppUpdate,5000);
 
 // Programma search
 function filterProgramma(q){
