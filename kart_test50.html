@@ -4216,7 +4216,7 @@ function alertKey(r){return['rt_alerts_',r||activeRaceId,'_',currentUserId||''].
 function alertLog(){try{return JSON.parse(localStorage.getItem(alertKey())||'[]').filter(a=>a&&a.id&&!a.id.startsWith('test|'));}catch(e){return[];}}
 // Preferenze notifiche per utente (Firebase notifPrefs/<utente>/<tipo> = false spegne; default acceso).
 // Le stesse chiavi le rispetta il server push.
-const NOTIF_TYPES=[['qualifiche','Pole e top 3 in qualifica'],['finali','P1–P5 in finale'],['eliminati','Eliminati e rischio finale'],['prefinali','Passati a prefinali e finale']];
+const NOTIF_TYPES=[['qualifiche','Pole e top 3 in qualifica'],['finali','P1–P5 in finale'],['eliminati','Eliminati e rischio finale'],['prefinali','Passati a prefinali e finale'],['riepilogo','Riepilogo serale (orari di domani)'],['entrylist','Cambi entry list (miei piloti e team)']];
 const NOTIF_OF={quali:'qualifiche',res:'finali',elim:'eliminati',pref:'prefinali'};
 let notifPrefs={},notifPrefsUser='';
 function watchNotifPrefs(){
