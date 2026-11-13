@@ -496,6 +496,25 @@ button,input,textarea,select{font-family:inherit}
 .task-btn{transition:background-color .25s,color .25s,transform .12s}
 .card,.card-inner{animation:fadein .25s ease-out}
 @keyframes fadein{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* Live in palette Carbon */
+.pv-switch{gap:0;background:var(--bg3);border-radius:10px;padding:3px}
+.pv-btn{border:none!important;border-radius:8px;color:var(--text4);font-family:'Saira Condensed';font-weight:800;font-size:14px;letter-spacing:.5px;padding:8px}
+.pv-btn.active{background:var(--bg2)!important;color:var(--text)!important;box-shadow:0 1px 0 rgba(255,255,255,.04),0 4px 12px -6px rgba(0,0,0,.6)}
+.ltbig{background:var(--bg2)!important;border:1px solid transparent!important;border-radius:14px;padding:12px 14px;gap:14px;animation:none}
+.ltbig.team{background:var(--bg2)!important}
+.ltbig .pos{font-family:'Saira Condensed';font-weight:900;font-style:italic;font-size:44px;min-width:56px;color:var(--text);position:relative}
+.ltbig .pos .mv{position:absolute;left:50%;bottom:-14px;transform:translateX(-50%);font-family:'Chakra Petch';font-style:normal;font-size:11px;font-weight:700;padding:0 5px;border-radius:4px}
+.ltbig.up{border-color:#4fd69c!important;box-shadow:0 0 0 1px #4fd69c,0 8px 26px -14px #4fd69c}.ltbig.up .mv{background:#14301f;color:#4fd69c}
+.ltbig.down{border-color:#ef6a7a!important;box-shadow:0 0 0 1px #ef6a7a}.ltbig.down .mv{background:#2a171b;color:#ef6a7a}
+.ltbig .num{font-family:'Saira Condensed';font-weight:900;font-style:italic;font-size:24px;color:var(--rt-orange)}
+.ltbig.team .num{color:var(--text3)}
+.ltbig .nm{font-size:17px;font-weight:700;text-transform:uppercase}
+.ltbig .tm{font-size:13px;font-weight:600;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-top:1px}
+.ltbig .sub{display:flex;flex-wrap:wrap;gap:4px 12px;font-family:'Chakra Petch';font-size:12px;color:var(--text4);margin-top:5px}.ltbig .sub b{color:var(--text2);font-weight:600}
+.ltc tr.mine td{background:rgba(255,90,31,.10);color:var(--text);font-weight:700}.ltc tr.mine td.n{color:#0d0d0f;background:var(--rt-orange)}
+.ltc tr.team td{background:var(--bg3);color:var(--text2)}.ltc .best{color:#c9a2ff}.ltc .pb{color:#4fd69c}
+.io-btn,.ov-btn{border-color:var(--border2)!important;color:var(--text2)!important;background:var(--bg2)!important}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .nav-item-icon .ic{width:20px;height:20px}
 .card-inner>div:first-child{flex-wrap:wrap;row-gap:0}
@@ -592,7 +611,7 @@ button,input,textarea,select{font-family:inherit}
       <button class="io-btn import" onclick="document.getElementById('import-input').click()"><i class="ic ic-upload"></i> IMPORTA</button>
       <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(event)">
     </div>
-    <button class="mgmt-btn" style="border-color:#f472b6;color:#f472b6" onclick="copyAllForEditor()"><i class="ic ic-list"></i> COPIA TUTTI PER EDITOR</button>
+    <button class="mgmt-btn" onclick="copyAllForEditor()"><i class="ic ic-list"></i> COPIA TUTTI PER EDITOR</button>
     <div class="filter-section">
       <div class="filter-row">
         <span class="filter-row-label">TASK</span>
@@ -4058,6 +4077,23 @@ function renderApexDyn(){
   el.innerHTML='<span style="font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+sess.replace(/</g,'&lt;')+'</span><span style="font-size:20px;color:var(--text);white-space:nowrap"><i class="ic ic-timer" style="color:var(--rt-orange)"></i> '+t.join(' · ').replace(/</g,'&lt;')+'</span>';
 }
 setInterval(()=>{if(activeTab==='livetiming'&&(apexDyn.dyn1||apexDyn.dyn2))renderApexDyn();},500);
+// Sorpassi: freccia ▲/▼ per qualche secondo e scorrimento morbido della card (FLIP)
+const ltLastPos={},ltMoveUntil={};
+function ltMove(no,pos){
+  if(!pos)return 0;const k=apexState.cat+'|'+apexState.sess+'|'+no;const prev=ltLastPos[k];ltLastPos[k]=pos;
+  if(prev&&prev!==pos)ltMoveUntil[k]={d:prev-pos,t:Date.now()+4000};
+  const m=ltMoveUntil[k];return m&&m.t>Date.now()?m.d:0;
+}
+function ltCapture(box){
+  const before={};box.querySelectorAll('.ltbig[data-no]').forEach(el=>{before[el.dataset.no]=el.getBoundingClientRect().top;});
+  return function(){
+    if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    box.querySelectorAll('.ltbig[data-no]').forEach(el=>{const b=before[el.dataset.no];if(b===undefined)return;const dy=b-el.getBoundingClientRect().top;
+      if(Math.abs(dy)<2)return;el.style.transition='none';el.style.transform='translateY('+dy+'px)';
+      requestAnimationFrame(()=>{el.style.transition='transform .45s cubic-bezier(.22,.85,.26,1)';el.style.transform='';});});
+  };
+}
+setInterval(()=>{if(activeTab==='livetiming'&&Object.values(ltMoveUntil).some(m=>m.t&&m.t<Date.now()&&!m.done)){Object.values(ltMoveUntil).forEach(m=>{if(m.t<Date.now())m.done=true;});renderLtMyTable();}},1000);
 function renderLtMyTable(){
   ['mia','apex'].forEach(x=>{const b=document.getElementById('ltv-'+x);if(b)b.classList.toggle('active',ltView===x);});
   const box=document.getElementById('lt-mytable');const wrap=document.getElementById('lt-wrap');
@@ -4073,6 +4109,8 @@ function renderLtMyTable(){
   const head=apexGrid.querySelector('tr[data-id="r0"]');const col={};
   if(head)head.querySelectorAll('td[data-type]').forEach(td=>{col[td.getAttribute('data-type')]=(td.getAttribute('data-id')||'').replace('c','');});
   const C=(t,d)=>col[t]||d;
+  const HL=c=>{const td=head&&head.querySelector('[data-id="c'+c+'"]');return td?td.textContent.trim():'';};
+  const ltFlip=ltCapture(box);
   const myNums=new Set(pilots.map(x=>String(x.num)));
   const teamNums=new Set();
   try{teams.forEach(t=>teamEntrants(t).forEach(e=>teamNums.add(String(e.num))));}catch(e){}
@@ -4082,7 +4120,7 @@ function renderLtMyTable(){
     +'<button class="pv-btn'+(ltOnlyMine?' active':'')+'" onclick="toggleLtMine(true)">SOLO MIEI</button>'
     +'<button class="pv-btn'+(!ltOnlyMine?' active':'')+'" onclick="toggleLtMine(false)">TUTTI</button></div>';
   const title='<div style="font-size:11px;font-weight:800;color:var(--text3);margin-bottom:6px">'+(apexState.cat||'')+' · '+(apexState.sess||'')
-    +' <span style="color:#4ade80">· '+mineCount+' tuoi in pista</span> <span style="color:var(--text4)">· '+sorted.length+' totali</span></div>';
+    +' <span style="color:var(--text)">· '+mineCount+' tuoi in pista</span> <span style="color:var(--text4)">· '+sorted.length+' totali</span></div>';
   if(ltOnlyMine){
     const mine=sorted.filter(x=>{const n=txt(x.r,C('no','4'));return myNums.has(n)||teamNums.has(n);});
     box.innerHTML=sw+title+(mine.length?mine.map(({r})=>{
@@ -4093,27 +4131,28 @@ function renderLtMyTable(){
       const pl=pilots.find(x=>String(x.num)===no)||{};
       const team=pl.team||ent.team||'';
       const nt=String((notes&&notes[no])||'').trim();
-      return'<div class="ltbig'+(tm?' team':'')+'"'+(tm?'':' onclick="openPilotDetail(\''+no+'\')"')+'>'
-        +'<div class="pos">'+(txt(r,C('rk','3'))||'–')+'</div>'
+      const pos=parseInt(txt(r,C('rk','3')))||0;const mv=ltMove(no,pos);
+      return'<div class="ltbig'+(tm?' team':'')+(mv>0?' up':mv<0?' down':'')+'" data-no="'+no+'"'+(tm?'':' onclick="openPilotDetail(\''+no+'\')"')+'>'
+        +'<div class="pos">'+(txt(r,C('rk','3'))||'–')+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>'
         +'<div style="flex:1;min-width:0"><div><span class="num">#'+no+'</span> <span class="nm">'+nm+'</span></div>'
-        +'<div style="font-size:12px;font-weight:800;color:#fbbf24;margin-top:2px">'+team+'</div>'
-        +'<div class="sub">Ultimo '+(txt(r,C('llp','10'))||'–')+' · Migliore '+(txt(r,C('blp','12'))||'–')+(gap?' · Gap '+gap:'')+' · Giri '+(txt(r,C('tlp','14'))||'0')+'</div>'
+        +'<div class="tm">'+team+'</div>'
+        +'<div class="sub">'+[['Ultimo',txt(r,C('llp','10'))],['Migliore',txt(r,C('blp','12'))],['Gap',gap],[col.int?'Int':(HL(C('tlp','14'))||'Int'),col.int?txt(r,col.int):txt(r,C('tlp','14'))]].filter(x=>x[1]&&x[1]!=='-'&&x[1]!=='–').map(x=>'<span>'+x[0]+' <b>'+x[1]+'</b></span>').join('')+'</div>'
         +(nt?'<div style="font-size:11px;color:var(--text4);font-style:italic;margin-top:2px"><i class="ic ic-note"></i> '+nt.replace(/</g,'&lt;')+'</div>':'')+'</div></div>';
     }).join(''):'<div class="empty-state"><p>Nessun tuo pilota in questa sessione</p></div>');
-    return;
+    ltFlip();return;
   }
   box.innerHTML=sw+title
-    +'<table class="ltc"><tr><th>P</th><th>N°</th><th>PILOTA</th><th>ULTIMO</th><th>MIGLIORE</th><th>GAP</th><th>G</th></tr>'
+    +'<table class="ltc"><tr><th>P</th><th>N°</th><th>PILOTA</th><th>ULTIMO</th><th>MIGLIORE</th><th>GAP</th><th>'+(col.int?'INT':(HL(C('tlp','14'))||'INT').toUpperCase())+'</th></tr>'
     +sorted.map(({r})=>{
       const no=txt(r,C('no','4'));const mine=myNums.has(no);const tm=!mine&&teamNums.has(no);
       const llc=cls(r,C('llp','10'));
       return'<tr class="'+(mine?'mine':tm?'team':'')+'"'+(mine?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
         +'<td>'+txt(r,C('rk','3'))+'</td><td class="n">'+no+'</td><td class="d">'+txt(r,C('dr','5'))+'</td>'
         +'<td class="'+(/tb/.test(llc)?'best':/ti|ib/.test(llc)?'pb':'')+'">'+txt(r,C('llp','10'))+'</td>'
-        +'<td>'+txt(r,C('blp','12'))+'</td><td>'+txt(r,C('gap','13'))+'</td><td>'+txt(r,C('tlp','14'))+'</td></tr>'
+        +'<td>'+txt(r,C('blp','12'))+'</td><td>'+txt(r,C('gap','13'))+'</td><td>'+(col.int?txt(r,col.int):txt(r,C('tlp','14')))+'</td></tr>'
         +(mine&&String((notes&&notes[no])||'').trim()?'<tr class="mine"><td></td><td colspan="6" style="font-size:11px;font-style:italic;font-weight:600;white-space:normal"><i class="ic ic-note"></i> '+String(notes[no]).replace(/</g,'&lt;')+'</td></tr>':'');
     }).join('')+'</table>'
-    +'<div style="font-size:10px;color:var(--text4);margin-top:6px">Verde = tuoi piloti · viola = piloti dei tuoi team · tocca un tuo pilota per la scheda</div>';
+    +'<div style="font-size:11px;color:var(--text4);margin-top:6px">Evidenziati i tuoi piloti · tocca un tuo pilota per la scheda</div>';
 }
 window.renderLtMyTable=renderLtMyTable;
 function apexParse(txt){
@@ -4224,7 +4263,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1500';
+const APP_BUILD='2026-11-13-1530';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
