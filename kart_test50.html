@@ -581,6 +581,27 @@ button[onclick="reloadLiveTiming()"]{display:none!important}
 .tab-content.tab-in-r{animation:swapR .28s ease-out}.tab-content.tab-in-l{animation:swapL .28s ease-out}
 .run-chip{font-family:'Chakra Petch';font-size:11px;font-weight:700;color:var(--text2);background:var(--bg3);border-radius:5px;padding:2px 6px;white-space:nowrap;flex-shrink:0}
 .run-chip.done{color:var(--text4)}
+
+/* Schermo intero classifica */
+.lt-full-btn{width:100%;min-height:48px;margin:0 0 10px;border-radius:12px;border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-family:'Saira Condensed';font-weight:800;font-size:15px;letter-spacing:.5px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+#lt-full{position:fixed;inset:0;z-index:10001;background:#0d0d0f;display:none;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+body.lt-full-open{overflow:hidden}
+.ltf-top{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;border-bottom:2px solid var(--rt-orange);flex-shrink:0}
+.ltf-sess{flex:1;min-width:0;font-size:14px;font-weight:700;color:var(--text3);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ltf-lap{font-family:'Chakra Petch';font-weight:700;font-size:20px;color:var(--text);white-space:nowrap}.ltf-lap .ic{color:var(--rt-orange)}
+.ltf-close{width:48px;height:48px;border-radius:12px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:22px;cursor:pointer;flex-shrink:0}
+.ltf-list{flex:1;overflow-y:auto;padding:4px 8px 12px}
+.ltf-row{display:flex;align-items:center;gap:10px;padding:5px 8px;border-bottom:1px solid #1a1a1e;border-radius:8px;transition:background .3s}
+.ltf-row .p{font-family:'Saira Condensed';font-style:italic;font-weight:900;font-size:22px;width:34px;text-align:right;color:var(--text)}
+.ltf-row .n{font-family:'Chakra Petch';font-weight:700;font-size:15px;width:46px;color:var(--text3)}
+.ltf-row .d{flex:1;min-width:0;font-weight:700;font-size:16px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ltf-row .d small{margin-left:8px;font-size:12px;color:var(--text4);font-weight:600}
+.ltf-row.mine{background:rgba(255,90,31,.14)}.ltf-row.mine .n{color:var(--rt-orange)}.ltf-row.mine .p{color:var(--rt-orange)}
+.ltf-row .mv{font-family:'Chakra Petch';font-size:12px;font-weight:700;padding:1px 6px;border-radius:5px}
+.ltf-row.up{box-shadow:inset 3px 0 0 #4fd69c}.ltf-row.up .mv{background:#14301f;color:#4fd69c}
+.ltf-row.down{box-shadow:inset 3px 0 0 #ef6a7a}.ltf-row.down .mv{background:#2a171b;color:#ef6a7a}
+.ltf-empty{padding:30px;text-align:center;color:var(--text4)}
+@media (orientation:landscape){.ltf-list{columns:2;column-gap:14px}.ltf-row{break-inside:avoid}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .nav-item-icon .ic{width:20px;height:20px}
 .card-inner>div:first-child{flex-wrap:wrap;row-gap:0}
@@ -800,6 +821,7 @@ button[onclick="reloadLiveTiming()"]{display:none!important}
       <button class="pv-btn" id="ltv-mia" onclick="setLtView('mia')"><i class="ic ic-star"></i> MIA CLASSIFICA</button>
       <button class="pv-btn" id="ltv-apex" onclick="setLtView('apex')">APEX ORIGINALE</button>
     </div>
+    <button class="lt-full-btn" onclick="openLtFull()"><i class="ic ic-eye"></i> CLASSIFICA A SCHERMO INTERO</button>
     <div id="lt-mytable" style="display:none"></div>
     <div class="lt-wrap" id="lt-wrap">
       <iframe class="live-timing-frame" id="live-timing-frame" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" loading="eager" referrerpolicy="no-referrer"></iframe>
@@ -4160,7 +4182,57 @@ function renderAlertLog(){
     :'<div style="font-size:13px;color:var(--text4);padding:8px 0">Nessun avviso in questa categoria</div>');
 }
 let _ltRenderT=null;
-function apexGridDirty(){if(_ltRenderT)return;_ltRenderT=setTimeout(()=>{_ltRenderT=null;renderLtMyTable();},100);}
+function apexGridDirty(){if(_ltRenderT)return;_ltRenderT=setTimeout(()=>{_ltRenderT=null;renderLtMyTable();if(ltFullOn)renderLtFull();},100);}
+// ── Classifica live a schermo intero (solo classifica + giro, niente barre) ──
+let ltFullOn=false,ltWake=null;const ltFullPrev={},ltFullMv={};
+function openLtFull(){
+  if(ltFullOn)return;ltFullOn=true;
+  let el=document.getElementById('lt-full');
+  if(!el){el=document.createElement('div');el.id='lt-full';document.body.appendChild(el);}
+  el.style.display='flex';document.body.classList.add('lt-full-open');
+  try{history.pushState({ltFull:1},'');}catch(e){}
+  try{const d=document.documentElement;(d.requestFullscreen||d.webkitRequestFullscreen||function(){}).call(d);}catch(e){}
+  try{if(navigator.wakeLock)navigator.wakeLock.request('screen').then(w=>{ltWake=w;}).catch(()=>{});}catch(e){}
+  renderLtFull();
+}
+function closeLtFull(fromPop){
+  if(!ltFullOn)return;ltFullOn=false;
+  const el=document.getElementById('lt-full');if(el)el.style.display='none';document.body.classList.remove('lt-full-open');
+  try{if(document.fullscreenElement)document.exitFullscreen();}catch(e){}
+  try{if(ltWake){ltWake.release();ltWake=null;}}catch(e){}
+  if(!fromPop){try{if(history.state&&history.state.ltFull)history.back();}catch(e){}}
+}
+window.addEventListener('popstate',()=>{if(ltFullOn)closeLtFull(true);});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&ltFullOn)closeLtFull();});
+window.openLtFull=openLtFull;window.closeLtFull=closeLtFull;
+function renderLtFull(){
+  const el=document.getElementById('lt-full');if(!el||!ltFullOn)return;
+  const head=apexGrid.querySelector('tr[data-id="r0"]');const col={};
+  if(head)head.querySelectorAll('td[data-type]').forEach(td=>{col[td.getAttribute('data-type')]=(td.getAttribute('data-id')||'').replace('c','');});
+  const C=(t,d)=>col[t]||d;
+  const txt=(r,c)=>{const x=r.querySelector('[data-id="'+r.getAttribute('data-id')+'c'+c+'"]');return x?x.textContent.trim():'';};
+  const rows=[...apexGrid.querySelectorAll('tr[data-id]')].filter(r=>r.getAttribute('data-id')!=='r0')
+    .map(r=>({r,pos:parseInt(r.getAttribute('data-pos'))||parseInt(txt(r,C('rk','3')))||999})).sort((a,b)=>a.pos-b.pos);
+  const myNums=new Set(pilots.map(x=>String(x.num)));
+  const lap=[apexDynText(apexDyn.dyn1),apexDynText(apexDyn.dyn2)].filter(Boolean).join(' · ');
+  const sess=((apexState.cat||'')+' · '+(apexState.sess||'')).replace(/</g,'&lt;');
+  const now=Date.now();const sk=apexState.cat+'|'+apexState.sess;
+  const out=[];
+  out.push('<div class="ltf-top"><div class="ltf-sess">'+sess+'</div><div class="ltf-lap">'+(lap?'<i class="ic ic-timer"></i> '+lap.replace(/</g,'&lt;'):'')+'</div><button class="ltf-close" onclick="closeLtFull()" aria-label="Chiudi">✕</button></div>');
+  out.push('<div class="ltf-list">');
+  if(!rows.length)out.push('<div class="ltf-empty">In attesa dei dati live…</div>');
+  rows.forEach(({r,pos})=>{
+    const no=txt(r,C('no','4'));const mine=myNums.has(no);const k=sk+'|'+no;
+    if(ltFullPrev[k]&&ltFullPrev[k]!==pos)ltFullMv[k]={d:ltFullPrev[k]-pos,t:now+4000};ltFullPrev[k]=pos;
+    const m=ltFullMv[k];const mv=m&&m.t>now?m.d:0;
+    const nm=mine?((pilots.find(x=>String(x.num)===no)||{}).name||txt(r,C('dr','5'))):txt(r,C('dr','5'));
+    const tm=((pilots.find(x=>String(x.num)===no)||{}).team)||((currentEntryList[no]||{}).team)||'';
+    out.push('<div class="ltf-row'+(mine?' mine':'')+(mv>0?' up':mv<0?' down':'')+'"><span class="p">'+(pos<999?pos:'–')+'</span><span class="n">'+no+'</span><span class="d">'+String(nm).replace(/</g,'&lt;')+'<small>'+String(tm).replace(/</g,'&lt;')+'</small></span>'+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>');
+  });
+  out.push('</div>');
+  el.innerHTML=out.join('');
+}
+setInterval(()=>{if(ltFullOn)renderLtFull();},1000);
 let ltView='mia'; // vista "Apex originale" rimossa il 13/11/2026
 let ltOnlyMine=localStorage.getItem('rt_ltmine')!=='0';
 function toggleLtMine(v){
@@ -4385,7 +4457,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1655';
+const APP_BUILD='2026-11-13-1700';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
