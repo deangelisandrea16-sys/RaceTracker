@@ -446,7 +446,7 @@ body.light .adv-cat-btn.cat-nj{border-color:#d97706;color:#d97706;}
     <div class="adv-search-wrap" id="el-search-wrap">
       <div class="adv-search-mode">
         <button class="adv-mode-btn active" onclick="setElSearchMode('text')" id="el-mode-text">🔤 NOME/NUM</button>
-        <button class="adv-mode-btn" onclick="setElSearchMode('team')" id="el-mode-team">🏭 SCUDERIA</button>
+        <button class="adv-mode-btn" onclick="setElSearchMode('team')" id="el-mode-team">🏭 TEAM</button>
         <button class="adv-mode-btn" onclick="setElSearchMode('cat')" id="el-mode-cat">🏷 CATEGORIA</button>
       </div>
       <div id="el-search-text-wrap">
@@ -457,7 +457,7 @@ body.light .adv-cat-btn.cat-nj{border-color:#d97706;color:#d97706;}
       </div>
       <div id="el-search-team-wrap" style="display:none">
         <div class="search-bar-container">
-          <input class="search-bar" id="el-team-input" placeholder="🔍 Filtra scuderie..." oninput="renderElTeamList()" autocomplete="off">
+          <input class="search-bar" id="el-team-input" placeholder="🔍 Filtra team..." oninput="renderElTeamList()" autocomplete="off">
         </div>
         <div class="scuderia-list" id="el-team-list"></div>
       </div>
@@ -506,18 +506,18 @@ body.light .adv-cat-btn.cat-nj{border-color:#d97706;color:#d97706;}
     <div class="adv-search-wrap">
       <div class="adv-search-mode">
         <button class="adv-mode-btn active" onclick="setPilotSearchMode('text')" id="p-mode-text">🔤 NOME/NUM</button>
-        <button class="adv-mode-btn" onclick="setPilotSearchMode('team')" id="p-mode-team">🏭 SCUDERIA</button>
+        <button class="adv-mode-btn" onclick="setPilotSearchMode('team')" id="p-mode-team">🏭 TEAM</button>
         <button class="adv-mode-btn" onclick="setPilotSearchMode('cat')" id="p-mode-cat">🏷 CATEGORIA</button>
       </div>
       <div id="p-search-text-wrap">
         <div class="search-bar-container">
-          <input class="search-bar" id="pilots-search" placeholder="🔍 Cerca numero, nome o scuderia..." oninput="filterPilots(this.value)" autocomplete="off">
+          <input class="search-bar" id="pilots-search" placeholder="🔍 Cerca numero, nome o team..." oninput="filterPilots(this.value)" autocomplete="off">
           <button class="search-clear" id="search-clear-btn" onclick="clearPilotsSearch()" style="display:none">✕</button>
         </div>
       </div>
       <div id="p-search-team-wrap" style="display:none">
         <div class="search-bar-container">
-          <input class="search-bar" id="p-team-input" placeholder="🔍 Filtra scuderie..." oninput="renderPilotTeamList()" autocomplete="off">
+          <input class="search-bar" id="p-team-input" placeholder="🔍 Filtra team..." oninput="renderPilotTeamList()" autocomplete="off">
         </div>
         <div class="scuderia-list" id="p-team-list"></div>
       </div>
@@ -553,7 +553,7 @@ body.light .adv-cat-btn.cat-nj{border-color:#d97706;color:#d97706;}
     <div class="adv-search-wrap">
       <div class="adv-search-mode">
         <button class="adv-mode-btn active" onclick="setProgSearchMode('text')" id="prog-mode-text">🔤 NOME/NUM</button>
-        <button class="adv-mode-btn" onclick="setProgSearchMode('team')" id="prog-mode-team">🏭 SCUDERIA</button>
+        <button class="adv-mode-btn" onclick="setProgSearchMode('team')" id="prog-mode-team">🏭 TEAM</button>
         <button class="adv-mode-btn" onclick="setProgSearchMode('cat')" id="prog-mode-cat">🏷 CATEGORIA</button>
       </div>
       <div id="prog-search-text-wrap">
@@ -564,7 +564,7 @@ body.light .adv-cat-btn.cat-nj{border-color:#d97706;color:#d97706;}
       </div>
       <div id="prog-search-team-wrap" style="display:none">
         <div class="search-bar-container">
-          <input class="search-bar" id="prog-team-input" placeholder="🔍 Filtra scuderie..." oninput="renderProgTeamList()" autocomplete="off">
+          <input class="search-bar" id="prog-team-input" placeholder="🔍 Filtra team..." oninput="renderProgTeamList()" autocomplete="off">
         </div>
         <div class="scuderia-list" id="prog-team-list"></div>
       </div>
@@ -2903,7 +2903,7 @@ function teamMatchesFilter(t){
 }
 function renderTeams(){
   const el=document.getElementById('pilots-list');
-  if(!teams.length){el.innerHTML='<p class="no-pilots">Nessun team. Cerca per 🏭 SCUDERIA e premi ➕ AGGIUNGI TEAM.</p>';return;}
+  if(!teams.length){el.innerHTML='<p class="no-pilots">Nessun team. Cerca per 🏭 TEAM e premi ➕ AGGIUNGI TEAM.</p>';return;}
   const filtered=teams.filter(teamMatchesFilter).sort((a,b)=>a.name.localeCompare(b.name));
   const counter='<div style="font-size:11px;font-weight:700;color:var(--text4);margin-bottom:14px;letter-spacing:1px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">'
     +(filterStatus!=='all'?'FILTRO':'TOTALE TEAM')+' <span style="color:var(--text);font-size:18px;font-weight:900;margin-left:8px;">'+filtered.length+(filterStatus!=='all'?'/'+teams.length:'')+'</span></div>';
@@ -3035,7 +3035,7 @@ function renderPilotTeamList(){
   const q=(document.getElementById('p-team-input')?document.getElementById('p-team-input').value.toUpperCase():'');
   const teams=getTeamsFromEntryList().filter(([t])=>t.toUpperCase().includes(q));
   const el=document.getElementById('p-team-list');if(!el)return;
-  if(!teams.length){el.innerHTML='<div style="padding:14px;font-size:12px;color:var(--text4);text-align:center">Nessuna scuderia</div>';return;}
+  if(!teams.length){el.innerHTML='<div style="padding:14px;font-size:12px;color:var(--text4);text-align:center">Nessun team</div>';return;}
   el.innerHTML=teams.map(([t,cnt])=>'<div class="scuderia-item'+(pilotSearchTeam===t?' selected':'')+'" onclick="selectPilotTeam(\''+t.replace(/'/g,"\\'")+'\')">'
     +'<span style="flex:1">'+t+'</span><span style="font-size:10px;color:var(--text4);font-weight:700;margin-left:8px">'+cnt+'</span></div>').join('');
 }
@@ -3070,7 +3070,7 @@ function renderPilotSearchResults(){
         matches.push({num,name:(e.lastName||'')+' '+(e.firstName||''),team:e.team||'',cat:e.cat||'',isMyPilot:!!pilots.find(p=>p.num===num)});
     });
   } else {
-    resEl.innerHTML='<div style="font-size:11px;color:var(--text4);padding:10px 0">'+(pilotSearchMode==='team'?'Seleziona una scuderia dalla lista':'Seleziona una categoria')+'</div>';
+    resEl.innerHTML='<div style="font-size:11px;color:var(--text4);padding:10px 0">'+(pilotSearchMode==='team'?'Seleziona un team dalla lista':'Seleziona una categoria')+'</div>';
     listEl.style.display='none';resEl.style.display='';return;
   }
   matches.sort((a,b)=>{if(a.isMyPilot&&!b.isMyPilot)return-1;if(!a.isMyPilot&&b.isMyPilot)return 1;return parseInt(a.num)-parseInt(b.num);});
@@ -3112,7 +3112,7 @@ function renderProgTeamList(){
   const q=(document.getElementById('prog-team-input')?document.getElementById('prog-team-input').value.toUpperCase():'');
   const teams=getTeamsFromEntryList().filter(([t])=>t.toUpperCase().includes(q));
   const el=document.getElementById('prog-team-list');if(!el)return;
-  if(!teams.length){el.innerHTML='<div style="padding:14px;font-size:12px;color:var(--text4);text-align:center">Nessuna scuderia</div>';return;}
+  if(!teams.length){el.innerHTML='<div style="padding:14px;font-size:12px;color:var(--text4);text-align:center">Nessun team</div>';return;}
   el.innerHTML=teams.map(([t,cnt])=>'<div class="scuderia-item'+(progSearchTeam===t?' selected':'')+'" onclick="selectProgTeam(\''+t.replace(/'/g,"\\'")+'\')">'
     +'<span style="flex:1">'+t+'</span><span style="font-size:10px;color:var(--text4);font-weight:700;margin-left:8px">'+cnt+'</span></div>').join('');
 }
@@ -3139,7 +3139,7 @@ function renderProgSearchResults(){
     Object.entries(currentEntryList).forEach(([num,e])=>{if((e.team||'')===progSearchTeam)targets.push(num);});
   } else if(progSearchMode==='cat'&&progSearchCat){
     Object.entries(currentEntryList).forEach(([num,e])=>{if(e.cat===progSearchCat)targets.push(num);});
-  } else {resEl.innerHTML='<div style="font-size:11px;color:var(--text4);padding:10px 0">Seleziona una scuderia o categoria</div>';return;}
+  } else {resEl.innerHTML='<div style="font-size:11px;color:var(--text4);padding:10px 0">Seleziona un team o categoria</div>';return;}
   if(!targets.length){resEl.innerHTML='<div class="empty-state"><p>Nessun risultato</p></div>';return;}
   // Build virtual pilot list from entry list for schedule search
   const fakePilots=targets.map(num=>{
@@ -3203,7 +3203,7 @@ function renderElTeamList(){
   const q=(document.getElementById('el-team-input')?document.getElementById('el-team-input').value.toUpperCase():'');
   const teams=getTeamsFromEntryList().filter(([t])=>t.toUpperCase().includes(q));
   const el=document.getElementById('el-team-list');if(!el)return;
-  if(!teams.length){el.innerHTML='<div style="padding:14px;font-size:12px;color:var(--text4);text-align:center">Nessuna scuderia</div>';return;}
+  if(!teams.length){el.innerHTML='<div style="padding:14px;font-size:12px;color:var(--text4);text-align:center">Nessun team</div>';return;}
   el.innerHTML=teams.map(([t,cnt])=>'<div class="scuderia-item'+(elSearchTeam===t?' selected':'')+'" onclick="selectElTeam(\''+t.replace(/'/g,"\\'")+'\')">'
     +'<span style="flex:1">'+t+'</span><span style="font-size:10px;color:var(--text4);font-weight:700;margin-left:8px">'+cnt+'</span></div>').join('');
 }
@@ -3258,7 +3258,7 @@ function renderEntryList(){
   } else if(elSearchMode==='team'){
     if(elSearchTeam)filtered=filtered.filter(([,e])=>e.team===elSearchTeam);
     else {
-      el.innerHTML='<div style="font-size:11px;color:var(--text4);padding:10px 0;text-align:center">Seleziona una scuderia dalla lista</div>';
+      el.innerHTML='<div style="font-size:11px;color:var(--text4);padding:10px 0;text-align:center">Seleziona un team dalla lista</div>';
       return;
     }
   } else if(elSearchMode==='cat'){
@@ -4031,7 +4031,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1330';
+const APP_BUILD='2026-11-13-1335';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
@@ -4200,7 +4200,7 @@ function openAddPilot(){
     +'<div id="f-manual" style="display:none">'
     +'<div style="font-size:10px;color:#f59e0b;letter-spacing:2px;font-weight:700;margin-bottom:10px;padding:8px;background:rgba(245,158,11,.1);border-radius:6px">⚠ NON IN ENTRY LIST — INSERIMENTO MANUALE</div>'
     +'<div class="form-group"><label class="form-label">Nome Cognome</label><input class="form-input" id="f-name" placeholder="es. ROSSI MARIO"></div>'
-    +'<div class="form-group"><label class="form-label">Scuderia</label><input class="form-input" id="f-team" placeholder="es. TEAM NAME"></div>'
+    +'<div class="form-group"><label class="form-label">Team</label><input class="form-input" id="f-team" placeholder="es. TEAM NAME"></div>'
     +'<div class="form-group"><label class="form-label">Categoria</label>'
     +'<select class="form-select" id="f-cat"><option>KZ2</option><option>OK</option><option>OKN</option><option>OKJ</option><option>MINI GR3</option><option>MINI U10</option><option>OK-NJ</option></select></div>'
     +'<div id="f-parity-display" style="font-size:11px;color:var(--text4);margin-bottom:10px"></div>'
@@ -4269,7 +4269,7 @@ function openEditPilot(num){
     +'<div class="modal-title">Modifica #'+p.num+'</div>'
     +(p.eliminated?'<div style="background:#1c0303;border:1px solid #dc2626;border-radius:8px;padding:10px;margin-bottom:14px;font-size:11px;font-weight:700;color:#f87171;letter-spacing:1px;display:flex;justify-content:space-between;align-items:center"><span>🚫 ELIMINATO</span><button style="font-size:10px;color:#f87171;background:none;border:1px solid #dc2626;border-radius:6px;padding:4px 10px;cursor:pointer;font-family:inherit;font-weight:700" onclick="toggleEliminated(\''+num+'\')">RIATTIVA</button></div>':'')
     +'<div class="form-group"><label class="form-label">Nome</label><input class="form-input" id="ef-name" value="'+p.name+'"></div>'
-    +'<div class="form-group"><label class="form-label">Scuderia</label><input class="form-input" id="ef-team" value="'+p.team+'"></div>'
+    +'<div class="form-group"><label class="form-label">Team</label><input class="form-input" id="ef-team" value="'+p.team+'"></div>'
     +'<div class="form-group"><label class="form-label">Categoria</label>'
     +'<select class="form-select" id="ef-cat">'+cats.map(c=>'<option'+(c===p.cat?' selected':'')+'>'+c+'</option>').join('')+'</select></div>'
     +'<div style="font-size:11px;color:var(--text4);margin-bottom:14px;padding:8px 12px;background:var(--bg3);border-radius:6px">Parità: <strong style="color:var(--text)">'+p.parity+'</strong> <span style="font-size:9px">(auto da #'+p.num+')</span></div>'
