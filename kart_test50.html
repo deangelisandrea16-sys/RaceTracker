@@ -314,7 +314,7 @@ button,.tabbar-btn,.fab-now,.fab-top,.nav-item{touch-action:manipulation;-webkit
 /* LIVE TIMING */
 .lt-wrap{position:relative;overflow:hidden;width:100%;height:calc(100vh - 210px);min-height:420px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);}
 .live-timing-frame{position:absolute;top:0;left:0;width:100%;height:100%;border:none;background:var(--bg2);}
-.lt-nudge{font-size:16px;font-weight:800;width:36px;height:32px;display:flex;align-items:center;justify-content:center;background:var(--bg2);color:var(--text2);border:1px solid var(--border2);border-radius:8px;cursor:pointer;font-family:inherit;}
+.lt-nudge{font-size:18px;font-weight:800;width:44px;height:40px;display:flex;align-items:center;justify-content:center;background:var(--bg2);color:var(--text2);border:1px solid var(--border2);border-radius:8px;cursor:pointer;font-family:inherit;}
 .lt-nudge:active{transform:scale(.92);}
 .inner-team-big{font-size:13px;font-weight:700;color:var(--text2);}
 body.light .inner-team-big{color:var(--text3);}
@@ -759,11 +759,11 @@ button,input,textarea,select{font-family:inherit}
       </div>
     </div>
     <div id="lt-adjust" style="display:none;align-items:center;gap:8px;margin-bottom:8px">
-      <span style="font-size:10px;font-weight:700;color:var(--text4);letter-spacing:1.5px">RITAGLIO ALTO</span>
-      <button class="lt-nudge" onclick="nudgeLiveCrop(-20)">−</button>
+      <span style="font-size:11px;font-weight:700;color:var(--text4);letter-spacing:1px">PARTE ALTA NASCOSTA</span>
+      <button class="lt-nudge" onclick="nudgeLiveCrop(-40)">−</button>
       <span id="lt-crop-val" style="font-size:12px;font-weight:800;color:var(--text2);min-width:52px;text-align:center;font-variant-numeric:tabular-nums">0px</span>
-      <button class="lt-nudge" onclick="nudgeLiveCrop(20)">+</button>
-      <button onclick="nudgeLiveCrop(0,true)" style="font-size:10px;font-weight:700;color:var(--text4);background:none;border:none;cursor:pointer;font-family:inherit;text-decoration:underline;margin-left:4px">reset</button>
+      <button class="lt-nudge" onclick="nudgeLiveCrop(40)">+</button>
+      <button onclick="nudgeLiveCrop(0,true)" style="font-size:10px;font-weight:700;color:var(--text4);background:none;border:none;cursor:pointer;font-family:inherit;text-decoration:underline;margin-left:4px">predefinito</button>
     </div>
     <div id="lt-mynums" style="display:none;margin-bottom:8px"></div>
     <div class="pv-switch" style="margin-bottom:8px">
@@ -2405,7 +2405,7 @@ window.openLiveTimingTab=openLiveTimingTab;
 // ── LIVE TIMING: modalità compatta (ritaglia l'intestazione apex, mostra dalla classifica in giù) ──
 function ltGet(k,d){try{const v=localStorage.getItem(k);return v==null?d:v;}catch(e){return d;}}
 function ltSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
-function liveCropPx(){return parseInt(ltGet('rt_lt_crop','300'),10)||0;}
+function liveCropPx(){const v=parseInt(ltGet('rt_lt_crop2','560'),10);return isNaN(v)?560:v;}
 function liveCompactOn(){return ltGet('rt_lt_compact','0')==='1';}
 function applyLiveCrop(){
   const f=document.getElementById('live-timing-frame');if(!f)return;
@@ -2417,7 +2417,9 @@ function applyLiveCrop(){
    Embeddando DIRETTAMENTE l'URL interno (es. https://www.apex-timing.com/live-timing/wsk/index.html)
    la pagina e' gia' pulita: nessun ritaglio necessario. Crop forzato a 0 e controlli nascosti.
    Per una nuova gara: nel campo URL Live Timing mettere l'<iframe src> interno, non la pagina contenitore. */
-  const on=false;const px=0;
+  // 13/11/2026: riattivato su richiesta di Andrea. Nella vista "Apex originale" si nasconde la parte alta
+  // (commenti, migliori settori, mappa, loghi) e si parte dalla striscia "Next" in giù. Regolabile con −/+.
+  let _v='mia';try{_v=ltView;}catch(e){_v=ltGet('rt_ltview','mia');}const on=_v==='apex';const px=on?liveCropPx():0;
   f.style.top=(-px)+'px';
   f.style.height='calc(100% + '+px+'px)';
   const adj=document.getElementById('lt-adjust');if(adj)adj.style.display=on?'flex':'none';
@@ -2432,9 +2434,9 @@ function toggleLiveCompact(){
   applyLiveCrop();
 }
 function nudgeLiveCrop(d,reset){
-  if(reset){ltSet('rt_lt_crop','0');applyLiveCrop();return;}
+  if(reset){ltSet('rt_lt_crop2','560');applyLiveCrop();return;}
   let px=liveCropPx()+d;if(px<0)px=0;if(px>2000)px=2000;
-  ltSet('rt_lt_crop',String(px));applyLiveCrop();
+  ltSet('rt_lt_crop2',String(px));applyLiveCrop();
 }
 window.applyLiveCrop=applyLiveCrop;window.toggleLiveCompact=toggleLiveCompact;window.nudgeLiveCrop=nudgeLiveCrop;
 
@@ -4094,7 +4096,7 @@ function toggleLtMine(v){
 window.toggleLtMine=toggleLtMine;
 // Animazione del contenuto quando si cambia vista con un selettore
 function viewSwap(ids,dir){ids.forEach(id=>{const el=document.getElementById(id);if(!el)return;el.classList.remove('view-swap-r','view-swap-l');void el.offsetWidth;el.classList.add('view-swap-'+dir);setTimeout(()=>el.classList.remove('view-swap-'+dir),350);});}
-function setLtView(v){if(ltView===v)return;const d=v==='apex'?'r':'l';ltView=v;localStorage.setItem('rt_ltview',v);renderLtMyTable();viewSwap(['lt-mytable','lt-wrap'],d);}
+function setLtView(v){if(ltView===v)return;const d=v==='apex'?'r':'l';ltView=v;localStorage.setItem('rt_ltview',v);renderLtMyTable();try{applyLiveCrop();}catch(e){}viewSwap(['lt-mytable','lt-wrap'],d);}
 window.setLtView=setLtView;
 // Classifica live ricostruita dai dati Apex, con i piloti dell'account evidenziati
 // Giro attuale / tempo rimanente come su Apex (messaggi dyn1/dyn2 del live)
@@ -4306,7 +4308,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1605';
+const APP_BUILD='2026-11-13-1610';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
