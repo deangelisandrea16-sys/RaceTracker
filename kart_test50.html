@@ -597,9 +597,9 @@ body.light .adv-cat-btn.cat-nj{border-color:#d97706;color:#d97706;}
 <!-- TAB GARA: classifica live con i miei piloti, avvisi -->
 <div id="tab-gara" class="tab-content" style="display:none">
   <div class="content" style="padding:8px">
-    <div style="display:flex;gap:6px;margin-bottom:8px">
-      <button class="pv-btn" id="notif-btn" onclick="enableRtNotifications()" style="flex:1">🔔 ATTIVA NOTIFICHE</button>
-      <button class="pv-btn" onclick="toggleAlertLog()" style="flex:1">📜 AVVISI</button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:11px;font-weight:700;color:var(--text4)">
+      <span onclick="toggleAlertLog()" style="cursor:pointer;text-decoration:underline">📜 Storico avvisi</span>
+      <span id="notif-hint" style="margin-left:auto"></span>
     </div>
     <div id="alert-log" style="display:none;margin-bottom:8px"></div>
     <div style="font-size:11px;color:var(--text4);padding:8px 2px">Qui arriverà la Situazione: a rischio, eliminati, finalisti.</div>
@@ -3743,12 +3743,25 @@ function rtAlert(id,title,sub,kind){
   renderAlertLog();
 }
 window.rtAlert=rtAlert;
-function enableRtNotifications(){
-  if(!('Notification' in window)){alert('Questo telefono non supporta le notifiche dal browser. Su iPhone installa la PWA (Condividi → Aggiungi alla schermata Home).');return;}
-  Notification.requestPermission().then(p=>{updateNotifBtn();if(p==='granted')rtAlert('test|'+Date.now(),'🔔 Notifiche attive','Riceverai gli avvisi dei tuoi piloti','');});
+// Permesso notifiche chiesto in modo discreto al primo tocco nell'app (serve un gesto dell'utente)
+function askNotifOnce(){
+  try{
+    if(!('Notification' in window)||Notification.permission!=='default')return;
+    if(localStorage.getItem('rt_notif_asked')==='1')return;
+    localStorage.setItem('rt_notif_asked','1');
+    Notification.requestPermission().then(updateNotifBtn);
+  }catch(e){}
 }
+document.addEventListener('click',askNotifOnce,{once:true,capture:true});
+function enableRtNotifications(){try{localStorage.removeItem('rt_notif_asked');}catch(e){}askNotifOnce();}
 window.enableRtNotifications=enableRtNotifications;
-function updateNotifBtn(){const b=document.getElementById('notif-btn');if(!b)return;const ok='Notification' in window&&Notification.permission==='granted';b.textContent=ok?'🔔 NOTIFICHE ATTIVE':'🔔 ATTIVA NOTIFICHE';b.classList.toggle('active',ok);}
+// Solo un'indicazione piccola, e solo se le notifiche non sono attive
+function updateNotifBtn(){
+  const h=document.getElementById('notif-hint');if(!h)return;
+  if(!('Notification' in window)){h.textContent='🔕 notifiche: installa la PWA';return;}
+  const p=Notification.permission;
+  h.innerHTML=p==='granted'?'':p==='denied'?'🔕 notifiche bloccate nelle impostazioni del browser':'<span onclick="enableRtNotifications()" style="cursor:pointer;text-decoration:underline">🔕 attiva notifiche</span>';
+}
 let alertLogOpen=false;
 function toggleAlertLog(){alertLogOpen=!alertLogOpen;renderAlertLog();}
 window.toggleAlertLog=toggleAlertLog;
@@ -3930,7 +3943,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1215';
+const APP_BUILD='2026-11-13-1220';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
