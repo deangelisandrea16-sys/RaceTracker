@@ -457,6 +457,7 @@ button,input,textarea,select{font-family:inherit}
 .ic-camera{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M4 8h3l2-2.5h6L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z%22/%3E%3Ccircle cx=%2212%22 cy=%2213.5%22 r=%223.6%22/%3E%3C/svg%3E")}
 .ic-video{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Crect x=%223%22 y=%226.5%22 width=%2213%22 height=%2211%22 rx=%222%22/%3E%3Cpath d=%22M16 10.5l5-3v9l-5-3%22/%3E%3C/svg%3E")}
 .ic-star{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1.1 5.8L12 16.8l-5.3 2.8 1.1-5.8-4.3-4.1 5.9-.8z%22/%3E%3C/svg%3E")}
+.ic-bell{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M6 16.5V11a6 6 0 0 1 12 0v5.5H6M10 20a2 2 0 0 0 4 0%22/%3E%3C/svg%3E")}
 .ic-belloff{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M6 16.5V11a6 6 0 0 1 9.6-4.8M18 10.5v6H8.5M10 20a2 2 0 0 0 4 0M3.5 3.5l17 17%22/%3E%3C/svg%3E")}
 .ic-warn{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M12 3.5L2.8 19.5h18.4z%22/%3E%3Cpath d=%22M12 10v4.5M12 17.2v.3%22/%3E%3C/svg%3E")}
 .ic-wait{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M6.5 3h11M6.5 21h11M7.5 3c0 5 9 5 9 9s-9 4-9 9M16.5 3c0 5-9 5-9 9%22/%3E%3C/svg%3E")}
@@ -626,6 +627,8 @@ body.lt-full-open #rt-alerts,body.lt-full-open #rt-offline,body.lt-full-open .fa
 .cal-add{flex:0 0 auto;min-height:44px;padding:0 12px;border-radius:10px;border:1px solid #22c55e;background:transparent;color:#22c55e;font-weight:700;font-size:12px}
 .cal-added{flex:0 0 auto;font-size:11px;color:#4fd69c;font-weight:700}
 .cal-pending{font-size:11px;opacity:.6;margin-top:12px}
+.al-row{display:flex;gap:12px;align-items:flex-start;margin-bottom:8px;padding:12px}
+.al-time{flex:0 0 auto;font-family:'Chakra Petch',monospace;font-weight:700;font-size:15px;color:var(--text);background:var(--bg3);border-radius:8px;padding:4px 8px}
 </style>
 </head>
 <body>
@@ -850,7 +853,7 @@ body.lt-full-open #rt-alerts,body.lt-full-open #rt-offline,body.lt-full-open .fa
 <div id="tab-gara" class="tab-content" style="display:none">
   <div class="content" style="padding:8px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:11px;font-weight:700;color:var(--text4)">
-      <span style="font-size:12px;font-weight:900;letter-spacing:1px;color:var(--text3)"><i class="ic ic-history"></i> STORICO AVVISI</span>
+      <span style="font-size:12px;font-weight:900;letter-spacing:1px;color:var(--text3)"><i class="ic ic-bell"></i> AVVISI</span>
       <span id="notif-hint" style="margin-left:auto"></span>
     </div>
     <div id="alert-log" style="display:none;margin-bottom:8px"></div>
@@ -1848,12 +1851,12 @@ function listenRaceData(raceId){
   // Storico avvisi condiviso fra i dispositivi dello stesso utente (tel + PC)
   const alertsRef=ref(db,'alertsLog/'+raceId+'/'+currentUserId);
   onValue(alertsRef,snap=>{try{
-    const remote=Object.values(snap.val()||{}).filter(a=>a&&a.id);if(!remote.length)return;
+    const remote=Object.values(snap.val()||{}).filter(a=>a&&a.id);if(!remote.length){renderAlertLog();return;}
     const log=alertLog();const have=new Set(log.map(a=>a.id));let added=false;
     remote.forEach(a=>{if(!have.has(a.id)){log.push({id:a.id,title:a.title,sub:a.sub,kind:a.kind||'',hm:a.hm||'',ts:a.ts||0});added=true;}});
     if(!added)return;
     log.sort((x,y)=>(y.ts||0)-(x.ts||0)||String(y.hm).localeCompare(String(x.hm)));
-    localStorage.setItem('rt_alerts_'+raceId,JSON.stringify(log.slice(0,100)));renderAlertLog();
+    localStorage.setItem(alertKey(raceId),JSON.stringify(log.slice(0,300)));renderAlertLog();
   }catch(e){}});
   raceDataUnsub=()=>{off(sharedRef);off(userRef);off(alertsRef);};
 }
@@ -3839,10 +3842,25 @@ function renderSchedule(){
   }
   let html='';let lastSession='';
   // Quante volte corre oggi ogni mio pilota e quale di queste è lo slot (es. Gara 2/3)
-  const _runs={};
-  slotsArr.forEach((sl,i)=>{pilots.forEach(p=>{if(!p.eliminated&&entrantInSlot(p,sl))(_runs[p.num]=_runs[p.num]||[]).push(i);});});
-  const runChip=(num,i)=>{const l=_runs[num]||[];const k=l.indexOf(i)+1;if(!k||!l.length)return'';
-    return'<span class="run-chip'+(i<currentIdx?' done':'')+'" title="Gare di oggi">Gara '+k+'/'+l.length+'</span>';};
+  // Se un turno dipende da dati non ancora ufficiali (prefinale non assegnata, finale non decisa) il totale è "?"
+  const _runs={},_unc={},_finIn={};
+  const _awaits=(p,sl)=>canonCat(p.cat)===canonCat(sl.cat)&&((sl.type==='serie'&&!String(p.serie||'').trim())||(sl.type==='group'&&!pilotHasGroupData(p))||(sl.type==='prefinal'&&!String(p.prefinal||'').trim()));
+  let _sess='';
+  slotsArr.forEach((sl,i)=>{if(sl.session)_sess=sl.session;pilots.forEach(p=>{if(p.eliminated)return;
+    if(entrantInSlot(p,sl))(_runs[p.num]=_runs[p.num]||[]).push(i);
+    else if(_awaits(p,sl)){const u=(_unc[p.num]=_unc[p.num]||{});const k=[_sess,sl.type].join('|');if(!(k in u))u[k]=i;}
+  });});
+  const _lastDay=activeDay===currentDays[currentDays.length-1]&&currentFinals.length;
+  if(_lastDay){pilots.forEach(p=>{if(p.eliminated)return;const f=currentFinals.find(x=>canonCat(x.cat)===canonCat(p.cat));if(!f)return;
+    const decided=pilots.some(q=>canonCat(q.cat)===canonCat(p.cat)&&q.inFinal);
+    if(p.inFinal)_finIn[p.num]=1;else if(!decided){const u=(_unc[p.num]=_unc[p.num]||{});u['FINALE']=1e6;}});}
+  const runLabel=(num,i)=>{const l=_runs[num]||[];const u=Object.values(_unc[num]||{});
+    const fin=_finIn[num]?1:0;const tot=l.length+fin;const unk=u.length>0;
+    const k=i>=1e6?l.length+1:l.indexOf(i)+1;if(i<1e6&&!k)return'';
+    const before=u.some(x=>x<i);
+    return['Gara ',before?'?':String(k),'/',unk?'?':String(tot)].join('');};
+  const runChip=(num,i)=>{const t=runLabel(num,i);if(!t)return'';
+    return['<span class="run-chip',(i<currentIdx?' done':''),'" title="Gare di oggi">',t,'</span>'].join('');};
   slotsArr.forEach((slot,idx)=>{
     const ps=pilotsForSlot(slot);const isNow=idx===currentIdx;
     const awaiting=pilotsAwaitingData(slot);
@@ -3908,7 +3926,7 @@ function renderSchedule(){
         +'<div class="final-row"><span>Partenza</span><span class="final-time">'+f.time+'</span></div>';
       ps.forEach(p=>{
         html+='<div class="card-inner" style="margin-top:8px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
-          +'<span class="inner-num">#'+p.num+'</span><span class="inner-name">'+p.name+'</span>'
+          +'<span class="inner-num">#'+p.num+'</span><span class="inner-name">'+p.name+'</span>'+(p.eliminated?'':runChip(p.num,1e6))
           +'<span class="inner-team-big">'+p.team+'</span></div>'
           +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+'</div>'
           +(notes[p.num]?'<div style="margin-top:6px;font-size:11px;color:var(--text4);font-style:italic"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>';
@@ -4164,12 +4182,13 @@ function checkEliminations(){
   try{localStorage.setItem(k,JSON.stringify(now));}catch(e){}
 }
 // Gli avvisi di prova della versione precedente ('test|') non sono avvisi di gara: esclusi
-function alertLog(){try{return JSON.parse(localStorage.getItem('rt_alerts_'+activeRaceId)||'[]').filter(a=>a&&a.id&&!a.id.startsWith('test|'));}catch(e){return[];}}
+function alertKey(r){return['rt_alerts_',r||activeRaceId,'_',currentUserId||''].join('');}
+function alertLog(){try{return JSON.parse(localStorage.getItem(alertKey())||'[]').filter(a=>a&&a.id&&!a.id.startsWith('test|'));}catch(e){return[];}}
 function rtAlert(id,title,sub,kind){
   const log=alertLog();if(log.some(a=>a.id===id))return;
   const t=new Date();const hm=String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
   log.unshift({id,title,sub,kind,hm,ts:Date.now()});
-  try{localStorage.setItem('rt_alerts_'+activeRaceId,JSON.stringify(log.slice(0,100)));}catch(e){}
+  try{localStorage.setItem(alertKey(),JSON.stringify(log.slice(0,300)));}catch(e){}
   try{if(currentUserId&&activeRaceId){const k=id.replace(/[.#$\[\]\/]/g,'_');const u={};u['alertsLog/'+activeRaceId+'/'+currentUserId+'/'+k]={id,title,sub,kind:kind||'',hm,ts:Date.now()};update(ref(db),u);}}catch(e){}
   let wrap=document.getElementById('rt-alerts');
   if(!wrap){wrap=document.createElement('div');wrap.id='rt-alerts';wrap.className='rt-alerts';document.body.appendChild(wrap);}
@@ -4261,18 +4280,14 @@ function renderAlertLog(){
   // Solo avvisi dei piloti che sono ADESSO tra i miei (il numero è nel penultimo/ultimo campo dell'id)
   const myNums=new Set(pilots.map(p=>String(p.num)));
   const alNum=a=>{const m=String(a.title||'').match(/#(\d+)/);return m?m[1]:'';};
-  const log=alertLog().filter(a=>{const n=alNum(a);return!n||myNums.has(n);});box.style.display='';
+  const log=alertLog().filter(a=>{const n=alNum(a);return!n||!myNums.size||myNums.has(n);}).sort((x,y)=>(y.ts||0)-(x.ts||0));box.style.display='';
   const cleanSub=t=>String(t||'').replace(/\s*·?\s*PROVVISORIO,?\s*verifica (eventuali )?reclami/ig,'').replace(/\s*·?\s*verifica (eventuali )?reclami/ig,'').replace(/^\s*·\s*|\s*·\s*$/g,'');
-  const F=[['all','TUTTI'],['quali','QUALIFICHE'],['race','MANCHE/PREF.'],['final','FINALI'],['elim','ELIMINATI']];
-  const count=t=>t==='all'?log.length:log.filter(a=>alertType(a)===t).length;
-  const chips='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+F.map(([k,l])=>
-    '<button class="pv-btn'+(alertFilter===k?' active':'')+'" style="flex:0 0 auto;padding:7px 10px;font-size:11px" onclick="setAlertFilter(\''+k+'\')">'+l+' '+count(k)+'</button>').join('')+'</div>';
-  const list=log.filter(a=>alertFilter==='all'||alertType(a)===alertFilter);
-  box.innerHTML='<div style="font-size:13px;font-weight:600;color:var(--text3);background:var(--bg3);border-radius:10px;padding:9px 12px;margin-bottom:10px">Gli avvisi sono provvisori: verifica eventuali reclami.</div>'+chips+(list.length?list.map(a=>'<div class="card-inner" style="margin-bottom:8px;padding:12px;border-left:4px solid '
-      +({quali:'#facc15',final:'#22c55e',elim:'#ef4444',race:'#60a5fa'}[alertType(a)])+'">'
-      +'<div style="font-size:16px;font-weight:900;line-height:1.3">'+a.title+'</div>'
-      +'<div style="font-size:12px;color:var(--text4);margin-top:4px">'+a.hm+(cleanSub(a.sub)?' · '+cleanSub(a.sub):'')+'</div></div>').join('')
-    :'<div style="font-size:13px;color:var(--text4);padding:8px 0">Nessun avviso in questa categoria</div>');
+  const h=[];
+  h.push('<div style="font-size:13px;font-weight:600;color:var(--text3);background:var(--bg3);border-radius:10px;padding:9px 12px;margin-bottom:10px">Gli avvisi sono provvisori: verifica eventuali reclami.</div>');
+  if(!log.length)h.push('<div style="font-size:13px;color:var(--text4);padding:8px 0">Nessun avviso</div>');
+  log.forEach(a=>{const c={quali:'#facc15',final:'#22c55e',elim:'#ef4444',race:'#60a5fa'}[alertType(a)];const sub=cleanSub(a.sub);
+    h.push(`<div class="card-inner al-row" style="border-left:4px solid ${c}"><div class="al-time">${a.hm||''}</div><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900;line-height:1.3">${a.title}</div>${sub?`<div style="font-size:12px;color:var(--text4);margin-top:4px">${sub}</div>`:''}</div></div>`);});
+  box.innerHTML=h.join('');
 }
 let _ltRenderT=null;
 function apexGridDirty(){if(_ltRenderT)return;_ltRenderT=setTimeout(()=>{_ltRenderT=null;renderLtMyTable();if(ltFullOn)renderLtFull();},100);}
@@ -4553,7 +4568,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1900';
+const APP_BUILD='2026-11-13-1930';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
