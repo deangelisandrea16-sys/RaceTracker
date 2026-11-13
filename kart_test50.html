@@ -2612,7 +2612,15 @@ function addFromCalendar(id){
   const set=(k,v)=>{const i=document.getElementById(k);if(i)i.value=v||'';};
   set('nr-name',e.name);set('nr-circuit',e.circuit);set('nr-org',ORG_CONFIG[e.org]?e.org:'');
   set('nr-start',e.dateFrom);set('nr-end',e.dateTo);
-  window._calPendingId=e.id;
+  window._calPendingId=e.id;window._calDraft=null;
+  // Bozza entry list preparata dal server dai PDF ufficiali (drafts/<calId>): se c'è, la gara nasce con l'entry list
+  try{_fbDb.ref('drafts/'+e.id).once('value').then(s=>{
+    const d=s.val();const n=d&&d.entryList?Object.keys(d.entryList).length:0;
+    if(!n||window._calPendingId!==e.id)return;window._calDraft=d;
+    const b=document.querySelector('.form-submit');
+    if(b){const x=document.createElement('div');x.style.cssText='margin:0 0 10px;padding:10px 12px;border-radius:10px;background:rgba(79,214,156,.12);color:#4fd69c;font-size:13px';
+      x.textContent='Entry list ufficiale pronta: '+n+' piloti (fonte: '+(d.source||'documenti ufficiali')+'). Verrà caricata con la gara.';b.parentNode.insertBefore(x,b);}
+  });}catch(err){}
 }
 window.openCalendar=openCalendar;window.setCalOrg=setCalOrg;window.setCalSer=setCalSer;window.addFromCalendar=addFromCalendar;
 function openNewRace(){
@@ -2645,10 +2653,17 @@ function createRace(){
   if(!name){alert('Inserisci il nome');return;}
   const id='race_'+Date.now();
   const raceIndex={name,circuit,org,liveTiming,startDate,endDate,entryCount:0,pilotCount:0,createdAt:new Date().toISOString()};
-  if(window._calPendingId){raceIndex.calId=window._calPendingId;window._calPendingId=null;}
+  let draftEL={};
+  if(window._calPendingId){raceIndex.calId=window._calPendingId;
+    const d=window._calDraft;
+    if(d&&d.calId===window._calPendingId&&d.entryList){
+      Object.values(d.entryList).forEach(x=>{if(!x||!x.num)return;draftEL[x.num]={num:String(x.num),lastName:String(x.name||'').toUpperCase(),firstName:'',team:String(x.team||'').toUpperCase(),cat:x.cat||'',parity:parseInt(x.num)%2?'ODD':'EVEN'};});
+      raceIndex.entryCount=Object.keys(draftEL).length;raceIndex.entrySource=d.source||'';
+    }
+    window._calPendingId=null;window._calDraft=null;}
   const u={};
   u['races_index/'+id]=raceIndex;
-  u['races/'+id]={pilots:{},statuses:{},notes:{},trackSections:["PARTENZA","CURVA 1","RETTILINEO 1","CURVA 2","ESSE","RETTILINEO 2","ARRIVO"],trackStatus:{},entryList:{},schedule:{},days:[],finals:[]};
+  u['races/'+id]={pilots:{},statuses:{},notes:{},trackSections:["PARTENZA","CURVA 1","RETTILINEO 1","CURVA 2","ESSE","RETTILINEO 2","ARRIVO"],trackStatus:{},entryList:draftEL,schedule:{},days:[],finals:[]};
   update(ref(db),u).then(()=>{
     switchRace(id);
     closeModal();
@@ -3152,6 +3167,7 @@ function openPilotDetail(num){
     +'<div style="display:flex;gap:8px;margin-bottom:16px">'
     +'<span class="'+catCls+'" style="font-size:12px;padding:3px 10px;border-radius:6px;font-weight:800;border:1px solid">'+cat+'</span>'
     +'<span class="parity-badge">'+parity+'</span></div>'
+    +'<div id="detail-hist" style="margin-bottom:14px"></div>'
     +'<div class="form-group"><label class="form-label">Note su questo pilota</label>'
     +'<textarea class="form-textarea" id="detail-note" placeholder="Appunti, info, osservazioni...">'+existingNote+'</textarea></div>'
     +'<div class="detail-actions">'
@@ -3160,8 +3176,29 @@ function openPilotDetail(num){
     +'</div>'
     +(isMine?'<div style="margin-top:10px"><button class="pilot-edit-btn" style="width:100%;padding:10px;text-align:center" onclick="closeModal();openEditPilot(\''+num+'\')"><i class="ic ic-note"></i> MODIFICA PILOTA</button></div>':'')
     +'</div>');
+  loadPilotHistory(String(name).trim());
 }
 window.openPilotDetail=openPilotDetail;
+// Storico risultati del pilota (history/<NOME>/<gara>, scritto dal server dai risultati ufficiali)
+function histKeyOf(s){return String(s||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Z0-9]+/g,'_').replace(/^_|_$/g,'');}
+function loadPilotHistory(name){
+  const k=histKeyOf(name);if(!k)return;
+  try{_fbDb.ref('history/'+k).once('value').then(s=>{
+    const el=document.getElementById('detail-hist');if(!el)return;
+    const h=s.val();if(!h)return;
+    const rows=Object.values(h).filter(Boolean).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+    const esc=t=>String(t==null?'':t).replace(/[<>&"]/g,'');
+    el.innerHTML='<div class="form-label" style="margin-bottom:6px">Storico gare</div>'+rows.map(r=>{
+      const res=r.result||{};const keys=Object.keys(res).sort((a,b)=>(a.length-b.length)||a.localeCompare(b));
+      const fmt=v=>/^\d+$/.test(String(v))?v+'°':esc(v);
+      const parts=keys.map(x=>(x==='FIN'?'Finale':x.startsWith('PF-')?'Pref. '+x.slice(3):x)+' '+fmt(res[x]));
+      const d=r.date?r.date.split('-').reverse().join('/'):'';
+      return'<div style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;font-size:12px">'
+        +'<div style="font-weight:800;color:var(--text)">'+esc(r.race)+(d?' · '+d:'')+' · '+esc(r.cat)+' #'+esc(r.num)+'</div>'
+        +'<div style="color:var(--text3);margin-top:2px">'+(parts.length?parts.join(' · '):'nessun risultato ancora')+(r.inFinal?' · in finale':'')+(r.eliminated&&!r.inFinal?' · eliminato':'')+'</div></div>';
+    }).join('');
+  });}catch(e){}
+}
 
 function saveDetailNote(num){
   const el=document.getElementById('detail-note');
