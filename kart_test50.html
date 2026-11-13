@@ -1689,18 +1689,14 @@ let currentEntryList={};
 let currentSchedule={};
 let currentDays=[];
 let currentFinals=[];     // finals for current race
-let currentSessionLaps={}; // giri/minuti ufficiali per categoria e tipo sessione (races/{id}/sessionLaps, dal programma/regolamento ufficiale)
-// Durata della sessione: "· 12 giri" / "· 6'" (solo se il dato ufficiale è caricato per quella gara)
-function slotDurText(cat,type){
-  try{
-    const L=currentSessionLaps||{};const c=L[canonCat(cat)]||L[cat]||{};
-    const k=type==='group'?'group':type==='prefinal'?'prefinal':type==='final'?'final':type==='serie'?'qualif':'';
-    const v=k?(c[k]!=null?c[k]:(k==='qualif'?L._qualif:null)):null;
-    if(v==null||v==='')return'';
-    return /^\d+$/.test(String(v))?String(v)+' giri':String(v);
-  }catch(e){return'';}
+// Durata della sessione dal programma ufficiale (campo "dur" della sessione, es. "12 giri" / "8'").
+// Se il live timing riporta un numero di giri diverso (es. giri tolti per ritardo) il server scrive "durLive".
+function slotDurText(s){
+  if(!s||!s.dur)return'';
+  const d=String(s.dur),l=s.durLive?String(s.durLive):'';
+  return l&&l!==d?d+' (live: '+l+')':d;
 }
-function slotDur(slot){const t=slot?slotDurText(slot.cat,slot.type):'';return t?' · '+t:'';}
+function slotDur(slot){const t=slotDurText(slot);return t?' · '+t:'';}
 
 // ── THEME ──
 if(localStorage.getItem('rt_theme')==='light') document.body.classList.add('light');
@@ -1812,7 +1808,6 @@ function listenRaceData(raceId){
     currentDays=sharedData.days||Object.keys(currentSchedule);
     if(!Array.isArray(currentDays))currentDays=typeof currentDays==='object'?Object.values(currentDays):[];
     currentFinals=sharedData.finals||[];
-    currentSessionLaps=sharedData.sessionLaps||{};
     if(!Array.isArray(currentFinals))currentFinals=typeof currentFinals==='object'?Object.values(currentFinals):[];
     trackSections=sharedData.trackSections||["PARTENZA","CURVA 1","RETTILINEO 1","CURVA 2","ESSE","RETTILINEO 2","ARRIVO"];
     // Ritardo e AUTO condivisi per tutta la gara (AUTO acceso di default)
@@ -3957,7 +3952,7 @@ function renderSchedule(){
       const _fNow=_finalNowKey===(f.label+'|'+f.time);
       html+='<div class="final-card'+(_fNow?' slot-now':'')+'"'+(_fNow?' id="slot-now"':'')+'><div class="final-title"><i class="ic ic-trophy"></i> '+f.label+(_fNow?' <span class="now-badge">ORA</span>':'')+'</div>'
         +'<div class="final-row"><span>Partenza</span><span class="final-time">'+f.time+'</span></div>'
-        +(slotDurText(f.cat,'final')?'<div class="final-row"><span>Durata</span><span class="final-time">'+slotDurText(f.cat,'final')+'</span></div>':'');
+        +(slotDurText(f)?'<div class="final-row"><span>Durata</span><span class="final-time">'+slotDurText(f)+'</span></div>':'');
       ps.forEach(p=>{
         html+='<div class="card-inner" style="margin-top:8px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
           +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,{type:'final'})+'<span class="inner-name">'+p.name+'</span>'+(p.eliminated?'':runChip(p.num,1e6))
