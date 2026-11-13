@@ -9,7 +9,10 @@
 <title>Race Tracker</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0a0a0b">
-<link rel="apple-touch-icon" href="icons/rt-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/rt2-180.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/rt2-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/rt2-16.png">
+<link rel="shortcut icon" href="favicon.ico">
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -4017,7 +4020,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1315';
+const APP_BUILD='2026-11-13-1320';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
