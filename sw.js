@@ -1,7 +1,7 @@
 /* Service worker Race Tracker.
    13/11/2026 — modalità senza rete: RETE PRIMA, copia salvata solo se la rete manca.
    Con la rete si riceve sempre l'ultima versione (niente versioni vecchie); la copia serve solo offline. */
-var CACHE='rt-offline-v1';
+var CACHE='rt-offline-v2';
 var SHELL=['kart_test50.html','manifest.webmanifest','favicon.ico','icons/rt2-180.png','icons/rt2-192.png','icons/rt2-512.png',
   'vendor/firebase-app-compat.js','vendor/firebase-database-compat.js'];
 self.addEventListener('install', function(e){
