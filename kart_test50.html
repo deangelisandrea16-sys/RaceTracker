@@ -3738,11 +3738,34 @@ function rtAlert(id,title,sub,kind){
   el.onclick=()=>el.remove();wrap.prepend(el);
   setTimeout(()=>{if(el.parentNode)el.remove();},kind==='final'||kind==='gold'?60000:25000);
   try{if(navigator.vibrate)navigator.vibrate(kind?[300,150,300,150,300]:[200,100,200]);}catch(e){}
-  try{const a=new (window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator();o.frequency.value=kind?1046:880;o.connect(a.destination);o.start();o.stop(a.currentTime+0.25);}catch(e){}
+  rtChime(kind);
   try{if('Notification' in window&&Notification.permission==='granted'&&navigator.serviceWorker){navigator.serviceWorker.ready.then(r=>r.showNotification(title.replace(/<[^>]+>/g,''),{body:sub,tag:id,renotify:true,vibrate:[300,150,300]}));}}catch(e){}
   renderAlertLog();
 }
 window.rtAlert=rtAlert;
+// Suono generato (nessun file esterno): campanella morbida con armoniche e coda,
+// arpeggio ascendente per pole e finale, due note per gli altri avvisi.
+let _rtAudio=null;
+function rtChime(kind){
+  try{
+    _rtAudio=_rtAudio||new (window.AudioContext||window.webkitAudioContext)();
+    const a=_rtAudio;if(a.state==='suspended')a.resume();
+    const master=a.createGain();master.gain.value=0.35;master.connect(a.destination);
+    const notes=(kind==='gold'||kind==='final')?[783.99,987.77,1174.66,1567.98]:kind?[880,1318.51]:[659.25,987.77];
+    notes.forEach((f,i)=>{
+      const t=a.currentTime+i*0.11;
+      [[1,1],[2,0.28],[3,0.12]].forEach(([mult,vol])=>{
+        const o=a.createOscillator();const g=a.createGain();
+        o.type='sine';o.frequency.value=f*mult;
+        g.gain.setValueAtTime(0.0001,t);
+        g.gain.exponentialRampToValueAtTime(vol,t+0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001,t+(i===notes.length-1?1.4:0.6));
+        o.connect(g);g.connect(master);o.start(t);o.stop(t+1.5);
+      });
+    });
+  }catch(e){}
+}
+window.rtChime=rtChime;
 // Permesso notifiche chiesto in modo discreto al primo tocco nell'app (serve un gesto dell'utente)
 function askNotifOnce(){
   try{
@@ -3762,15 +3785,33 @@ function updateNotifBtn(){
   const p=Notification.permission;
   h.innerHTML=p==='granted'?'':p==='denied'?'🔕 notifiche bloccate nelle impostazioni del browser':'<span onclick="enableRtNotifications()" style="cursor:pointer;text-decoration:underline">🔕 attiva notifiche</span>';
 }
-let alertLogOpen=false;
+let alertLogOpen=true;
 function toggleAlertLog(){alertLogOpen=!alertLogOpen;renderAlertLog();}
 window.toggleAlertLog=toggleAlertLog;
+let alertFilter='all';
+function setAlertFilter(f){alertFilter=f;renderAlertLog();}
+window.setAlertFilter=setAlertFilter;
+function alertType(a){
+  if(a.id.startsWith('quali|'))return'quali';
+  if(a.id.startsWith('elim|'))return'elim';
+  if(a.kind==='final')return'final';
+  return'race';
+}
 function renderAlertLog(){
   const box=document.getElementById('alert-log');if(!box)return;
   updateNotifBtn();
   if(!alertLogOpen){box.style.display='none';return;}
   const log=alertLog();box.style.display='';
-  box.innerHTML=log.length?log.map(a=>'<div class="card-inner" style="margin-bottom:6px"><div style="font-size:12px;font-weight:800">'+a.title+'</div><div style="font-size:10px;color:var(--text4)">'+a.hm+' · '+a.sub+'</div></div>').join(''):'<div style="font-size:11px;color:var(--text4)">Nessun avviso per ora</div>';
+  const F=[['all','TUTTI'],['quali','QUALIFICHE'],['race','MANCHE/PREF.'],['final','FINALI'],['elim','ELIMINATI']];
+  const count=t=>t==='all'?log.length:log.filter(a=>alertType(a)===t).length;
+  const chips='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+F.map(([k,l])=>
+    '<button class="pv-btn'+(alertFilter===k?' active':'')+'" style="flex:0 0 auto;padding:7px 10px;font-size:11px" onclick="setAlertFilter(\''+k+'\')">'+l+' '+count(k)+'</button>').join('')+'</div>';
+  const list=log.filter(a=>alertFilter==='all'||alertType(a)===alertFilter);
+  box.innerHTML=chips+(list.length?list.map(a=>'<div class="card-inner" style="margin-bottom:8px;padding:12px;border-left:4px solid '
+      +({quali:'#facc15',final:'#22c55e',elim:'#ef4444',race:'#60a5fa'}[alertType(a)])+'">'
+      +'<div style="font-size:16px;font-weight:900;line-height:1.3">'+a.title+'</div>'
+      +'<div style="font-size:12px;color:var(--text4);margin-top:4px">'+a.hm+' · '+a.sub+'</div></div>').join('')
+    :'<div style="font-size:13px;color:var(--text4);padding:8px 0">Nessun avviso in questa categoria</div>');
 }
 let _ltRenderT=null;
 function apexGridDirty(){if(_ltRenderT)return;_ltRenderT=setTimeout(()=>{_ltRenderT=null;renderLtMyTable();},100);}
@@ -3943,7 +3984,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1220';
+const APP_BUILD='2026-11-13-1230';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
