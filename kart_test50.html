@@ -598,7 +598,7 @@ body.light .adv-cat-btn.cat-nj{border-color:#d97706;color:#d97706;}
 <div id="tab-gara" class="tab-content" style="display:none">
   <div class="content" style="padding:8px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:11px;font-weight:700;color:var(--text4)">
-      <span onclick="toggleAlertLog()" style="cursor:pointer;text-decoration:underline">📜 Storico avvisi</span>
+      <span style="font-size:12px;font-weight:900;letter-spacing:1px;color:var(--text3)">📜 STORICO AVVISI</span>
       <span id="notif-hint" style="margin-left:auto"></span>
     </div>
     <div id="alert-log" style="display:none;margin-bottom:8px"></div>
@@ -3984,7 +3984,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1230';
+const APP_BUILD='2026-11-13-1235';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
