@@ -3297,7 +3297,13 @@ function getTeamsFromEntryList(){
 
 function buildCatGrid(containerId,onClickFn,activeCat){
   const el=document.getElementById(containerId);if(!el)return;
-  el.innerHTML=CATS.map(c=>{
+  // Solo le categorie presenti: nell'Entry list quelle della gara, in Piloti/Programma quelle dei miei piloti
+  const src=containerId.indexOf('el-')===0?Object.values(currentEntryList||{}).map(e=>e&&e.cat):pilots.map(p=>p.cat);
+  const seen=new Map();src.forEach(c=>{if(!c)return;const k=canonCat(c);if(!seen.has(k))seen.set(k,c);});
+  const ord=CATS.map(canonCat);
+  const list=[...seen.entries()].sort((a,b)=>{const ia=ord.indexOf(a[0]),ib=ord.indexOf(b[0]);return(ia<0?99:ia)-(ib<0?99:ib);}).map(x=>x[1]);
+  if(!list.length){el.innerHTML='<div style="font-size:12px;color:var(--text4);padding:8px">Nessuna categoria</div>';return;}
+  el.innerHTML=list.map(c=>{
     const cls=catClass(c);const isActive=activeCat===c;
     return'<button class="adv-cat-btn '+cls+(isActive?' active':'')+'" onclick="'+onClickFn+'(\''+c+'\')">'+c+'</button>';
   }).join('');
@@ -4461,7 +4467,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1710';
+const APP_BUILD='2026-11-13-1715';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
