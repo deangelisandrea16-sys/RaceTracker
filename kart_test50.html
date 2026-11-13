@@ -515,6 +515,11 @@ button,input,textarea,select{font-family:inherit}
 .ltc tr.mine td{background:rgba(255,90,31,.10);color:var(--text);font-weight:700}.ltc tr.mine td.n{color:#0d0d0f;background:var(--rt-orange)}
 .ltc tr.team td{background:var(--bg3);color:var(--text2)}.ltc .best{color:#c9a2ff}.ltc .pb{color:#4fd69c}
 .io-btn,.ov-btn{border-color:var(--border2)!important;color:var(--text2)!important;background:var(--bg2)!important}
+
+/* Pulsanti flottanti: area di tocco >=48px, aspetto leggero (vetro) per non coprire i contenuti */
+.fab-now{width:56px!important;height:56px!important;background:rgba(255,90,31,.88)!important;color:#0d0d0f!important;font-family:'Saira Condensed';font-weight:900!important;font-size:14px!important;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 8px 24px -10px rgba(255,90,31,.7)!important}
+.fab-top{width:48px!important;height:48px!important;align-items:center;justify-content:center;background:rgba(29,29,34,.55)!important;border:1px solid rgba(255,255,255,.08)!important;color:var(--text2)!important;font-size:20px!important;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.fab-top:active,.fab-now:active{transform:scale(.92)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .nav-item-icon .ic{width:20px;height:20px}
 .card-inner>div:first-child{flex-wrap:wrap;row-gap:0}
@@ -2896,7 +2901,7 @@ function gridBadge(num,slot){
   if(r!==undefined&&r!==null&&r!==''){const t=/^\d+$/.test(String(r))?String(r)+'°':String(r).toUpperCase();
     return'<span title="Posizione d\'arrivo (risultati Apex)" style="font-family:\'Chakra Petch\';font-size:12px;font-weight:700;color:#0d0d0f;background:#4fd69c;border-radius:5px;padding:1px 6px;flex-shrink:0"><i class="ic ic-flag"></i> '+t+'</span>';}
   const n=gridPos(num,slot);
-  return n?'<span title="Posizione in griglia (lista ufficiale)" style="font-family:\'Chakra Petch\';font-size:12px;font-weight:700;color:var(--text);background:transparent;box-shadow:inset 0 0 0 1px var(--text3);border-radius:5px;padding:1px 6px;flex-shrink:0">P'+n+'</span>':'';
+  return n?'<span title="Posizione in griglia (lista ufficiale)" style="font-family:\'Chakra Petch\';font-size:12px;font-weight:700;color:#1a160e;background:#e9d5a8;border-radius:5px;padding:1px 7px;flex-shrink:0">P'+n+'</span>':'';
 }
 function noteLine(num){
   const n=String((notes&&notes[num])||'').trim();if(!n)return'';
@@ -4136,20 +4141,18 @@ function renderLtMyTable(){
         +'<div class="pos">'+(txt(r,C('rk','3'))||'–')+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>'
         +'<div style="flex:1;min-width:0"><div><span class="num">#'+no+'</span> <span class="nm">'+nm+'</span></div>'
         +'<div class="tm">'+team+'</div>'
-        +'<div class="sub">'+[['Ultimo',txt(r,C('llp','10'))],['Migliore',txt(r,C('blp','12'))],['Gap',gap],[col.int?'Int':(HL(C('tlp','14'))||'Int'),col.int?txt(r,col.int):txt(r,C('tlp','14'))]].filter(x=>x[1]&&x[1]!=='-'&&x[1]!=='–').map(x=>'<span>'+x[0]+' <b>'+x[1]+'</b></span>').join('')+'</div>'
+
         +(nt?'<div style="font-size:11px;color:var(--text4);font-style:italic;margin-top:2px"><i class="ic ic-note"></i> '+nt.replace(/</g,'&lt;')+'</div>':'')+'</div></div>';
     }).join(''):'<div class="empty-state"><p>Nessun tuo pilota in questa sessione</p></div>');
     ltFlip();return;
   }
   box.innerHTML=sw+title
-    +'<table class="ltc"><tr><th>P</th><th>N°</th><th>PILOTA</th><th>ULTIMO</th><th>MIGLIORE</th><th>GAP</th><th>'+(col.int?'INT':(HL(C('tlp','14'))||'INT').toUpperCase())+'</th></tr>'
+    +'<table class="ltc"><tr><th>P</th><th>N°</th><th>PILOTA</th><th>TEAM</th></tr>'
     +sorted.map(({r})=>{
       const no=txt(r,C('no','4'));const mine=myNums.has(no);const tm=!mine&&teamNums.has(no);
       const llc=cls(r,C('llp','10'));
       return'<tr class="'+(mine?'mine':tm?'team':'')+'"'+(mine?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
-        +'<td>'+txt(r,C('rk','3'))+'</td><td class="n">'+no+'</td><td class="d">'+txt(r,C('dr','5'))+'</td>'
-        +'<td class="'+(/tb/.test(llc)?'best':/ti|ib/.test(llc)?'pb':'')+'">'+txt(r,C('llp','10'))+'</td>'
-        +'<td>'+txt(r,C('blp','12'))+'</td><td>'+txt(r,C('gap','13'))+'</td><td>'+(col.int?txt(r,col.int):txt(r,C('tlp','14')))+'</td></tr>'
+        +'<td>'+txt(r,C('rk','3'))+'</td><td class="n">'+no+'</td><td class="d">'+txt(r,C('dr','5'))+'</td><td class="d" style="color:var(--text3)">'+(((pilots.find(x=>String(x.num)===no)||{}).team)||((currentEntryList&&currentEntryList[no])||{}).team||'')+'</td></tr>'
         +(mine&&String((notes&&notes[no])||'').trim()?'<tr class="mine"><td></td><td colspan="6" style="font-size:11px;font-style:italic;font-weight:600;white-space:normal"><i class="ic ic-note"></i> '+String(notes[no]).replace(/</g,'&lt;')+'</td></tr>':'');
     }).join('')+'</table>'
     +'<div style="font-size:11px;color:var(--text4);margin-top:6px">Evidenziati i tuoi piloti · tocca un tuo pilota per la scheda</div>';
@@ -4263,7 +4266,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1530';
+const APP_BUILD='2026-11-13-1550';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
