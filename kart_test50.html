@@ -571,6 +571,14 @@ button,input,textarea,select{font-family:inherit}
 .prog-filter-chip{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 8px;padding:10px 14px;border-radius:12px;background:var(--bg3);font-size:16px;font-weight:700;text-transform:uppercase}
 .prog-filter-chip button{background:none;border:1px solid var(--border2);color:var(--text2);border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;min-height:40px}
 .now-badge{color:var(--rt-live)!important}.now-badge::before{content:'● ';color:var(--rt-live)}
+
+/* Vista "Apex originale" rimossa: resta solo la classifica personalizzata */
+#ltv-mia,#ltv-apex{display:none!important}
+.pv-switch:has(#ltv-mia){display:none!important}
+#lt-wrap,#lt-adjust{display:none!important}
+button[onclick="reloadLiveTiming()"]{display:none!important}
+/* Transizione al cambio scheda */
+.tab-content.tab-in-r{animation:swapR .28s ease-out}.tab-content.tab-in-l{animation:swapL .28s ease-out}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .nav-item-icon .ic{width:20px;height:20px}
 .card-inner>div:first-child{flex-wrap:wrap;row-gap:0}
@@ -2079,7 +2087,10 @@ function hideFabs(){
   if(_ltTimer){clearInterval(_ltTimer);_ltTimer=null;}
 }
 
+const TAB_ORDER=['gare','piloti','programma','entrylist','gara','livetiming','debug'];
 function showTab(tab){
+  const _prev=activeTab;
+  if(_prev&&_prev!==tab){const el=document.getElementById('tab-'+tab);if(el){const d=TAB_ORDER.indexOf(tab)>TAB_ORDER.indexOf(_prev)?'r':'l';el.classList.remove('tab-in-r','tab-in-l');void el.offsetWidth;el.classList.add('tab-in-'+d);setTimeout(()=>el.classList.remove('tab-in-'+d),320);}}
   activeTab=tab;localStorage.setItem('rt_tab',tab);
   ALL_TABS.forEach(t=>{
     const el=document.getElementById('tab-'+t);if(el)el.style.display=t===tab?'':'none';
@@ -2338,13 +2349,13 @@ function setLiveTimingSrc(){
   const cfg=ORG_CONFIG[r.org]||null;
   const url=resolveLiveUrl(r);
   const lbl=document.getElementById('live-timing-label');
-  if(url){ if(f.getAttribute('src')!==url)f.setAttribute('src',url); if(lbl)lbl.textContent=''+((cfg&&cfg.label)||'')+' LIVE TIMING'; }
+  if(url){ /* 13/11/2026: vista Apex originale rimossa, l'iframe non si carica */ if(lbl)lbl.textContent=''+((cfg&&cfg.label)||'')+' LIVE TIMING'; }
   else { f.removeAttribute('src'); if(lbl)lbl.textContent='LIVE TIMING — imposta organizzazione/URL nelle impostazioni gara'; }
   /* FIX SCHERMO NERO (27/09/2026): l'iframe veniva creato con la tab nascosta e su mobile restava nero
      finche' non si premeva 'Aggiorna'. Ora: flag data-loaded impostato su onload; se entrando nel tab
      l'iframe non risulta caricato, si riassegna src (about:blank -> url) per forzare il load. */
   f.onload=function(){ if(f.getAttribute('src')&&f.getAttribute('src')!=='about:blank')f.dataset.loaded='1'; applyLiveCrop(); };
-  if(url&&f.dataset.loaded!=='1'){ f.setAttribute('src','about:blank'); setTimeout(function(){f.setAttribute('src',url);},60); }
+  /* iframe Apex non più caricato (vista rimossa il 13/11/2026) */
   applyLiveCrop();
 }
 window.setLiveTimingSrc=setLiveTimingSrc;
@@ -4139,7 +4150,7 @@ function renderAlertLog(){
 }
 let _ltRenderT=null;
 function apexGridDirty(){if(_ltRenderT)return;_ltRenderT=setTimeout(()=>{_ltRenderT=null;renderLtMyTable();},100);}
-let ltView=localStorage.getItem('rt_ltview')||'mia';
+let ltView='mia'; // vista "Apex originale" rimossa il 13/11/2026
 let ltOnlyMine=localStorage.getItem('rt_ltmine')!=='0';
 function toggleLtMine(v){
   if(ltOnlyMine===v)return;
@@ -4363,7 +4374,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1630';
+const APP_BUILD='2026-11-13-1640';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
