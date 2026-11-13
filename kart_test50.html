@@ -2027,12 +2027,28 @@ const ORG_CONFIG={
 };
 const ORG_KEYS=Object.keys(ORG_CONFIG);
 function orgOptions(sel){return '<option value="">— organizzazione —</option>'+ORG_KEYS.map(k=>'<option value="'+k+'"'+(k===sel?' selected':'')+'>'+ORG_CONFIG[k].label+'</option>').join('');}
+// Live timing automatico: 1) URL scritto nella gara  2) circuito riconosciuto  3) default dell'organizzazione
+const CIRCUIT_LIVE=[
+  {re:/lonato|south\s*garda/i, url:'https://www.apex-timing.com/live-timing/southgardakarting/index.html'},
+  {re:/pista\s*azzurra|jesolo/i, url:'https://www.apex-timing.com/live-timing/pista-azzurra/index.html'}
+];
+function resolveLiveUrl(r){
+  r=r||{};
+  if(r.liveTiming&&String(r.liveTiming).trim())return String(r.liveTiming).trim();
+  const txt=(r.circuit||'')+' '+(r.name||'');
+  const c=CIRCUIT_LIVE.find(x=>x.re.test(txt));
+  if(c)return c.url;
+  const cfg=ORG_CONFIG[r.org]||null;
+  if(r.org==='WSK'||r.org==='ACI')return'https://www.apex-timing.com/live-timing/wsk/index.html';
+  return cfg&&cfg.liveTiming?cfg.liveTiming:'';
+}
+window.resolveLiveUrl=resolveLiveUrl;
 // Embed live timing per-gara: usa l'URL della gara, fallback al default dell'organizzazione
 function setLiveTimingSrc(){
   const f=document.getElementById('live-timing-frame');if(!f)return;
   const r=(typeof races!=='undefined'&&races[activeRaceId])?races[activeRaceId]:{};
   const cfg=ORG_CONFIG[r.org]||null;
-  const url=(r.liveTiming&&r.liveTiming.trim())?r.liveTiming.trim():(cfg&&cfg.liveTiming?cfg.liveTiming:'');
+  const url=resolveLiveUrl(r);
   const lbl=document.getElementById('live-timing-label');
   if(url){ if(f.getAttribute('src')!==url)f.setAttribute('src',url); if(lbl)lbl.textContent='⏱ '+((cfg&&cfg.label)||'')+' LIVE TIMING'; }
   else { f.removeAttribute('src'); if(lbl)lbl.textContent='⏱ LIVE TIMING — imposta organizzazione/URL nelle impostazioni gara'; }
@@ -2114,7 +2130,7 @@ window.copyNum=copyNum;
 function openLiveTimingTab(){
   const r=(typeof races!=='undefined'&&races[activeRaceId])?races[activeRaceId]:{};
   const cfg=ORG_CONFIG[r.org]||null;
-  const url=(r.liveTiming&&r.liveTiming.trim())?r.liveTiming.trim():(cfg&&cfg.liveTiming?cfg.liveTiming:'');
+  const url=resolveLiveUrl(r);
   if(url)window.open(url,'_blank','noopener');
   else alert('Nessun URL live timing impostato per questa gara. Impostalo nelle impostazioni gara o scegli un\'organizzazione.');
 }
@@ -3584,7 +3600,7 @@ startScheduleAutoRefresh();
 // Legge dal flusso live di Apex la sessione in pista e l'ora reale della partenza,
 // la abbina allo slot del programma e propone (o applica, se AUTO) il ritardo.
 // ══════════════════════════════════════
-const APEX_LIVE_PORTS={southgardakarting:7440};
+const APEX_LIVE_PORTS={southgardakarting:7440,wsk:7430,'pista-azzurra':8070};
 let apexWs=null,apexWsKey='',apexState={cat:'',sess:'',start:'',red:'',at:0},apexRetry=null;
 let apexSeen=new Set(),apexIgnore=new Set();
 let apexAuto=true;
@@ -3592,7 +3608,7 @@ let apexLastApplied='';
 function apexLiveName(){
   const r=(typeof races!=='undefined'&&races[activeRaceId])?races[activeRaceId]:{};
   const cfg=ORG_CONFIG[r.org]||null;
-  const url=(r.liveTiming&&r.liveTiming.trim())?r.liveTiming.trim():(cfg&&cfg.liveTiming?cfg.liveTiming:'');
+  const url=resolveLiveUrl(r);
   const m=url.match(/apex-timing\.com\/live-timing\/([a-z0-9\-]+)\//i);
   return m?m[1].toLowerCase():'';
 }
@@ -3704,7 +3720,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1115';
+const APP_BUILD='2026-11-13-1110';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
