@@ -371,9 +371,15 @@ body.light .adv-cat-btn.cat-nj{border-color:#d97706;color:#d97706;}
 @media(min-width:768px){
   /* Desktop: tutta la larghezza dello schermo, con le schede affiancate in più colonne */
   .content{max-width:none;margin:0;padding-left:24px;padding-right:24px;}
-  #pilots-list,#schedule-content{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:12px;align-items:start;}
-  #pilots-list>*,#schedule-content>*{margin-bottom:0!important;}
-  #pilots-list>:not(.card),#schedule-content>:not(.card){grid-column:1/-1;}
+  #pilots-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:12px;align-items:start;}
+  #pilots-list>*{margin-bottom:0!important;}
+  #pilots-list>:not(.card){grid-column:1/-1;}
+  /* Programma: una sola colonna in ordine di orario; dentro ogni sessione i piloti affiancati */
+  #schedule-content>.card{display:grid;grid-template-columns:150px 1fr;gap:4px 16px;align-items:start;}
+  #schedule-content>.card>.slot-header{grid-column:1;flex-direction:column;align-items:flex-start;gap:6px;margin:0;}
+  #schedule-content>.card>:not(.slot-header){grid-column:2;margin-top:0!important;}
+  #schedule-content>.card>div:not(.slot-header){display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:8px;}
+  #schedule-content>.card>div:not(.slot-header)>*{margin:0!important;}
   #lt-mytable .ltbig{display:inline-flex;width:calc(50% - 6px);margin-right:6px;vertical-align:top}
   .modal{max-width:720px;}
   .card:hover{border-color:var(--border2);}
@@ -4008,7 +4014,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1300';
+const APP_BUILD='2026-11-13-1310';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
