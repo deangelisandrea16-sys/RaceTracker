@@ -665,6 +665,7 @@ body.lt-full-open #rt-alerts,body.lt-full-open #rt-offline,body.lt-full-open .fa
     <div style="border-top:1px solid var(--border);margin:8px 0"></div>
     <button class="nav-item" onclick="toggleTheme();document.getElementById('nav-overlay').classList.remove('open')"><span class="nav-item-icon" id="theme-icon"><i class="ic ic-sun"></i></span><span id="theme-label">TEMA CHIARO</span></button>
     <button class="nav-item" onclick="document.getElementById('nav-overlay').classList.remove('open');showUserPicker()"><span class="nav-item-icon"><i class="ic ic-user"></i></span>CAMBIA UTENTE</button>
+    <button class="nav-item" onclick="document.getElementById('nav-overlay').classList.remove('open');openNotifPrefs()"><span class="nav-item-icon"><i class="ic ic-bell"></i></span>LE MIE NOTIFICHE</button>
     <div class="nav-close" onclick="document.getElementById('nav-overlay').classList.remove('open')">CHIUDI</div>
   </div>
 </div>
@@ -1688,6 +1689,18 @@ let currentEntryList={};
 let currentSchedule={};
 let currentDays=[];
 let currentFinals=[];     // finals for current race
+let currentSessionLaps={}; // giri/minuti ufficiali per categoria e tipo sessione (races/{id}/sessionLaps, dal programma/regolamento ufficiale)
+// Durata della sessione: "· 12 giri" / "· 6'" (solo se il dato ufficiale è caricato per quella gara)
+function slotDurText(cat,type){
+  try{
+    const L=currentSessionLaps||{};const c=L[canonCat(cat)]||L[cat]||{};
+    const k=type==='group'?'group':type==='prefinal'?'prefinal':type==='final'?'final':type==='serie'?'qualif':'';
+    const v=k?(c[k]!=null?c[k]:(k==='qualif'?L._qualif:null)):null;
+    if(v==null||v==='')return'';
+    return /^\d+$/.test(String(v))?String(v)+' giri':String(v);
+  }catch(e){return'';}
+}
+function slotDur(slot){const t=slot?slotDurText(slot.cat,slot.type):'';return t?' · '+t:'';}
 
 // ── THEME ──
 if(localStorage.getItem('rt_theme')==='light') document.body.classList.add('light');
@@ -1799,6 +1812,7 @@ function listenRaceData(raceId){
     currentDays=sharedData.days||Object.keys(currentSchedule);
     if(!Array.isArray(currentDays))currentDays=typeof currentDays==='object'?Object.values(currentDays):[];
     currentFinals=sharedData.finals||[];
+    currentSessionLaps=sharedData.sessionLaps||{};
     if(!Array.isArray(currentFinals))currentFinals=typeof currentFinals==='object'?Object.values(currentFinals):[];
     trackSections=sharedData.trackSections||["PARTENZA","CURVA 1","RETTILINEO 1","CURVA 2","ESSE","RETTILINEO 2","ARRIVO"];
     // Ritardo e AUTO condivisi per tutta la gara (AUTO acceso di default)
@@ -2529,7 +2543,7 @@ window.applyLiveCrop=applyLiveCrop;window.toggleLiveCompact=toggleLiveCompact;wi
 
 
 // ── CALENDARIO GARE DISPONIBILI (dati da calendar.json, solo fonti ufficiali) ──
-let calData=null,calOrg='',calSer='';
+let calData=null,calOrg='',calSer='',calQ='';
 const calSeriesOf=e=>String(e.name).replace(/\s+R\d+$/,'').replace(/\s+20\d\d$/,'').replace(/^\d+°\s+/,'');
 const CAL_MONTHS=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 function calFmt(ev){
@@ -2544,7 +2558,8 @@ function calAdded(ev){
   return Object.keys(races||{}).some(id=>{const r=races[id]||{};return r.calId===ev.id||(r.name===ev.name&&ev.dateFrom&&r.startDate===ev.dateFrom);});
 }
 function openCalendar(){
-  openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Gare disponibili</div><div id="cal-body"><div class="empty-state"><p>Caricamento…</p></div></div>');
+  calQ='';
+  openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Gare disponibili</div><input id="cal-q" type="search" placeholder="Cerca gara, circuito, città…" oninput="calQ=this.value;renderCalendar()" autocomplete="off" style="width:100%;min-height:44px;margin:0 0 10px;padding:10px 12px;border-radius:10px;border:1px solid var(--border,#333);background:var(--bg2,#151518);color:var(--text,#eee);font-size:15px;box-sizing:border-box"><div id="cal-body"><div class="empty-state"><p>Caricamento…</p></div></div>');
   if(calData){renderCalendar();return;}
   fetch('calendar.json',{cache:'no-cache'}).then(r=>r.json()).then(d=>{calData=d;renderCalendar();}).catch(()=>{
     const el=document.getElementById('cal-body');if(el)el.innerHTML='<div class="empty-state"><p>Calendario non disponibile offline.</p></div>';
@@ -2557,7 +2572,8 @@ function renderCalendar(){
   const today=new Date().toISOString().slice(0,10);
   const base=calData.events.filter(e=>!(e.dateTo&&e.dateTo<today)&&(!calOrg||e.org===calOrg));
   const sers=calOrg?[...new Set(base.map(calSeriesOf))]:[];window._calSerList=sers;
-  const evs=base.filter(e=>!calSer||calSeriesOf(e)===calSer);
+  const q=String(calQ||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const evs=base.filter(e=>(!calSer||calSeriesOf(e)===calSer)&&(!q||[e.name,e.series,e.org,e.circuit,e.city,(e.cats||[]).join(' ')].join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').includes(q)));
   const orgs=[...new Set(calData.events.map(e=>e.org))];
   const h=[];
   h.push('<div class="cal-orgs">');
@@ -2573,6 +2589,7 @@ function renderCalendar(){
     h.push('</div>');
   }
   const groups={};
+  if(!evs.length)h.push('<div class="empty-state"><p>Nessuna gara trovata'+(q?' per “'+String(calQ).replace(/[<>&"]/g,'')+'”':'')+'.</p></div>');
   evs.forEach(e=>{const k=e.month||'zz';(groups[k]=groups[k]||[]).push(e);});
   Object.keys(groups).sort().forEach(k=>{
     const t=k==='zz'?'Data da annunciare':[CAL_MONTHS[+k.slice(5,7)-1],k.slice(0,4)].join(' ');
@@ -3084,14 +3101,13 @@ function filterPilots(q){
 // Posizione in griglia dalle liste ufficiali Apex (entryList/{num}/grid = {"A-B":1,...}); nessuna stima
 function gridPos(num,slot){
   try{
-    if(!slot||slot.type!=='group')return 0;
-    const f=Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{});
-    const key=f.map(x=>String(x).trim().toUpperCase()).sort().join('-');
+    const key=slotKeyOf(slot);if(!key)return 0;
     const g=(currentEntryList[num]||{}).grid;return(g&&g[key])||0;
   }catch(e){return 0;}
 }
 // Dopo la manche: posizione d'arrivo dai risultati Apex (entryList/{num}/result = {"A-B":"3"}), badge verde
-function slotKeyOf(slot){if(!slot||slot.type!=='group')return'';const f=Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{});return f.map(x=>String(x).trim().toUpperCase()).sort().join('-');}
+// Chiavi: manche "A-B"; prefinali "PF-A"/"PF-B"; finale "FIN" (scritte dal server dai documenti ufficiali Apex)
+function slotKeyOf(slot){if(!slot)return'';if(slot.type==='prefinal'){const x=String(slot.filter||'').trim().toUpperCase();return x?'PF-'+x:'';}if(slot.type==='final')return'FIN';if(slot.type!=='group')return'';const f=Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{});return f.map(x=>String(x).trim().toUpperCase()).sort().join('-');}
 function gridBadge(num,slot){
   const k=slotKeyOf(slot);if(!k)return'';
   const e=currentEntryList[num]||{};const r=e.result&&e.result[k];
@@ -3903,7 +3919,7 @@ function renderSchedule(){
       html+='<div class="card'+(isNow?' slot-now':'')+'" style="opacity:.45" '+(isNow?'id="slot-now"':'')+'><div class="slot-header">'
         +'<span class="slot-time">'+slot.time+'</span>'+(isNow?'<span class="now-badge">ORA</span>':'')
         +'<span class="slot-label '+catClass(slot.cat)+'">'+slot.label+'</span>'
-        +'<span class="slot-type">'+slotFilterLabel(slot)+'</span></div>'
+        +'<span class="slot-type">'+slotFilterLabel(slot)+slotDur(slot)+'</span></div>'
         +'<div style="font-size:11px;font-weight:700;color:var(--text4);padding:2px 0">— NESSUNO —</div></div>';
       return;
     }
@@ -3912,7 +3928,7 @@ function renderSchedule(){
     html+='<div class="card'+(isNow?' slot-now':'')+'" '+(isNow?'id="slot-now"':'')+'><div class="slot-header">'
       +'<span class="slot-time">'+slot.time+'</span>'+(isNow?'<span class="now-badge">ORA</span>':'')
       +'<span class="slot-label '+catClass(slot.cat)+'">'+slot.label+'</span>'
-      +'<span class="slot-type">'+slotFilterLabel(slot)+'</span></div>'
+      +'<span class="slot-type">'+slotFilterLabel(slot)+slotDur(slot)+'</span></div>'
       +(awaiting.length?'<div style="font-size:9px;color:#fbbf24;font-weight:600;margin-top:4px"><i class="ic ic-wait"></i> '+awaiting.map(p=>'#'+p.num).join(' ')+' in attesa</div>':'')
       +'<div style="margin-top:8px">';
     ps.forEach(p=>{
@@ -3940,10 +3956,11 @@ function renderSchedule(){
       const ps=finalists.length?finalists:allCat;
       const _fNow=_finalNowKey===(f.label+'|'+f.time);
       html+='<div class="final-card'+(_fNow?' slot-now':'')+'"'+(_fNow?' id="slot-now"':'')+'><div class="final-title"><i class="ic ic-trophy"></i> '+f.label+(_fNow?' <span class="now-badge">ORA</span>':'')+'</div>'
-        +'<div class="final-row"><span>Partenza</span><span class="final-time">'+f.time+'</span></div>';
+        +'<div class="final-row"><span>Partenza</span><span class="final-time">'+f.time+'</span></div>'
+        +(slotDurText(f.cat,'final')?'<div class="final-row"><span>Durata</span><span class="final-time">'+slotDurText(f.cat,'final')+'</span></div>':'');
       ps.forEach(p=>{
         html+='<div class="card-inner" style="margin-top:8px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
-          +'<span class="inner-num">#'+p.num+'</span><span class="inner-name">'+p.name+'</span>'+(p.eliminated?'':runChip(p.num,1e6))
+          +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,{type:'final'})+'<span class="inner-name">'+p.name+'</span>'+(p.eliminated?'':runChip(p.num,1e6))
           +'<span class="inner-team-big">'+p.team+'</span></div>'
           +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+'</div>'
           +(notes[p.num]?'<div style="margin-top:6px;font-size:11px;color:var(--text4);font-style:italic"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>';
@@ -4181,6 +4198,7 @@ function apexEvaluate(why){
     return;
   }
   const isFinal=/FINAL/.test(ss)&&!/PREFINAL/.test(ss);
+  if(!isFinal)return; // regola Andrea 13/11: P1-P5 solo nelle finali (niente manche/prefinali)
   snap.filter(x=>x.pos<=5).forEach(x=>{
     if(!mine.has(x.num))return;
     const p=mine.get(x.num);
@@ -4201,7 +4219,44 @@ function checkEliminations(){
 // Gli avvisi di prova della versione precedente ('test|') non sono avvisi di gara: esclusi
 function alertKey(r){return['rt_alerts_',r||activeRaceId,'_',currentUserId||''].join('');}
 function alertLog(){try{return JSON.parse(localStorage.getItem(alertKey())||'[]').filter(a=>a&&a.id&&!a.id.startsWith('test|'));}catch(e){return[];}}
+// Preferenze notifiche per utente (Firebase notifPrefs/<utente>/<tipo> = false spegne; default acceso).
+// Le stesse chiavi le rispetta il server push.
+const NOTIF_TYPES=[['qualifiche','Pole e top 3 in qualifica'],['finali','P1–P5 in finale'],['eliminati','Eliminati e rischio finale'],['prefinali','Passati a prefinali e finale']];
+const NOTIF_OF={quali:'qualifiche',res:'finali',elim:'eliminati',pref:'prefinali'};
+let notifPrefs={},notifPrefsUser='';
+function watchNotifPrefs(){
+  if(!currentUserId||notifPrefsUser===currentUserId)return;notifPrefsUser=currentUserId;
+  try{onValue(ref(db,'notifPrefs/'+currentUserId),s=>{notifPrefs=s.val()||{};const m=document.getElementById('notif-prefs-body');if(m)renderNotifPrefs();});}catch(e){}
+}
+function notifOn(id){const k=NOTIF_OF[String(id).split('|')[0]];return!k||notifPrefs[k]!==false;}
+function renderNotifPrefs(){
+  const b=document.getElementById('notif-prefs-body');if(!b)return;
+  b.innerHTML=NOTIF_TYPES.map(([k,l])=>{const on=notifPrefs[k]!==false;
+    return'<label style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;padding:6px 2px;border-bottom:1px solid var(--border,#2a2a2e);cursor:pointer"><span style="font-size:15px">'+l+'</span><input type="checkbox" '+(on?'checked':'')+' onchange="setNotifPref(\''+k+'\',this.checked)" style="width:24px;height:24px;flex-shrink:0"></label>';}).join('')
+    +'<div style="margin-top:10px;font-size:11px;color:var(--text4)">Valgono solo per il tuo profilo ('+currentUserId+') e per i tuoi piloti.</div>';
+}
+function setNotifPref(k,on){if(!currentUserId)return;notifPrefs[k]=!!on;const u={};u['notifPrefs/'+currentUserId+'/'+k]=!!on;update(ref(db),u);}
+function openNotifPrefs(){
+  if(!currentUserId){alert('Scegli prima il tuo utente.');return;}
+  watchNotifPrefs();
+  openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Le mie notifiche</div><div id="notif-prefs-body"></div>');
+  renderNotifPrefs();
+}
+window.openNotifPrefs=openNotifPrefs;window.setNotifPref=setNotifPref;
+setTimeout(watchNotifPrefs,3000);
+// Avviso (solo titolare) se il server notifiche/monitor non aggiorna serverStatus/pc da più di 5 minuti
+const SERVER_OWNER='andrea';let serverStat=null;
+function renderServerBanner(){
+  let b=document.getElementById('srv-banner');
+  const stale=currentUserId===SERVER_OWNER&&serverStat!==null&&(!serverStat||!serverStat.at||Date.now()-serverStat.at>5*60000||serverStat.watcher===false);
+  if(!stale){if(b)b.remove();return;}
+  if(!b){b=document.createElement('div');b.id='srv-banner';b.style.cssText='position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:9999;background:#b3261e;color:#fff;border-radius:10px;padding:10px 12px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.4)';document.body.appendChild(b);}
+  const min=serverStat&&serverStat.at?Math.round((Date.now()-serverStat.at)/60000):null;
+  b.textContent='Server notifiche fermo'+(min!==null?' da '+min+' min':'')+(serverStat&&serverStat.watcher===false?' (live non attivo)':'')+': le notifiche push non partono.';
+}
+setTimeout(()=>{if(currentUserId!==SERVER_OWNER)return;try{onValue(ref(db,'serverStatus/pc'),s=>{serverStat=s.val()||false;renderServerBanner();});}catch(e){}setInterval(renderServerBanner,60000);},5000);
 function rtAlert(id,title,sub,kind){
+  if(!notifOn(id))return;
   const log=alertLog();if(log.some(a=>a.id===id))return;
   const t=new Date();const hm=String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
   log.unshift({id,title,sub,kind,hm,ts:Date.now()});
