@@ -3518,14 +3518,34 @@ window.updateProgTicker=updateProgTicker;
 let _scheduleRefreshTimer=null;
 function startScheduleAutoRefresh(){
   if(_scheduleRefreshTimer)clearInterval(_scheduleRefreshTimer);
-  _scheduleRefreshTimer=setInterval(()=>{
-    if(activeTab==='programma'){
-      // Re-render without scrolling — just update the "ORA" badge
-      scheduleNeedsScroll=false;
-      renderSchedule();
-    }
-  },60000);
+  // Controlla ogni 10 s se la sessione in corso è cambiata e ridisegna solo in quel caso
+  _scheduleRefreshTimer=setInterval(()=>refreshNowHighlight(false),10000);
 }
+let _lastNowKey='';
+function nowSlotKey(){
+  try{
+    const s=currentSchedule&&currentSchedule[activeDay];if(!s)return'';
+    const arr=Array.isArray(s)?s:Object.values(s);
+    return activeDay+'|'+getCurrentSlotIndex(arr)+'|'+scheduleDelay+'|'+new Date().toDateString();
+  }catch(e){return'';}
+}
+function refreshNowHighlight(force){
+  const k=nowSlotKey();
+  if(!force&&k===_lastNowKey)return;
+  _lastNowKey=k;
+  if(activeTab==='programma'){
+    const ae=document.activeElement;
+    if(ae&&ae.id==='prog-search')return; // non disturbare mentre scrivi nella ricerca
+    scheduleNeedsScroll=false;
+    renderSchedule();
+  }
+  if(document.getElementById('ov-body'))renderOverviewBody();
+}
+window.refreshNowHighlight=refreshNowHighlight;
+// Al ritorno nell'app (schermo riacceso, cambio app) aggiorna subito l'evidenziazione
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshNowHighlight(true);});
+window.addEventListener('focus',()=>refreshNowHighlight(true));
+window.addEventListener('pageshow',()=>refreshNowHighlight(true));
 startScheduleAutoRefresh();
 
 // Programma search
