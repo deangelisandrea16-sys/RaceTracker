@@ -551,6 +551,18 @@ button,input,textarea,select{font-family:inherit}
 #fab-top{bottom:calc(var(--tab-h) + var(--safe-b) + 140px)!important;right:22px!important}
 #fab-bottom-piloti{bottom:calc(var(--tab-h) + var(--safe-b) + 16px)!important;right:22px!important}
 #fab-top-piloti{bottom:calc(var(--tab-h) + var(--safe-b) + 74px)!important;right:22px!important}
+
+/* Intestazione su una riga: RACE TRACKER · nome gara ........ LIVE · utente */
+.header{padding:calc(env(safe-area-inset-top) + 8px) 16px 8px!important;gap:10px}
+.header>div:first-child{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+.header-title{order:1;font-size:17px!important;line-height:1;white-space:nowrap;flex-shrink:0}
+.header-title span{display:none}
+.header-sub{order:2;margin:0!important;display:flex;align-items:center;min-width:0;font-family:'Barlow Condensed'!important;font-weight:700!important;font-size:13px!important;letter-spacing:.5px!important;color:var(--text3)!important;text-transform:uppercase}
+.header-sub #race-header-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.header-sub .header-dot{display:none}
+.header-right{gap:8px;flex-shrink:0}
+#sb-conn{display:none}
+#rt-statusbar{justify-content:flex-start;gap:22px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .nav-item-icon .ic{width:20px;height:20px}
 .card-inner>div:first-child{flex-wrap:wrap;row-gap:0}
@@ -564,7 +576,7 @@ button,input,textarea,select{font-family:inherit}
 
 <div class="header">
   <div>
-    <div class="header-sub"><span class="header-dot" id="conn-dot"></span><span id="race-header-name">RACE TRACKER</span></div>
+    <div class="header-sub"><span class="header-dot" id="conn-dot"></span><span id="race-header-name"></span></div>
     <div class="header-title">RACE TRACKER <span onclick="navTo('debug')" style="font-size:9px;color:var(--text4);font-weight:500;cursor:pointer;padding:2px 4px;border-radius:5px" title="debug">v4.9u</span></div>
   </div>
   <div class="header-right">
@@ -1798,7 +1810,7 @@ function switchRace(raceId){
 
 function updateRaceHeader(){
   const el=document.getElementById('race-header-name');
-  if(el&&races[activeRaceId]) el.textContent=races[activeRaceId].name||'RACE TRACKER';
+  if(el&&races[activeRaceId]) el.textContent=races[activeRaceId].name||'';
 }
 
 // Start listening
@@ -4322,7 +4334,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1615';
+const APP_BUILD='2026-11-13-1620';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
