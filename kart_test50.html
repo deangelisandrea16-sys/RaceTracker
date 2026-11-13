@@ -3725,7 +3725,8 @@ function checkEliminations(){
   if(prev){pilots.forEach(p=>{if(now[p.num]&&prev[p.num]===false)rtAlert('elim|'+activeRaceId+'|'+p.num,'❌ ELIMINATO: #'+p.num+' '+p.name+' ('+p.cat+')','Da classifica ufficiale caricata · verifica eventuali reclami','');});}
   try{localStorage.setItem(k,JSON.stringify(now));}catch(e){}
 }
-function alertLog(){try{return JSON.parse(localStorage.getItem('rt_alerts_'+activeRaceId)||'[]');}catch(e){return[];}}
+// Gli avvisi di prova della versione precedente ('test|') non sono avvisi di gara: esclusi
+function alertLog(){try{return JSON.parse(localStorage.getItem('rt_alerts_'+activeRaceId)||'[]').filter(a=>a&&a.id&&!a.id.startsWith('test|'));}catch(e){return[];}}
 function rtAlert(id,title,sub,kind){
   const log=alertLog();if(log.some(a=>a.id===id))return;
   const t=new Date();const hm=String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
@@ -3984,7 +3985,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-1235';
+const APP_BUILD='2026-11-13-1240';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
