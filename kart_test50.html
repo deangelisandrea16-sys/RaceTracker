@@ -426,6 +426,7 @@ body:not(.light){background:#0d0d0f}
 .slot-header{gap:10px;margin-bottom:10px}
 .slot-time{font-family:'Saira Condensed';font-weight:900;font-style:italic;font-size:26px;letter-spacing:0;color:var(--text3)}
 .slot-now .slot-time{color:var(--rt-orange)}
+.slot-dur{font-family:'Saira Condensed';font-weight:900;font-style:italic;font-size:22px;color:var(--text2);white-space:nowrap}.slot-dur s{color:var(--text4);font-size:16px}.slot-dur b{color:#fbbf24;font-weight:900}
 .slot-label{font-family:'Saira Condensed';font-weight:900;font-size:19px;text-transform:uppercase}
 .slot-now{border-color:var(--rt-orange)!important;box-shadow:0 0 0 1.5px var(--rt-orange),0 12px 34px -16px rgba(255,90,31,.55)!important}
 .now-badge{color:var(--rt-orange);font-family:'Barlow Condensed';font-size:13px;letter-spacing:2px}.now-badge::before{content:'● '}
@@ -1696,7 +1697,7 @@ function slotDurText(s){
   const d=String(s.dur),l=s.durLive?String(s.durLive):'';
   return l&&l!==d?d+' (live: '+l+')':d;
 }
-function slotDur(slot){const t=slotDurText(slot);return t?' · '+t:'';}
+function slotDur(slot){if(!slot||!slot.dur)return'';const d=String(slot.dur),l=slot.durLive?String(slot.durLive):'';return '<span class="slot-dur">'+(l&&l!==d?'<s>'+d+'</s> <b>'+l+'</b>':d)+'</span>';}
 
 // ── THEME ──
 if(localStorage.getItem('rt_theme')==='light') document.body.classList.add('light');
@@ -3951,7 +3952,7 @@ function renderSchedule(){
       html+='<div class="card'+(isNow?' slot-now':'')+'" style="opacity:.45" '+(isNow?'id="slot-now"':'')+'><div class="slot-header">'
         +'<span class="slot-time">'+slot.time+'</span>'+(isNow?'<span class="now-badge">ORA</span>':'')
         +'<span class="slot-label '+catClass(slot.cat)+'">'+slot.label+'</span>'
-        +'<span class="slot-type">'+slotFilterLabel(slot)+slotDur(slot)+'</span></div>'
+        +'<span class="slot-type">'+slotFilterLabel(slot)+'</span>'+slotDur(slot)+'</div>'
         +'<div style="font-size:11px;font-weight:700;color:var(--text4);padding:2px 0">— NESSUNO —</div></div>';
       return;
     }
@@ -3960,7 +3961,7 @@ function renderSchedule(){
     html+='<div class="card'+(isNow?' slot-now':'')+'" '+(isNow?'id="slot-now"':'')+'><div class="slot-header">'
       +'<span class="slot-time">'+slot.time+'</span>'+(isNow?'<span class="now-badge">ORA</span>':'')
       +'<span class="slot-label '+catClass(slot.cat)+'">'+slot.label+'</span>'
-      +'<span class="slot-type">'+slotFilterLabel(slot)+slotDur(slot)+'</span></div>'
+      +'<span class="slot-type">'+slotFilterLabel(slot)+'</span>'+slotDur(slot)+'</div>'
       +(awaiting.length?'<div style="font-size:9px;color:#fbbf24;font-weight:600;margin-top:4px"><i class="ic ic-wait"></i> '+awaiting.map(p=>'#'+p.num).join(' ')+' in attesa</div>':'')
       +'<div style="margin-top:8px">';
     ps.forEach(p=>{
