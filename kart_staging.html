@@ -4714,7 +4714,7 @@ function renderLtFull(){
   const now=Date.now();const sk=apexState.cat+'|'+apexState.sess;
   const out=[];
   if(!el.querySelector('.ltf-list')){el.innerHTML='<div class="ltf-top"><div class="ltf-sess"></div><div class="ltf-lap"></div><button class="ltf-close" onclick="closeLtFull()" aria-label="Chiudi">✕</button></div><div class="ltf-list"></div>';}
-  el.querySelector('.ltf-sess').innerHTML=sess;
+  el.querySelector('.ltf-sess').innerHTML=lightHtml(false)+' '+sess;
   el.querySelector('.ltf-lap').innerHTML=lap?'<i class="ic ic-timer"></i> '+lap.replace(/</g,'&lt;'):'';
   if(!rows.length)out.push('<div class="ltf-empty">In attesa dei dati live…</div>');
   rows.forEach(({r,pos})=>{
@@ -4819,6 +4819,11 @@ window.setLtView=setLtView;
 // Classifica live ricostruita dai dati Apex, con i piloti dell'account evidenziati
 // Giro attuale / tempo rimanente come su Apex (messaggi dyn1/dyn2 del live)
 const apexDyn={};
+// Semaforo Apex: lg verde, lr rosso, ly giallo, lf bandiera a scacchi (fine)
+let apexLight={c:'',at:0};
+function lightInfo(){const c=apexLight.c;return({lg:{col:'#22c55e',t:'VERDE'},lr:{col:'#ef4444',t:'ROSSO'},ly:{col:'#facc15',t:'GIALLO'},lf:{col:'#ffffff',t:'FINE'}})[c]||null;}
+function lightHtml(big){const L=lightInfo();if(!L)return'';const sz=big?22:18;
+  return'<span class="lt-light" style="display:inline-flex;align-items:center;gap:6px;font-weight:900;font-size:'+(big?15:13)+'px;color:'+L.col+'"><span style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:'+(apexLight.c==='lf'?'repeating-conic-gradient(#fff 0 25%,#111 0 50%) 0 0/8px 8px':L.col)+';box-shadow:0 0 12px '+L.col+';flex-shrink:0"></span>'+L.t+'</span>';}
 function apexDynFmt(ms){ms=Math.max(0,Math.round(ms/1000));const h=Math.floor(ms/3600),m=Math.floor(ms%3600/60),x=ms%60;return(h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0');}
 function apexDynText(d){
   if(!d||d.val===undefined||d.val==='')return'';
@@ -4865,11 +4870,12 @@ function renderApexDyn(){
   if(!el){el=document.createElement('div');el.id='lt-dyn';el.style.cssText="display:none;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;padding:10px 14px;border-radius:12px;background:var(--bg2);font-family:'Chakra Petch';font-weight:700";box.parentNode.insertBefore(el,box);}
   const lap=apexLapText();
   const t=[apexDynText(apexDyn.dyn1),apexDynText(apexDyn.dyn2)].filter(x=>x&&!(lap&&/(?:LAP|GIRO|TOUR)\s*\d+\s*\/\s*\d+/i.test(x)));const fin=lap==='ARRIVO';
-  if((!t.length&&!lap)||!apexWsKey){el.style.display='none';return;}
+  const lh=lightHtml(true);
+  if((!t.length&&!lap&&!lh)||!apexWsKey){el.style.display='none';return;}
   const sess=((apexState.cat||'')+' '+(apexState.sess||'')).trim();
   el.style.display='flex';
   el.style.outline=fin?'2px solid #fff':'none';
-  el.innerHTML='<span style="font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+sess.replace(/</g,'&lt;')+'</span><span style="display:flex;align-items:center;gap:12px;white-space:nowrap">'
+  el.innerHTML='<span style="display:flex;align-items:center;gap:10px;min-width:0">'+lh+'<span style="font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+sess.replace(/</g,'&lt;')+'</span></span><span style="display:flex;align-items:center;gap:12px;white-space:nowrap">'
     +(lap?'<span style="font-size:'+(fin?'24':'22')+'px;color:'+(fin?'#fff':'var(--rt-orange)')+';font-weight:900">'+(fin?'<i class="ic ic-flag"></i> ':'')+lap+'</span>':'')
     +(t.length&&!fin?'<span style="font-size:16px;color:var(--text2)"><i class="ic ic-timer" style="color:var(--rt-orange)"></i> '+t.join(' · ').replace(/</g,'&lt;')+'</span>':'')+'</span>';
 }
@@ -4958,6 +4964,7 @@ function apexParse(txt){
   let changed=false;
   txt.split('\n').forEach(line=>{
     const p=line.split('|');const k=p[0];const v=p.slice(2).join('|');
+    if(k==='light'){apexLight={c:String(p[1]||'').trim(),at:Date.now()};try{renderApexDyn();if(ltFullOn)renderLtFull();}catch(e){}return;}
     if(k==='dyn1'||k==='dyn2'){apexDyn[k]={type:p[1]||'text',val:v,at:Date.now()};renderApexDyn();return;}
     if(k==='grid'){ltGridNew=false;ltOnGrid(v);apexGrid.innerHTML=v;
       // griglia con piloti nuovi arrivata PRIMA del nome della sessione nuova: non attribuirla alla sessione vecchia
@@ -5069,7 +5076,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1335';
+const APP_BUILD='2026-11-14-1340';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
