@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-14-1650';
+var RT_JS_BUILD='2026-11-14-2010';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1005,6 +1005,10 @@ function switchRace(raceId){
   localStorage.setItem('rt_race',raceId);
   updateRaceHeader();
   listenRaceData(raceId);
+  /* FIX 14/11 16:55: cambiando gara il live della gara precedente (altro circuito) restava collegato e i suoi
+     numeri venivano confrontati con i piloti della nuova gara → falsi "USCITO". Ora si scollega e si ricollega subito. */
+  try{if(apexWs){apexWs.onclose=null;apexWs.onmessage=null;apexWs.close();}clearTimeout(apexRetry);}catch(e){}
+  try{apexWs=null;apexWsKey='';apexGrid.innerHTML='';apexState={cat:'',sess:'',start:'',red:'',at:0};apexConnect();}catch(e){}
 }
 
 function updateRaceHeader(){
@@ -1879,6 +1883,10 @@ function openRaceSettings(raceId){
     +'<div class="form-group" style="flex:1"><label class="form-label">Data Fine</label>'
     +'<input class="form-input" id="rs-end" type="date" value="'+(r.endDate||'')+'"></div></div>'
     /* 14/11/2026: orari delle premiazioni dal programma ufficiale (servono al server per gli avvisi pole/podio e al Programma) */
+    /* 14/11/2026: percorso dei risultati Apex della gara (serve al server multi-gara per seguirla da solo) */
+    +'<div class="form-group"><label class="form-label">Risultati Apex (link o percorso)</label>'
+    +'<input class="form-input" id="rs-apex" placeholder="https://www.apex-timing.com/goracing/results.php?path=/…" value="'+(r.apexPath||'')+'">'
+    +'<div style="font-size:11px;color:var(--text4);margin-top:4px">Con questo il server segue la gara da solo: entry list, gruppi, arrivi, live.</div></div>'
     +'<div class="form-group"><label class="form-label">Premiazione poleman (se nel programma)</label>'
     +'<input class="form-input" id="rs-aw-pole" type="datetime-local" value="'+(((r.awards||{}).pole)||'')+'"></div>'
     +'<div class="form-group"><label class="form-label">Premiazione finali</label>'
@@ -2055,6 +2063,11 @@ function saveRaceSettings(raceId){
   u['races_index/'+raceId+'/liveTiming']=liveTiming;
   u['races_index/'+raceId+'/startDate']=startDate;
   u['races_index/'+raceId+'/endDate']=endDate;
+  const apx=((document.getElementById('rs-apex')||{}).value||'').trim();
+  let apxPath='';try{apxPath=/^https?:/i.test(apx)?(new URL(apx).searchParams.get('path')||''):apx;}catch(e){apxPath='';}
+  apxPath=decodeURIComponent(apxPath||'').trim();if(apxPath&&!apxPath.startsWith('/'))apxPath='/'+apxPath;
+  if(apx&&!/^\/[a-z0-9\-_]+\/\d{4}\/[^\s]+$/i.test(apxPath)){alert('Link dei risultati Apex non valido');return;}
+  u['races_index/'+raceId+'/apexPath']=apxPath||null;
   const awP=((document.getElementById('rs-aw-pole')||{}).value||'').trim();
   const awDopo=!!(document.getElementById('rs-aw-dopo')||{}).checked;
   const awF=awDopo?'dopo':((document.getElementById('rs-aw-final')||{}).value||'').trim();
@@ -3153,7 +3166,7 @@ function renderSchedule(){
   if(activeDay===currentDays[currentDays.length-1]&&currentFinals.length){
     const _myC=new Set(pilots.map(p=>canonCat(p.cat)));
     let _best=-1;
-    currentFinals.filter(f=>_myC.has(canonCat(f.cat))).forEach(f=>{const m=_toM(f.time);if(m>=0&&m<=_nowM&&m>_best){_best=m;_finalNowKey=f.label+'|'+f.time;}});
+    currentFinals.forEach(f=>{const m=_toM(f.time);if(m>=0&&m<=_nowM&&m>_best){_best=m;_finalNowKey=f.label+'|'+f.time;}}); // 14/11: tutte le finali, anche senza miei piloti
     const _slotM=_toM((slotsArr[currentIdx]||{}).time);
     if(_finalNowKey&&_best>=_slotM)currentIdx=-1; else _finalNowKey=null;
   }
@@ -3238,7 +3251,8 @@ function renderSchedule(){
   if(activeDay===currentDays[currentDays.length-1]&&currentFinals.length){
     html+='<div class="session-divider">FINALI</div>';
     const myCanon=new Set(pilots.map(p=>canonCat(p.cat)));
-    currentFinals.filter(f=>myCanon.has(canonCat(f.cat))).forEach(f=>{
+    /* 14/11 20:05 (Andrea): il programma deve essere SEMPRE completo: anche le finali senza miei piloti, come turno vuoto */
+    currentFinals.slice().sort((a,b)=>_toM(a.time)-_toM(b.time)).forEach(f=>{
       const allCat=pilots.filter(p=>canonCat(p.cat)===canonCat(f.cat));
       const finalists=allCat.filter(p=>p.inFinal);
       const ps=finalists.length?finalists:allCat;
@@ -3246,6 +3260,7 @@ function renderSchedule(){
       html+='<div class="final-card'+(_fNow?' slot-now':'')+'"'+(_fNow?' id="slot-now"':'')+'><div class="final-title"><i class="ic ic-trophy"></i> '+f.label+(_fNow?' <span class="now-badge">ORA</span>':'')+'</div>'
         +'<div class="final-row"><span>Partenza</span><span class="final-time">'+f.time+'</span></div>'
         +(slotDurText(f)?'<div class="final-row"><span>Durata</span><span class="final-time">'+slotDurText(f)+'</span></div>':'');
+      if(!ps.length)html+='<div style="font-size:12px;color:var(--text4);padding:8px 2px 2px">Nessun tuo pilota in questa finale</div>';
       ps.forEach(p=>{
         html+='<div class="card-inner" style="margin-top:8px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
           +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,{type:'final'})+'<span class="inner-name">'+p.name+'</span>'+(p.eliminated?'':runChip(p.num,1e6))
@@ -3840,27 +3855,44 @@ function riskNext(x){
 function setRiskCut(cat){if(!isDelayAdmin())return;const v=prompt('Taglio per '+cat+' (posizione minima per non essere eliminati, 0 = nessuna eliminazione):',String(riskCutOf(cat,99)));if(v===null)return;const n=parseInt(v);if(isNaN(n)||n<0)return;riskCutCfg[cat]=n;saveSharedField('riskCut',riskCutCfg);renderAlertLog();}
 window.setRiskCut=setRiskCut;
 /* 14/11/2026: scheda ELIMINAZIONI con sotto-schede A RISCHIO / ELIMINATI */
-let riskSub=(function(){try{return localStorage.getItem('rt_risksub')||'risk';}catch(e){return'risk';}})();
+let riskSub=(function(){try{const v=localStorage.getItem('rt_risksub');return v==='pf'?'pf':'fin';}catch(e){return'fin';}})();
 function setRiskSub(v){riskSub=v;try{localStorage.setItem('rt_risksub',v);}catch(e){}renderAlertLog();}
 window.setRiskSub=setRiskSub;
+/* 14/11 17:45 (Andrea): due schede separate, PREFINALE e FINALE, cosi' non sembra che chi e' "fuori zona finale" non vada in prefinale.
+   PREFINALE = ammissione alle prefinali (ufficiale dalle liste Prefinale A/B); FINALE = rischio di non entrare in finale (stima + ufficiale). */
 function renderRiskTab(){
-  const sw='<div class="pv-switch" style="margin-bottom:10px"><button class="pv-btn'+(riskSub!=='out'?' active':'')+'" onclick="setRiskSub(\'risk\')">A RISCHIO</button><button class="pv-btn'+(riskSub==='out'?' active':'')+'" onclick="setRiskSub(\'out\')">ELIMINATI</button></div>';
-  return sw+(riskSub==='out'?renderElimList():renderRiskList());
+  const pf=riskSub==='pf';
+  const sw='<div class="pv-switch" style="margin-bottom:10px"><button class="pv-btn'+(pf?' active':'')+'" onclick="setRiskSub(\'pf\')">PREFINALE</button><button class="pv-btn'+(!pf?' active':'')+'" onclick="setRiskSub(\'fin\')">FINALE</button></div>';
+  return sw+(pf?renderPfTab():renderRiskList()+renderElimList());
+}
+function pfOf(p){const e=(currentEntryList||{})[p.num]||{};return String(p.prefinal||e.prefinal||'').trim().toUpperCase();}
+function renderPfTab(){
+  const esc=x=>String(x||'').replace(/</g,'&lt;');
+  const cats=[...new Set(pilots.map(p=>p.cat).filter(Boolean))].sort();
+  if(!cats.length)return'<div style="font-size:13px;color:var(--text4);padding:8px 0">Nessun tuo pilota.</div>';
+  const h=['<div style="font-size:12px;color:var(--text3);background:var(--bg3);border-radius:10px;padding:9px 12px;margin-bottom:10px">Chi entra nelle <b>prefinali</b>: dalle liste ufficiali Prefinale A/B (dopo la Classifica Intermedia).</div>'];
+  cats.forEach(cat=>{
+    const ps=pilots.filter(p=>p.cat===cat);
+    if(!catHasPF(cat)){h.push('<div class="set-sec">'+esc(cat)+' <span style="font-weight:700;color:var(--text4)">· nessuna prefinale nel programma</span></div>');return;}
+    const rows=ps.map(p=>{const g=pfOf(p);const st=g?'in':(p.eliminated?'out':'wait');return{p,g,st};}).sort((a,b)=>({out:0,wait:1,in:2}[a.st]-{out:0,wait:1,in:2}[b.st])||(+a.p.num)-(+b.p.num));
+    const nIn=rows.filter(r=>r.st==='in').length;
+    h.push('<div class="set-sec">'+esc(cat)+' <span style="font-weight:700;color:var(--text4)">· '+(rows.some(r=>r.st!=='wait')?nIn+'/'+rows.length+' in prefinale':'liste non ancora pubblicate')+'</span></div>');
+    rows.forEach(r=>{const col={in:'#22c55e',out:'#ef4444',wait:'#6b7280'}[r.st];
+      const t=r.st==='in'?'In <b>prefinale '+esc(r.g)+'</b> (ufficiale)':r.st==='out'?'Non ammesso in prefinale (ufficiale)':'In attesa delle liste prefinali';
+      h.push('<div class="card-inner al-row" style="border-left:4px solid '+col+'"><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(r.p.num)+' '+esc(r.p.name)+'</div><div style="font-size:13px;color:var(--text2);margin-top:2px">'+t+'</div></div></div>');});
+  });
+  return h.join('');
 }
 function renderElimList(){
   const esc=x=>String(x||'').replace(/</g,'&lt;');
-  const off=pilots.filter(p=>p.eliminated);const offN=new Set(off.map(p=>String(p.num)));
-  let est=[];try{est=riskData().filter(x=>!x.none&&x.status==='out'&&!offN.has(String(x.num)));}catch(e){}
-  if(!off.length&&!est.length)return'<div style="font-size:13px;color:var(--text4);padding:8px 0">Nessun tuo pilota eliminato.</div>';
-  const h=[];
-  if(off.length){h.push('<div class="set-sec">UFFICIALI · liste prefinali/finale</div>');
-    off.sort((a,b)=>String(a.cat).localeCompare(String(b.cat))||(+a.num)-(+b.num)).forEach(p=>h.push('<div class="card-inner al-row" style="border-left:4px solid #ef4444"><div class="al-time" style="font-size:13px;font-weight:900">'+esc(p.cat)+'</div><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(p.num)+' '+esc(p.name)+'</div><div style="font-size:13px;color:var(--text2)">Eliminato (ufficiale)'+(p.team?' · <span style="color:var(--text4)">'+esc(p.team)+'</span>':'')+'</div></div></div>'));}
-  if(est.length){h.push('<div class="set-sec" style="margin-top:12px">STIMA · non ancora ufficiali</div>');
-    est.sort((a,b)=>String(a.cat).localeCompare(String(b.cat))||a.rank-b.rank).forEach(x=>h.push('<div class="card-inner al-row" style="border-left:4px solid #ef4444;opacity:.85"><div class="al-time" style="font-size:18px;font-weight:900">'+x.rank+'°</div><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(x.num)+' '+esc(x.name)+'</div><div style="font-size:13px;color:var(--text2)">'+esc(x.cat)+' · '+(x.left?'Fuori anche vincendo (stima)':'Eliminato (stima)')+'</div></div></div>'));}
+  const off=pilots.filter(p=>p.eliminated&&pfOf(p));const offN=new Set(off.map(p=>String(p.num)));
+  if(!off.length)return'';
+  const h=['<div class="set-sec" style="margin-top:14px">FUORI DALLA FINALE · ufficiale</div>'];
+  off.sort((a,b)=>String(a.cat).localeCompare(String(b.cat))||(+a.num)-(+b.num)).forEach(p=>h.push('<div class="card-inner al-row" style="border-left:4px solid #ef4444"><div class="al-time" style="font-size:13px;font-weight:900">'+esc(p.cat)+'</div><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(p.num)+' '+esc(p.name)+'</div><div style="font-size:13px;color:var(--text2)">Non in finale (ufficiale) · ha corso la prefinale '+esc(pfOf(p))+'</div></div></div>'));
   return h.join('');
 }
 function renderRiskList(){
-  const d=riskData().filter(x=>x.none||x.status!=='out');const esc=x=>String(x||'').replace(/</g,'&lt;');
+  const d=riskData(); /* 14/11: anche i 'fuori anche vincendo (stima)' restano qui, in cima */const esc=x=>String(x||'').replace(/</g,'&lt;');
   if(!d.length)return'<div style="font-size:13px;color:var(--text4);padding:8px 0">Nessun dato: servono i risultati delle manche.</div>';
   const cats=[...new Set(d.map(x=>x.cat))];const col={risk:'#f59e0b',out:'#ef4444',safe:'#22c55e'};
   return'<div style="font-size:12px;color:var(--text3);background:var(--bg3);border-radius:10px;padding:9px 12px;margin-bottom:10px">Chi rischia di non entrare in <b>finale</b>. Stima dai risultati di manche e prefinale (punti 1°=0, 2°=2, 3°=3…), con la media degli altri proiettata sulle gare che mancano. Non è un dato ufficiale.</div>'
@@ -3876,7 +3908,8 @@ function renderRiskList(){
         const t=x.status==='out'?(x.left?'Fuori dalla finale anche vincendo (stima)':'Fuori dalla finale (stima)')
           :x.status==='safe'?(x.left?(x.need>=Math.ceil(x.n/2)+2?'In finale anche arrivando ultimo (stima)':'In finale se arriva almeno P'+x.need+(many?' di media':'')+' (stima)'):'In finale (stima)')
           :'Rischia la <b>FINALE</b>: deve arrivare almeno <b>P'+x.need+'</b> '+(many?'di media nelle '+x.left+' gare che mancano':nx.art);
-        const sub=(x.left?'Manca: '+riskLeftTxt(x)+(nx.when?' · prossima '+nx.label+' '+nx.when:''):'Gare finite')+' · '+x.pts+' punti';
+        const _pp=pilots.find(p=>String(p.num)===String(x.num));const _pg=_pp?pfOf(_pp):'';
+        const sub=(_pg?'<span style="color:#22c55e;font-weight:800">In prefinale '+_pg+' (ufficiale)</span> · ':'')+(x.left?'Manca: '+riskLeftTxt(x)+(nx.when?' · prossima '+nx.label+' '+nx.when:''):'Gare finite')+' · '+x.pts+' punti';
         return'<div class="card-inner al-row" style="border-left:4px solid '+col[x.status]+'"><div class="al-time" style="font-size:18px;font-weight:900">'+x.rank+'°</div><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(x.num)+' '+esc(x.name)+'</div><div style="font-size:13px;color:var(--text2);margin-top:2px">'+t+'</div><div style="font-size:11px;color:var(--text4);margin-top:2px">'+sub+'</div></div></div>';}).join('');
     }).join('')+riskSafeBlock(d,esc);
 }
@@ -3959,7 +3992,7 @@ function ltMineNums(){return new Set(pilots.map(p=>String(p.num)));}
 function ltNameOf(no){const p=pilots.find(x=>String(x.num)===String(no));return p?p.name:'';}
 function ltXSpan(r){return'<span class="lt-x'+(r&&r.t==='so'?' so':'')+'">✕</span>';}
 function ltRetOf(no,sk){return ltRet[(sk||(apexState.cat+'|'+apexState.sess))+'|'+no]||null;}
-function ltRetAlert(no,t){try{if(!ltMineNums().has(String(no)))return;const sk=apexState.cat+'|'+apexState.sess;
+function ltRetAlert(no,t){try{if(!ltMineNums().has(String(no)))return;if(String(apexWsKey).split(':')[0]!==apexLiveName())return; /* live di un'altra gara: nessun avviso */const sk=apexState.cat+'|'+apexState.sess;
   rtAlert('ritiri|'+activeRaceId+'|'+sk+'|'+no,'<i class="ic ic-redflag"></i> #'+no+' '+ltNameOf(no)+' '+(ltIsRace()?'USCITO':(t==='ss'?'FERMO IN PISTA':'AI BOX')),apexState.cat+' · '+apexState.sess);}catch(e){}}
 function ltRetBadge(r){if(!r)return'';const race=r.race!==undefined?r.race:ltIsRace();
   if(race||r.t==='so')return''; // 14/11/2026: in gara basta la croce rossa nella posizione, niente pillola USCITO
