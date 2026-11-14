@@ -3963,8 +3963,8 @@ function renderSchedule(){
     const awaiting=pilotsAwaitingData(slot);
     let _pf=false;try{_pf=progFilterOn();}catch(e){}
     try{watchUserSettings();}catch(e){}
-    const _hl=teamViewMode()==='highlight';
-    const tHtml=_pf?'':(_hl?teamsHighlightHtml(slot,ps):teamsSlotHtml(slot));
+    const _tv=teamViewMode(),_hl=_tv!=='cards';
+    const tHtml=_pf?'':(_tv==='both'?teamsHighlightHtml(slot,ps)+teamsSlotHtml(slot):_hl?teamsHighlightHtml(slot,ps):teamsSlotHtml(slot));
     if(_pf&&!ps.length)return; // con il filtro attivo si vedono solo gli orari dei piloti filtrati
     if(slot.session&&slot.session!==lastSession){html+='<div class="session-divider">'+slot.session+'</div>';lastSession=slot.session;}
 
@@ -4331,7 +4331,7 @@ function watchUserSettings(){
   if(!currentUserId||userSettingsUser===currentUserId)return;userSettingsUser=currentUserId;userSettings={};
   try{onValue(ref(db,'settings/'+currentUserId),s=>{userSettings=s.val()||{};try{document.body.classList.add('quiet');renderAll();}catch(e){}if(document.getElementById('settings-body'))renderSettings();});}catch(e){}
 }
-function teamViewMode(){return userSettings.teamView==='highlight'?'highlight':'cards';}
+function teamViewMode(){const v=userSettings.teamView;return v==='highlight'||v==='both'?v:'cards';}
 function teamColor(key){const c=(userSettings.teamColors||{})[key];if(c)return c;const i=teams.findIndex(t=>t.key===key);return TEAM_PALETTE[(i<0?0:i)%TEAM_PALETTE.length];}
 function followedTeamOf(num,team){const e=(currentEntryList||{})[num]||{};const k=teamKey(team||e.team||'');return teams.find(t=>t.key===k)||null;}
 function setUserSetting(path,val){if(!currentUserId)return;const u={};u['settings/'+currentUserId+'/'+path]=val;update(ref(db),u);}
@@ -4344,6 +4344,7 @@ function renderSettings(){
     +'<div class="set-sec">TEAM NEL PROGRAMMA</div>'
     +'<div class="set-opt'+(v==='cards'?' on':'')+'" onclick="setTeamView(\'cards\')"><input type="radio" '+(v==='cards'?'checked':'')+' style="width:20px;height:20px"> Scheda del team sotto ogni sessione</div>'
     +'<div class="set-opt'+(v==='highlight'?' on':'')+'" onclick="setTeamView(\'highlight\')"><input type="radio" '+(v==='highlight'?'checked':'')+' style="width:20px;height:20px"> Piloti del team evidenziati col colore del team</div>'
+    +'<div class="set-opt'+(v==='both'?' on':'')+'" onclick="setTeamView(\'both\')"><input type="radio" '+(v==='both'?'checked':'')+' style="width:20px;height:20px"> Entrambi: scheda del team e piloti evidenziati</div>'
     +(teams.length?'<div class="set-sec">COLORI DEI TEAM</div>'+teams.map(t=>'<div style="margin-bottom:10px"><div style="font-size:13px;font-weight:800;margin-bottom:6px"><span class="tchip" style="--tc:'+teamColor(t.key)+'">'+String(t.name).replace(/</g,'&lt;')+'</span></div><div class="sw-row">'
       +TEAM_PALETTE.map(c=>'<span class="sw-dot'+(teamColor(t.key)===c?' on':'')+'" style="background:'+c+'" onclick="setTeamColor(\''+escAttr(t.key)+'\',\''+c+'\')"></span>').join('')+'</div></div>').join(''):'<div style="font-size:12px;color:var(--text4)">Nessun team aggiunto in questa gara.</div>')
     +'<div class="set-sec">LE MIE NOTIFICHE</div><div id="notif-prefs-body"></div>'
@@ -4954,7 +4955,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1140';
+const APP_BUILD='2026-11-14-1145';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
