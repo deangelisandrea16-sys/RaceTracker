@@ -463,6 +463,7 @@ button,input,textarea,select{font-family:inherit}
 .ic-star{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1.1 5.8L12 16.8l-5.3 2.8 1.1-5.8-4.3-4.1 5.9-.8z%22/%3E%3C/svg%3E")}
 .ic-bell{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M6 16.5V11a6 6 0 0 1 12 0v5.5H6M10 20a2 2 0 0 0 4 0%22/%3E%3C/svg%3E")}
 .ic-belloff{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M6 16.5V11a6 6 0 0 1 9.6-4.8M18 10.5v6H8.5M10 20a2 2 0 0 0 4 0M3.5 3.5l17 17%22/%3E%3C/svg%3E")}
+.ic-check{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M4.5 12.5l5 5L19.5 7%22/%3E%3C/svg%3E")}
 .ic-warn{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M12 3.5L2.8 19.5h18.4z%22/%3E%3Cpath d=%22M12 10v4.5M12 17.2v.3%22/%3E%3C/svg%3E")}
 .ic-wait{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M6.5 3h11M6.5 21h11M7.5 3c0 5 9 5 9 9s-9 4-9 9M16.5 3c0 5-9 5-9 9%22/%3E%3C/svg%3E")}
 .ic-wrench{--m:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M14.5 5.5a4.5 4.5 0 0 0 4.9 6l-8.9 8.9a2 2 0 0 1-2.9-2.9l8.9-8.9a4.5 4.5 0 0 0-2-3.1z%22/%3E%3C/svg%3E")}
@@ -3150,10 +3151,22 @@ function gridPos(num,slot){
 // Dopo la manche: posizione d'arrivo dai risultati Apex (entryList/{num}/result = {"A-B":"3"}), badge verde
 // Chiavi: manche "A-B"; prefinali "PF-A"/"PF-B"; finale "FIN" (scritte dal server dai documenti ufficiali Apex)
 function slotKeyOf(slot){if(!slot)return'';if(slot.type==='prefinal'){const x=String(slot.filter||'').trim().toUpperCase();return x?'PF-'+x:'';}if(slot.type==='final')return'FIN';if(slot.type!=='group')return'';const f=Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{});return f.map(x=>String(x).trim().toUpperCase()).sort().join('-');}
+// la sessione è già finita? (giorno visualizzato vs oggi, orario + ritardo). Prima della partenza si mostra sempre la griglia.
+function slotHasRun(slot){
+  try{
+    if(!slot||!slot.time)return true;
+    const days=currentDays||[];const today=typeof autoDayName==='function'?autoDayName():activeDay;
+    const di=days.indexOf(activeDay),ti=days.indexOf(today);if(di<0||ti<0)return true;
+    if(di<ti)return true;if(di>ti)return false;
+    // finita = partenza (con ritardo) + durata dal programma + 5 min di margine per la classifica
+    const d=String(slot.durLive||slot.dur||'');let m=15;const g=d.match(/(\d+)\s*giri/i),mm=d.match(/(\d+)\s*'/);if(g)m=Math.ceil(+g[1]*1.1);else if(mm)m=+mm[1];
+    const now=new Date();return now.getHours()*60+now.getMinutes()>=slotMins(slot.time)+(scheduleDelay||0)+m+5;
+  }catch(e){return true;}
+}
 function gridBadge(num,slot){
   const k=slotKeyOf(slot);if(!k)return'';
   const e=currentEntryList[num]||{};const r=e.result&&e.result[k];
-  if(r!==undefined&&r!==null&&r!==''){const t=/^\d+$/.test(String(r))?String(r)+'°':String(r).toUpperCase();
+  if(r!==undefined&&r!==null&&r!==''&&slotHasRun(slot)){const t=/^\d+$/.test(String(r))?String(r)+'°':String(r).toUpperCase();
     return'<span title="Posizione d\'arrivo (risultati Apex)" style="font-family:\'Chakra Petch\';font-size:12px;font-weight:700;color:#0d0d0f;background:#4fd69c;border-radius:5px;padding:1px 6px;flex-shrink:0"><i class="ic ic-flag"></i> '+t+'</span>';}
   const n=gridPos(num,slot);
   return n?'<span title="Posizione in griglia (lista ufficiale)" style="font-family:\'Chakra Petch\';font-size:12px;font-weight:700;color:#1a160e;background:#e9d5a8;border-radius:5px;padding:1px 7px;flex-shrink:0">P'+n+'</span>':'';
@@ -3323,7 +3336,7 @@ function teamsSlotHtml(slot){
   const list=teamsForSlot(slot);if(!list.length)return'';
   return list.map(({t,inSlot,waiting})=>'<div class="card-inner team-inner"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">'
     +'<span class="inner-num"><i class="ic ic-team"></i></span><span class="inner-name">'+t.name+'</span>'
-    +'<span style="font-size:10px;font-weight:800;color:#a78bfa">'+(inSlot.length?inSlot.length+' in pista: '+inSlot.map(p=>'#'+p.num).join(' '):'')
+    +'<span style="font-size:10px;font-weight:800;color:#a78bfa">'+(inSlot.length?inSlot.length+' in pista: '+inSlot.map(p=>'#'+p.num+(gridPos(p.num,slot)?' <span style="color:#e9d5a8">P'+gridPos(p.num,slot)+'</span>':'')).join(' · '):'')
     +(waiting.length?(inSlot.length?' · ':'')+'<i class="ic ic-wait"></i> '+waiting.length+' in attesa':'')+'</span></div>'
     +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,true)).join('')+'</div>'
     +(teamNotes[t.key]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+teamNotes[t.key]+'</div>':'')+'</div>').join('');
@@ -4365,9 +4378,9 @@ setInterval(()=>{try{
   const now=new Date();const nm=now.getHours()*60+now.getMinutes();const dl=scheduleDelay||0;
   arr.forEach(sl=>{const st=slotMins(sl.time)+dl;const left=st-nm;if(left<1||left>10)return;
     const ps=pilotsForSlot(sl);if(!ps.length)return;
-    rtAlert('prossima|'+activeRaceId+'|'+day+'|'+sl.time+'|'+sl.label+'|'+JSON.stringify(sl.filter||''),'⏱ Tra '+left+' min: '+sl.label+' '+(sl.session||''),'ore '+sl.time+(dl?' ('+(dl>0?'+':'')+dl+')':'')+' · '+ps.map(p=>'#'+p.num+' '+p.name).join(', '));});
+    rtAlert('prossima|'+activeRaceId+'|'+day+'|'+sl.time+'|'+sl.label+'|'+JSON.stringify(sl.filter||''),'<i class="ic ic-timer"></i> Tra '+left+' min: '+sl.label+' '+(sl.session||''),'ore '+sl.time+(dl?' ('+(dl>0?'+':'')+dl+')':'')+' · '+ps.map(p=>'#'+p.num+' '+p.name).join(', '));});
   if(_lastDelayNotif===null)_lastDelayNotif=dl;
-  else if(Math.abs(dl-_lastDelayNotif)>=5){rtAlert('ritardo|'+activeRaceId+'|'+day+'|'+dl+'|'+nm,'⏰ Ritardo ora '+(dl>0?'+':'')+dl+' min','prima '+(_lastDelayNotif>0?'+':'')+_lastDelayNotif+' min');_lastDelayNotif=dl;}
+  else if(Math.abs(dl-_lastDelayNotif)>=5){rtAlert('ritardo|'+activeRaceId+'|'+day+'|'+dl+'|'+nm,'<i class="ic ic-wait"></i> Ritardo ora '+(dl>0?'+':'')+dl+' min','prima '+(_lastDelayNotif>0?'+':'')+_lastDelayNotif+' min');_lastDelayNotif=dl;}
 }catch(e){}},30000);window.setTeamView=setTeamView;window.setTeamColor=setTeamColor;
 setTimeout(watchUserSettings,3000);
 // Piloti dei team seguiti, uno per uno con il colore del team (modalità "evidenzia")
@@ -4473,7 +4486,7 @@ async function pushDeviceState(){
 async function renderPushDevice(){
   const b=document.getElementById('push-device');if(!b)return;const st=await pushDeviceState();
   const btn=(lbl,fn,col)=>'<button onclick="'+fn+'" style="width:100%;min-height:48px;margin-top:6px;border-radius:10px;border:none;font-weight:900;font-size:15px;cursor:pointer;background:'+col+';color:#000">'+lbl+'</button>';
-  const txt={on:'✅ Attive su questo telefono',off:'🔕 Spente su questo telefono',ask:'Non ancora attivate su questo telefono',denied:'⛔ Bloccate dal telefono',nosupport:'Questo browser non riceve notifiche'}[st];
+  const txt={on:'<i class="ic ic-check"></i> Attive su questo telefono',off:'<i class="ic ic-belloff"></i> Spente su questo telefono',ask:'<i class="ic ic-bell"></i> Non ancora attivate su questo telefono',denied:'<i class="ic ic-ban"></i> Bloccate dal telefono',nosupport:'Questo browser non riceve notifiche'}[st];
   let h='<div style="font-size:14px;font-weight:800">'+txt+'</div>';
   if(st==='on')h+=btn('Disattiva su questo telefono','pushDeviceOff()','#94a3b8');
   if(st==='off'||st==='ask')h+=btn('Attiva notifiche su questo telefono','pushDeviceOn()','#22c55e');
@@ -4568,9 +4581,9 @@ function ltMineNums(){return new Set(pilots.map(p=>String(p.num)));}
 function ltNameOf(no){const p=pilots.find(x=>String(x.num)===String(no));return p?p.name:'';}
 function ltRetOf(no,sk){return ltRet[(sk||(apexState.cat+'|'+apexState.sess))+'|'+no]||null;}
 function ltRetAlert(no,t){try{if(!ltMineNums().has(String(no)))return;const sk=apexState.cat+'|'+apexState.sess;
-  rtAlert('ritiri|'+activeRaceId+'|'+sk+'|'+no,'🚩 #'+no+' '+ltNameOf(no)+' '+(t==='ss'?'FERMO IN PISTA':(ltIsRace()?'RITIRATO':'AI BOX')),apexState.cat+' · '+apexState.sess);}catch(e){}}
+  rtAlert('ritiri|'+activeRaceId+'|'+sk+'|'+no,'<i class="ic ic-redflag"></i> #'+no+' '+ltNameOf(no)+' '+(t==='ss'?'FERMO IN PISTA':(ltIsRace()?'RITIRATO':'AI BOX')),apexState.cat+' · '+apexState.sess);}catch(e){}}
 function ltRetBadge(r){if(!r)return'';const race=r.race!==undefined?r.race:ltIsRace();
-  const tx=r.t==='ss'?'🚩 FERMO IN PISTA':(race?'🚩 RITIRATO':'AI BOX');
+  const tx=r.t==='ss'?'<i class="ic ic-redflag"></i> FERMO IN PISTA':(race?'<i class="ic ic-redflag"></i> RITIRATO':'AI BOX');
   return' <span class="lt-ret'+(r.t==='si'&&!race?' box':'')+'">'+tx+'</span>';}
 function apexGridDirty(){ltScanRet();if(_ltRenderT)return;_ltRenderT=setTimeout(()=>{_ltRenderT=null;renderLtMyTable();try{renderApexDyn();}catch(e){}if(ltFullOn)renderLtFull();},100);}
 // ── Classifica live a schermo intero (solo classifica + giro, niente barre) ──
@@ -4691,7 +4704,7 @@ function renderLtLast(){
   if(!L)return'<div class="empty-state"><p>Nessuna gara precedente con i tuoi piloti.<br>Appare qui quando nel live entra la sessione successiva.</p></div>';
   const hm=new Date(L.at).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
   const esc=x=>String(x||'').replace(/</g,'&lt;');
-  return'<div style="font-size:11px;font-weight:800;color:var(--text3);margin-bottom:6px">🏁 '+esc(L.cat)+' · '+esc(L.sess)+' <span style="color:var(--text4)">· chiusa alle '+hm+' · '+L.tot+' totali · classifica live, non ufficiale</span></div>'
+  return'<div style="font-size:11px;font-weight:800;color:var(--text3);margin-bottom:6px"><i class="ic ic-flag"></i> '+esc(L.cat)+' · '+esc(L.sess)+' <span style="color:var(--text4)">· chiusa alle '+hm+' · '+L.tot+' totali · classifica live, non ufficiale</span></div>'
     +L.rows.map(x=>{
       const pl=pilots.find(p=>String(p.num)===x.no)||{};const ent=(currentEntryList&&currentEntryList[x.no])||{};
       const nt=String((notes&&notes[x.no])||'').trim();
@@ -4742,7 +4755,7 @@ function apexLapInfo(){
 }
 function apexLapText(){
   const L=apexLapInfo();
-  if(L.fin)return'🏁 ARRIVO';
+  if(L.fin)return'ARRIVO';
   if(L.led!==null&&L.tot)return'Giro '+Math.min(L.led+1,L.tot)+'/'+L.tot;
   if(L.led!==null&&L.led>0)return'Giro '+(L.led+1);
   return'';
@@ -4752,13 +4765,13 @@ function renderApexDyn(){
   let el=document.getElementById('lt-dyn');
   if(!el){el=document.createElement('div');el.id='lt-dyn';el.style.cssText="display:none;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;padding:10px 14px;border-radius:12px;background:var(--bg2);font-family:'Chakra Petch';font-weight:700";box.parentNode.insertBefore(el,box);}
   const t=[apexDynText(apexDyn.dyn1),apexDynText(apexDyn.dyn2)].filter(Boolean);
-  const lap=apexLapText();const fin=lap.indexOf('🏁')===0;
+  const lap=apexLapText();const fin=lap==='ARRIVO';
   if((!t.length&&!lap)||!apexWsKey){el.style.display='none';return;}
   const sess=((apexState.cat||'')+' '+(apexState.sess||'')).trim();
   el.style.display='flex';
   el.style.outline=fin?'2px solid #fff':'none';
   el.innerHTML='<span style="font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+sess.replace(/</g,'&lt;')+'</span><span style="display:flex;align-items:center;gap:12px;white-space:nowrap">'
-    +(lap?'<span style="font-size:'+(fin?'24':'22')+'px;color:'+(fin?'#fff':'var(--rt-orange)')+';font-weight:900">'+lap+'</span>':'')
+    +(lap?'<span style="font-size:'+(fin?'24':'22')+'px;color:'+(fin?'#fff':'var(--rt-orange)')+';font-weight:900">'+(fin?'<i class="ic ic-flag"></i> ':'')+lap+'</span>':'')
     +(t.length&&!fin?'<span style="font-size:16px;color:var(--text2)"><i class="ic ic-timer" style="color:var(--rt-orange)"></i> '+t.join(' · ').replace(/</g,'&lt;')+'</span>':'')+'</span>';
 }
 setInterval(()=>{if(activeTab==='livetiming'&&(apexDyn.dyn1||apexDyn.dyn2||apexState.sess))renderApexDyn();},500);
@@ -4864,7 +4877,7 @@ function apexParse(txt){
       if(all.length){
         const first=all.sort((a,b)=>slotMins(a.replace(':','.'))-slotMins(b.replace(':','.')))[0];
         if(apexState.start!==first){apexState.start=first;ltCurLabel=apexState.cat+'|'+apexState.sess;changed=true;
-          try{const mine=[...ltGridNums(apexGrid)].filter(n=>ltMineNums().has(n));if(mine.length)rtAlert('partenza|'+activeRaceId+'|'+ltCurLabel+'|'+first,'🟢 PARTITA '+apexState.cat+' · '+apexState.sess,'alle '+first+' · in pista: '+mine.map(n=>'#'+n+' '+ltNameOf(n)).join(', '));}catch(e){}}
+          try{const mine=[...ltGridNums(apexGrid)].filter(n=>ltMineNums().has(n));if(mine.length)rtAlert('partenza|'+activeRaceId+'|'+ltCurLabel+'|'+first,'<i class="ic ic-flag"></i> PARTITA '+apexState.cat+' · '+apexState.sess,'alle '+first+' · in pista: '+mine.map(n=>'#'+n+' '+ltNameOf(n)).join(', '));}catch(e){}}
       }
       const fins=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*><\/span>\s*FINISH/gi)].map(x=>x[1]).filter(t=>!apexIgnore.has(t));
       if(fins.length&&apexState.start&&!apexFinished){
@@ -4880,7 +4893,7 @@ function apexParse(txt){
           const fin=fins.length?Math.min(...fins.map(f=>slotMins(f.replace(':','.')))):Infinity;return tm>=st&&tm<fin;});
       const lastRed=reds.length?reds.sort((a,b)=>slotMins(b.replace(':','.'))-slotMins(a.replace(':','.')))[0]:'';
       if(apexState.red!==lastRed){apexState.red=lastRed;changed=true;
-        try{if(lastRed){const mine=[...ltGridNums(apexGrid)].filter(n=>ltMineNums().has(n));if(mine.length)rtAlert('rossa|'+activeRaceId+'|'+apexState.cat+'|'+apexState.sess+'|'+lastRed,'🟥 BANDIERA ROSSA '+apexState.cat,apexState.sess+' · in pista: '+mine.map(n=>'#'+n).join(' '));}}catch(e){}}
+        try{if(lastRed){const mine=[...ltGridNums(apexGrid)].filter(n=>ltMineNums().has(n));if(mine.length)rtAlert('rossa|'+activeRaceId+'|'+apexState.cat+'|'+apexState.sess+'|'+lastRed,'<i class="ic ic-redflag"></i> BANDIERA ROSSA '+apexState.cat,apexState.sess+' · in pista: '+mine.map(n=>'#'+n).join(' '));}}catch(e){}}
     }
   });
   if(changed){apexState.at=Date.now();renderApexDelay();}
@@ -4955,7 +4968,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1145';
+const APP_BUILD='2026-11-14-1210';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
