@@ -4950,7 +4950,7 @@ function renderApexDyn(){
   const sess=((apexState.cat||'')+' '+(apexState.sess||'')).trim();
   el.style.display='flex';
   el.style.outline=fin?'2px solid #fff':'none';
-  el.innerHTML='<span style="display:flex;align-items:center;gap:10px;min-width:0">'+lh+'<span style="font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+sess.replace(/</g,'&lt;')+'</span></span><span style="display:flex;align-items:center;gap:12px;white-space:nowrap">'
+  el.innerHTML='<span style="display:flex;align-items:center;gap:10px;min-width:0">'+lh+'<span style="font-size:10px;line-height:1.25;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.3px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word">'+sess.replace(/</g,'&lt;')+'</span></span><span style="display:flex;align-items:center;gap:12px;white-space:nowrap">'
     +(lap?'<span style="font-size:'+(fin?'24':'22')+'px;color:'+(fin?'#fff':'var(--rt-orange)')+';font-weight:900">'+(fin?'<i class="ic ic-flag"></i> ':'')+lap+'</span>':'')
     +(t.length&&!fin?'<span style="font-size:16px;color:var(--text2)"><i class="ic ic-timer" style="color:var(--rt-orange)"></i> '+t.join(' · ').replace(/</g,'&lt;')+'</span>':'')+'</span>';
 }
@@ -5151,7 +5151,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1420';
+const APP_BUILD='2026-11-14-1425';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
