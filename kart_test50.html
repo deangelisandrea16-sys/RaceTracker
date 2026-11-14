@@ -4502,9 +4502,18 @@ let ltLastOn=false,ltLast=null;
 try{ltLast=JSON.parse(localStorage.getItem('rt_ltlast')||'null');}catch(e){ltLast=null;}
 function setLtLast(v){ltLastOn=!!v;renderLtMyTable();}
 window.setLtLast=setLtLast;
-function ltSnapshot(){
+// Apex al cambio sessione può mandare la griglia NUOVA prima dei titoli nuovi: la foto della griglia vecchia si prende appena prima di sostituirla
+let ltPre=null,ltPreAt=0;
+function ltOnGrid(){if(apexGridSess){ltPre=ltSnapshot(true);ltPreAt=Date.now();}}
+function ltOnTitle(){
+  const recent=Date.now()-ltPreAt<15000;
+  if(recent){const p=ltPre;ltPre=null;if(p&&p.rows&&p.rows.length&&!(ltLast&&ltLast.key===p.key&&ltLast.race===p.race)){ltLast=p;try{localStorage.setItem('rt_ltlast',JSON.stringify(ltLast));}catch(e){}}}
+  else ltSnapshot();
+  return recent;
+}
+function ltSnapshot(build){
   try{
-    const key=apexGridSess;if(!key||(ltLast&&ltLast.key===key&&ltLast.race===activeRaceId))return;
+    const key=apexGridSess;if(!key||(!build&&ltLast&&ltLast.key===key&&ltLast.race===activeRaceId))return null;
     const head=apexGrid.querySelector('tr[data-id="r0"]');const col={};
     if(head)head.querySelectorAll('td[data-type]').forEach(td=>{col[td.getAttribute('data-type')]=(td.getAttribute('data-id')||'').replace('c','');});
     const C=(t,d)=>col[t]||d;
@@ -4513,11 +4522,14 @@ function ltSnapshot(){
     const rows=[...apexGrid.querySelectorAll('tr[data-id]')].filter(r=>r.getAttribute('data-id')!=='r0')
       .map(r=>({no:txt(r,C('no','4')),pos:parseInt(txt(r,C('rk','3')))||parseInt(r.getAttribute('data-pos'))||999,dr:txt(r,C('dr','5')),gap:txt(r,C('gap','13')),blp:txt(r,C('blp','12')),laps:txt(r,C('tlp','14'))})).map(x=>{const rr=ltRet[key+'|'+x.no];if(rr)x.ret={t:rr.t,race:/HEAT|MANCHE|PREFINAL|FINAL|RACE|GARA/i.test(key)&&!/QUALIF|PRACT|FREE|WARM/i.test(key)};return x;})
       .filter(x=>myNums.has(x.no)).sort((a,b)=>a.pos-b.pos);
-    if(!rows.length)return;
+    if(!rows.length)return null;
     const [cat,sess]=key.split('|');
-    ltLast={key,race:activeRaceId,cat,sess,at:Date.now(),tot:[...apexGrid.querySelectorAll('tr[data-id]')].length-1,rows};
+    const snap={key,race:activeRaceId,cat,sess,at:Date.now(),tot:[...apexGrid.querySelectorAll('tr[data-id]')].length-1,rows};
+    if(build)return snap;
+    ltLast=snap;
     try{localStorage.setItem('rt_ltlast',JSON.stringify(ltLast));}catch(e){}
   }catch(e){}
+  return null;
 }
 function renderLtLast(){
   const L=ltLast&&ltLast.race===activeRaceId?ltLast:null;
@@ -4680,15 +4692,15 @@ function apexParse(txt){
   txt.split('\n').forEach(line=>{
     const p=line.split('|');const k=p[0];const v=p.slice(2).join('|');
     if(k==='dyn1'||k==='dyn2'){apexDyn[k]={type:p[1]||'text',val:v,at:Date.now()};renderApexDyn();return;}
-    if(k==='grid'){if(apexGridSess&&apexGridSess!==apexState.cat+'|'+apexState.sess)ltSnapshot();apexGrid.innerHTML=v;apexGridSess=apexState.cat+'|'+apexState.sess;apexGridDirty();return;}
+    if(k==='grid'){ltOnGrid();apexGrid.innerHTML=v;apexGridSess=apexState.cat+'|'+apexState.sess;apexGridDirty();return;}
     const mc=k.match(/^r(\d+)c(\d+)$/);
     if(mc){const el=apexGrid.querySelector('[data-id="'+k+'"]');if(el){el.className=p[1]||'';el.innerHTML=v;apexGridDirty();}return;}
     if(/^r\d+$/.test(k)&&p[1]==='#'){const row=apexGrid.querySelector('tr[data-id="'+k+'"]');if(row){row.setAttribute('data-pos',p[2]);apexGridDirty();}return;}
-    if(k==='title1'){if(apexState.cat!==v){ltSnapshot();if(apexState.sess&&apexState.start){apexEvaluate('change');apexState.start='';}apexState.cat=v;changed=true;}}
-    else if(k==='title2'){if(apexState.sess!==v){ltSnapshot();
+    if(k==='title1'){if(apexState.cat!==v){const _rg=ltOnTitle();if(apexState.sess&&apexState.start){apexEvaluate('change');apexState.start='';}apexState.cat=v;if(_rg)apexGridSess=apexState.cat+'|'+apexState.sess;changed=true;}}
+    else if(k==='title2'){if(apexState.sess!==v){const _rg2=ltOnTitle();
       // cambio sessione: le partenze già viste appartengono alla sessione precedente
       if(apexState.sess){apexEvaluate('change');apexIgnore=new Set(apexSeen);}
-      apexState.sess=v;apexFinished='';clearTimeout(apexEvalT);apexState.start='';apexState.red='';changed=true;}}
+      apexState.sess=v;if(_rg2)apexGridSess=apexState.cat+'|'+apexState.sess;apexFinished='';clearTimeout(apexEvalT);apexState.start='';apexState.red='';changed=true;}}
     else if(k==='com'){
       // ultima partenza registrata: <b>10:43</b><span data-flag="green"></span>START
       const all=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*data-flag="green"[^>]*><\/span>\s*START/gi)].map(x=>x[1]).filter(t=>!apexIgnore.has(t));
@@ -4786,7 +4798,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-0940';
+const APP_BUILD='2026-11-14-0945';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
