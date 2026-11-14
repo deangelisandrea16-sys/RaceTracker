@@ -513,6 +513,7 @@ button,input,textarea,select{font-family:inherit}
 .set-opt.on{border-color:var(--rt-orange);background:var(--bg3)}
 .sw-row{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px 2px 6px}.sw-row::-webkit-scrollbar{display:none}
 .sw-dot{width:34px;height:34px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex-shrink:0}.sw-dot.on{border-color:var(--text)}
+body.big-text .content,body.big-text #lt-mytable{zoom:1.12}
 /* niente animazione di comparsa sulle schede: ogni aggiornamento dei dati ridisegnava la pagina e la faceva lampeggiare */
 .card,.card-inner{animation:none}
 @keyframes fadein{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:none}}
@@ -3999,6 +4000,7 @@ function renderSchedule(){
     }
 
     // No pilots at all for this slot
+    if(!ps.length&&!tHtml&&userSettings.hideEmpty===true&&!isNow)return;
     if(!ps.length&&!tHtml){
       html+='<div class="card'+(isNow?' slot-now':'')+'" style="opacity:.45" '+(isNow?'id="slot-now"':'')+'><div class="slot-header">'
         +'<span class="slot-time">'+slot.time+'</span>'+(isNow?'<span class="now-badge">ORA</span>':'')
@@ -4374,8 +4376,18 @@ const TEAM_PALETTE=['#a78bfa','#22d3ee','#f472b6','#34d399','#fb923c','#facc15',
 let userSettings={},userSettingsUser='';
 function watchUserSettings(){
   if(!currentUserId||userSettingsUser===currentUserId)return;userSettingsUser=currentUserId;userSettings={};
-  try{onValue(ref(db,'settings/'+currentUserId),s=>{userSettings=s.val()||{};try{document.body.classList.add('quiet');renderAll();}catch(e){}if(document.getElementById('settings-body'))renderSettings();});}catch(e){}
+  try{onValue(ref(db,'settings/'+currentUserId),s=>{userSettings=s.val()||{};applyUserSettings();try{document.body.classList.add('quiet');renderAll();}catch(e){}if(document.getElementById('settings-body'))renderSettings();});}catch(e){}
 }
+let _liveDefDone=false;
+function applyUserSettings(){
+  try{document.body.classList.toggle('big-text',userSettings.bigText===true);}catch(e){}
+  if(!_liveDefDone&&userSettings.liveDefault){_liveDefDone=true;const v=userSettings.liveDefault;
+    if(v==='last'){ltLastOn=true;}else{ltLastOn=false;ltOnlyMine=v!=='all';}try{renderLtMyTable();}catch(e){}}
+}
+function setUS(path,val){userSettings[path]=val;setUserSetting(path,val);applyUserSettings();renderSettings();try{document.body.classList.add('quiet');renderAll();}catch(e){}}
+window.setUS=setUS;
+function setTheme(light){const isL=document.body.classList.contains('light');if(isL!==light)toggleTheme();renderSettings();}
+window.setTheme=setTheme;
 function teamViewMode(){const v=userSettings.teamView;return v==='highlight'||v==='both'?v:'cards';}
 // nomi simili tra una gara e l'altra (es. "AKM MOTORSPORT SRL" = "AKM MOTORSPORT"): usato SOLO per ritrovare il colore del team
 function teamNorm(k){return String(k||'').toUpperCase().replace(/[._\-,'’()]/g,' ').replace(/\b(S\s?R\s?L\s?S?|S\s?P\s?A|S\s?N\s?C|S\s?A\s?S|A\s?S\s?D|S\s?S\s?D|LTD|GMBH|BV|SL|SA|TEAM|RACING TEAM)\b/g,' ').replace(/\s+/g,' ').trim();}
@@ -4389,7 +4401,18 @@ function setTeamColor(k,c){userSettings.teamColors=userSettings.teamColors||{};u
 function renderSettings(){
   const b=document.getElementById('settings-body');if(!b)return;
   const v=teamViewMode();
-  b.innerHTML='<div class="set-sec">NOTIFICHE SU QUESTO TELEFONO</div><div id="push-device"></div>'
+  const opt=(on,lbl,fn)=>'<div class="set-opt'+(on?' on':'')+'" onclick="'+fn+'"><input type="radio" '+(on?'checked':'')+' style="width:20px;height:20px"> '+lbl+'</div>';
+  const sw=(on,lbl,fn)=>'<label class="set-opt" style="justify-content:space-between"><span>'+lbl+'</span><input type="checkbox" '+(on?'checked':'')+' onchange="'+fn+'" style="width:24px;height:24px"></label>';
+  const light=document.body.classList.contains('light');const lv=userSettings.liveDefault||'mine';
+  b.innerHTML='<div class="set-sec">PROFILO</div><div class="set-opt" onclick="closeModal();showUserPicker()"><i class="ic ic-user"></i> Cambia utente <span style="margin-left:auto;color:var(--text4)">'+currentUserId+'</span></div>'
+    +'<div class="set-sec">ASPETTO (QUESTO TELEFONO)</div>'+opt(!light,'Tema scuro','setTheme(false)')+opt(light,'Tema chiaro','setTheme(true)')
+    +'<div class="set-sec">LEGGIBILITÀ E AVVISI</div>'
+    +sw(userSettings.bigText===true,'Testo più grande',"setUS('bigText',this.checked)")
+    +sw(userSettings.vibra!==false,'Vibrazione degli avvisi',"setUS('vibra',this.checked)")
+    +sw(userSettings.suono!==false,'Suono degli avvisi',"setUS('suono',this.checked)")
+    +'<div class="set-sec">LIVE ALL\'APERTURA</div>'+opt(lv==='mine','Solo miei',"setUS('liveDefault','mine')")+opt(lv==='all','Tutti',"setUS('liveDefault','all')")+opt(lv==='last','Ultima gara',"setUS('liveDefault','last')")
+    +'<div class="set-sec">PROGRAMMA</div>'+sw(userSettings.hideEmpty===true,'Nascondi le sessioni senza miei piloti',"setUS('hideEmpty',this.checked)")
+    +'<div class="set-sec">NOTIFICHE SU QUESTO TELEFONO</div><div id="push-device"></div>'
     +'<div class="set-sec">TEAM NEL PROGRAMMA</div>'
     +'<div class="set-opt'+(v==='cards'?' on':'')+'" onclick="setTeamView(\'cards\')"><input type="radio" '+(v==='cards'?'checked':'')+' style="width:20px;height:20px"> Scheda del team sotto ogni sessione</div>'
     +'<div class="set-opt'+(v==='highlight'?' on':'')+'" onclick="setTeamView(\'highlight\')"><input type="radio" '+(v==='highlight'?'checked':'')+' style="width:20px;height:20px"> Piloti del team evidenziati col colore del team</div>'
@@ -4457,8 +4480,8 @@ function rtAlert(id,title,sub,kind){
   el.innerHTML='<div style="flex:1">'+title+'<small>'+sub+' · '+hm+'</small></div><span style="cursor:pointer;font-size:16px">✕</span>';
   el.onclick=()=>el.remove();wrap.prepend(el);
   setTimeout(()=>{if(el.parentNode)el.remove();},kind==='final'||kind==='gold'?60000:25000);
-  try{if(navigator.vibrate)navigator.vibrate(kind?[300,150,300,150,300]:[200,100,200]);}catch(e){}
-  rtChime(kind);
+  try{if(userSettings.vibra!==false&&navigator.vibrate)navigator.vibrate(kind?[300,150,300,150,300]:[200,100,200]);}catch(e){}
+  if(userSettings.suono!==false)rtChime(kind);
   try{if('Notification' in window&&Notification.permission==='granted'&&navigator.serviceWorker){navigator.serviceWorker.ready.then(r=>r.showNotification(title.replace(/<[^>]+>/g,''),{body:sub,tag:id,renotify:true,vibrate:[300,150,300]}));}}catch(e){}
   renderAlertLog();
 }
@@ -5076,7 +5099,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1340';
+const APP_BUILD='2026-11-14-1350';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
