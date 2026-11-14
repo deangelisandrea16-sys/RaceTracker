@@ -655,6 +655,7 @@ body.lt-full-open #rt-alerts,body.lt-full-open #rt-offline,body.lt-full-open .fa
   <div class="header-right">
     <span class="sync-status" id="sync-status">SYNC...</span>
     <span id="user-badge" style="font-size:9px;font-weight:800;padding:3px 8px;border-radius:4px;border:1px solid var(--border2);color:var(--text3);letter-spacing:1px;cursor:pointer" onclick="showUserPicker()"></span>
+    <button id="settings-btn" onclick="openSettings()" aria-label="Impostazioni" title="Impostazioni" style="min-width:44px;min-height:44px;margin:-8px -8px -8px 0;background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;line-height:1">⚙️</button>
   </div>
 </div>
 
@@ -4879,7 +4880,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1050';
+const APP_BUILD='2026-11-14-1055';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
