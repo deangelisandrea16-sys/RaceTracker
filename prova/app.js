@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-14-2155';
+var RT_JS_BUILD='2026-11-14-2200';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3840,16 +3840,16 @@ function riskSafeBlock(d,esc){
    (media e regolarita' del pilota) rispetto alla posizione che deve ottenere. Solo stima, le posizioni non si mostrano. */
 function _ncdf(z){const t=1/(1+0.2316419*Math.abs(z)),d=0.3989423*Math.exp(-z*z/2);let pr=d*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.821256+t*1.330274))));return z>0?1-pr:pr;}
 function riskPct(x){
-  if(x.status==='out')return x.left?97:100;
+  if(x.status==='out')return 100;
   if(!x.left)return x.status==='safe'?0:100;
-  if(x.need==null)return 97;
+  if(x.need==null)return 100;
   const field=Math.ceil((x.n||40)/2)+2,ps=(x.poss||[]).filter(v=>v>0),k=ps.length;
   let mu=k?ps.reduce((a,b)=>a+b,0)/k:field/2;
   let sd=k>1?Math.sqrt(ps.reduce((a,b)=>a+(b-mu)*(b-mu),0)/(k-1)):field/4;
   sd=Math.max(sd,field/8);mu=(mu*k+field/2)/(k+1);
   const se=sd/Math.sqrt(Math.max(1,x.left));
   const ok=_ncdf((x.need+0.5-mu)/se);
-  return Math.round(Math.min(99,Math.max(1,(1-ok)*100)));
+  return Math.round(Math.min(95,Math.max(1,(1-ok)*100))); // stima: mai 0 o 100 se c'e' ancora una gara
 }
 function riskColor(p){return p<25?'#22c55e':p<50?'#facc15':p<75?'#f97316':'#ef4444';}
 function riskRing(p){const c=riskColor(p),r=15,L=2*Math.PI*r,f=Math.max(0.02,p/100)*L;
