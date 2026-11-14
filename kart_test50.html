@@ -1834,6 +1834,7 @@ function listenRaceData(raceId){
     currentDays=sharedData.days||Object.keys(currentSchedule);
     if(!Array.isArray(currentDays))currentDays=typeof currentDays==='object'?Object.values(currentDays):[];
     currentFinals=sharedData.finals||[];
+    riskCutCfg=sharedData.riskCut||{};
     if(!Array.isArray(currentFinals))currentFinals=typeof currentFinals==='object'?Object.values(currentFinals):[];
     trackSections=sharedData.trackSections||["PARTENZA","CURVA 1","RETTILINEO 1","CURVA 2","ESSE","RETTILINEO 2","ARRIVO"];
     // Ritardo e AUTO condivisi per tutta la gara (AUTO acceso di default)
@@ -4553,6 +4554,50 @@ function updateNotifBtn(){
   h.innerHTML=p==='granted'?'':p==='denied'?'<i class="ic ic-belloff"></i> notifiche bloccate nelle impostazioni del browser':'<span onclick="enableRtNotifications()" style="cursor:pointer;text-decoration:underline"><i class="ic ic-belloff"></i> attiva notifiche</span>';
 }
 let alertLogOpen=true;
+// ── RISCHIO ELIMINAZIONE (stima) ──
+// Punti manche/prefinale: 1° = 0, 2° = 2, 3° = 3… (Art.13). Taglio per gara e categoria (races/<gara>/riskCut/<cat>):
+// di base 36 (finale) se la categoria ha almeno 37 piloti, altrimenti nessuna eliminazione.
+let riskCutCfg={};
+const rkPts=p=>{p=parseInt(p);return isNaN(p)?null:(p===1?0:p);};
+function riskCutOf(cat,n){const v=riskCutCfg[cat];if(v===0||v==='0')return 0;if(v)return+v;return n>=37?36:0;}
+function riskData(){
+  const byCat={};
+  Object.entries(currentEntryList||{}).forEach(([num,e])=>{if(!e||!e.cat)return;(byCat[e.cat]=byCat[e.cat]||[]).push([num,e]);});
+  const myNums=new Set(pilots.map(p=>String(p.num)));const out=[];
+  Object.entries(byCat).forEach(([cat,list])=>{
+    const cut=riskCutOf(cat,list.length);
+    const rows=list.map(([num,e])=>{let h=e.heats||[];if(!Array.isArray(h))h=Object.values(h);const res=e.result||{};
+      let pts=0,done=0;h.forEach(k=>{const v=rkPts(res[k]);if(v!==null){pts+=v;done++;}});
+      const pfDone=['PF-A','PF-B'].some(k=>rkPts(res[k])!==null);if(pfDone){const k=rkPts(res['PF-A'])!==null?'PF-A':'PF-B';pts+=rkPts(res[k]);done++;}
+      const left=Math.max(0,h.length-(done-(pfDone?1:0)))+(pfDone?0:1);
+      return{num,e,pts,done,left,avg:done?pts/done:list.length/2};}).filter(r=>r.done>0);
+    if(!rows.length||!cut){if(list.some(([n])=>myNums.has(n)))out.push({cat,cut,none:true,n:list.length});return;}
+    rows.sort((a,b)=>a.pts-b.pts);rows.forEach((r,i)=>r.rank=i+1);
+    const field=Math.ceil(list.length/2)+2; // piloti per gara (manche a gruppi / prefinale)
+    rows.filter(r=>myNums.has(r.num)).forEach(r=>{
+      let need=null;
+      if(r.left>0){for(let p=field;p>=1;p--){const mine=r.pts+rkPts(p)*r.left;let rank=1;rows.forEach(o=>{if(o!==r&&o.pts+o.avg*o.left<mine)rank++;});if(rank<=cut){need=p;break;}}}
+      const status=r.left===0?(r.rank<=cut?'safe':'out'):(need===null?'out':need>=Math.ceil(field*0.8)?'safe':'risk');
+      out.push({cat,cut,num:r.num,name:(pilots.find(p=>String(p.num)===r.num)||{}).name||((r.e.lastName||'')+' '+(r.e.firstName||'')).trim(),pts:r.pts,rank:r.rank,left:r.left,need,status,n:list.length});
+    });
+  });
+  return out;
+}
+function setRiskCut(cat){if(!isDelayAdmin())return;const v=prompt('Taglio per '+cat+' (posizione minima per non essere eliminati, 0 = nessuna eliminazione):',String(riskCutOf(cat,99)));if(v===null)return;const n=parseInt(v);if(isNaN(n)||n<0)return;riskCutCfg[cat]=n;saveSharedField('riskCut',riskCutCfg);renderAlertLog();}
+window.setRiskCut=setRiskCut;
+function renderRiskTab(){
+  const d=riskData();const esc=x=>String(x||'').replace(/</g,'&lt;');
+  if(!d.length)return'<div style="font-size:13px;color:var(--text4);padding:8px 0">Nessun dato: servono i risultati delle manche.</div>';
+  const cats=[...new Set(d.map(x=>x.cat))];const col={risk:'#f59e0b',out:'#ef4444',safe:'#22c55e'};
+  return'<div style="font-size:12px;color:var(--text3);background:var(--bg3);border-radius:10px;padding:9px 12px;margin-bottom:10px">Stima dai risultati: punti 1°=0, 2°=2, 3°=3… La media degli altri è proiettata sulle gare che mancano. Non è un dato ufficiale.</div>'
+    +cats.map(cat=>{const xs=d.filter(x=>x.cat===cat);const c0=xs[0];
+      const head='<div class="set-sec" style="display:flex;align-items:center;gap:8px">'+esc(cat)+' <span style="font-weight:700;color:var(--text4)">· '+(c0.cut?'salvi i primi '+c0.cut:'nessuna eliminazione')+' · '+c0.n+' piloti</span>'+(isDelayAdmin()?'<button onclick="setRiskCut(\''+escAttr(cat)+'\')" style="margin-left:auto;min-height:36px;padding:0 10px;border-radius:8px;border:1px solid var(--border2);background:none;color:var(--text3);font-weight:800;cursor:pointer">TAGLIO</button>':'')+'</div>';
+      if(c0.none)return head;
+      return head+xs.filter(x=>!x.none).sort((a,b)=>({out:0,risk:1,safe:2}[a.status]-{out:0,risk:1,safe:2}[b.status])||a.rank-b.rank).map(x=>{
+        const t=x.status==='out'?(x.left?'Fuori anche vincendo (stima)':'Eliminato (stima)'):x.status==='safe'?(x.left?'Tranquillo: gli basta arrivare P'+x.need+' (stima)':'Salvo (stima)'):'Per essere salvo deve arrivare almeno <b>P'+x.need+'</b>'+(x.left>1?' in media nelle prossime '+x.left+' gare':' nella prossima gara');
+        return'<div class="card-inner al-row" style="border-left:4px solid '+col[x.status]+'"><div class="al-time" style="font-size:18px;font-weight:900">'+x.rank+'°</div><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(x.num)+' '+esc(x.name)+'</div><div style="font-size:13px;color:var(--text2);margin-top:2px">'+t+'</div><div style="font-size:11px;color:var(--text4);margin-top:2px">'+x.pts+' punti · '+(x.left?x.left+' gare da correre':'gare finite')+'</div></div></div>';}).join('');
+    }).join('');
+}
 function toggleAlertLog(){alertLogOpen=!alertLogOpen;renderAlertLog();}
 window.toggleAlertLog=toggleAlertLog;
 let alertFilter='all';
@@ -4574,6 +4619,8 @@ function renderAlertLog(){
   const log=alertLog().filter(a=>{const n=alNum(a);return!n||!myNums.size||myNums.has(n);}).sort((x,y)=>(y.ts||0)-(x.ts||0));box.style.display='';
   const cleanSub=t=>String(t||'').replace(/\s*·?\s*PROVVISORIO,?\s*verifica (eventuali )?reclami/ig,'').replace(/\s*·?\s*verifica (eventuali )?reclami/ig,'').replace(/^\s*·\s*|\s*·\s*$/g,'');
   const h=[];
+  h.push('<div class="pv-switch" style="margin-bottom:10px"><button class="pv-btn'+(alertFilter!=='risk'?' active':'')+'" onclick="setAlertFilter(\'all\')">AVVISI</button><button class="pv-btn'+(alertFilter==='risk'?' active':'')+'" onclick="setAlertFilter(\'risk\')">RISCHIO ELIMINAZIONE</button></div>');
+  if(alertFilter==='risk'){h.push(renderRiskTab());box.innerHTML=h.join('');return;}
   h.push('<div style="font-size:13px;font-weight:600;color:var(--text3);background:var(--bg3);border-radius:10px;padding:9px 12px;margin-bottom:10px">Gli avvisi sono provvisori: verifica eventuali reclami.</div>');
   if(!log.length)h.push('<div style="font-size:13px;color:var(--text4);padding:8px 0">Nessun avviso</div>');
   log.forEach(a=>{const c={quali:'#facc15',final:'#22c55e',elim:'#ef4444',race:'#60a5fa'}[alertType(a)];const sub=cleanSub(a.sub);
@@ -5022,7 +5069,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1315';
+const APP_BUILD='2026-11-14-1335';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
