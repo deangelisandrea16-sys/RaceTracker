@@ -428,6 +428,7 @@ body:not(.light){background:#0d0d0f}
 .slot-now .slot-time{color:var(--rt-orange)}
 .note-txt{font-size:13px;font-weight:700;font-style:italic;color:#ffcc33;text-shadow:0 0 6px rgba(255,204,51,.55),0 0 1px rgba(255,204,51,.9)}body.light .note-txt{color:#a16207;text-shadow:0 0 4px rgba(250,204,21,.45)}
 .lt-ret{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;background:#dc2626;color:#fff;font-size:11px;font-weight:900;letter-spacing:.5px;vertical-align:middle;white-space:nowrap}.lt-ret.box{background:#475569}.ltbig.ret{opacity:.75;border-left:4px solid #dc2626}
+.lt-x{color:#ef4444;font-weight:900}
 .lt-tasks{margin-top:8px}.lt-tasks .task-btn{min-height:40px}
 .slot-dur{font-family:'Saira Condensed';font-weight:900;font-style:italic;font-size:22px;color:var(--text2);white-space:nowrap}.slot-dur s{color:var(--text4);font-size:16px}.slot-dur b{color:#fbbf24;font-weight:900}
 .slot-label{font-family:'Saira Condensed';font-weight:900;font-size:19px;text-transform:uppercase}
@@ -4252,7 +4253,7 @@ function apexEvaluate(why){
     const mh=ss.match(/HEATS?\s+([A-D])\s*-\s*([A-D])/);
     // solo a manche davvero conclusa: il primo deve aver fatto tutti i giri del programma (o almeno 3 se il programma non li dice).
     // Una partenza annullata o una bandiera rossa a inizio gara NON è un arrivo (14/11: la griglia era stata salvata come arrivo).
-    let _done=false;try{const L=apexLapInfo();_done=L.led!==null&&(L.tot?L.led>=L.tot:L.led>=3);}catch(e){}
+    let _done=false;try{const L=apexLapInfo();_done=L.led!==null&&(L.tot?(L.led>=L.tot||(L.fin&&L.led>=L.tot-1)):L.led>=3);}catch(e){}
     // Prove pari/dispari (warm-up, libere): a fine sessione la posizione del live (ordine per miglior giro)
     const mp=ss.match(/\b(EVEN|ODD)\b/);
     let _pfin=why==='finish';try{if(!_pfin)_pfin=apexLapInfo().fin;}catch(e){}
@@ -4642,7 +4643,7 @@ function renderLtFull(){
   const rows=[...apexGrid.querySelectorAll('tr[data-id]')].filter(r=>r.getAttribute('data-id')!=='r0')
     .map(r=>({r,pos:parseInt(r.getAttribute('data-pos'))||parseInt(txt(r,C('rk','3')))||999})).sort((a,b)=>a.pos-b.pos);
   const myNums=new Set(pilots.map(x=>String(x.num)));
-  const lap=[apexLapText(),apexDynText(apexDyn.dyn1),apexDynText(apexDyn.dyn2)].filter(Boolean).join(' · ');
+  const _lt=apexLapText();const lap=[_lt,apexDynText(apexDyn.dyn1),apexDynText(apexDyn.dyn2)].filter(x=>x&&!(x!==_lt&&_lt&&/(?:LAP|GIRO|TOUR)\s*\d+\s*\/\s*\d+/i.test(x))).join(' · ');
   const sess=((apexState.cat||'')+' · '+(apexState.sess||'')).replace(/</g,'&lt;');
   const now=Date.now();const sk=apexState.cat+'|'+apexState.sess;
   const out=[];
@@ -4656,7 +4657,7 @@ function renderLtFull(){
     const m=ltFullMv[k];const mv=m&&m.t>now?m.d:0;
     const nm=mine?((pilots.find(x=>String(x.num)===no)||{}).name||txt(r,C('dr','5'))):txt(r,C('dr','5'));
     const tm=((pilots.find(x=>String(x.num)===no)||{}).team)||((currentEntryList[no]||{}).team)||'';
-    out.push('<div class="ltf-row'+(mine?' mine':'')+(mv>0?' up':mv<0?' down':'')+'"><span class="p">'+(pos<999?pos:'–')+'</span><span class="n">'+no+'</span><span class="d">'+String(nm).replace(/</g,'&lt;')+ltRetBadge(ltRetOf(no))+'<small>'+String(tm).replace(/</g,'&lt;')+'</small></span>'+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>');
+    out.push('<div class="ltf-row'+(mine?' mine':'')+(mv>0?' up':mv<0?' down':'')+'"><span class="p">'+(ltRetOf(no)?'<span class="lt-x">✕</span>':(pos<999?pos:'–'))+'</span><span class="n">'+no+'</span><span class="d">'+String(nm).replace(/</g,'&lt;')+ltRetBadge(ltRetOf(no))+'<small>'+String(tm).replace(/</g,'&lt;')+'</small></span>'+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>');
   });
   const list=el.querySelector('.ltf-list');list.innerHTML=out.join('');
   // Tutta la classifica in uno schermo: altezza riga e caratteri calcolati sul numero di piloti
@@ -4738,7 +4739,7 @@ function renderLtLast(){
       const pl=pilots.find(p=>String(p.num)===x.no)||{};const ent=(currentEntryList&&currentEntryList[x.no])||{};
       const nt=String((notes&&notes[x.no])||'').trim();
       return'<div class="ltbig" data-no="'+esc(x.no)+'" onclick="openPilotDetail(\''+esc(x.no)+'\')">'
-        +'<div class="pos">'+(x.pos<999?x.pos:'–')+'</div>'
+        +'<div class="pos">'+(x.ret?'<span class="lt-x">✕</span>':(x.pos<999?x.pos:'–'))+'</div>'
         +'<div style="flex:1;min-width:0"><div><span class="num">#'+esc(x.no)+'</span> <span class="nm">'+esc(pl.name||x.dr)+'</span>'+ltRetBadge(x.ret)+'</div>'
         +'<div class="tm">'+esc(pl.team||ent.team||'')+(x.gap?' · '+esc(x.gap):'')+(x.blp?' · best '+esc(x.blp):'')+'</div>'
         +(nt?'<div class="note-txt" style="margin-top:2px"><i class="ic ic-note"></i> '+esc(nt)+'</div>':'')
@@ -4775,6 +4776,9 @@ function apexLapInfo(){
     apexGrid.querySelectorAll('tr[data-id]').forEach(r=>{const id=r.getAttribute('data-id');if(id==='r0')return;const c=r.querySelector('[data-id="'+id+'c'+lc+'"]');const n=c?parseInt(c.textContent):NaN;if(!isNaN(n)&&(best===null||n>best))best=n;});
     led=best;
   }
+  // nelle gare Apex scrive il giro in alto ("Lap 4/12") e non manda la colonna giri
+  try{const dtx=[apexDynText(apexDyn.dyn1),apexDynText(apexDyn.dyn2)].join(' ');const lm=dtx.match(/(?:LAP|GIRO|TOUR)\s*(\d+)\s*\/\s*(\d+)/i);
+    if(lm){const cur=+lm[1],tt=+lm[2];if(!tot)tot=tt;if(led===null)led=apexFinished?Math.max(cur,tt):cur-1;}}catch(e){}
   if(tot&&led!==null&&led>=tot)fin=true;
   // sessione partita e quasi tutti rientrati = finita (Apex non sempre manda FINISH)
   try{const S=ltStaCounts();if(apexState.start&&S&&S.tot>3&&S.run===0&&S.inn>=S.tot*0.8)fin=true;}catch(e){}
@@ -4793,8 +4797,8 @@ function renderApexDyn(){
   const box=document.getElementById('lt-mytable');if(!box||!box.parentNode)return;
   let el=document.getElementById('lt-dyn');
   if(!el){el=document.createElement('div');el.id='lt-dyn';el.style.cssText="display:none;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;padding:10px 14px;border-radius:12px;background:var(--bg2);font-family:'Chakra Petch';font-weight:700";box.parentNode.insertBefore(el,box);}
-  const t=[apexDynText(apexDyn.dyn1),apexDynText(apexDyn.dyn2)].filter(Boolean);
-  const lap=apexLapText();const fin=lap==='ARRIVO';
+  const lap=apexLapText();
+  const t=[apexDynText(apexDyn.dyn1),apexDynText(apexDyn.dyn2)].filter(x=>x&&!(lap&&/(?:LAP|GIRO|TOUR)\s*\d+\s*\/\s*\d+/i.test(x)));const fin=lap==='ARRIVO';
   if((!t.length&&!lap)||!apexWsKey){el.style.display='none';return;}
   const sess=((apexState.cat||'')+' '+(apexState.sess||'')).trim();
   el.style.display='flex';
@@ -4863,7 +4867,7 @@ function renderLtMyTable(){
       const pos=parseInt(txt(r,C('rk','3')))||0;const mv=ltMove(no,pos);
       const rt=ltRetOf(no);
       return'<div class="ltbig'+(tm?' team':'')+(rt?' ret':'')+(mv>0?' up':mv<0?' down':'')+'" data-no="'+no+'"'+(tm?'':' onclick="openPilotDetail(\''+no+'\')"')+'>'
-        +'<div class="pos">'+(txt(r,C('rk','3'))||'–')+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>'
+        +'<div class="pos">'+(rt?'<span class="lt-x">✕</span>':(txt(r,C('rk','3'))||'–'))+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>'
         +'<div style="flex:1;min-width:0"><div><span class="num">#'+no+'</span> <span class="nm">'+nm+'</span>'+ltRetBadge(rt)+'</div>'
         +'<div class="tm">'+team+'</div>'
 
@@ -4878,7 +4882,7 @@ function renderLtMyTable(){
       const no=txt(r,C('no','4'));const mine=myNums.has(no);const tm=!mine&&teamNums.has(no);
       const llc=cls(r,C('llp','10'));
       return'<tr class="'+(mine?'mine':tm?'team':'')+'"'+(mine?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
-        +'<td>'+txt(r,C('rk','3'))+'</td><td class="n">'+no+'</td><td class="d">'+txt(r,C('dr','5'))+ltRetBadge(ltRetOf(no))+'</td><td class="d" style="color:var(--text3)">'+(((pilots.find(x=>String(x.num)===no)||{}).team)||((currentEntryList&&currentEntryList[no])||{}).team||'')+'</td></tr>'
+        +'<td>'+(ltRetOf(no)?'<span class="lt-x">✕</span>':txt(r,C('rk','3')))+'</td><td class="n">'+no+'</td><td class="d">'+txt(r,C('dr','5'))+ltRetBadge(ltRetOf(no))+'</td><td class="d" style="color:var(--text3)">'+(((pilots.find(x=>String(x.num)===no)||{}).team)||((currentEntryList&&currentEntryList[no])||{}).team||'')+'</td></tr>'
         +(mine&&String((notes&&notes[no])||'').trim()?'<tr class="mine"><td></td><td colspan="6" class="note-txt" style="white-space:normal"><i class="ic ic-note"></i> '+String(notes[no]).replace(/</g,'&lt;')+'</td></tr>':'');
     }).join('')+'</table>'
     +'<div style="font-size:11px;color:var(--text4);margin-top:6px">Evidenziati i tuoi piloti · tocca un tuo pilota per la scheda</div>';
@@ -4999,7 +5003,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1235';
+const APP_BUILD='2026-11-14-1240';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
