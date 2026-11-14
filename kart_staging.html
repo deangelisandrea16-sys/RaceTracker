@@ -3167,8 +3167,9 @@ function slotHasRun(slot){
 function gridBadge(num,slot){
   const k=slotKeyOf(slot);if(!k)return'';
   const e=currentEntryList[num]||{};const r=e.result&&e.result[k];
-  if(r!==undefined&&r!==null&&r!==''&&slotHasRun(slot)&&/^(X|DNF|DNS|RIT|AB|NC|RET|DSQ|SQ)/i.test(String(r)))
-    return'<span title="Uscito / non classificato" style="font-family:\'Chakra Petch\';font-size:12px;font-weight:900;color:#fff;background:#dc2626;border-radius:5px;padding:1px 7px;flex-shrink:0">✕'+(/DSQ|SQ/i.test(String(r))?' SQ':'')+'</span>';
+  const _out=(e.out&&e.out[k])||/^(X|DNF|DNS|RIT|AB|NC|RET|DSQ|SQ)/i.test(String(r||''));
+  if(r!==undefined&&r!==null&&r!==''&&slotHasRun(slot)&&_out)
+    return'<span title="Uscito: posizione in classifica" style="font-family:\'Chakra Petch\';font-size:12px;font-weight:900;color:#fff;background:#dc2626;border-radius:5px;padding:1px 7px;flex-shrink:0">✕'+(/^\d+$/.test(String(r))?' '+r+'°':/DSQ|SQ/i.test(String(r))?' SQ':'')+'</span>';
   if(r!==undefined&&r!==null&&r!==''&&slotHasRun(slot)){const t=/^\d+$/.test(String(r))?String(r)+'°':String(r).toUpperCase();
     return'<span title="Posizione d\'arrivo (risultati Apex)" style="font-family:\'Chakra Petch\';font-size:12px;font-weight:700;color:#0d0d0f;background:#4fd69c;border-radius:5px;padding:1px 6px;flex-shrink:0"><i class="ic ic-flag"></i> '+t+'</span>';}
   const n=gridPos(num,slot);
@@ -4278,14 +4279,14 @@ function apexEvaluate(why){
     const mpf=ss.match(/PREFINAL[E]?\s+([AB])\b/),mfi=/FINAL/.test(ss)&&!/PREFINAL/.test(ss);
     if((mpf||mfi)&&activeRaceId&&_done){const fk=mpf?'PF-'+mpf[1]:'FIN';const u={};
       snap.forEach(x=>{if(!x.pos||x.pos>=999)return;const e=currentEntryList[x.num];if(!e||apexCat(e.cat)!==cat)return;e.result=e.result||{};
-        const v=ltRetOf(x.num)?'X':String(x.pos);if(!e.result[fk]){e.result[fk]=v;u['races/'+activeRaceId+'/entryList/'+x.num+'/result/'+fk]=v;}});
+        const v=String(x.pos);if(ltRetOf(x.num)){e.out=e.out||{};e.out[fk]=true;u['races/'+activeRaceId+'/entryList/'+x.num+'/out/'+fk]=true;}if(!e.result[fk]){e.result[fk]=v;u['races/'+activeRaceId+'/entryList/'+x.num+'/result/'+fk]=v;}});
       if(Object.keys(u).length){update(ref(db),u);if(activeTab==='programma')renderSchedule();}}
     if(mh&&activeRaceId&&_done){
       const pair=[mh[1],mh[2]].sort().join('-');const u={};
       snap.forEach(x=>{
         if(!x.pos||x.pos>=999)return;const e=currentEntryList[x.num];if(!e||apexCat(e.cat)!==cat)return;
         e.result=e.result||{};
-        const v=ltRetOf(x.num)?'X':String(x.pos);if(!e.result[pair]){e.result[pair]=v;u['races/'+activeRaceId+'/entryList/'+x.num+'/result/'+pair]=v;}
+        const v=String(x.pos);if(ltRetOf(x.num)){e.out=e.out||{};e.out[pair]=true;u['races/'+activeRaceId+'/entryList/'+x.num+'/out/'+pair]=true;}if(!e.result[pair]){e.result[pair]=v;u['races/'+activeRaceId+'/entryList/'+x.num+'/result/'+pair]=v;}
       });
       if(Object.keys(u).length){update(ref(db),u);if(activeTab==='programma')renderSchedule();}
     }
@@ -5021,7 +5022,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1310';
+const APP_BUILD='2026-11-14-1315';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
