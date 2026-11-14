@@ -4728,7 +4728,7 @@ function renderElimList(){
   if(!off.length&&!est.length)return'<div style="font-size:13px;color:var(--text4);padding:8px 0">Nessun tuo pilota eliminato.</div>';
   const h=[];
   if(off.length){h.push('<div class="set-sec">UFFICIALI · liste prefinali/finale</div>');
-    off.sort((a,b)=>String(a.cat).localeCompare(String(b.cat))||(+a.num)-(+b.num)).forEach(p=>h.push('<div class="card-inner al-row" style="border-left:4px solid #ef4444"><div class="al-time" style="font-size:13px;font-weight:900">'+esc(p.cat)+'</div><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(p.num)+' '+esc(p.name)+'</div>'+(p.team?'<div style="font-size:12px;color:var(--text4)">'+esc(p.team)+'</div>':'')+'</div></div>'));}
+    off.sort((a,b)=>String(a.cat).localeCompare(String(b.cat))||(+a.num)-(+b.num)).forEach(p=>h.push('<div class="card-inner al-row" style="border-left:4px solid #ef4444"><div class="al-time" style="font-size:13px;font-weight:900">'+esc(p.cat)+'</div><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(p.num)+' '+esc(p.name)+'</div><div style="font-size:13px;color:var(--text2)">Eliminato (ufficiale)'+(p.team?' · <span style="color:var(--text4)">'+esc(p.team)+'</span>':'')+'</div></div></div>'));}
   if(est.length){h.push('<div class="set-sec" style="margin-top:12px">STIMA · non ancora ufficiali</div>');
     est.sort((a,b)=>String(a.cat).localeCompare(String(b.cat))||a.rank-b.rank).forEach(x=>h.push('<div class="card-inner al-row" style="border-left:4px solid #ef4444;opacity:.85"><div class="al-time" style="font-size:18px;font-weight:900">'+x.rank+'°</div><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(x.num)+' '+esc(x.name)+'</div><div style="font-size:13px;color:var(--text2)">'+esc(x.cat)+' · '+(x.left?'Fuori anche vincendo (stima)':'Eliminato (stima)')+'</div></div></div>'));}
   return h.join('');
@@ -5269,7 +5269,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1705';
+const APP_BUILD='2026-11-14-1710';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
