@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-14-2005';
+var RT_JS_BUILD='2026-11-14-2140';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2352,14 +2352,14 @@ function gridBadge(num,slot){
   const e=currentEntryList[num]||{};const r=e.result&&e.result[k];
   const _out=(e.out&&e.out[k])||/^(X|DNF|DNS|RIT|AB|NC|RET|DSQ|SQ)/i.test(String(r||''));
   if(r!==undefined&&r!==null&&r!==''&&slotHasRun(slot)&&_out)
-    return'<span title="Uscito: posizione in classifica" style="font-family:\'Chakra Petch\';font-size:12px;font-weight:900;color:#fff;background:#dc2626;border-radius:5px;padding:1px 7px;flex-shrink:0">✕'+(/^\d+$/.test(String(r))?' '+r+'°':/DSQ|SQ/i.test(String(r))?' SQ':'')+'</span>';
+    return'<span title="Uscito: posizione in classifica" style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:900;color:#fff;background:#dc2626;border-radius:5px;padding:1px 7px;flex-shrink:0">✕'+(/^\d+$/.test(String(r))?' '+r+'°':/DSQ|SQ/i.test(String(r))?' SQ':'')+'</span>';
   if(r!==undefined&&r!==null&&r!==''&&slotHasRun(slot)){const t=/^\d+$/.test(String(r))?String(r)+'°':String(r).toUpperCase();
     const rs=resStatusOf(e.cat,k),uff=!!(rs&&rs.st==='ufficiale'),cor=!!(rs&&rs.corr);
     const tip=(uff?'Arrivo ufficiale (Apex)':'Arrivo provvisorio'+(rs?' (Apex)':' (dal live)'))+(cor?' · corretto dopo la pubblicazione':'');
     const sty=uff?'color:#0d0d0f;background:#4fd69c;border:1px solid #4fd69c':'color:#4fd69c;background:transparent;border:1px dashed #4fd69c';
-    return'<span title="'+tip+'" style="font-family:\'Chakra Petch\';font-size:12px;font-weight:700;'+sty+';border-radius:5px;padding:0 6px;flex-shrink:0"><i class="ic ic-flag"></i> '+t+(cor?' <span style="color:#facc15">●</span>':'')+'</span>';}
+    return'<span title="'+tip+'" style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:700;'+sty+';border-radius:5px;padding:0 6px;flex-shrink:0"><i class="ic ic-flag"></i> '+t+(cor?' <span style="color:#facc15">●</span>':'')+'</span>';}
   const n=gridPos(num,slot);
-  return n?'<span title="Posizione in griglia (lista ufficiale)" style="font-family:\'Chakra Petch\';font-size:12px;font-weight:700;color:#1a160e;background:#e9d5a8;border-radius:5px;padding:1px 7px;flex-shrink:0">P'+n+'</span>':'';
+  return n?'<span title="Posizione in griglia (lista ufficiale)" style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:700;color:#1a160e;background:#e9d5a8;border-radius:5px;padding:1px 7px;flex-shrink:0">P'+n+'</span>':'';
 }
 function noteLine(num){
   const n=String((notes&&notes[num])||'').trim();if(!n)return'';
