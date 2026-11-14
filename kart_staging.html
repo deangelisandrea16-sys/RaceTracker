@@ -4713,8 +4713,28 @@ function riskData(){
 }
 function setRiskCut(cat){if(!isDelayAdmin())return;const v=prompt('Taglio per '+cat+' (posizione minima per non essere eliminati, 0 = nessuna eliminazione):',String(riskCutOf(cat,99)));if(v===null)return;const n=parseInt(v);if(isNaN(n)||n<0)return;riskCutCfg[cat]=n;saveSharedField('riskCut',riskCutCfg);renderAlertLog();}
 window.setRiskCut=setRiskCut;
+/* 14/11/2026: scheda ELIMINAZIONI con sotto-schede A RISCHIO / ELIMINATI */
+let riskSub=(function(){try{return localStorage.getItem('rt_risksub')||'risk';}catch(e){return'risk';}})();
+function setRiskSub(v){riskSub=v;try{localStorage.setItem('rt_risksub',v);}catch(e){}renderAlertLog();}
+window.setRiskSub=setRiskSub;
 function renderRiskTab(){
-  const d=riskData();const esc=x=>String(x||'').replace(/</g,'&lt;');
+  const sw='<div class="pv-switch" style="margin-bottom:10px"><button class="pv-btn'+(riskSub!=='out'?' active':'')+'" onclick="setRiskSub(\'risk\')">A RISCHIO</button><button class="pv-btn'+(riskSub==='out'?' active':'')+'" onclick="setRiskSub(\'out\')">ELIMINATI</button></div>';
+  return sw+(riskSub==='out'?renderElimList():renderRiskList());
+}
+function renderElimList(){
+  const esc=x=>String(x||'').replace(/</g,'&lt;');
+  const off=pilots.filter(p=>p.eliminated);const offN=new Set(off.map(p=>String(p.num)));
+  let est=[];try{est=riskData().filter(x=>!x.none&&x.status==='out'&&!offN.has(String(x.num)));}catch(e){}
+  if(!off.length&&!est.length)return'<div style="font-size:13px;color:var(--text4);padding:8px 0">Nessun tuo pilota eliminato.</div>';
+  const h=[];
+  if(off.length){h.push('<div class="set-sec">UFFICIALI · liste prefinali/finale</div>');
+    off.sort((a,b)=>String(a.cat).localeCompare(String(b.cat))||(+a.num)-(+b.num)).forEach(p=>h.push('<div class="card-inner al-row" style="border-left:4px solid #ef4444"><div class="al-time" style="font-size:13px;font-weight:900">'+esc(p.cat)+'</div><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(p.num)+' '+esc(p.name)+'</div>'+(p.team?'<div style="font-size:12px;color:var(--text4)">'+esc(p.team)+'</div>':'')+'</div></div>'));}
+  if(est.length){h.push('<div class="set-sec" style="margin-top:12px">STIMA · non ancora ufficiali</div>');
+    est.sort((a,b)=>String(a.cat).localeCompare(String(b.cat))||a.rank-b.rank).forEach(x=>h.push('<div class="card-inner al-row" style="border-left:4px solid #ef4444;opacity:.85"><div class="al-time" style="font-size:18px;font-weight:900">'+x.rank+'°</div><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(x.num)+' '+esc(x.name)+'</div><div style="font-size:13px;color:var(--text2)">'+esc(x.cat)+' · '+(x.left?'Fuori anche vincendo (stima)':'Eliminato (stima)')+'</div></div></div>'));}
+  return h.join('');
+}
+function renderRiskList(){
+  const d=riskData().filter(x=>x.none||x.status!=='out');const esc=x=>String(x||'').replace(/</g,'&lt;');
   if(!d.length)return'<div style="font-size:13px;color:var(--text4);padding:8px 0">Nessun dato: servono i risultati delle manche.</div>';
   const cats=[...new Set(d.map(x=>x.cat))];const col={risk:'#f59e0b',out:'#ef4444',safe:'#22c55e'};
   return'<div style="font-size:12px;color:var(--text3);background:var(--bg3);border-radius:10px;padding:9px 12px;margin-bottom:10px">Stima dai risultati: punti 1°=0, 2°=2, 3°=3… La media degli altri è proiettata sulle gare che mancano. Non è un dato ufficiale.</div>'
@@ -4747,7 +4767,7 @@ function renderAlertLog(){
   const log=alertLog().filter(a=>{const n=alNum(a);return!n||!myNums.size||myNums.has(n);}).sort((x,y)=>(y.ts||0)-(x.ts||0));box.style.display='';
   const cleanSub=t=>String(t||'').replace(/\s*·?\s*PROVVISORIO,?\s*verifica (eventuali )?reclami/ig,'').replace(/\s*·?\s*verifica (eventuali )?reclami/ig,'').replace(/^\s*·\s*|\s*·\s*$/g,'');
   const h=[];
-  h.push('<div class="pv-switch" style="margin-bottom:10px"><button class="pv-btn'+(alertFilter!=='risk'?' active':'')+'" onclick="setAlertFilter(\'all\')">AVVISI</button><button class="pv-btn'+(alertFilter==='risk'?' active':'')+'" onclick="setAlertFilter(\'risk\')">RISCHIO ELIMINAZIONE</button></div>');
+  h.push('<div class="pv-switch" style="margin-bottom:10px"><button class="pv-btn'+(alertFilter!=='risk'?' active':'')+'" onclick="setAlertFilter(\'all\')">AVVISI</button><button class="pv-btn'+(alertFilter==='risk'?' active':'')+'" onclick="setAlertFilter(\'risk\')">ELIMINAZIONI</button></div>');
   if(alertFilter==='risk'){h.push(renderRiskTab());box.innerHTML=h.join('');return;}
   h.push('<div style="font-size:13px;font-weight:600;color:var(--text3);background:var(--bg3);border-radius:10px;padding:9px 12px;margin-bottom:10px">Gli avvisi sono provvisori: verifica eventuali reclami.</div>');
   if(!log.length)h.push('<div style="font-size:13px;color:var(--text4);padding:8px 0">Nessun avviso</div>');
@@ -5249,7 +5269,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1655';
+const APP_BUILD='2026-11-14-1705';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
