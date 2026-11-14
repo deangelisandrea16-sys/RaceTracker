@@ -4585,13 +4585,15 @@ function ltScanRet(){
     if(!sc)return;const sk=apexState.cat+'|'+apexState.sess;
     // ritirato solo se rientra mentre la maggior parte è ancora in pista (a fine sessione rientrano tutti)
     const S=ltStaCounts();let canMark=!!(S&&S.run>S.inn);
+    // dopo 3 minuti dalla partenza sono usciti tutti dai box: chi c'è ancora (anche aprendo l'app a gara in corso) è fuori
+    let late=false;try{const now=new Date();late=now.getHours()*60+now.getMinutes()-slotMins(apexState.start.replace(':','.'))>=3;}catch(e){}
     if(apexGrid.querySelector('td.sf[data-id$="c'+sc+'"]'))canMark=false;
     try{if(apexLapInfo().fin)canMark=false;}catch(e){}
     apexGrid.querySelectorAll('tr[data-id]').forEach(r=>{const id=r.getAttribute('data-id');if(id==='r0')return;
       const st=r.querySelector('[data-id="'+id+'c'+sc+'"]');const nn=r.querySelector('[data-id="'+id+'c'+nc+'"]');if(!st||!nn)return;
       const no=nn.textContent.trim();if(!no)return;const k=sk+'|'+no;const cl=' '+st.className+' ';
       if(/ (in|so|sr|su|sd) /.test(cl)){ltRan[k]=1;if(ltRet[k])delete ltRet[k];}
-      else if(!ltRan[k]||!canMark)return; // non ancora uscito in pista in questa sessione: non è un ritiro
+      else if((!ltRan[k]&&!late)||!canMark)return; // non ancora uscito in pista in questa sessione: non è un ritiro
       else if(/ si /.test(cl)){if(!ltRet[k]){ltRet[k]={t:'si',at:Date.now()};ltRetAlert(no,'si');}}
       else if(/ ss /.test(cl)&&!apexState.red){if(!ltRet[k]){ltRet[k]={t:'ss',at:Date.now()};ltRetAlert(no,'ss');}}
     });
@@ -5003,7 +5005,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1240';
+const APP_BUILD='2026-11-14-1245';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
