@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-14-1750';
+var RT_JS_BUILD='2026-11-14-1940';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1883,6 +1883,10 @@ function openRaceSettings(raceId){
     +'<div class="form-group" style="flex:1"><label class="form-label">Data Fine</label>'
     +'<input class="form-input" id="rs-end" type="date" value="'+(r.endDate||'')+'"></div></div>'
     /* 14/11/2026: orari delle premiazioni dal programma ufficiale (servono al server per gli avvisi pole/podio e al Programma) */
+    /* 14/11/2026: percorso dei risultati Apex della gara (serve al server multi-gara per seguirla da solo) */
+    +'<div class="form-group"><label class="form-label">Risultati Apex (link o percorso)</label>'
+    +'<input class="form-input" id="rs-apex" placeholder="https://www.apex-timing.com/goracing/results.php?path=/…" value="'+(r.apexPath||'')+'">'
+    +'<div style="font-size:11px;color:var(--text4);margin-top:4px">Con questo il server segue la gara da solo: entry list, gruppi, arrivi, live.</div></div>'
     +'<div class="form-group"><label class="form-label">Premiazione poleman (se nel programma)</label>'
     +'<input class="form-input" id="rs-aw-pole" type="datetime-local" value="'+(((r.awards||{}).pole)||'')+'"></div>'
     +'<div class="form-group"><label class="form-label">Premiazione finali</label>'
@@ -2059,6 +2063,11 @@ function saveRaceSettings(raceId){
   u['races_index/'+raceId+'/liveTiming']=liveTiming;
   u['races_index/'+raceId+'/startDate']=startDate;
   u['races_index/'+raceId+'/endDate']=endDate;
+  const apx=((document.getElementById('rs-apex')||{}).value||'').trim();
+  let apxPath='';try{apxPath=/^https?:/i.test(apx)?(new URL(apx).searchParams.get('path')||''):apx;}catch(e){apxPath='';}
+  apxPath=decodeURIComponent(apxPath||'').trim();if(apxPath&&!apxPath.startsWith('/'))apxPath='/'+apxPath;
+  if(apx&&!/^\/[a-z0-9\-_]+\/\d{4}\/[^\s]+$/i.test(apxPath)){alert('Link dei risultati Apex non valido');return;}
+  u['races_index/'+raceId+'/apexPath']=apxPath||null;
   const awP=((document.getElementById('rs-aw-pole')||{}).value||'').trim();
   const awDopo=!!(document.getElementById('rs-aw-dopo')||{}).checked;
   const awF=awDopo?'dopo':((document.getElementById('rs-aw-final')||{}).value||'').trim();
