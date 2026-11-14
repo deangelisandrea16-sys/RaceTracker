@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-14-1635';
+var RT_JS_BUILD='2026-11-14-1640';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2700,7 +2700,7 @@ function setPilotSearchMode(mode){
   const resEl=document.getElementById('pilots-search-results');
   const listEl=document.getElementById('pilots-list');
   if(mode==='text'){resEl.style.display='none';listEl.style.display='';}
-  else if(mode==='team'){renderPilotTeamList();resEl.style.display='';listEl.style.display='none';}
+  else if(mode==='team'){renderPilotTeamList();resEl.style.display='';listEl.style.display='none';renderPilotSearchResults();} // 14/11: niente risultati vecchi della ricerca per nome
   else if(mode==='cat'){buildCatGrid('p-cat-grid','selectPilotCat',pilotSearchCat);resEl.style.display='';listEl.style.display='none';renderPilotSearchResults();}
 }
 window.setPilotSearchMode=setPilotSearchMode;
@@ -2778,8 +2778,8 @@ function setProgSearchMode(mode){
   });
   const resEl=document.getElementById('prog-search-results');
   if(mode==='text'){resEl.style.display='none';try{renderSchedule();}catch(e){}}
-  else if(mode==='team'){renderProgTeamList();resEl.style.display='';}
-  else if(mode==='cat'){buildCatGrid('prog-cat-grid','selectProgCat',progSearchCat);resEl.style.display='';}
+  else if(mode==='team'){renderProgTeamList();resEl.style.display='';resEl.innerHTML='';}
+  else if(mode==='cat'){buildCatGrid('prog-cat-grid','selectProgCat',progSearchCat);resEl.style.display='';resEl.innerHTML='';}
 }
 window.setProgSearchMode=setProgSearchMode;
 
