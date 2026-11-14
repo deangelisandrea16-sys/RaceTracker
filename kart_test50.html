@@ -3150,7 +3150,7 @@ function gridPos(num,slot){
 }
 // Dopo la manche: posizione d'arrivo dai risultati Apex (entryList/{num}/result = {"A-B":"3"}), badge verde
 // Chiavi: manche "A-B"; prefinali "PF-A"/"PF-B"; finale "FIN" (scritte dal server dai documenti ufficiali Apex)
-function slotKeyOf(slot){if(!slot)return'';if(slot.type==='prefinal'){const x=String(slot.filter||'').trim().toUpperCase();return x?'PF-'+x:'';}if(slot.type==='final')return'FIN';if(slot.type!=='group')return'';const f=Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{});return f.map(x=>String(x).trim().toUpperCase()).sort().join('-');}
+function slotKeyOf(slot){if(!slot)return'';if(slot.type==='prefinal'){const x=String(slot.filter||'').trim().toUpperCase();return x?'PF-'+x:'';}if(slot.type==='final')return'FIN';if(slot.type==='serie'){const q=String(slot.filter||'').trim().toUpperCase();return q?'Q-S'+q.replace(/^S/,''):'';}if(slot.type==='parity'){const p=String(slot.filter||'').trim().toUpperCase();return p&&activeDay?'PAR-'+String(activeDay).toUpperCase()+'-'+p:'';}if(slot.type!=='group')return'';const f=Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{});return f.map(x=>String(x).trim().toUpperCase()).sort().join('-');}
 // la sessione è già finita? (giorno visualizzato vs oggi, orario + ritardo). Prima della partenza si mostra sempre la griglia.
 function slotHasRun(slot){
   try{
@@ -4250,7 +4250,34 @@ function apexEvaluate(why){
   // Provvisorio: il controllo dai risultati ufficiali Apex lo corregge se cambia (reclami/penalità).
   try{
     const mh=ss.match(/HEATS?\s+([A-D])\s*-\s*([A-D])/);
-    if(mh&&activeRaceId){
+    // solo a manche davvero conclusa: il primo deve aver fatto tutti i giri del programma (o almeno 3 se il programma non li dice).
+    // Una partenza annullata o una bandiera rossa a inizio gara NON è un arrivo (14/11: la griglia era stata salvata come arrivo).
+    let _done=false;try{const L=apexLapInfo();_done=L.led!==null&&(L.tot?L.led>=L.tot:L.led>=3);}catch(e){}
+    // Prove pari/dispari (warm-up, libere): a fine sessione la posizione del live (ordine per miglior giro)
+    const mp=ss.match(/\b(EVEN|ODD)\b/);
+    let _pfin=why==='finish';try{if(!_pfin)_pfin=apexLapInfo().fin;}catch(e){}
+    if(!mh&&mp&&/WARM|FREE|PRACT/.test(ss)&&!/QUALIF/.test(ss)&&activeRaceId&&_pfin){
+      const day=typeof autoDayName==='function'?autoDayName():activeDay;const pk='PAR-'+String(day).toUpperCase()+'-'+mp[1];const u={};
+      snap.forEach(x=>{
+        if(!x.pos||x.pos>=999)return;const e=currentEntryList[x.num];if(!e||apexCat(e.cat)!==cat)return;
+        e.result=e.result||{};
+        if(!e.result[pk]){e.result[pk]=String(x.pos);u['races/'+activeRaceId+'/entryList/'+x.num+'/result/'+pk]=String(x.pos);}
+      });
+      if(Object.keys(u).length){update(ref(db),u);if(activeTab==='programma')renderSchedule();}
+    }
+    // Qualifiche (serie S1/S2): posizione nella serie a fine sessione
+    const mq=ss.match(/QUALIF[^S]*S\s*(\d)/);
+    if(mq&&activeRaceId&&_pfin){const qk='Q-S'+mq[1];const u={};
+      snap.forEach(x=>{if(!x.pos||x.pos>=999)return;const e=currentEntryList[x.num];if(!e||apexCat(e.cat)!==cat)return;e.result=e.result||{};
+        if(!e.result[qk]){e.result[qk]=String(x.pos);u['races/'+activeRaceId+'/entryList/'+x.num+'/result/'+qk]=String(x.pos);}});
+      if(Object.keys(u).length){update(ref(db),u);if(activeTab==='programma')renderSchedule();}}
+    // Prefinali e finale: arrivo provvisorio dal live (il server lo sostituisce con l'ufficiale), solo a gara conclusa
+    const mpf=ss.match(/PREFINAL[E]?\s+([AB])\b/),mfi=/FINAL/.test(ss)&&!/PREFINAL/.test(ss);
+    if((mpf||mfi)&&activeRaceId&&_done){const fk=mpf?'PF-'+mpf[1]:'FIN';const u={};
+      snap.forEach(x=>{if(!x.pos||x.pos>=999)return;const e=currentEntryList[x.num];if(!e||apexCat(e.cat)!==cat)return;e.result=e.result||{};
+        if(!e.result[fk]){e.result[fk]=String(x.pos);u['races/'+activeRaceId+'/entryList/'+x.num+'/result/'+fk]=String(x.pos);}});
+      if(Object.keys(u).length){update(ref(db),u);if(activeTab==='programma')renderSchedule();}}
+    if(mh&&activeRaceId&&_done){
       const pair=[mh[1],mh[2]].sort().join('-');const u={};
       snap.forEach(x=>{
         if(!x.pos||x.pos>=999)return;const e=currentEntryList[x.num];if(!e||apexCat(e.cat)!==cat)return;
@@ -4658,7 +4685,7 @@ window.setLtLast=setLtLast;
 let ltPre=null,ltPreAt=0;
 // "Ultima gara" scatta SOLO quando nella griglia arrivano piloti diversi (la griglia nuova sostituisce i miei),
 // non all'arrivo né al cambio del nome sessione. Il nome della sessione è quello attivo alla partenza.
-let ltCurLabel='';
+let ltCurLabel='',ltGridNew=false,ltTitleAt=0;
 function ltGridNums(root){const head=root.querySelector('tr[data-id="r0"]');let nc='4';
   if(head)head.querySelectorAll('td[data-type]').forEach(td=>{if(td.getAttribute('data-type')==='no')nc=(td.getAttribute('data-id')||'').replace('c','');});
   const out=new Set();root.querySelectorAll('tr[data-id]').forEach(r=>{const id=r.getAttribute('data-id');if(id==='r0')return;const c=r.querySelector('[data-id="'+id+'c'+nc+'"]');const n=c?c.textContent.trim():'';if(n)out.add(n);});return out;}
@@ -4669,7 +4696,9 @@ function ltOnGrid(v){
     let same=0;newN.forEach(n=>{if(oldN.has(n))same++;});
     if(newN.size&&same/Math.min(oldN.size,newN.size)>=0.5)return; // stessi piloti (aggiornamento o ripartenza): niente foto
     const key=ltCurLabel||apexGridSess;const snap=ltSnapshot(true,key);
-    ltCurLabel='';
+    ltCurLabel='';ltGridNew=true;
+    // la griglia vecchia sta per sparire: registra l'arrivo della sessione finita finché i dati sono ancora suoi
+    try{if(apexGridSess===apexState.cat+'|'+apexState.sess)apexEvaluate('change');}catch(e){}
     if(snap&&snap.rows&&snap.rows.length&&!(ltLast&&ltLast.key===snap.key&&ltLast.race===snap.race&&Math.abs(ltLast.at-snap.at)<60000)){ltLast=snap;try{localStorage.setItem('rt_ltlast',JSON.stringify(ltLast));}catch(e){}}
   }catch(e){}
 }
@@ -4860,15 +4889,17 @@ function apexParse(txt){
   txt.split('\n').forEach(line=>{
     const p=line.split('|');const k=p[0];const v=p.slice(2).join('|');
     if(k==='dyn1'||k==='dyn2'){apexDyn[k]={type:p[1]||'text',val:v,at:Date.now()};renderApexDyn();return;}
-    if(k==='grid'){ltOnGrid(v);apexGrid.innerHTML=v;apexGridSess=apexState.cat+'|'+apexState.sess;apexGridDirty();return;}
+    if(k==='grid'){ltGridNew=false;ltOnGrid(v);apexGrid.innerHTML=v;
+      // griglia con piloti nuovi arrivata PRIMA del nome della sessione nuova: non attribuirla alla sessione vecchia
+      apexGridSess=(ltGridNew&&Date.now()-ltTitleAt>20000)?'':apexState.cat+'|'+apexState.sess;apexGridDirty();return;}
     const mc=k.match(/^r(\d+)c(\d+)$/);
     if(mc){const el=apexGrid.querySelector('[data-id="'+k+'"]');if(el){el.className=p[1]||'';el.innerHTML=v;apexGridDirty();}return;}
     if(/^r\d+$/.test(k)&&p[1]==='#'){const row=apexGrid.querySelector('tr[data-id="'+k+'"]');if(row){row.setAttribute('data-pos',p[2]);apexGridDirty();}return;}
-    if(k==='title1'){if(apexState.cat!==v){const _rg=ltOnTitle();if(apexState.sess&&apexState.start){apexEvaluate('change');apexState.start='';}apexState.cat=v;if(_rg)apexGridSess=apexState.cat+'|'+apexState.sess;changed=true;}}
+    if(k==='title1'){if(apexState.cat!==v){const _rg=ltOnTitle();if(apexState.sess&&apexState.start){apexEvaluate('change');apexState.start='';}apexState.cat=v;ltTitleAt=Date.now();if(_rg||apexGridSess==='')apexGridSess=apexState.cat+'|'+apexState.sess;changed=true;}}
     else if(k==='title2'){if(apexState.sess!==v){const _rg2=ltOnTitle();
       // cambio sessione: le partenze già viste appartengono alla sessione precedente
       if(apexState.sess){apexEvaluate('change');apexIgnore=new Set(apexSeen);}
-      apexState.sess=v;if(_rg2)apexGridSess=apexState.cat+'|'+apexState.sess;apexFinished='';clearTimeout(apexEvalT);apexState.start='';apexState.red='';changed=true;}}
+      apexState.sess=v;ltTitleAt=Date.now();if(_rg2||apexGridSess===''||(ltGridNew&&apexGridSess.split('|')[1]!==v))apexGridSess=apexState.cat+'|'+apexState.sess;apexFinished='';clearTimeout(apexEvalT);apexState.start='';apexState.red='';changed=true;}}
     else if(k==='com'){
       // ultima partenza registrata: <b>10:43</b><span data-flag="green"></span>START
       const all=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*data-flag="green"[^>]*><\/span>\s*START/gi)].map(x=>x[1]).filter(t=>!apexIgnore.has(t));
@@ -4968,7 +4999,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1210';
+const APP_BUILD='2026-11-14-1235';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
