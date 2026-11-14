@@ -1,22 +1,73 @@
 {
   "_nota": "Catalogo organizzazioni e live timing del Race Tracker (14/11/2026). Si modifica qui, non nel codice. Ordine di scelta del live: 1) URL scritto nella gara 2) circuito riconosciuto (circuitLive) 3) default dell'organizzazione. apexPorts: porta del live Apex per nome (il socket usa porta+3).",
   "orgs": {
-    "ACI":       {"label": "ACI Karting", "liveTiming": "https://www.apex-timing.com/live-timing/wsk/index.html"},
-    "WSK":       {"label": "WSK", "liveTiming": "https://www.apex-timing.com/live-timing/wsk/index.html"},
-    "ROK":       {"label": "ROK Cup", "liveTiming": ""},
-    "IAME":      {"label": "IAME", "liveTiming": ""},
-    "ROTAX":     {"label": "Rotax MAX", "liveTiming": ""},
-    "FIA":       {"label": "FIA Karting", "liveTiming": ""},
-    "TROFEI":    {"label": "Trofei", "liveTiming": ""},
-    "COTF":      {"label": "Champions of the Future", "liveTiming": ""},
-    "EASYKART":  {"label": "Easykart", "liveTiming": ""},
-    "TILLOTSON": {"label": "Tillotson T4", "liveTiming": ""},
-    "BNL":       {"label": "BNL Karting", "liveTiming": ""},
-    "ESTERO":    {"label": "Estero", "liveTiming": ""}
+    "ACI": {
+      "label": "ACI Karting",
+      "liveTiming": "https://www.apex-timing.com/live-timing/wsk/index.html"
+    },
+    "WSK": {
+      "label": "WSK",
+      "liveTiming": "https://www.apex-timing.com/live-timing/wsk/index.html"
+    },
+    "ROK": {
+      "label": "ROK Cup",
+      "liveTiming": ""
+    },
+    "IAME": {
+      "label": "IAME",
+      "liveTiming": ""
+    },
+    "ROTAX": {
+      "label": "Rotax MAX",
+      "liveTiming": ""
+    },
+    "FIA": {
+      "label": "FIA Karting",
+      "liveTiming": ""
+    },
+    "TROFEI": {
+      "label": "Trofei",
+      "liveTiming": ""
+    },
+    "COTF": {
+      "label": "Champions of the Future",
+      "liveTiming": ""
+    },
+    "EASYKART": {
+      "label": "Easykart",
+      "liveTiming": ""
+    },
+    "TILLOTSON": {
+      "label": "Tillotson T4",
+      "liveTiming": ""
+    },
+    "BNL": {
+      "label": "BNL Karting",
+      "liveTiming": ""
+    },
+    "ESTERO": {
+      "label": "Estero",
+      "liveTiming": ""
+    }
   },
   "circuitLive": [
-    {"match": "lonato|south\\s*garda", "url": "https://www.apex-timing.com/live-timing/southgardakarting/index.html"},
-    {"match": "pista\\s*azzurra|jesolo", "url": "https://www.apex-timing.com/live-timing/pista-azzurra/index.html"}
+    {
+      "match": "lonato|south\\s*garda",
+      "url": "https://www.apex-timing.com/live-timing/southgardakarting/index.html"
+    },
+    {
+      "match": "pista\\s*azzurra|jesolo",
+      "url": "https://www.apex-timing.com/live-timing/pista-azzurra/index.html"
+    },
+    {
+      "match": "algarve|portim",
+      "url": "https://www.apex-timing.com/live-timing/korridas/index.html"
+    }
   ],
-  "apexPorts": {"southgardakarting": 7440, "wsk": 7430, "pista-azzurra": 8070}
+  "apexPorts": {
+    "southgardakarting": 7440,
+    "wsk": 7430,
+    "pista-azzurra": 8070,
+    "korridas": 7630
+  }
 }
