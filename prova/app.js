@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-14-1610';
+var RT_JS_BUILD='2026-11-14-1620';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3812,6 +3812,12 @@ function riskData(){
   return out;
 }
 /* gare che mancano a un pilota e prossima gara dal programma */
+function riskSafeBlock(d,esc){
+  const sf=d.filter(x=>!x.none&&x.status==='safe').sort((a,b)=>String(a.cat).localeCompare(String(b.cat))||a.rank-b.rank);
+  if(!sf.length)return'';
+  return'<details style="margin-top:14px"><summary style="cursor:pointer;font-size:12px;font-weight:800;letter-spacing:1px;color:var(--text4);padding:8px 0">NON A RISCHIO · '+sf.length+' piloti</summary>'
+    +sf.map(x=>'<div style="display:flex;gap:10px;align-items:baseline;font-size:13px;color:var(--text3);padding:5px 2px;border-top:1px solid var(--border)"><span style="color:#22c55e;font-weight:900;min-width:34px">'+x.rank+'°</span><span style="flex:1">#'+esc(x.num)+' '+esc(x.name)+'</span><span style="color:var(--text4);font-size:11px">'+esc(x.cat)+'</span></div>').join('')+'</details>';
+}
 function riskLeftTxt(x){const h=(x.heatsLeft||[]);const p=[];if(h.length)p.push(h.length===1?'manche '+h[0]:h.length+' manche ('+h.join(', ')+')');if(!x.pfDone)p.push('prefinale'+(x.pf?' '+x.pf:''));return p.join(' + ');}
 function riskNext(x){
   const h=x.heatsLeft||[];
@@ -3859,7 +3865,10 @@ function renderRiskList(){
     +cats.map(cat=>{const xs=d.filter(x=>x.cat===cat);const c0=xs[0];
       const head='<div class="set-sec" style="display:flex;align-items:center;gap:8px">'+esc(cat)+' <span style="font-weight:700;color:var(--text4)">· '+(c0.cut?'in finale i primi '+c0.cut:'nessuna eliminazione')+' · '+c0.n+' piloti</span>'+(isDelayAdmin()?'<button onclick="setRiskCut(\''+escAttr(cat)+'\')" style="margin-left:auto;min-height:36px;padding:0 10px;border-radius:8px;border:1px solid var(--border2);background:none;color:var(--text3);font-weight:800;cursor:pointer">TAGLIO</button>':'')+'</div>';
       if(c0.none)return head;
-      return head+xs.filter(x=>!x.none).sort((a,b)=>({out:0,risk:1,safe:2}[a.status]-{out:0,risk:1,safe:2}[b.status])||a.rank-b.rank).map(x=>{
+      /* 14/11 16:15 (Andrea): i verdi (non a rischio) non sporcano la lista: tutti insieme in fondo, chiusi */
+      const xr=xs.filter(x=>!x.none&&x.status!=='safe');
+      if(!xr.length)return head+'<div style="font-size:12px;color:var(--text4);padding:4px 0 10px">Nessun tuo pilota a rischio.</div>';
+      return head+xr.sort((a,b)=>({out:0,risk:1,safe:2}[a.status]-{out:0,risk:1,safe:2}[b.status])||a.rank-b.rank).map(x=>{
         /* 14/11 15:35 (Andrea: testi poco chiari): si dice per COSA rischia (finale), quali gare mancano e la prossima con orario */
         const nx=riskNext(x);const many=x.left>1;
         const t=x.status==='out'?(x.left?'Fuori dalla finale anche vincendo (stima)':'Fuori dalla finale (stima)')
@@ -3867,7 +3876,7 @@ function renderRiskList(){
           :'Rischia la <b>FINALE</b>: deve arrivare almeno <b>P'+x.need+'</b> '+(many?'di media nelle '+x.left+' gare che mancano':nx.art);
         const sub=(x.left?'Manca: '+riskLeftTxt(x)+(nx.when?' · prossima '+nx.label+' '+nx.when:''):'Gare finite')+' · '+x.pts+' punti';
         return'<div class="card-inner al-row" style="border-left:4px solid '+col[x.status]+'"><div class="al-time" style="font-size:18px;font-weight:900">'+x.rank+'°</div><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(x.num)+' '+esc(x.name)+'</div><div style="font-size:13px;color:var(--text2);margin-top:2px">'+t+'</div><div style="font-size:11px;color:var(--text4);margin-top:2px">'+sub+'</div></div></div>';}).join('');
-    }).join('');
+    }).join('')+riskSafeBlock(d,esc);
 }
 function toggleAlertLog(){alertLogOpen=!alertLogOpen;renderAlertLog();}
 window.toggleAlertLog=toggleAlertLog;
