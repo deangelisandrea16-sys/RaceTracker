@@ -1,0 +1,8 @@
+# Netlify: solo per la copia di prova (racetracker-prova.netlify.app). L'app vera resta su GitHub Pages.
+[build]
+  publish = "."
+  command = ""
+[[redirects]]
+  from = "/"
+  to = "/kart_staging.html"
+  status = 302
