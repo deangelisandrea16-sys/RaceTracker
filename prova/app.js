@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-14-1640';
+var RT_JS_BUILD='2026-11-14-1700';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1005,6 +1005,10 @@ function switchRace(raceId){
   localStorage.setItem('rt_race',raceId);
   updateRaceHeader();
   listenRaceData(raceId);
+  /* FIX 14/11 16:55: cambiando gara il live della gara precedente (altro circuito) restava collegato e i suoi
+     numeri venivano confrontati con i piloti della nuova gara → falsi "USCITO". Ora si scollega e si ricollega subito. */
+  try{if(apexWs){apexWs.onclose=null;apexWs.onmessage=null;apexWs.close();}clearTimeout(apexRetry);}catch(e){}
+  try{apexWs=null;apexWsKey='';apexGrid.innerHTML='';apexState={cat:'',sess:'',start:'',red:'',at:0};apexConnect();}catch(e){}
 }
 
 function updateRaceHeader(){
@@ -3959,7 +3963,7 @@ function ltMineNums(){return new Set(pilots.map(p=>String(p.num)));}
 function ltNameOf(no){const p=pilots.find(x=>String(x.num)===String(no));return p?p.name:'';}
 function ltXSpan(r){return'<span class="lt-x'+(r&&r.t==='so'?' so':'')+'">✕</span>';}
 function ltRetOf(no,sk){return ltRet[(sk||(apexState.cat+'|'+apexState.sess))+'|'+no]||null;}
-function ltRetAlert(no,t){try{if(!ltMineNums().has(String(no)))return;const sk=apexState.cat+'|'+apexState.sess;
+function ltRetAlert(no,t){try{if(!ltMineNums().has(String(no)))return;if(String(apexWsKey).split(':')[0]!==apexLiveName())return; /* live di un'altra gara: nessun avviso */const sk=apexState.cat+'|'+apexState.sess;
   rtAlert('ritiri|'+activeRaceId+'|'+sk+'|'+no,'<i class="ic ic-redflag"></i> #'+no+' '+ltNameOf(no)+' '+(ltIsRace()?'USCITO':(t==='ss'?'FERMO IN PISTA':'AI BOX')),apexState.cat+' · '+apexState.sess);}catch(e){}}
 function ltRetBadge(r){if(!r)return'';const race=r.race!==undefined?r.race:ltIsRace();
   if(race||r.t==='so')return''; // 14/11/2026: in gara basta la croce rossa nella posizione, niente pillola USCITO
