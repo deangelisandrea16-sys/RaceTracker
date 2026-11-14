@@ -4022,7 +4022,12 @@ function getCurrentSlotIndex(slots){
   /* 14/11/2026: la sessione caricata nel live (escono dalla pregriglia, giri di riscaldamento) e' ORA anche prima del verde.
      Solo per oggi; finita la sessione nel live, non si torna indietro rispetto all'orologio. Il ritardo resta calcolato al verde. */
   try{
-    if(apexWsKey&&apexState.sess&&typeof autoDayName==='function'&&activeDay===autoDayName()){
+    /* FIX 14/11 15:20 (Andrea: ORA scattata ben prima dell'uscita dalla pregriglia): il cronometrista carica la sessione
+       nel live molto prima. Ora il live vale solo se la sessione e' partita (verde) o se la maggior parte dei kart
+       di QUESTA sessione e' in pista (uscita pregriglia/giri di riscaldamento). Altrimenti orologio + ritardo. */
+    const _S=(apexGridSess===apexState.cat+'|'+apexState.sess&&typeof ltStaCounts==='function')?ltStaCounts():null;
+    const _moving=!!apexState.start||!!(_S&&_S.run>0&&_S.run>=_S.inn);
+    if(_moving&&apexWsKey&&apexState.sess&&typeof autoDayName==='function'&&activeDay===autoDayName()){
       const m=apexMatchSlot();
       if(m&&m.slot){const li=slots.findIndex(x=>x&&x.time===m.slot.time&&canonCat(x.cat)===canonCat(m.slot.cat)&&x.type===m.slot.type);
         if(li>=0)return apexFinished?Math.max(li,clockIdx):li;}
@@ -5218,7 +5223,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1645';
+const APP_BUILD='2026-11-14-1530';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
