@@ -4765,8 +4765,11 @@ function renderApexDelay(){
   const d=m.delay;const lbl=(d>0?'+':'')+d+' min';
   const same=d===scheduleDelay;
   const key=apexState.cat+'|'+apexState.sess+'|'+apexState.start;
-  if(apexAuto&&!same&&Math.abs(d)<=120&&apexLastApplied!==key){apexLastApplied=key;setDelay(d,true);return;}
+  // salto di oltre 20 min rispetto al ritardo attuale = probabile sessione ripetuta (es. dopo bandiera rossa) o fuori programma: niente automatico
+  const jump=Math.abs(d-(scheduleDelay||0))>20;
+  if(apexAuto&&!same&&!jump&&Math.abs(d)<=120&&apexLastApplied!==key){apexLastApplied=key;setDelay(d,true);return;}
   box.innerHTML=head+'<div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">'
+    +(jump&&!same?'<div style="width:100%;color:#fbbf24;font-weight:800"><i class="ic ic-wait"></i> Salto di '+Math.abs(d-(scheduleDelay||0))+' min: sessione ripetuta o fuori programma? Non applicato in automatico</div>':'')
     +'<span>Previsto '+m.slot.time+' → <b style="color:'+(d>0?'#f87171':d<0?'#60a5fa':'#4ade80')+'">'+(d===0?'in orario':lbl)+'</b></span>'
     +(same?'<span style="color:#4ade80">✓ applicato</span>':(isDelayAdmin()?'<button onclick="setDelay('+d+')" style="padding:5px 10px;border-radius:7px;border:none;background:#22c55e;color:#000;font-weight:900;font-size:11px;cursor:pointer;font-family:inherit">APPLICA '+lbl+'</button>':''))
     +(isDelayAdmin()
@@ -4783,7 +4786,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-0930';
+const APP_BUILD='2026-11-14-0940';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
