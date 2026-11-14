@@ -2374,6 +2374,15 @@ window.runFirebaseTest=runFirebaseTest;
 // ══════════════════════════════════════
 // TAB GARE
 // ══════════════════════════════════════
+// Miniature dei circuiti (14/11/2026): sagoma della pista come icona nella scheda gara. Solo mappe reali, niente inventate.
+const CIRCUIT_MAPS=[
+  {re:/lonato|south\s*garda/i, img:'data:image/webp;base64,UklGRvALAABXRUJQVlA4WAoAAAAQAAAAfwAAfwAAQUxQSIQLAAAB8IZtu2m7trU9pZTaEdu2bTsZDIfCodgYioZjG4ftZNjImLFtDnuM7lZ9H0erpZRWezD+zoiAKMlq2AaktLWxKwt4PJw/oAde/++//JcI45w9yEeEfCdDsAd0ElHBUqVyUFS5wR884RQ3/sS/lvXr/2Y8nF86wB60mes7qPrney+UIiIhGAtiUQhD3PexwHiuQ7BtF3BMywWQ/vmgojHXZhj3c1IIeg+2D5g+ANiWAyBp2yPFshIZxZo88txjjYvI7rlfTQU9DMfDN4+UrvLEgjMeAEc6kPbjpUs30gEAqaeW9K+b6741NWiVb+GqfCuqNuKLNOlyF5J6tmV7AIDf9s3rWyu7vFWGuJ9MOX0NE5MpgXNhUFRLDfw0A4Dvamxdy7SloMBP30x/umpWus8uFZdgowsTpEOd8mOPpkK+6vrZaxkAAMdUTP0fPnq7R51CGlN2zyEv6y9w0YwCtNMeKFK7WeeenRsXMUiUeHjCx3d8xTRiyStIPrPhlY4l2H3gAU7F0uG7FYjrkcCIvbzEqk9O+/QnyGFgRpQwyLiw/ZWOCkbcM3gSVNv3kJSfmOpIxqISVRnyWAB+hhwU2Wo9NGLtySQ1FpXcSD23/VXZA+weSRs4uB0nC9Mv3dC5UzJVPFOoxZjN5+Sw9DSm6Re29Ysjfm/u1Q8WTsj340StF+0/fmL/muFNC2qzixlCNVUiokjbEetie+BAXuL3RMYhgvdJSDPvDqiadGLNuLaldNmgWQFTw4AKtRyx7vi/igcsG8fzc3YvZEZU1pIRzAKn4JiOlF4OACBy6f03OldKyDN9dMz0YhoPFGwTjcVkALCwU/NDCHmD2N04vDUq06LCeI5TsAGkpGrSS97Tm3eADeWNmMCvPJjigZFH4HnpBZUbcF1eZ/oUpy9gYkRUBK2B5ZvLWhUu3PDFpQf/kM75lgQ0rg/r6gdTuiuYywxDsJhhkDcDnl9PvlZQjx2nzh/ZNrZx7syfYuwsLDxBBqdqvut5nUjR3A36zvv6B1/ygPvDTdkF/o/fzOlXP3cI4GcJ7GHX9R0ZvgyaCkV/+3R86/xaSsl4CET7CQ5akDBoCiLYS/GCBUElP1DWKt3e3n1V4gSebZqyKf7Yv2xwEyUveQBQIo7y3obtX4tnkivfgm15vmtGpHz8+5t3Hi+quCuAlliSPxVAVeKMjsDGI9zQRjaX97fFn0g7KtvaavVB0qlNL3cqE09KCn4L10EXEtHJasL1ABmQLDmDUg7O7BGcylKJKBZzqOr7SC9OnHL/A6QUiAEdMuYyqrHpcWrUf963P0MtgZYnP9XNT2f0at/hyYW/wrMxhYRk9CUsfF6rYq2nlp2KSJsVsZVTw685XwZhIHSnmsDBj4kkqBZcHA+H3bqtyFbz6Smf3nJUuDNdaNS1sYQMaXaB45rlSNIyT805mCKfsiDrqS6VhAwNknSFhbNBrHaBie0kKNwQXBcG8RW6vbnnSgRqITZtW+Il25hgQVjlvOXbmE7xKo+hoo+/s09CR8+0IyddwL60oX91roTgSJj4krhB/RHBdDIyS5E1sViy3ah1R/+xNB/WXLlvM2g0LFxK5EzZMTmDCraf+NmfPmDdcCVWCf/8mkelSvkGIthIhkETozJSkcyaaoA/X+nWw5Z+dPLUtxsGVyBiCo3zTfTXr58pJTNf1ReSlHIpZ/CerMRoVVTmBjI9KqPCChdCcBbb1GBhgpNRviT4VikZX0KcanIt6ZtdP8uAajn4OiunD+THNWhKaGGGppbwUC4wBFPDQbJuDBdHdekjJArDVDqVWIwoR5PRO29JB7CQaB9M9MnMBw9cXKxZy5Y1syqN8V2gMTY+JKHLWB1IE3G1xU6sO+48PC+tWNxVOHgkgN2xURnNYggL1lpi/Ok0APh+fc+SpGBGpqQ1LKwiQ1kFNR25dNHgVoU1ThBMrVQF/vE9tM39K3y/ZnDZC34E6ymBx7p3/WVJAJQWIO27t1pJrUdAdDMlS2QRVGU/JE05vWFc+2J6JsUNOgsX7UulAU5p4pzqw/VTy8u+Ve5tdP7MByyl/JuW1HrsHlZZu/7YwlpFZakknGr/AdeKRFSCenr9Kx1KCnl98Ub+ZPhoVcsB/slDjDh9BQu3R5QltfPPP+wc4Jse8Ps36/ZekdHTAeCcW9SjtObaAN80mijB5zKJRrGyf8DxFZBWTSNX90zqXDEoVwPg4N/C7eHiurRLrEIyHCBj/7ut8xBRuem/AY4J4ECfYB1Gw/HfpADwTRMAzPObx3Uonyc+xKHViHhzAzFoIWzg2qZtp5IVuIkolcK59dG0pcm+7X9B7aJyI07OkZZpsCypsH+x+rAJ2DaQsbm1zFwkttt98XmpM1aKiPP37Uvnv/zyk1WrVr09cdKg3n36Tj0J30E7EozHia98C4uCnSnccuTKo38rRMo0HchLcNGcathAeiEpfgQ1uqLxLWA5wI/TgkBUGIuELaxa/+2/SmEodT9h1LOxmuSs2AcHdShBBekWg1ce/Uu+1jYjEQsYSaLwv3DRQc2THMO+TJLOSXtzZkjuoDzGQE+JkrWa/MUvUNT3groXUdUGNgRZlLPVR90PR6UxJRhCaEA6b73n53+t0IfIEBLEj3mW/60h47TUcHZdcDwDwL+fdOdERgioVUIgR+2+sz859+tvGY6LGPrbpOjkxS7IjBELldZUb5q95tMzFi96s6qEjs/DdvGekAeTn7Nk52eaB7wu9PsvpunBsmUvVqZc02Ytnu7Zc+SE8TNWLp/weJDDgtbDcT0APi6uH928iA72FPqgwiIJvgqOg73RXzW+VRGfhaoyQTOooQChoY+zKqbrK2GhwN5otUnnGoxQ1k+rYNvYq+8aeZiORegLuQb5GeOcC6EDHmm9gtbB0RAS0/LUJn1yl0rx2vesyhKC4WBfrkx1jdIyC9Tr1vOll0d2lZBRAbuAEHDGYuCvEKUzPBnwfD8m4ri3vpj7XOMCAczFGI6NwzkYz8xsM+9EEpR82T+xnoYehkDfIE9XwJN6JRdjaw5ZczJJbaFUxPnnu2eIhRgfi9BDUOfDMlxYpoJaV7/duXHmrNFDuz/Somb5gvljhGDuQRE/dY8N2N4PCVJT0GzYyiN/qo1DRIqDlTzEkP5PyDlZaqzVBHctC3p1U/+9eW3//r2bF06Z2L9vxx43YGMWlV/tAhMoXu2P89TpN//rH+UQdGwbmxinMINCDBZHU+BK6BK5vf/bbw/8KYGrjHSmZbuhwNfH5p5lqfSKt6UM4lzbx3WZvPNsCuBbAdkKcbNPcpGImepx9AZsD7g6s1PJeAk6O6+9FRvrHdvSbITlHUqVCMKO8e3LCg1F4DqgKNLzmm9575OgEONILjJiEtsecF3c7i1FEJfJfZYWfYdOnLVw5+4jR678kJRhI5b+ajoKV7Eub32lg/btnMrZW/kOLjJiFOLkkbwkZY+Cq1V67ILv+n8W13EtJvSu4QkFipat16Jrj1GjZy/Y+N6+kxduK5faaoFNv7h1bJtiWuhNSKjgerjBiVGYXy81lJZhlG47bOX+nz0ArofHKT7GGlXQYWEKA48fsP3DqR/d8dRc15CuEU2LkKITYfr7pBiP/asDd9OACes+vG4qu2fZwHOZaYcYYzrk1XYniVWenKUUZ0+iGjL+b1/Qv2nVjosivoUZsR+GcVoATwPYjoIQ+OFxEnf7CzSuRHjO+s8vOvS3soGRGG0y0mswTiHGeMC2LFODkEnnvxyT9y7PEC8q8zUZtPK7y6ZiGrFc37EspLchHq7F6nQdsprXP57Vp2FBIlLnvTFVAYeXfmzSBzcczcedFmGfxqDcr+w7eXDdmNalDSK6x1+ChXiBE1e+y6Tt535N/eXw5AIkMlVhtV3SffTlltBgSZFsRLFrfCxSwYxY36zcf6bMYA/0F8yM0QOv//df/lOEAFZQOCBGAAAAUAYAnQEqgACAAD4xGItEIiGhEEQAIAMEtLdwukgAJ7bEXiCo57Yi8QVHPbEXiCo57Yi8QVHPbEXiCbAA/v/WWAAAAAAAAA=='}
+];
+function circuitMapHtml(r,active){
+  const t=((r&&r.circuit)||'')+' '+((r&&r.name)||'');
+  const c=CIRCUIT_MAPS.find(x=>x.re.test(t));if(!c)return'';
+  return'<span class="race-map" style="flex-shrink:0;width:46px;height:46px;border-radius:10px;background:var(--bg3);color:'+(active?'var(--rt-orange,#ff5a1f)':'var(--text2)')+';display:flex;align-items:center;justify-content:center"><span style="width:42px;height:42px;background:currentColor;-webkit-mask:url('+c.img+') center/contain no-repeat;mask:url('+c.img+') center/contain no-repeat"></span></span>';
+}
 function renderGare(){
   const el=document.getElementById('gare-content');
   const raceIds=Object.keys(races);
@@ -2425,9 +2434,9 @@ function renderGare(){
 
       html+='<div class="race-card'+(isActive?' active-race':'')+'" id="race-card-'+idx+'" onclick="switchRaceAndRender(\''+id+'\')">'
         +'<div style="display:flex;justify-content:space-between;align-items:flex-start">'
-        +'<div><div class="race-name">'+r.name+(isActive?'<span class="race-badge">ATTIVA</span>':'')+'</div>'
+        +'<div style="display:flex;gap:10px;align-items:flex-start;min-width:0">'+circuitMapHtml(r,isActive)+'<div><div class="race-name">'+r.name+(isActive?'<span class="race-badge">ATTIVA</span>':'')+'</div>'
         +'<div class="race-meta">'+(r.circuit||'')+(dateStr?' · '+dateStr:'')+'</div>'
-        +'<div class="race-meta" style="margin-top:2px">'+pilotCount+' miei piloti · '+entryCount+' in entry list</div></div>'
+        +'<div class="race-meta" style="margin-top:2px">'+pilotCount+' miei piloti · '+entryCount+' in entry list</div></div></div>'
         +(isOngoing?'<span style="font-size:9px;font-weight:800;color:#22c55e;border:1px solid #22c55e;padding:2px 8px;border-radius:4px;white-space:nowrap">IN CORSO</span>':'')
         +'</div>'
         +'<div style="display:flex;gap:6px;margin-top:10px">'
@@ -5155,7 +5164,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1440';
+const APP_BUILD='2026-11-14-1505';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
