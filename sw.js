@@ -37,7 +37,9 @@ self.addEventListener('fetch', function(e){
     return;
   }
   if(!cacheable(req))return;   // tutto il resto (Firebase, Apex, ecc.) va in rete normalmente
-  e.respondWith(fetch(req).then(function(r){if(r&&(r.ok||r.type==='opaque')){var c=r.clone();caches.open(CACHE).then(function(ca){ca.put(req,c);});}return r;})
+  /* 14/11/2026: script e stile della copia divisa in file (prova/, app/) senza cache del browser, cosi' pagina e script restano della stessa versione */
+  var fresh=/\/(prova|app)\/[^\/]+\.(js|css)$/.test(new URL(req.url).pathname)?new Request(req,{cache:'no-cache'}):req;
+  e.respondWith(fetch(fresh).then(function(r){if(r&&(r.ok||r.type==='opaque')){var c=r.clone();caches.open(CACHE).then(function(ca){ca.put(req,c);});}return r;})
     .catch(function(){return caches.match(req).then(function(m){return m||Response.error();});}));
 });
 
