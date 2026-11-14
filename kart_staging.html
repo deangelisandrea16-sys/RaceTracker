@@ -41,6 +41,12 @@ html,body{background:#0a0a0b}
 <link rel="icon" type="image/png" sizes="32x32" href="icons/rt2-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/rt2-16.png">
 <link rel="shortcut icon" href="favicon.ico">
+<script>/* 14/11/2026: la copia di prova ha icona, nome e manifest propri (stessa icona in blu), cosi' a colpo d'occhio non si confonde con l'app vera. Stesso file: nell'app vera questo blocco non fa nulla. */
+(function(){if(location.pathname.indexOf('kart_staging')<0)return;document.title='RT PROVA';
+var q=function(s){return document.querySelector(s);};
+q('link[rel="manifest"]').href='manifest_staging.webmanifest';q('link[rel="apple-touch-icon"]').href='icons/prova-180.png';
+document.querySelectorAll('link[rel="icon"],link[rel="shortcut icon"]').forEach(function(l){l.href='icons/prova-32.png';});
+var t=q('meta[name="apple-mobile-web-app-title"]');if(t)t.content='RT Prova';})();</script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -5190,7 +5196,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1545';
+const APP_BUILD='2026-11-14-1555';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
