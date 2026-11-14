@@ -4377,14 +4377,14 @@ function apexEvaluate(why){
     const mpf=ss.match(/PREFINAL[E]?\s+([AB])\b/),mfi=/FINAL/.test(ss)&&!/PREFINAL/.test(ss);
     if((mpf||mfi)&&activeRaceId&&_done){const fk=mpf?'PF-'+mpf[1]:'FIN';const u={};
       snap.forEach(x=>{if(!x.pos||x.pos>=999)return;const e=currentEntryList[x.num];if(!e||apexCat(e.cat)!==cat)return;e.result=e.result||{};
-        const v=String(x.pos);if(ltRetOf(x.num)&&ltRetOf(x.num).t!=='so'){e.out=e.out||{};e.out[fk]=true;u['races/'+activeRaceId+'/entryList/'+x.num+'/out/'+fk]=true;}if(!e.result[fk]){e.result[fk]=v;u['races/'+activeRaceId+'/entryList/'+x.num+'/result/'+fk]=v;}});
+        const v=String(x.pos);if(ltRetOf(x.num)){e.out=e.out||{};e.out[fk]=true;u['races/'+activeRaceId+'/entryList/'+x.num+'/out/'+fk]=true;}if(!e.result[fk]){e.result[fk]=v;u['races/'+activeRaceId+'/entryList/'+x.num+'/result/'+fk]=v;}});
       if(Object.keys(u).length){update(ref(db),u);if(activeTab==='programma')renderSchedule();}}
     if(mh&&activeRaceId&&_done){
       const pair=[mh[1],mh[2]].sort().join('-');const u={};
       snap.forEach(x=>{
         if(!x.pos||x.pos>=999)return;const e=currentEntryList[x.num];if(!e||apexCat(e.cat)!==cat)return;
         e.result=e.result||{};
-        const v=String(x.pos);if(ltRetOf(x.num)&&ltRetOf(x.num).t!=='so'){e.out=e.out||{};e.out[pair]=true;u['races/'+activeRaceId+'/entryList/'+x.num+'/out/'+pair]=true;}if(!e.result[pair]){e.result[pair]=v;u['races/'+activeRaceId+'/entryList/'+x.num+'/result/'+pair]=v;}
+        const v=String(x.pos);if(ltRetOf(x.num)){e.out=e.out||{};e.out[pair]=true;u['races/'+activeRaceId+'/entryList/'+x.num+'/out/'+pair]=true;}if(!e.result[pair]){e.result[pair]=v;u['races/'+activeRaceId+'/entryList/'+x.num+'/result/'+pair]=v;}
       });
       if(Object.keys(u).length){update(ref(db),u);if(activeTab==='programma')renderSchedule();}
     }
@@ -4774,7 +4774,7 @@ function ltScanRet(){
     apexGrid.querySelectorAll('tr[data-id]').forEach(r=>{const id=r.getAttribute('data-id');if(id==='r0')return;
       const st=r.querySelector('[data-id="'+id+'c'+sc+'"]');const nn=r.querySelector('[data-id="'+id+'c'+nc+'"]');if(!st||!nn)return;
       const no=nn.textContent.trim();if(!no)return;const k=sk+'|'+no;const cl=' '+st.className+' ';
-      // 14/11/2026: chi era rientrato (IN) e poi riesce (OUT) resta segnato come "rientrato" (croce gialla): e' doppiato, non e' piu' in lotta
+      // 14/11/2026 (Andrea): IN e poi OUT in gara = RITIRATO (croce gialla), conta come uscito anche nella pillola risultati
       if(/ so /.test(cl)&&((ltRet[k]&&ltRet[k].t!=='so')||(!ltRet[k]&&late&&canMark&&ltIsRace()))){ltRan[k]=1;ltRet[k]={t:'so',at:Date.now()};}
       else if(/ (in|so|sr|su|sd) /.test(cl)){ltRan[k]=1;if(ltRet[k]&&ltRet[k].t!=='so')delete ltRet[k];}
       else if((!ltRan[k]&&!late)||!canMark)return; // non ancora uscito in pista in questa sessione: non è un ritiro
@@ -5208,7 +5208,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1630';
+const APP_BUILD='2026-11-14-1635';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
