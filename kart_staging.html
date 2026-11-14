@@ -4581,8 +4581,18 @@ let _ltRenderT=null;
 // Ritirati: colonna stato Apex (si = ai box, ss = fermo in pista; so/sr/su/sd = di nuovo in pista). Conta solo a sessione partita e prima dell'arrivo.
 const ltRet={},ltRan={};
 function ltIsRace(){return/HEAT|MANCHE|PREFINAL|FINAL|RACE|GARA/i.test(apexState.sess||'')&&!/QUALIF|PRACT|FREE|WARM/i.test(apexState.sess||'');}
+function ltScanNoLap(){ // in gara: senza posizione e "No Lap" = non ha completato la gara (vale anche a sessione finita o app aperta dopo)
+  try{if(!ltIsRace())return;const head=apexGrid.querySelector('tr[data-id="r0"]');if(!head)return;const col={};
+    head.querySelectorAll('td[data-type]').forEach(td=>col[td.getAttribute('data-type')]=(td.getAttribute('data-id')||'').replace('c',''));
+    if(!col.no||!col.rk)return;const sk=apexState.cat+'|'+apexState.sess;
+    apexGrid.querySelectorAll('tr[data-id]').forEach(r=>{const id=r.getAttribute('data-id');if(id==='r0')return;const g=c=>{const e=r.querySelector('[data-id="'+id+'c'+c+'"]');return e?e.textContent.trim():'';};
+      const no=g(col.no);if(!no)return;const rk=g(col.rk);const gap=col.gap?g(col.gap):'';
+      if(!rk&&/no\s*lap|dnf|dns|dsq|ritir/i.test(gap)){const k=sk+'|'+no;if(!ltRet[k]){ltRet[k]={t:'si',at:Date.now()};ltRetAlert(no,'si');}}});
+  }catch(e){}
+}
 function ltScanRet(){
   try{
+    ltScanNoLap();
     if(!apexState.start||apexFinished)return;
     const head=apexGrid.querySelector('tr[data-id="r0"]');if(!head)return;let sc=null,nc='4';
     head.querySelectorAll('td[data-type]').forEach(td=>{const t=td.getAttribute('data-type');const c=(td.getAttribute('data-id')||'').replace('c','');if(t==='sta')sc=c;if(t==='no')nc=c;});
@@ -5009,7 +5019,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1250';
+const APP_BUILD='2026-11-14-1255';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
