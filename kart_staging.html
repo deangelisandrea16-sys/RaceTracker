@@ -4373,7 +4373,11 @@ function watchUserSettings(){
   try{onValue(ref(db,'settings/'+currentUserId),s=>{userSettings=s.val()||{};try{document.body.classList.add('quiet');renderAll();}catch(e){}if(document.getElementById('settings-body'))renderSettings();});}catch(e){}
 }
 function teamViewMode(){const v=userSettings.teamView;return v==='highlight'||v==='both'?v:'cards';}
-function teamColor(key){const c=(userSettings.teamColors||{})[key];if(c)return c;const i=teams.findIndex(t=>t.key===key);return TEAM_PALETTE[(i<0?0:i)%TEAM_PALETTE.length];}
+// nomi simili tra una gara e l'altra (es. "AKM MOTORSPORT SRL" = "AKM MOTORSPORT"): usato SOLO per ritrovare il colore del team
+function teamNorm(k){return String(k||'').toUpperCase().replace(/[._\-,'’()]/g,' ').replace(/\b(S\s?R\s?L\s?S?|S\s?P\s?A|S\s?N\s?C|S\s?A\s?S|A\s?S\s?D|S\s?S\s?D|LTD|GMBH|BV|SL|SA|TEAM|RACING TEAM)\b/g,' ').replace(/\s+/g,' ').trim();}
+function teamColorSimilar(key){const tc=userSettings.teamColors||{};const n=teamNorm(key);if(n.length<3)return'';
+  for(const [k,c] of Object.entries(tc)){const m=teamNorm(k);if(!m)continue;if(m===n||(Math.min(m.length,n.length)>=5&&(m.startsWith(n)||n.startsWith(m))))return c;}return'';}
+function teamColor(key){const c=(userSettings.teamColors||{})[key]||teamColorSimilar(key);if(c)return c;const i=teams.findIndex(t=>t.key===key);return TEAM_PALETTE[(i<0?0:i)%TEAM_PALETTE.length];}
 function followedTeamOf(num,team){const e=(currentEntryList||{})[num]||{};const k=teamKey(team||e.team||'');return teams.find(t=>t.key===k)||null;}
 function setUserSetting(path,val){if(!currentUserId)return;const u={};u['settings/'+currentUserId+'/'+path]=val;update(ref(db),u);}
 function setTeamView(v){userSettings.teamView=v;setUserSetting('teamView',v);renderSettings();try{renderAll();}catch(e){}}
@@ -5005,7 +5009,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1245';
+const APP_BUILD='2026-11-14-1250';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
