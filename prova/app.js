@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-14-2200';
+var RT_JS_BUILD='2026-11-14-2230';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1887,6 +1887,9 @@ function openRaceSettings(raceId){
     +'<div class="form-group"><label class="form-label">Risultati Apex (link o percorso)</label>'
     +'<input class="form-input" id="rs-apex" placeholder="https://www.apex-timing.com/goracing/results.php?path=/…" value="'+(r.apexPath||'')+'">'
     +'<div style="font-size:11px;color:var(--text4);margin-top:4px">Con questo il server segue la gara da solo: entry list, gruppi, arrivi, live.</div></div>'
+    +'<div class="form-group"><label class="form-label">Pagina con i PDF dell\'entry list (facoltativo)</label>'
+    +'<input class="form-input" id="rs-elpage" placeholder="https://… (pagina con i PDF Entry List)" value="'+(r.entryListPage||'')+'">'
+    +'<div style="font-size:11px;color:var(--text4);margin-top:4px">Prima che Apex abbia i piloti, il server legge i PDF (anche scansionati): piloti segnati DA CONFERMARE.</div></div>'
     +'<div class="form-group"><label class="form-label">Premiazione poleman (se nel programma)</label>'
     +'<input class="form-input" id="rs-aw-pole" type="datetime-local" value="'+(((r.awards||{}).pole)||'')+'"></div>'
     +'<div class="form-group"><label class="form-label">Premiazione finali</label>'
@@ -2068,6 +2071,9 @@ function saveRaceSettings(raceId){
   apxPath=decodeURIComponent(apxPath||'').trim();if(apxPath&&!apxPath.startsWith('/'))apxPath='/'+apxPath;
   if(apx&&!/^\/[a-z0-9\-_]+\/\d{4}\/[^\s]+$/i.test(apxPath)){alert('Link dei risultati Apex non valido');return;}
   u['races_index/'+raceId+'/apexPath']=apxPath||null;
+  const elp=((document.getElementById('rs-elpage')||{}).value||'').trim();
+  if(elp&&!/^https:\/\//i.test(elp)){alert('La pagina entry list deve iniziare con https://');return;}
+  u['races_index/'+raceId+'/entryListPage']=elp||null;
   const awP=((document.getElementById('rs-aw-pole')||{}).value||'').trim();
   const awDopo=!!(document.getElementById('rs-aw-dopo')||{}).checked;
   const awF=awDopo?'dopo':((document.getElementById('rs-aw-final')||{}).value||'').trim();
@@ -2990,7 +2996,7 @@ function renderEntryList(){
         +'<span class="entry-num" style="'+(isMine?'color:#22c55e':'')+'">#'+p.num+'</span>'
         +'<div style="flex:1;min-width:0">'
         +'<div class="entry-name">'+(p.lastName||'')+' '+(p.firstName||'')+(isMine?' <span style="font-size:9px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i> TUO</span>':'')+'</div>'
-        +'<div class="entry-team">'+( p.team||'')+'</div>'+noteLine(p.num)+'</div>'
+        +'<div class="entry-team">'+( p.team||'')+(p.source==='ocr'?' <span title="Letto dal PDF scansionato: verra\' sostituito dai dati Apex" style="font-size:9px;font-weight:800;color:#facc15;border:1px dashed #facc15;border-radius:4px;padding:0 5px">DA CONFERMARE</span>':'')+'</div>'+noteLine(p.num)+'</div>'
         +'<div class="entry-badges">'
         +'<span style="font-size:9px;font-weight:700;color:var(--text4);padding:2px 6px;border:1px solid var(--border);border-radius:4px">'+( p.parity||autoParity(p.num))+'</span>'
         +(p.group?'<span style="font-size:9px;font-weight:900;color:#60a5fa;padding:2px 6px;border:1px solid #60a5fa;border-radius:4px">GRP '+p.group+'</span>':'')
