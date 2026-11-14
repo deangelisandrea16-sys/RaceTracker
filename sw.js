@@ -19,10 +19,10 @@ function cacheable(req){
 }
 self.addEventListener('fetch', function(e){
   var req=e.request;
-  /* 14/11/2026 (prova solo su kart_staging): rete prima ma con limite 1,2 s. Se la rete e' lenta (hotspot in pista)
+  /* 14/11/2026 (app vera e prova): rete prima ma con limite 1,2 s. Se la rete e' lenta (hotspot in pista)
      si apre subito la copia salvata e la rete continua ad aggiornarla in background; il controllo versione
      dell'app (APP_BUILD ogni minuto) ricarica da solo se nel frattempo e' uscita una versione nuova. */
-  if(req.mode==='navigate'&&new URL(req.url).origin===self.location.origin&&new URL(req.url).pathname.indexOf('kart_staging')>=0){
+  if(req.mode==='navigate'&&new URL(req.url).origin===self.location.origin){
     var net=fetch(req).then(function(r){if(r.ok&&new URL(req.url).search===''){var c=r.clone();caches.open(CACHE).then(function(ca){ca.put(req,c);});}return r;});
     e.waitUntil(net.catch(function(){}));
     e.respondWith(caches.match(req,{ignoreSearch:true}).then(function(m){
