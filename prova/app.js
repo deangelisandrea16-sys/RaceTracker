@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-14-1600';
+var RT_JS_BUILD='2026-11-14-1605';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3514,9 +3514,9 @@ function alertLog(){try{return JSON.parse(localStorage.getItem(alertKey())||'[]'
 // Preferenze notifiche per utente (Firebase notifPrefs/<utente>/<tipo> = false spegne; default acceso).
 // Le stesse chiavi le rispetta il server push.
 const NOTIF_TYPES=[['qualifiche','Pole e top 3 in qualifica'],['finali','P1–P5 in finale'],['eliminati','Eliminati e rischio finale'],['prefinali','Passati a prefinali e finale'],['riepilogo','Riepilogo serale (orari di domani)'],['entrylist','Cambi entry list (miei piloti e team)'],
-  ['ritiri','Mio pilota uscito o fermo in pista'],['rossa','Bandiera rossa con i miei piloti in pista'],['partenza','Partita una sessione con i miei piloti'],['prossima','Mio pilota in pista tra 10 minuti'],['ritardo','Ritardo cambiato di 5 minuti o più'],['correzioni','Correzioni ufficiali sui miei piloti (reclami, penalità)'],['comunicati','Comunicati e documenti ufficiali nuovi']];
+  ['ritiri','Mio pilota uscito o fermo in pista'],['rossa','Bandiera rossa con i miei piloti in pista'],['partenza','Partita una sessione con i miei piloti'],['prossima','Mio pilota in pista tra 10 minuti'],['ritardo','Ritardo cambiato di 5 minuti o più'],['correzioni','Correzioni ufficiali sui miei piloti (reclami, penalità)'],['comunicati','Comunicati e documenti ufficiali nuovi'],['promozioni','Mio pilota promosso dopo le verifiche: pole in qualifica o podio in finale']];
 // nuove (dal 14/11): spente finché l'utente non le accende
-const NOTIF_DEF_OFF=new Set(['ritiri','rossa','partenza','prossima','ritardo','correzioni','comunicati']);
+const NOTIF_DEF_OFF=new Set(['ritiri','rossa','partenza','prossima','ritardo','correzioni','comunicati','promozioni']);
 function notifTypeOn(k){if(notifPrefs.tutte===false)return false;return NOTIF_DEF_OFF.has(k)?notifPrefs[k]===true:notifPrefs[k]!==false;}
 const NOTIF_OF={quali:'qualifiche',res:'finali',elim:'eliminati',pref:'prefinali',ritiri:'ritiri',rossa:'rossa',partenza:'partenza',prossima:'prossima',ritardo:'ritardo'};
 let notifPrefs={},notifPrefsUser='';
