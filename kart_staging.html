@@ -3151,14 +3151,16 @@ function gridPos(num,slot){
 // Dopo la manche: posizione d'arrivo dai risultati Apex (entryList/{num}/result = {"A-B":"3"}), badge verde
 // Chiavi: manche "A-B"; prefinali "PF-A"/"PF-B"; finale "FIN" (scritte dal server dai documenti ufficiali Apex)
 function slotKeyOf(slot){if(!slot)return'';if(slot.type==='prefinal'){const x=String(slot.filter||'').trim().toUpperCase();return x?'PF-'+x:'';}if(slot.type==='final')return'FIN';if(slot.type!=='group')return'';const f=Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{});return f.map(x=>String(x).trim().toUpperCase()).sort().join('-');}
-// la sessione è già partita? (giorno visualizzato vs oggi, orario + ritardo). Prima della partenza si mostra sempre la griglia.
+// la sessione è già finita? (giorno visualizzato vs oggi, orario + ritardo). Prima della partenza si mostra sempre la griglia.
 function slotHasRun(slot){
   try{
     if(!slot||!slot.time)return true;
     const days=currentDays||[];const today=typeof autoDayName==='function'?autoDayName():activeDay;
     const di=days.indexOf(activeDay),ti=days.indexOf(today);if(di<0||ti<0)return true;
     if(di<ti)return true;if(di>ti)return false;
-    const now=new Date();return now.getHours()*60+now.getMinutes()>=slotMins(slot.time)+(scheduleDelay||0)+3;
+    // finita = partenza (con ritardo) + durata dal programma + 5 min di margine per la classifica
+    const d=String(slot.durLive||slot.dur||'');let m=15;const g=d.match(/(\d+)\s*giri/i),mm=d.match(/(\d+)\s*'/);if(g)m=Math.ceil(+g[1]*1.1);else if(mm)m=+mm[1];
+    const now=new Date();return now.getHours()*60+now.getMinutes()>=slotMins(slot.time)+(scheduleDelay||0)+m+5;
   }catch(e){return true;}
 }
 function gridBadge(num,slot){
@@ -4966,7 +4968,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1205';
+const APP_BUILD='2026-11-14-1210';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
