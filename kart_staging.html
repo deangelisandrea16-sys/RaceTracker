@@ -4323,7 +4323,7 @@ function apexConnect(){
   const key=name&&port?name+':'+port:'';
   if(key===apexWsKey&&apexWs&&apexWs.readyState<=1)return;
   try{if(apexWs)apexWs.close();}catch(e){}
-  apexWs=null;apexWsKey=key;apexState={cat:'',sess:'',start:'',red:'',at:0};apexSeen=new Set();apexIgnore=new Set();
+  apexWs=null;apexWsKey=key;apexState={cat:'',sess:'',start:'',red:'',at:0};apexNext=null;apexSeen=new Set();apexIgnore=new Set();
   if(!key){renderApexDelay();return;}
   try{
     apexWs=new WebSocket('wss://live-data.apex-timing.com:'+(port+3)+'/');
@@ -4951,7 +4951,7 @@ function setLtView(v){if(ltView===v)return;const d=v==='apex'?'r':'l';ltView=v;l
 window.setLtView=setLtView;
 // Classifica live ricostruita dai dati Apex, con i piloti dell'account evidenziati
 // Giro attuale / tempo rimanente come su Apex (messaggi dyn1/dyn2 del live)
-const apexDyn={};
+const apexDyn={};let apexNext=null;
 // Semaforo Apex: lg verde, lr rosso, ly giallo, lf bandiera a scacchi (fine)
 let apexLight={c:'',at:0};
 function lightInfo(){const c=apexLight.c;return({lg:{col:'#22c55e',t:'VERDE'},lr:{col:'#ef4444',t:'ROSSO'},ly:{col:'#facc15',t:'GIALLO'},lf:{col:'#ffffff',t:'FINE'}})[c]||null;}
@@ -5015,7 +5015,36 @@ function renderApexDyn(){
     +(lap?'<span style="font-size:'+(fin?'24':'22')+'px;color:'+(fin?'#fff':'var(--rt-orange)')+';font-weight:900">'+(fin?'<i class="ic ic-flag"></i> ':'')+lap+'</span>':'')
     +(t.length&&!fin?'<span style="font-size:16px;color:var(--text2)"><i class="ic ic-timer" style="color:var(--rt-orange)"></i> '+t.join(' · ').replace(/</g,'&lt;')+'</span>':'')+'</span>';
 }
-setInterval(()=>{if(activeTab==='livetiming'&&(apexDyn.dyn1||apexDyn.dyn2||apexState.sess))renderApexDyn();},500);
+/* 14/11/2026: riga PROSSIMA dal "Next" di Apex + controllo sul programma (se l'ordine e' diverso lo segnala) */
+function apexNextInfo(){
+  if(!apexNext||!apexWsKey)return null;
+  const out={cat:apexNext.cat,sess:apexNext.sess,warn:'',mine:[]};
+  try{
+    const day=typeof autoDayName==='function'?autoDayName():'';let arr=(day&&currentSchedule[day])||[];arr=Array.isArray(arr)?arr:Object.values(arr);
+    if(!arr.length)return out;
+    const same=(a,b)=>a&&b&&a.time===b.time&&canonCat(a.cat)===canonCat(b.cat)&&a.type===b.type;
+    const nm=apexMatchFor(apexNext.cat,apexNext.sess,null);
+    if(!nm||!nm.slot){out.warn='non trovata nel programma di oggi';return out;}
+    out.mine=pilotsForSlot(nm.slot).map(p=>p.num);
+    const cur=apexMatchSlot();const ci=cur&&cur.slot?arr.findIndex(x=>same(x,cur.slot)):-1;
+    if(ci>=0){const exp=arr[ci+1];if(exp&&!same(exp,nm.slot))out.warn='nel programma dopo questa c\'era '+(exp.label||exp.cat||'')+' ('+exp.time+')';}
+  }catch(e){}
+  return out;
+}
+function renderApexNext(){
+  const dyn=document.getElementById('lt-dyn');const box=document.getElementById('lt-mytable');if(!box||!box.parentNode)return;
+  let el=document.getElementById('lt-next');
+  if(!el){el=document.createElement('div');el.id='lt-next';el.style.cssText="display:none;margin:-4px 0 10px;padding:8px 14px;border-radius:10px;background:var(--bg2);font-size:12px;font-weight:700;color:var(--text3)";box.parentNode.insertBefore(el,box);}
+  if(dyn&&dyn.nextSibling!==el)dyn.after(el);
+  const n=apexNextInfo();
+  if(!n){if(el.style.display!=='none')el.style.display='none';return;}
+  const esc=x=>String(x||'').replace(/</g,'&lt;');
+  const h='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:10px;letter-spacing:1px;color:var(--text4)">PROSSIMA</span><span style="color:var(--text);text-transform:uppercase">'+esc(n.cat)+' · '+esc(n.sess)+'</span>'
+    +(n.mine.length?'<span style="color:var(--rt-orange)">'+n.mine.map(x=>'#'+esc(x)).join(' ')+'</span>':'')+'</div>'
+    +(n.warn?'<div style="margin-top:4px;color:#facc15"><i class="ic ic-bell"></i> Ordine diverso dal programma: '+esc(n.warn)+'</div>':'');
+  if(el.innerHTML!==h)el.innerHTML=h;el.style.display='block';
+}
+setInterval(()=>{if(activeTab==='livetiming'&&(apexDyn.dyn1||apexDyn.dyn2||apexState.sess||apexNext)){renderApexDyn();renderApexNext();}},500);
 // Sorpassi: freccia ▲/▼ per qualche secondo e scorrimento morbido della card (FLIP)
 const ltLastPos={},ltMoveUntil={};
 function ltMove(no,pos){
@@ -5107,6 +5136,7 @@ function apexParse(txt){
   txt.split('\n').forEach(line=>{
     const p=line.split('|');const k=p[0];const v=p.slice(2).join('|');
     if(k==='light'){apexLight={c:String(p[1]||'').trim(),at:Date.now()};try{renderApexDyn();if(ltFullOn)renderLtFull();}catch(e){}return;}
+    if(k==='msg'){const m=String(v).replace(/<[^>]*>/g,'').match(/^\s*Next\s*:\s*(.+?)\s+-\s+(.+?)\s*$/i);apexNext=m?{cat:m[1].trim(),sess:m[2].trim(),at:Date.now()}:null;try{renderApexDyn();}catch(e){}return;}
     if(k==='dyn1'||k==='dyn2'){apexDyn[k]={type:p[1]||'text',val:v,at:Date.now()};renderApexDyn();return;}
     if(k==='grid'){ltGridNew=false;ltOnGrid(v);apexGrid.innerHTML=v;
       // griglia con piloti nuovi arrivata PRIMA del nome della sessione nuova: non attribuirla alla sessione vecchia
@@ -5160,8 +5190,9 @@ function apexCat(t){
   if(/^OK\b/.test(s))return'OK';
   return normCat(s);
 }
-function apexMatchSlot(){
-  const cat=apexCat(apexState.cat);const ss=String(apexState.sess||'').toUpperCase();
+function apexMatchSlot(){return apexMatchFor(apexState.cat,apexState.sess,apexState.start);}
+function apexMatchFor(catTxt,sessTxt,startTxt){
+  const cat=apexCat(catTxt);const ss=String(sessTxt||'').toUpperCase();
   if(!cat||!ss)return null;
   const today=typeof autoDayName==='function'?autoDayName():activeDay;
   let arr=currentSchedule[today]||[];arr=Array.isArray(arr)?arr:Object.values(arr);
@@ -5179,7 +5210,7 @@ function apexMatchSlot(){
   // tra gli slot compatibili prende quello con orario più vicino alla partenza reale
   const cands=arr.filter(want);
   if(!cands.length)return null;
-  const st=apexState.start?slotMins(apexState.start.replace(':','.')):null;
+  const st=startTxt?slotMins(String(startTxt).replace(':','.')):null;
   if(st===null){const nm=new Date().getHours()*60+new Date().getMinutes()-(typeof scheduleDelay==='number'?scheduleDelay:0);cands.sort((a,b)=>Math.abs(slotMins(a.time)-nm)-Math.abs(slotMins(b.time)-nm));return{slot:cands[0],delay:null};}
   cands.sort((a,b)=>Math.abs(slotMins(a.time)-st)-Math.abs(slotMins(b.time)-st));
   const slot=cands[0];
@@ -5218,7 +5249,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1645';
+const APP_BUILD='2026-11-14-1655';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
