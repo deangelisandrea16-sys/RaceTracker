@@ -499,6 +499,13 @@ button,input,textarea,select{font-family:inherit}
 .slot-now{animation:nowglow 2.4s ease-in-out infinite}
 @keyframes nowglow{50%{box-shadow:0 0 0 1.5px var(--rt-orange),0 12px 40px -10px rgba(255,90,31,.7)}}
 .task-btn{transition:background-color .25s,color .25s,transform .12s}
+/* team evidenziati nel programma: bordo e alone del colore del team attorno al singolo pilota */
+.card-inner.tglow{outline:2px solid var(--tc);outline-offset:-2px;box-shadow:0 0 16px -4px var(--tc)}
+.tchip{font-size:10px;font-weight:900;letter-spacing:.5px;padding:2px 7px;border-radius:999px;color:#000;background:var(--tc);white-space:nowrap}
+.set-sec{margin:14px 0 6px;font-size:11px;font-weight:900;letter-spacing:1px;color:var(--text3)}
+.set-opt{display:flex;align-items:center;gap:10px;min-height:48px;padding:8px 10px;border:1px solid var(--border2);border-radius:10px;margin-bottom:6px;cursor:pointer;font-size:14px}
+.set-opt.on{border-color:var(--rt-orange);background:var(--bg3)}
+.sw-dot{width:30px;height:30px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex-shrink:0}.sw-dot.on{border-color:var(--text)}
 /* niente animazione di comparsa sulle schede: ogni aggiornamento dei dati ridisegnava la pagina e la faceva lampeggiare */
 .card,.card-inner{animation:none}
 @keyframes fadein{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:none}}
@@ -670,7 +677,7 @@ body.lt-full-open #rt-alerts,body.lt-full-open #rt-offline,body.lt-full-open .fa
     <div style="border-top:1px solid var(--border);margin:8px 0"></div>
     <button class="nav-item" onclick="toggleTheme();document.getElementById('nav-overlay').classList.remove('open')"><span class="nav-item-icon" id="theme-icon"><i class="ic ic-sun"></i></span><span id="theme-label">TEMA CHIARO</span></button>
     <button class="nav-item" onclick="document.getElementById('nav-overlay').classList.remove('open');showUserPicker()"><span class="nav-item-icon"><i class="ic ic-user"></i></span>CAMBIA UTENTE</button>
-    <button class="nav-item" onclick="document.getElementById('nav-overlay').classList.remove('open');openNotifPrefs()"><span class="nav-item-icon"><i class="ic ic-bell"></i></span>LE MIE NOTIFICHE</button>
+    <button class="nav-item" onclick="document.getElementById('nav-overlay').classList.remove('open');openSettings()"><span class="nav-item-icon"><i class="ic ic-bell"></i></span>IMPOSTAZIONI</button>
     <div class="nav-close" onclick="document.getElementById('nav-overlay').classList.remove('open')">CHIUDI</div>
   </div>
 </div>
@@ -3943,7 +3950,9 @@ function renderSchedule(){
     const ps=pilotsForSlot(slot);const isNow=idx===currentIdx;
     const awaiting=pilotsAwaitingData(slot);
     let _pf=false;try{_pf=progFilterOn();}catch(e){}
-    const tHtml=_pf?'':teamsSlotHtml(slot);
+    try{watchUserSettings();}catch(e){}
+    const _hl=teamViewMode()==='highlight';
+    const tHtml=_pf?'':(_hl?teamsHighlightHtml(slot,ps):teamsSlotHtml(slot));
     if(_pf&&!ps.length)return; // con il filtro attivo si vedono solo gli orari dei piloti filtrati
     if(slot.session&&slot.session!==lastSession){html+='<div class="session-divider">'+slot.session+'</div>';lastSession=slot.session;}
 
@@ -3980,7 +3989,8 @@ function renderSchedule(){
       var sh=p.highlight||[];
       var shCls=sh.indexOf('foto')>=0&&sh.indexOf('video')>=0?'hl-both':sh.length===1?'hl-'+sh[0]:'';
       var shIco={foto:'<i class="ic ic-camera"></i>',video:'<i class="ic ic-video"></i>',priority:'<i class="ic ic-star"></i>'};
-      html+='<div class="card-inner'+(shCls?' '+shCls:'')+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
+      var _ft=_hl?followedTeamOf(p.num,p.team):null;
+      html+='<div class="card-inner'+(shCls?' '+shCls:'')+(_ft?' tglow':'')+'"'+(_ft?' style="--tc:'+teamColor(_ft.key)+'"':'')+'><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
         +(sh.length?sh.map(function(h){return'<span class="hl-badge hl-'+h+'" style="padding:1px 5px;font-size:8px">'+(shIco[h]||'')+'</span>';}).join(''):'')
         +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,slot)+'<span class="inner-name">'+p.name+'</span>'+runChip(p.num,idx)
         +(p.group?'<span class="inner-group">GRP '+p.group+'</span>':'')
@@ -4288,6 +4298,52 @@ function openNotifPrefs(){
   renderNotifPrefs();
 }
 window.openNotifPrefs=openNotifPrefs;window.setNotifPref=setNotifPref;
+// ── IMPOSTAZIONI per account (Firebase settings/<utente>): notifiche, team nel programma, colori dei team ──
+const TEAM_PALETTE=['#a78bfa','#22d3ee','#f472b6','#34d399','#fb923c','#facc15','#60a5fa','#f87171'];
+let userSettings={},userSettingsUser='';
+function watchUserSettings(){
+  if(!currentUserId||userSettingsUser===currentUserId)return;userSettingsUser=currentUserId;userSettings={};
+  try{onValue(ref(db,'settings/'+currentUserId),s=>{userSettings=s.val()||{};try{document.body.classList.add('quiet');renderAll();}catch(e){}if(document.getElementById('settings-body'))renderSettings();});}catch(e){}
+}
+function teamViewMode(){return userSettings.teamView==='highlight'?'highlight':'cards';}
+function teamColor(key){const c=(userSettings.teamColors||{})[key];if(c)return c;const i=teams.findIndex(t=>t.key===key);return TEAM_PALETTE[(i<0?0:i)%TEAM_PALETTE.length];}
+function followedTeamOf(num,team){const e=(currentEntryList||{})[num]||{};const k=teamKey(team||e.team||'');return teams.find(t=>t.key===k)||null;}
+function setUserSetting(path,val){if(!currentUserId)return;const u={};u['settings/'+currentUserId+'/'+path]=val;update(ref(db),u);}
+function setTeamView(v){userSettings.teamView=v;setUserSetting('teamView',v);renderSettings();try{renderAll();}catch(e){}}
+function setTeamColor(k,c){userSettings.teamColors=userSettings.teamColors||{};userSettings.teamColors[k]=c;setUserSetting('teamColors/'+k,c);renderSettings();try{renderAll();}catch(e){}}
+function renderSettings(){
+  const b=document.getElementById('settings-body');if(!b)return;
+  const v=teamViewMode();
+  b.innerHTML='<div class="set-sec">TEAM NEL PROGRAMMA</div>'
+    +'<div class="set-opt'+(v==='cards'?' on':'')+'" onclick="setTeamView(\'cards\')"><input type="radio" '+(v==='cards'?'checked':'')+' style="width:20px;height:20px"> Scheda del team sotto ogni sessione</div>'
+    +'<div class="set-opt'+(v==='highlight'?' on':'')+'" onclick="setTeamView(\'highlight\')"><input type="radio" '+(v==='highlight'?'checked':'')+' style="width:20px;height:20px"> Piloti del team evidenziati col colore del team</div>'
+    +(teams.length?'<div class="set-sec">COLORI DEI TEAM</div>'+teams.map(t=>'<div style="margin-bottom:10px"><div style="font-size:13px;font-weight:800;margin-bottom:6px"><span class="tchip" style="--tc:'+teamColor(t.key)+'">'+String(t.name).replace(/</g,'&lt;')+'</span></div><div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +TEAM_PALETTE.map(c=>'<span class="sw-dot'+(teamColor(t.key)===c?' on':'')+'" style="background:'+c+'" onclick="setTeamColor(\''+escAttr(t.key)+'\',\''+c+'\')"></span>').join('')+'</div></div>').join(''):'<div style="font-size:12px;color:var(--text4)">Nessun team aggiunto in questa gara.</div>')
+    +'<div class="set-sec">LE MIE NOTIFICHE</div><div id="notif-prefs-body"></div>'
+    +'<div style="margin-top:10px;font-size:11px;color:var(--text4)">Impostazioni del profilo '+currentUserId+'.</div>';
+  renderNotifPrefs();
+}
+function openSettings(){
+  if(!currentUserId){alert('Scegli prima il tuo utente.');return;}
+  watchNotifPrefs();watchUserSettings();
+  openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Impostazioni</div><div id="settings-body"></div>');
+  renderSettings();
+}
+window.openSettings=openSettings;window.setTeamView=setTeamView;window.setTeamColor=setTeamColor;
+setTimeout(watchUserSettings,3000);
+// Piloti dei team seguiti, uno per uno con il colore del team (modalità "evidenzia")
+function teamsHighlightHtml(slot,ps){
+  const mine=new Set(ps.map(p=>String(p.num)));
+  return teamsForSlot(slot).map(({t,inSlot,waiting})=>{
+    const c=teamColor(t.key);
+    return inSlot.filter(p=>!mine.has(String(p.num))).map(p=>'<div class="card-inner tglow" style="--tc:'+c+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">'
+      +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,slot)+'<span class="inner-name">'+String(p.name).replace(/</g,'&lt;')+'</span>'
+      +'<span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span></div>'
+      +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,true)).join('')+'</div>'
+      +(teamNotes[t.key]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+teamNotes[t.key]+'</div>':'')+'</div>').join('')
+      +(waiting.length?'<div style="font-size:10px;font-weight:800;margin:4px 0 8px;color:'+c+'"><i class="ic ic-wait"></i> '+String(t.name).replace(/</g,'&lt;')+': '+waiting.length+' in attesa</div>':'');
+  }).join('');
+}
 setTimeout(watchNotifPrefs,3000);
 // Avviso (solo titolare) se il server notifiche/monitor non aggiorna serverStatus/pc da più di 5 minuti
 const SERVER_OWNER='andrea';let serverStat=null;
@@ -4807,7 +4863,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1025';
+const APP_BUILD='2026-11-14-1040';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
