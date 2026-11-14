@@ -578,6 +578,8 @@ body.big-text .content,body.big-text #lt-mytable{zoom:1.12}
 #fab-top{bottom:calc(var(--tab-h) + var(--safe-b) + 140px)!important;right:22px!important}
 #fab-bottom-piloti{bottom:calc(var(--tab-h) + var(--safe-b) + 16px)!important;right:22px!important}
 #fab-top-piloti{bottom:calc(var(--tab-h) + var(--safe-b) + 74px)!important;right:22px!important}
+#fab-bottom-live{bottom:calc(var(--tab-h) + var(--safe-b) + 16px)!important;right:22px!important}
+#fab-top-live{bottom:calc(var(--tab-h) + var(--safe-b) + 74px)!important;right:22px!important}
 
 /* Intestazione su una riga: RACE TRACKER · nome gara ........ LIVE · utente */
 .header{padding:calc(env(safe-area-inset-top) + 8px) 16px 8px!important;gap:10px}
@@ -851,6 +853,8 @@ body.lt-full-open #rt-alerts,body.lt-full-open #rt-offline,body.lt-full-open .fa
 
 <!-- TAB LIVE TIMING -->
 <div id="tab-livetiming" class="tab-content" style="display:none">
+  <button class="fab-top" id="fab-top-live" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+  <button class="fab-top" id="fab-bottom-live" onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})">↓</button>
   <div class="content" style="padding:8px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">
       <div id="live-timing-label" style="font-size:11px;font-weight:700;color:var(--text4);letter-spacing:1px"><i class="ic ic-timer"></i> LIVE TIMING</div>
@@ -2174,6 +2178,7 @@ function hideFabs(){
   const f3=document.getElementById('fab-top-piloti');if(f3)f3.classList.remove('visible');
   const f4=document.getElementById('fab-bottom');if(f4)f4.classList.remove('visible');
   const f5=document.getElementById('fab-bottom-piloti');if(f5)f5.classList.remove('visible');
+  ['fab-top-live','fab-bottom-live'].forEach(i=>{const x=document.getElementById(i);if(x)x.classList.remove('visible');});
   if(_tickTimer){clearInterval(_tickTimer);_tickTimer=null;}
   if(_ltTimer){clearInterval(_ltTimer);_ltTimer=null;}
 }
@@ -2196,6 +2201,7 @@ function showTab(tab){
   document.querySelectorAll('.tabbar-btn').forEach(b=>b.classList.toggle('active',b.getAttribute('data-tab')===tab));
   hideFabs();
   if(tab==='gare')renderGare();
+  if(tab==='livetiming'){['fab-top-live','fab-bottom-live'].forEach(i=>{const x=document.getElementById(i);if(x)x.classList.add('visible');});}
   if(tab==='piloti'){renderPilots();const ft=document.getElementById('fab-top-piloti');if(ft)ft.classList.add('visible');const fb=document.getElementById('fab-bottom-piloti');if(fb)fb.classList.add('visible');}
   if(tab==='programma'){
     autoSelectToday();scheduleNeedsScroll=true;
@@ -5099,7 +5105,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1350';
+const APP_BUILD='2026-11-14-1355';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
