@@ -2044,7 +2044,13 @@ function taskBtn(num,task,small,readonly){
 function toggleTask(num,task){
   if(!statuses[num])statuses[num]={};
   statuses[num][task]=cycleStatus(statuses[num][task]||'red');
-  saveUserField('statuses',statuses);renderAll();try{renderLtMyTable();}catch(e){}
+  saveUserField('statuses',statuses);
+  if(activeTab==='livetiming'){ // nel Live cambia solo il colore della pillola: niente ridisegno della pagina
+    const st=statuses[num][task];
+    document.querySelectorAll('button.task-btn').forEach(b=>{if(b.getAttribute('onclick')==="toggleTask('"+num+"','"+task+"')")b.className='task-btn '+st;});
+    return;
+  }
+  renderAll();
 }
 window.toggleTask=toggleTask;
 
@@ -4798,7 +4804,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-0945';
+const APP_BUILD='2026-11-14-0950';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
