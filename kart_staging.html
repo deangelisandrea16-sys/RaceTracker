@@ -1814,7 +1814,7 @@ function listenRaces(){
       const _live=Object.keys(races).find(id=>{const r=races[id]||{};return r.startDate&&r.endDate&&r.startDate<=_t&&_t<=r.endDate;});
       /* 17/10 v2 (idea di Andrea): all'apertura segue il badge IN CORSO (stessa regola: startDate<=oggi<=endDate). Solo al primo caricamento, cosi' una scelta manuale successiva resta. */
       if(_live&&_live!==activeRaceId&&!window._rtAutoPicked){ window._rtAutoPicked=true; switchRace(_live); }
-      else { window._rtAutoPicked=true; updateRaceHeader(); if(activeTab==='gare') renderGare(); }
+      else { window._rtAutoPicked=true; updateRaceHeader(); if(activeTab==='gare') renderGare(); if(initialized) bootTab(); }
     }
   },err=>{setSyncStatus('err');dlog('❌ races_index: '+err.message,'err');console.error(err);});
 }
@@ -4097,7 +4097,9 @@ function renderSchedule(){
   const fab=document.getElementById('fab-now');if(fab)fab.classList.add('visible');
   const fabTop=document.getElementById('fab-top');if(fabTop)fabTop.classList.add('visible');
   const fabBot=document.getElementById('fab-bottom');if(fabBot)fabBot.classList.add('visible');
-  if(scheduleNeedsScroll){
+  /* FIX 14/11/2026: la richiesta di scorrere a ORA si consuma solo quando la sessione ORA e' davvero disegnata
+     (prima veniva persa su un render a dati vuoti e il Programma restava in un punto a caso) */
+  if(scheduleNeedsScroll&&document.getElementById('slot-now')){
     scheduleNeedsScroll=false;
     setTimeout(()=>{const nowEl=document.getElementById('slot-now');if(nowEl)nowEl.scrollIntoView({behavior:'smooth',block:'center'});},150);
   }
@@ -4183,21 +4185,23 @@ function nowSlotKey(){
     return activeDay+'|'+getCurrentSlotIndex(arr)+'|'+scheduleDelay+'|'+new Date().toDateString();
   }catch(e){return'';}
 }
-function refreshNowHighlight(force){
+function refreshNowHighlight(force,scroll){
   const k=nowSlotKey();
   if(!force&&k===_lastNowKey)return;
   _lastNowKey=k;
   if(activeTab==='programma'){
     const ae=document.activeElement;
     if(ae&&ae.id==='prog-search')return; // non disturbare mentre scrivi nella ricerca
-    scheduleNeedsScroll=false;
+    scheduleNeedsScroll=!!scroll;
     renderSchedule();
   }
   if(document.getElementById('ov-body'))renderOverviewBody();
 }
 window.refreshNowHighlight=refreshNowHighlight;
 // Al ritorno nell'app (schermo riacceso, cambio app) aggiorna subito l'evidenziazione
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshNowHighlight(true);});
+// FIX 14/11/2026: tornando nell'app dopo almeno 30 s, il Programma torna sulla sessione ORA
+let _progHiddenAt=0;
+document.addEventListener('visibilitychange',()=>{if(document.hidden){_progHiddenAt=Date.now();return;}refreshNowHighlight(true,_progHiddenAt&&Date.now()-_progHiddenAt>30000);});
 window.addEventListener('focus',()=>refreshNowHighlight(true));
 window.addEventListener('pageshow',()=>refreshNowHighlight(true));
 startScheduleAutoRefresh();
@@ -5108,7 +5112,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1400';
+const APP_BUILD='2026-11-14-1410';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
@@ -5404,7 +5408,21 @@ function deletePilot(num){
 }
 window.deletePilot=deletePilot;
 
+/* FIX 14/11/2026: all'apertura la scheda salvata veniva mostrata prima che gare e dati fossero caricati
+   (Live senza Apex, Programma senza ORA) e restava vuota finche' non si toccava il menu.
+   Ora, appena gara + dati sono pronti (copia locale e poi dati live), la scheda viene riaperta una volta. */
+let _bootTabKey='';
+function bootTab(){
+  if(!initialized||!activeRaceId||typeof races==='undefined'||!races[activeRaceId])return false;
+  const k=activeRaceId+'|'+(window._rtLiveSeen?'L':'S');
+  if(_bootTabKey===k)return false;
+  _bootTabKey=k;showTab(activeTab);return true;
+}
+window.bootTab=bootTab;
 function renderAll(){
+  if(bootTab())return;
+  if(activeTab==='livetiming'){try{renderLtMyNums();if(activeRaceId)apexConnect();}catch(e){}}
+  if(activeTab==='gara'){try{if(activeRaceId)apexConnect();}catch(e){}}
   if(activeTab==='gare')renderGare();
   if(activeTab==='piloti')renderPilots();
   if(activeTab==='programma')renderSchedule();
