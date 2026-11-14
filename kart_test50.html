@@ -498,6 +498,10 @@ button,input,textarea,select{font-family:inherit}
 /* animazioni leggere */
 .slot-now{animation:nowglow 2.4s ease-in-out infinite}
 @keyframes nowglow{50%{box-shadow:0 0 0 1.5px var(--rt-orange),0 12px 40px -10px rgba(255,90,31,.7)}}
+/* sessione ORA: bordo verde con alone (14/11) */
+.slot-now{border-color:#22c55e!important;box-shadow:0 0 0 1.5px #22c55e,0 0 22px -4px rgba(34,197,94,.65)!important;animation:nowglowG 2.4s ease-in-out infinite}
+@keyframes nowglowG{50%{box-shadow:0 0 0 1.5px #22c55e,0 0 32px -2px rgba(34,197,94,.85)}}
+.slot-now .slot-time{color:#22c55e}
 .task-btn{transition:background-color .25s,color .25s,transform .12s}
 /* team evidenziati nel programma: bordo e alone del colore del team attorno al singolo pilota */
 .card-inner.tglow{outline:2px solid var(--tc);outline-offset:-2px;box-shadow:0 0 16px -4px var(--tc)}
@@ -505,7 +509,8 @@ button,input,textarea,select{font-family:inherit}
 .set-sec{margin:14px 0 6px;font-size:11px;font-weight:900;letter-spacing:1px;color:var(--text3)}
 .set-opt{display:flex;align-items:center;gap:10px;min-height:48px;padding:8px 10px;border:1px solid var(--border2);border-radius:10px;margin-bottom:6px;cursor:pointer;font-size:14px}
 .set-opt.on{border-color:var(--rt-orange);background:var(--bg3)}
-.sw-dot{width:30px;height:30px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex-shrink:0}.sw-dot.on{border-color:var(--text)}
+.sw-row{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px 2px 6px}.sw-row::-webkit-scrollbar{display:none}
+.sw-dot{width:34px;height:34px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex-shrink:0}.sw-dot.on{border-color:var(--text)}
 /* niente animazione di comparsa sulle schede: ogni aggiornamento dei dati ridisegnava la pagina e la faceva lampeggiare */
 .card,.card-inner{animation:none}
 @keyframes fadein{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:none}}
@@ -544,6 +549,12 @@ button,input,textarea,select{font-family:inherit}
 .pv-switch.anim-l::before{animation:pvL .28s cubic-bezier(.22,.85,.26,1)}
 @keyframes pvR{from{transform:none}to{transform:translateX(100%)}}
 @keyframes pvL{from{transform:translateX(100%)}to{transform:none}}
+/* selettore a 3 voci (Live: SOLO MIEI | TUTTI | ULTIMA GARA) */
+.pv-switch.pv3::before{width:calc((100% - 6px)/3)}
+.pv-switch.pv3:has(.pv-btn:nth-child(1).active)::before{transform:none}
+.pv-switch.pv3:has(.pv-btn:nth-child(2).active)::before{transform:translateX(100%)}
+.pv-switch.pv3:has(.pv-btn:nth-child(3).active)::before{transform:translateX(200%)}
+.pv-switch.pv3.anim-r::before,.pv-switch.pv3.anim-l::before{animation:none}
 #lt-mytable.swap-r .ltbig,#lt-mytable.swap-r .ltc{animation:swapR .3s ease-out}
 #lt-mytable.swap-l .ltbig,#lt-mytable.swap-l .ltc{animation:swapL .3s ease-out}
 @keyframes swapR{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
@@ -3952,8 +3963,8 @@ function renderSchedule(){
     const awaiting=pilotsAwaitingData(slot);
     let _pf=false;try{_pf=progFilterOn();}catch(e){}
     try{watchUserSettings();}catch(e){}
-    const _hl=teamViewMode()==='highlight';
-    const tHtml=_pf?'':(_hl?teamsHighlightHtml(slot,ps):teamsSlotHtml(slot));
+    const _tv=teamViewMode(),_hl=_tv!=='cards';
+    const tHtml=_pf?'':(_tv==='both'?teamsHighlightHtml(slot,ps)+teamsSlotHtml(slot):_hl?teamsHighlightHtml(slot,ps):teamsSlotHtml(slot));
     if(_pf&&!ps.length)return; // con il filtro attivo si vedono solo gli orari dei piloti filtrati
     if(slot.session&&slot.session!==lastSession){html+='<div class="session-divider">'+slot.session+'</div>';lastSession=slot.session;}
 
@@ -4320,7 +4331,7 @@ function watchUserSettings(){
   if(!currentUserId||userSettingsUser===currentUserId)return;userSettingsUser=currentUserId;userSettings={};
   try{onValue(ref(db,'settings/'+currentUserId),s=>{userSettings=s.val()||{};try{document.body.classList.add('quiet');renderAll();}catch(e){}if(document.getElementById('settings-body'))renderSettings();});}catch(e){}
 }
-function teamViewMode(){return userSettings.teamView==='highlight'?'highlight':'cards';}
+function teamViewMode(){const v=userSettings.teamView;return v==='highlight'||v==='both'?v:'cards';}
 function teamColor(key){const c=(userSettings.teamColors||{})[key];if(c)return c;const i=teams.findIndex(t=>t.key===key);return TEAM_PALETTE[(i<0?0:i)%TEAM_PALETTE.length];}
 function followedTeamOf(num,team){const e=(currentEntryList||{})[num]||{};const k=teamKey(team||e.team||'');return teams.find(t=>t.key===k)||null;}
 function setUserSetting(path,val){if(!currentUserId)return;const u={};u['settings/'+currentUserId+'/'+path]=val;update(ref(db),u);}
@@ -4329,14 +4340,16 @@ function setTeamColor(k,c){userSettings.teamColors=userSettings.teamColors||{};u
 function renderSettings(){
   const b=document.getElementById('settings-body');if(!b)return;
   const v=teamViewMode();
-  b.innerHTML='<div class="set-sec">TEAM NEL PROGRAMMA</div>'
+  b.innerHTML='<div class="set-sec">NOTIFICHE SU QUESTO TELEFONO</div><div id="push-device"></div>'
+    +'<div class="set-sec">TEAM NEL PROGRAMMA</div>'
     +'<div class="set-opt'+(v==='cards'?' on':'')+'" onclick="setTeamView(\'cards\')"><input type="radio" '+(v==='cards'?'checked':'')+' style="width:20px;height:20px"> Scheda del team sotto ogni sessione</div>'
     +'<div class="set-opt'+(v==='highlight'?' on':'')+'" onclick="setTeamView(\'highlight\')"><input type="radio" '+(v==='highlight'?'checked':'')+' style="width:20px;height:20px"> Piloti del team evidenziati col colore del team</div>'
-    +(teams.length?'<div class="set-sec">COLORI DEI TEAM</div>'+teams.map(t=>'<div style="margin-bottom:10px"><div style="font-size:13px;font-weight:800;margin-bottom:6px"><span class="tchip" style="--tc:'+teamColor(t.key)+'">'+String(t.name).replace(/</g,'&lt;')+'</span></div><div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +'<div class="set-opt'+(v==='both'?' on':'')+'" onclick="setTeamView(\'both\')"><input type="radio" '+(v==='both'?'checked':'')+' style="width:20px;height:20px"> Entrambi: scheda del team e piloti evidenziati</div>'
+    +(teams.length?'<div class="set-sec">COLORI DEI TEAM</div>'+teams.map(t=>'<div style="margin-bottom:10px"><div style="font-size:13px;font-weight:800;margin-bottom:6px"><span class="tchip" style="--tc:'+teamColor(t.key)+'">'+String(t.name).replace(/</g,'&lt;')+'</span></div><div class="sw-row">'
       +TEAM_PALETTE.map(c=>'<span class="sw-dot'+(teamColor(t.key)===c?' on':'')+'" style="background:'+c+'" onclick="setTeamColor(\''+escAttr(t.key)+'\',\''+c+'\')"></span>').join('')+'</div></div>').join(''):'<div style="font-size:12px;color:var(--text4)">Nessun team aggiunto in questa gara.</div>')
     +'<div class="set-sec">LE MIE NOTIFICHE</div><div id="notif-prefs-body"></div>'
     +'<div style="margin-top:10px;font-size:11px;color:var(--text4)">Impostazioni del profilo '+currentUserId+'.</div>';
-  renderNotifPrefs();
+  renderNotifPrefs();try{renderPushDevice();}catch(e){}
 }
 function openSettings(){
   if(!currentUserId){alert('Scegli prima il tuo utente.');return;}
@@ -4440,6 +4453,7 @@ function subKey(ep){let h=0;for(let i=0;i<ep.length;i++){h=((h<<5)-h+ep.charCode
 async function subscribePush(){
   try{
     if(!currentUserId||!('serviceWorker' in navigator)||!('PushManager' in window)||Notification.permission!=='granted')return;
+    try{if(localStorage.getItem('rt_push_off')==='1')return;}catch(e){}
     const reg=await navigator.serviceWorker.ready;
     let sub=await reg.pushManager.getSubscription();
     if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToU8(PUSH_PUBLIC_KEY)});
@@ -4449,6 +4463,36 @@ async function subscribePush(){
   }catch(e){console.warn('push',e);}
 }
 window.subscribePush=subscribePush;
+// ── Pulsante "notifiche su questo telefono" (Impostazioni): attiva anche se all'inizio è stato detto no, oppure disattiva ──
+async function pushDeviceState(){
+  if(!('Notification' in window)||!('serviceWorker' in navigator)||!('PushManager' in window))return'nosupport';
+  const p=Notification.permission;if(p==='denied')return'denied';if(p==='default')return'ask';
+  try{if(localStorage.getItem('rt_push_off')==='1')return'off';}catch(e){}
+  try{const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();return sub?'on':'off';}catch(e){return'off';}
+}
+async function renderPushDevice(){
+  const b=document.getElementById('push-device');if(!b)return;const st=await pushDeviceState();
+  const btn=(lbl,fn,col)=>'<button onclick="'+fn+'" style="width:100%;min-height:48px;margin-top:6px;border-radius:10px;border:none;font-weight:900;font-size:15px;cursor:pointer;background:'+col+';color:#000">'+lbl+'</button>';
+  const txt={on:'✅ Attive su questo telefono',off:'🔕 Spente su questo telefono',ask:'Non ancora attivate su questo telefono',denied:'⛔ Bloccate dal telefono',nosupport:'Questo browser non riceve notifiche'}[st];
+  let h='<div style="font-size:14px;font-weight:800">'+txt+'</div>';
+  if(st==='on')h+=btn('Disattiva su questo telefono','pushDeviceOff()','#94a3b8');
+  if(st==='off'||st==='ask')h+=btn('Attiva notifiche su questo telefono','pushDeviceOn()','#22c55e');
+  if(st==='denied')h+='<div style="font-size:12px;color:var(--text3);margin-top:6px;line-height:1.5">Le hai rifiutate: il telefono non permette all\'app di chiederlo di nuovo.<br><b>iPhone:</b> Impostazioni › Notifiche › Race Tracker › Consenti notifiche.<br><b>Android:</b> tieni premuta l\'icona dell\'app › Info app › Notifiche › attiva.<br>Poi riapri l\'app e premi qui sotto.</div>'+btn('Ho dato il permesso, riprova','pushDeviceOn()','#22c55e');
+  if(st==='nosupport')h+='<div style="font-size:12px;color:var(--text3);margin-top:6px">Su iPhone aggiungi l\'app alla schermata Home (Condividi › Aggiungi a Home) e aprila da lì.</div>';
+  b.innerHTML=h;
+}
+async function pushDeviceOn(){
+  try{localStorage.removeItem('rt_push_off');}catch(e){}
+  try{if(Notification.permission!=='granted'){const p=await Notification.requestPermission();if(p!=='granted'){renderPushDevice();return;}}}catch(e){}
+  await subscribePush();try{updateNotifBtn();}catch(e){}renderPushDevice();
+}
+async function pushDeviceOff(){
+  try{localStorage.setItem('rt_push_off','1');}catch(e){}
+  // la disiscrizione rende l'indirizzo push non valido: il server smette di usarlo da solo
+  try{const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();if(sub)await sub.unsubscribe();}catch(e){}
+  renderPushDevice();
+}
+window.pushDeviceOn=pushDeviceOn;window.pushDeviceOff=pushDeviceOff;
 setTimeout(subscribePush,4000);
 document.addEventListener('click',askNotifOnce,{once:true,capture:true});
 function enableRtNotifications(){try{sessionStorage.removeItem('rt_notif_asked');}catch(e){}askNotifOnce();}
@@ -4757,7 +4801,7 @@ function renderLtMyTable(){
   try{teams.forEach(t=>teamEntrants(t).forEach(e=>teamNums.add(String(e.num))));}catch(e){}
   const sorted=rows.map(r=>({r,pos:parseInt(r.getAttribute('data-pos'))||999})).sort((a,b)=>a.pos-b.pos);
   const mineCount=sorted.filter(x=>myNums.has(txt(x.r,C('no','4')))).length;
-  const sw='<div class="pv-switch'+(window._ltSwAnim?' anim-'+window._ltSwAnim:'')+'" style="margin-bottom:8px">'
+  const sw='<div class="pv-switch pv3'+(window._ltSwAnim?' anim-'+window._ltSwAnim:'')+'" style="margin-bottom:8px">'
     +'<button class="pv-btn'+(ltOnlyMine&&!ltLastOn?' active':'')+'" onclick="toggleLtMine(true)">SOLO MIEI</button>'
     +'<button class="pv-btn'+(!ltOnlyMine&&!ltLastOn?' active':'')+'" onclick="toggleLtMine(false)">TUTTI</button>'
     +'<button class="pv-btn'+(ltLastOn?' active':'')+'" onclick="setLtLast(true)">ULTIMA GARA</button></div>';
@@ -4911,7 +4955,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1115';
+const APP_BUILD='2026-11-14-1145';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
