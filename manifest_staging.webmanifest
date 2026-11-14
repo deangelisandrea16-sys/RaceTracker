@@ -2,7 +2,7 @@
  "name": "Race Tracker PROVA",
  "short_name": "RT Prova",
  "start_url": "./kart_staging.html",
- "scope": "./",
+ "scope": "./kart_staging.html",
  "display": "standalone",
  "orientation": "portrait",
  "background_color": "#0a0a0b",
