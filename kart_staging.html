@@ -4018,7 +4018,17 @@ function getCurrentSlotIndex(slots){
     const diff=nowMins-slotMins;
     if(diff>=0&&diff<closestDiff){closestDiff=diff;closest=i;}
   }
-  return closest===-1?0:closest;
+  const clockIdx=closest===-1?0:closest;
+  /* 14/11/2026: la sessione caricata nel live (escono dalla pregriglia, giri di riscaldamento) e' ORA anche prima del verde.
+     Solo per oggi; finita la sessione nel live, non si torna indietro rispetto all'orologio. Il ritardo resta calcolato al verde. */
+  try{
+    if(apexWsKey&&apexState.sess&&typeof autoDayName==='function'&&activeDay===autoDayName()){
+      const m=apexMatchSlot();
+      if(m&&m.slot){const li=slots.findIndex(x=>x&&x.time===m.slot.time&&canonCat(x.cat)===canonCat(m.slot.cat)&&x.type===m.slot.type);
+        if(li>=0)return apexFinished?Math.max(li,clockIdx):li;}
+    }
+  }catch(e){}
+  return clockIdx;
 }
 
 function renderSchedule(){
@@ -5108,7 +5118,7 @@ function apexParse(txt){
     else if(k==='title2'){if(apexState.sess!==v){const _rg2=ltOnTitle();
       // cambio sessione: le partenze già viste appartengono alla sessione precedente
       if(apexState.sess){apexEvaluate('change');apexIgnore=new Set(apexSeen);}
-      apexState.sess=v;ltTitleAt=Date.now();if(_rg2||apexGridSess===''||(ltGridNew&&apexGridSess.split('|')[1]!==v))apexGridSess=apexState.cat+'|'+apexState.sess;apexFinished='';clearTimeout(apexEvalT);apexState.start='';apexState.red='';changed=true;}}
+      apexState.sess=v;ltTitleAt=Date.now();setTimeout(()=>{try{refreshNowHighlight(true);}catch(e){}},50);if(_rg2||apexGridSess===''||(ltGridNew&&apexGridSess.split('|')[1]!==v))apexGridSess=apexState.cat+'|'+apexState.sess;apexFinished='';clearTimeout(apexEvalT);apexState.start='';apexState.red='';changed=true;}}
     else if(k==='com'){
       // ultima partenza registrata: <b>10:43</b><span data-flag="green"></span>START
       const all=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*data-flag="green"[^>]*><\/span>\s*START/gi)].map(x=>x[1]).filter(t=>!apexIgnore.has(t));
@@ -5170,7 +5180,7 @@ function apexMatchSlot(){
   const cands=arr.filter(want);
   if(!cands.length)return null;
   const st=apexState.start?slotMins(apexState.start.replace(':','.')):null;
-  if(st===null)return{slot:cands[0],delay:null};
+  if(st===null){const nm=new Date().getHours()*60+new Date().getMinutes()-(typeof scheduleDelay==='number'?scheduleDelay:0);cands.sort((a,b)=>Math.abs(slotMins(a.time)-nm)-Math.abs(slotMins(b.time)-nm));return{slot:cands[0],delay:null};}
   cands.sort((a,b)=>Math.abs(slotMins(a.time)-st)-Math.abs(slotMins(b.time)-st));
   const slot=cands[0];
   return{slot,delay:st-slotMins(slot.time)};
@@ -5208,7 +5218,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1635';
+const APP_BUILD='2026-11-14-1645';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
