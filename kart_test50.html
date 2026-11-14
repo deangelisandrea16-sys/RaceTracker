@@ -4395,7 +4395,7 @@ function renderAlertLog(){
   box.innerHTML=h.join('');
 }
 let _ltRenderT=null;
-function apexGridDirty(){if(_ltRenderT)return;_ltRenderT=setTimeout(()=>{_ltRenderT=null;renderLtMyTable();if(ltFullOn)renderLtFull();},100);}
+function apexGridDirty(){if(_ltRenderT)return;_ltRenderT=setTimeout(()=>{_ltRenderT=null;renderLtMyTable();try{renderApexDyn();}catch(e){}if(ltFullOn)renderLtFull();},100);}
 // ── Classifica live a schermo intero (solo classifica + giro, niente barre) ──
 let ltFullOn=false,ltWake=null;const ltFullPrev={},ltFullMv={};
 function openLtFull(){
@@ -4425,7 +4425,7 @@ function renderLtFull(){
   const rows=[...apexGrid.querySelectorAll('tr[data-id]')].filter(r=>r.getAttribute('data-id')!=='r0')
     .map(r=>({r,pos:parseInt(r.getAttribute('data-pos'))||parseInt(txt(r,C('rk','3')))||999})).sort((a,b)=>a.pos-b.pos);
   const myNums=new Set(pilots.map(x=>String(x.num)));
-  const lap=[apexDynText(apexDyn.dyn1),apexDynText(apexDyn.dyn2)].filter(Boolean).join(' · ');
+  const lap=[apexLapText(),apexDynText(apexDyn.dyn1),apexDynText(apexDyn.dyn2)].filter(Boolean).join(' · ');
   const sess=((apexState.cat||'')+' · '+(apexState.sess||'')).replace(/</g,'&lt;');
   const now=Date.now();const sk=apexState.cat+'|'+apexState.sess;
   const out=[];
@@ -4478,17 +4478,44 @@ function apexDynText(d){
   }
   return v.replace(/<[^>]+>/g,'').trim();
 }
+// Giro attuale = giri del primo in classifica + 1 (colonna giri della griglia Apex); totale dal programma ("12 giri", o durLive se il live li ha cambiati)
+function apexLapInfo(){
+  let tot=null,led=null,fin=!!apexFinished;
+  try{const m=apexMatchSlot();const d=m&&m.slot?String(m.slot.durLive||m.slot.dur||''):'';const t=d.match(/(\d+)\s*giri/i);if(t)tot=+t[1];}catch(e){}
+  const head=apexGrid.querySelector('tr[data-id="r0"]');let lc=null;
+  if(head)head.querySelectorAll('td[data-type]').forEach(td=>{const ty=(td.getAttribute('data-type')||'').toLowerCase();const tx=td.textContent.trim();if(ty==='tlp'||ty==='lap'||ty==='laps'||/^(giri|giro|laps?|tours?|tr)$/i.test(tx))lc=(td.getAttribute('data-id')||'').replace('c','');});
+  if(lc){
+    let best=null;
+    apexGrid.querySelectorAll('tr[data-id]').forEach(r=>{const id=r.getAttribute('data-id');if(id==='r0')return;const c=r.querySelector('[data-id="'+id+'c'+lc+'"]');const n=c?parseInt(c.textContent):NaN;if(!isNaN(n)&&(best===null||n>best))best=n;});
+    led=best;
+  }
+  if(tot&&led!==null&&led>=tot)fin=true;
+  const dt=[apexDynText(apexDyn.dyn1),apexDynText(apexDyn.dyn2)].join(' ');
+  if(/finish|arriv|chequ|scacch/i.test(dt))fin=true;
+  return{tot,led,fin};
+}
+function apexLapText(){
+  const L=apexLapInfo();
+  if(L.fin)return'🏁 ARRIVO';
+  if(L.led!==null&&L.tot)return'Giro '+Math.min(L.led+1,L.tot)+'/'+L.tot;
+  if(L.led!==null&&L.led>0)return'Giro '+(L.led+1);
+  return'';
+}
 function renderApexDyn(){
   const box=document.getElementById('lt-mytable');if(!box||!box.parentNode)return;
   let el=document.getElementById('lt-dyn');
   if(!el){el=document.createElement('div');el.id='lt-dyn';el.style.cssText="display:none;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;padding:10px 14px;border-radius:12px;background:var(--bg2);font-family:'Chakra Petch';font-weight:700";box.parentNode.insertBefore(el,box);}
   const t=[apexDynText(apexDyn.dyn1),apexDynText(apexDyn.dyn2)].filter(Boolean);
-  if(!t.length||!apexWsKey){el.style.display='none';return;}
+  const lap=apexLapText();const fin=lap.indexOf('🏁')===0;
+  if((!t.length&&!lap)||!apexWsKey){el.style.display='none';return;}
   const sess=((apexState.cat||'')+' '+(apexState.sess||'')).trim();
   el.style.display='flex';
-  el.innerHTML='<span style="font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+sess.replace(/</g,'&lt;')+'</span><span style="font-size:20px;color:var(--text);white-space:nowrap"><i class="ic ic-timer" style="color:var(--rt-orange)"></i> '+t.join(' · ').replace(/</g,'&lt;')+'</span>';
+  el.style.outline=fin?'2px solid #fff':'none';
+  el.innerHTML='<span style="font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+sess.replace(/</g,'&lt;')+'</span><span style="display:flex;align-items:center;gap:12px;white-space:nowrap">'
+    +(lap?'<span style="font-size:'+(fin?'24':'22')+'px;color:'+(fin?'#fff':'var(--rt-orange)')+';font-weight:900">'+lap+'</span>':'')
+    +(t.length&&!fin?'<span style="font-size:16px;color:var(--text2)"><i class="ic ic-timer" style="color:var(--rt-orange)"></i> '+t.join(' · ').replace(/</g,'&lt;')+'</span>':'')+'</span>';
 }
-setInterval(()=>{if(activeTab==='livetiming'&&(apexDyn.dyn1||apexDyn.dyn2))renderApexDyn();},500);
+setInterval(()=>{if(activeTab==='livetiming'&&(apexDyn.dyn1||apexDyn.dyn2||apexState.sess))renderApexDyn();},500);
 // Sorpassi: freccia ▲/▼ per qualche secondo e scorrimento morbido della card (FLIP)
 const ltLastPos={},ltMoveUntil={};
 function ltMove(no,pos){
@@ -4673,7 +4700,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-13-2345';
+const APP_BUILD='2026-11-14-0820';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
