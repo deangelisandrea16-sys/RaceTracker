@@ -4851,8 +4851,11 @@ const apexDyn={};
 // Semaforo Apex: lg verde, lr rosso, ly giallo, lf bandiera a scacchi (fine)
 let apexLight={c:'',at:0};
 function lightInfo(){const c=apexLight.c;return({lg:{col:'#22c55e',t:'VERDE'},lr:{col:'#ef4444',t:'ROSSO'},ly:{col:'#facc15',t:'GIALLO'},lf:{col:'#ffffff',t:'FINE'}})[c]||null;}
-function lightHtml(big){const L=lightInfo();if(!L)return'';const sz=big?22:18;
-  return'<span class="lt-light" style="display:inline-flex;align-items:center;gap:6px;font-weight:900;font-size:'+(big?15:13)+'px;color:'+L.col+'"><span style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:'+(apexLight.c==='lf'?'repeating-conic-gradient(#fff 0 25%,#111 0 50%) 0 0/8px 8px':L.col)+';box-shadow:0 0 12px '+L.col+';flex-shrink:0"></span>'+L.t+'</span>';}
+function lightHtml(big){const c=apexLight.c;if(!c)return'';const sz=big?16:12;
+  // tre luci tipo semaforo: rosso, giallo (bandiera gialla), verde; fine gara = scacchi
+  if(c==='lf')return'<span class="lt-light" style="display:inline-block;width:'+(sz*2)+'px;height:'+sz+'px;border-radius:4px;background:repeating-conic-gradient(#fff 0 25%,#111 0 50%) 0 0/8px 8px;flex-shrink:0"></span>';
+  const dot=(on,col)=>'<span style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:'+(on?col:'rgba(255,255,255,.12)')+';'+(on?'box-shadow:0 0 10px '+col+';':'')+'flex-shrink:0"></span>';
+  return'<span class="lt-light" style="display:inline-flex;align-items:center;gap:4px;padding:3px 5px;border-radius:999px;background:#111;flex-shrink:0">'+dot(c==='lr','#ef4444')+dot(c==='ly','#facc15')+dot(c==='lg','#22c55e')+'</span>';}
 function apexDynFmt(ms){ms=Math.max(0,Math.round(ms/1000));const h=Math.floor(ms/3600),m=Math.floor(ms%3600/60),x=ms%60;return(h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0');}
 function apexDynText(d){
   if(!d||d.val===undefined||d.val==='')return'';
@@ -5105,7 +5108,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1355';
+const APP_BUILD='2026-11-14-1400';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
