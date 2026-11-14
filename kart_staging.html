@@ -661,6 +661,14 @@ body.lt-full-open #rt-alerts,body.lt-full-open #rt-offline,body.lt-full-open .fa
 .ltf-row .d{flex:1;min-width:0;font-weight:700;font-size:1em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ltf-row .d small{margin-left:8px;font-size:.75em;color:var(--text4);font-weight:600}
 .ltf-row.mine{background:rgba(255,90,31,.14)}.ltf-row.mine .n{color:var(--rt-orange)}.ltf-row.mine .p{color:var(--rt-orange)}
+/* 14/11/2026: i MIEI piloti nella lista TUTTI e a schermo intero in negativo rispetto alla palette (riga chiara su sfondo scuro, scura nel tema chiaro) */
+.ltc tr.mine td{background:#f4f4f5!important;color:#0d0d0f!important;font-weight:800;border-bottom-color:#d4d4d8}
+.ltc tr.mine td.n{background:var(--rt-orange)!important;color:#0d0d0f!important}
+.ltc tr.mine .lt-x{color:#dc2626}
+body.light .ltc tr.mine td{background:#0d0d0f!important;color:#f4f4f5!important;border-bottom-color:#27272a}
+body.light .ltc tr.mine td.n{background:var(--rt-orange)!important;color:#0d0d0f!important}
+.ltf-row.mine{background:#f4f4f5!important;color:#0d0d0f}.ltf-row.mine .p,.ltf-row.mine .d{color:#0d0d0f}.ltf-row.mine .n{color:#0d0d0f;background:var(--rt-orange);border-radius:4px;text-align:center}
+.ltf-row.mine .d small{color:#52525b}
 .ltf-row .mv{font-family:'Chakra Petch';font-size:.75em;font-weight:700;padding:0 5px;border-radius:5px}
 .ltf-row.up{box-shadow:inset 3px 0 0 #4fd69c}.ltf-row.up .mv{background:#14301f;color:#4fd69c}
 .ltf-row.down{box-shadow:inset 3px 0 0 #ef6a7a}.ltf-row.down .mv{background:#2a171b;color:#ef6a7a}
@@ -5196,7 +5204,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1600';
+const APP_BUILD='2026-11-14-1610';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
