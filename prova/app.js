@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-14-1940';
+var RT_JS_BUILD='2026-11-14-2005';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3166,7 +3166,7 @@ function renderSchedule(){
   if(activeDay===currentDays[currentDays.length-1]&&currentFinals.length){
     const _myC=new Set(pilots.map(p=>canonCat(p.cat)));
     let _best=-1;
-    currentFinals.filter(f=>_myC.has(canonCat(f.cat))).forEach(f=>{const m=_toM(f.time);if(m>=0&&m<=_nowM&&m>_best){_best=m;_finalNowKey=f.label+'|'+f.time;}});
+    currentFinals.forEach(f=>{const m=_toM(f.time);if(m>=0&&m<=_nowM&&m>_best){_best=m;_finalNowKey=f.label+'|'+f.time;}}); // 14/11: tutte le finali, anche senza miei piloti
     const _slotM=_toM((slotsArr[currentIdx]||{}).time);
     if(_finalNowKey&&_best>=_slotM)currentIdx=-1; else _finalNowKey=null;
   }
@@ -3251,7 +3251,8 @@ function renderSchedule(){
   if(activeDay===currentDays[currentDays.length-1]&&currentFinals.length){
     html+='<div class="session-divider">FINALI</div>';
     const myCanon=new Set(pilots.map(p=>canonCat(p.cat)));
-    currentFinals.filter(f=>myCanon.has(canonCat(f.cat))).forEach(f=>{
+    /* 14/11 20:05 (Andrea): il programma deve essere SEMPRE completo: anche le finali senza miei piloti, come turno vuoto */
+    currentFinals.slice().sort((a,b)=>_toM(a.time)-_toM(b.time)).forEach(f=>{
       const allCat=pilots.filter(p=>canonCat(p.cat)===canonCat(f.cat));
       const finalists=allCat.filter(p=>p.inFinal);
       const ps=finalists.length?finalists:allCat;
@@ -3259,6 +3260,7 @@ function renderSchedule(){
       html+='<div class="final-card'+(_fNow?' slot-now':'')+'"'+(_fNow?' id="slot-now"':'')+'><div class="final-title"><i class="ic ic-trophy"></i> '+f.label+(_fNow?' <span class="now-badge">ORA</span>':'')+'</div>'
         +'<div class="final-row"><span>Partenza</span><span class="final-time">'+f.time+'</span></div>'
         +(slotDurText(f)?'<div class="final-row"><span>Durata</span><span class="final-time">'+slotDurText(f)+'</span></div>':'');
+      if(!ps.length)html+='<div style="font-size:12px;color:var(--text4);padding:8px 2px 2px">Nessun tuo pilota in questa finale</div>';
       ps.forEach(p=>{
         html+='<div class="card-inner" style="margin-top:8px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
           +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,{type:'final'})+'<span class="inner-name">'+p.name+'</span>'+(p.eliminated?'':runChip(p.num,1e6))
