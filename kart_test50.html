@@ -427,6 +427,7 @@ body:not(.light){background:#0d0d0f}
 .slot-time{font-family:'Saira Condensed';font-weight:900;font-style:italic;font-size:26px;letter-spacing:0;color:var(--text3)}
 .slot-now .slot-time{color:var(--rt-orange)}
 .note-txt{font-size:13px;font-weight:700;font-style:italic;color:#ffcc33;text-shadow:0 0 6px rgba(255,204,51,.55),0 0 1px rgba(255,204,51,.9)}body.light .note-txt{color:#a16207;text-shadow:0 0 4px rgba(250,204,21,.45)}
+.lt-ret{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;background:#dc2626;color:#fff;font-size:11px;font-weight:900;letter-spacing:.5px;vertical-align:middle;white-space:nowrap}.lt-ret.box{background:#475569}.ltbig.ret{opacity:.75;border-left:4px solid #dc2626}
 .lt-tasks{margin-top:8px}.lt-tasks .task-btn{min-height:40px}
 .slot-dur{font-family:'Saira Condensed';font-weight:900;font-style:italic;font-size:22px;color:var(--text2);white-space:nowrap}.slot-dur s{color:var(--text4);font-size:16px}.slot-dur b{color:#fbbf24;font-weight:900}
 .slot-label{font-family:'Saira Condensed';font-weight:900;font-size:19px;text-transform:uppercase}
@@ -4397,7 +4398,29 @@ function renderAlertLog(){
   box.innerHTML=h.join('');
 }
 let _ltRenderT=null;
-function apexGridDirty(){if(_ltRenderT)return;_ltRenderT=setTimeout(()=>{_ltRenderT=null;renderLtMyTable();try{renderApexDyn();}catch(e){}if(ltFullOn)renderLtFull();},100);}
+// Ritirati: colonna stato Apex (si = ai box, ss = fermo in pista; so/sr/su/sd = di nuovo in pista). Conta solo a sessione partita e prima dell'arrivo.
+const ltRet={};
+function ltIsRace(){return/HEAT|MANCHE|PREFINAL|FINAL|RACE|GARA/i.test(apexState.sess||'')&&!/QUALIF|PRACT|FREE|WARM/i.test(apexState.sess||'');}
+function ltScanRet(){
+  try{
+    if(!apexState.start||apexFinished)return;
+    const head=apexGrid.querySelector('tr[data-id="r0"]');if(!head)return;let sc=null,nc='4';
+    head.querySelectorAll('td[data-type]').forEach(td=>{const t=td.getAttribute('data-type');const c=(td.getAttribute('data-id')||'').replace('c','');if(t==='sta')sc=c;if(t==='no')nc=c;});
+    if(!sc)return;const sk=apexState.cat+'|'+apexState.sess;
+    apexGrid.querySelectorAll('tr[data-id]').forEach(r=>{const id=r.getAttribute('data-id');if(id==='r0')return;
+      const st=r.querySelector('[data-id="'+id+'c'+sc+'"]');const nn=r.querySelector('[data-id="'+id+'c'+nc+'"]');if(!st||!nn)return;
+      const no=nn.textContent.trim();if(!no)return;const k=sk+'|'+no;const cl=' '+st.className+' ';
+      if(/ si /.test(cl)){if(!ltRet[k])ltRet[k]={t:'si',at:Date.now()};}
+      else if(/ ss /.test(cl)&&!apexState.red){if(!ltRet[k])ltRet[k]={t:'ss',at:Date.now()};}
+      else if(/ (so|sr|su|sd) /.test(cl)&&ltRet[k])delete ltRet[k];
+    });
+  }catch(e){}
+}
+function ltRetOf(no,sk){return ltRet[(sk||(apexState.cat+'|'+apexState.sess))+'|'+no]||null;}
+function ltRetBadge(r){if(!r)return'';const race=r.race!==undefined?r.race:ltIsRace();
+  const tx=r.t==='ss'?'🚩 FERMO IN PISTA':(race?'🚩 RITIRATO':'AI BOX');
+  return' <span class="lt-ret'+(r.t==='si'&&!race?' box':'')+'">'+tx+'</span>';}
+function apexGridDirty(){ltScanRet();if(_ltRenderT)return;_ltRenderT=setTimeout(()=>{_ltRenderT=null;renderLtMyTable();try{renderApexDyn();}catch(e){}if(ltFullOn)renderLtFull();},100);}
 // ── Classifica live a schermo intero (solo classifica + giro, niente barre) ──
 let ltFullOn=false,ltWake=null;const ltFullPrev={},ltFullMv={};
 function openLtFull(){
@@ -4441,7 +4464,7 @@ function renderLtFull(){
     const m=ltFullMv[k];const mv=m&&m.t>now?m.d:0;
     const nm=mine?((pilots.find(x=>String(x.num)===no)||{}).name||txt(r,C('dr','5'))):txt(r,C('dr','5'));
     const tm=((pilots.find(x=>String(x.num)===no)||{}).team)||((currentEntryList[no]||{}).team)||'';
-    out.push('<div class="ltf-row'+(mine?' mine':'')+(mv>0?' up':mv<0?' down':'')+'"><span class="p">'+(pos<999?pos:'–')+'</span><span class="n">'+no+'</span><span class="d">'+String(nm).replace(/</g,'&lt;')+'<small>'+String(tm).replace(/</g,'&lt;')+'</small></span>'+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>');
+    out.push('<div class="ltf-row'+(mine?' mine':'')+(mv>0?' up':mv<0?' down':'')+'"><span class="p">'+(pos<999?pos:'–')+'</span><span class="n">'+no+'</span><span class="d">'+String(nm).replace(/</g,'&lt;')+ltRetBadge(ltRetOf(no))+'<small>'+String(tm).replace(/</g,'&lt;')+'</small></span>'+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>');
   });
   const list=el.querySelector('.ltf-list');list.innerHTML=out.join('');
   // Tutta la classifica in uno schermo: altezza riga e caratteri calcolati sul numero di piloti
@@ -4475,7 +4498,7 @@ function ltSnapshot(){
     const txt=(r,c)=>{const el=r.querySelector('[data-id="'+r.getAttribute('data-id')+'c'+c+'"]');return el?el.textContent.trim():'';};
     const myNums=new Set(pilots.map(x=>String(x.num)));
     const rows=[...apexGrid.querySelectorAll('tr[data-id]')].filter(r=>r.getAttribute('data-id')!=='r0')
-      .map(r=>({no:txt(r,C('no','4')),pos:parseInt(txt(r,C('rk','3')))||parseInt(r.getAttribute('data-pos'))||999,dr:txt(r,C('dr','5')),gap:txt(r,C('gap','13')),blp:txt(r,C('blp','12')),laps:txt(r,C('tlp','14'))}))
+      .map(r=>({no:txt(r,C('no','4')),pos:parseInt(txt(r,C('rk','3')))||parseInt(r.getAttribute('data-pos'))||999,dr:txt(r,C('dr','5')),gap:txt(r,C('gap','13')),blp:txt(r,C('blp','12')),laps:txt(r,C('tlp','14'))})).map(x=>{const rr=ltRet[key+'|'+x.no];if(rr)x.ret={t:rr.t,race:/HEAT|MANCHE|PREFINAL|FINAL|RACE|GARA/i.test(key)&&!/QUALIF|PRACT|FREE|WARM/i.test(key)};return x;})
       .filter(x=>myNums.has(x.no)).sort((a,b)=>a.pos-b.pos);
     if(!rows.length)return;
     const [cat,sess]=key.split('|');
@@ -4494,7 +4517,7 @@ function renderLtLast(){
       const nt=String((notes&&notes[x.no])||'').trim();
       return'<div class="ltbig" data-no="'+esc(x.no)+'" onclick="openPilotDetail(\''+esc(x.no)+'\')">'
         +'<div class="pos">'+(x.pos<999?x.pos:'–')+'</div>'
-        +'<div style="flex:1;min-width:0"><div><span class="num">#'+esc(x.no)+'</span> <span class="nm">'+esc(pl.name||x.dr)+'</span></div>'
+        +'<div style="flex:1;min-width:0"><div><span class="num">#'+esc(x.no)+'</span> <span class="nm">'+esc(pl.name||x.dr)+'</span>'+ltRetBadge(x.ret)+'</div>'
         +'<div class="tm">'+esc(pl.team||ent.team||'')+(x.gap?' · '+esc(x.gap):'')+(x.blp?' · best '+esc(x.blp):'')+'</div>'
         +(nt?'<div class="note-txt" style="margin-top:2px"><i class="ic ic-note"></i> '+esc(nt)+'</div>':'')
         +'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+TASKS.map(t=>taskBtn(x.no,t,true)).join('')+'</div></div></div>';
@@ -4614,9 +4637,10 @@ function renderLtMyTable(){
       const team=pl.team||ent.team||'';
       const nt=String((notes&&notes[no])||'').trim();
       const pos=parseInt(txt(r,C('rk','3')))||0;const mv=ltMove(no,pos);
-      return'<div class="ltbig'+(tm?' team':'')+(mv>0?' up':mv<0?' down':'')+'" data-no="'+no+'"'+(tm?'':' onclick="openPilotDetail(\''+no+'\')"')+'>'
+      const rt=ltRetOf(no);
+      return'<div class="ltbig'+(tm?' team':'')+(rt?' ret':'')+(mv>0?' up':mv<0?' down':'')+'" data-no="'+no+'"'+(tm?'':' onclick="openPilotDetail(\''+no+'\')"')+'>'
         +'<div class="pos">'+(txt(r,C('rk','3'))||'–')+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>'
-        +'<div style="flex:1;min-width:0"><div><span class="num">#'+no+'</span> <span class="nm">'+nm+'</span></div>'
+        +'<div style="flex:1;min-width:0"><div><span class="num">#'+no+'</span> <span class="nm">'+nm+'</span>'+ltRetBadge(rt)+'</div>'
         +'<div class="tm">'+team+'</div>'
 
         +(nt?'<div class="note-txt" style="margin-top:2px"><i class="ic ic-note"></i> '+nt.replace(/</g,'&lt;')+'</div>':'')
@@ -4630,7 +4654,7 @@ function renderLtMyTable(){
       const no=txt(r,C('no','4'));const mine=myNums.has(no);const tm=!mine&&teamNums.has(no);
       const llc=cls(r,C('llp','10'));
       return'<tr class="'+(mine?'mine':tm?'team':'')+'"'+(mine?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
-        +'<td>'+txt(r,C('rk','3'))+'</td><td class="n">'+no+'</td><td class="d">'+txt(r,C('dr','5'))+'</td><td class="d" style="color:var(--text3)">'+(((pilots.find(x=>String(x.num)===no)||{}).team)||((currentEntryList&&currentEntryList[no])||{}).team||'')+'</td></tr>'
+        +'<td>'+txt(r,C('rk','3'))+'</td><td class="n">'+no+'</td><td class="d">'+txt(r,C('dr','5'))+ltRetBadge(ltRetOf(no))+'</td><td class="d" style="color:var(--text3)">'+(((pilots.find(x=>String(x.num)===no)||{}).team)||((currentEntryList&&currentEntryList[no])||{}).team||'')+'</td></tr>'
         +(mine&&String((notes&&notes[no])||'').trim()?'<tr class="mine"><td></td><td colspan="6" class="note-txt" style="white-space:normal"><i class="ic ic-note"></i> '+String(notes[no]).replace(/</g,'&lt;')+'</td></tr>':'');
     }).join('')+'</table>'
     +'<div style="font-size:11px;color:var(--text4);margin-top:6px">Evidenziati i tuoi piloti · tocca un tuo pilota per la scheda</div>';
@@ -4744,7 +4768,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-0850';
+const APP_BUILD='2026-11-14-0905';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
