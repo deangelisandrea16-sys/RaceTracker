@@ -545,6 +545,12 @@ button,input,textarea,select{font-family:inherit}
 .pv-switch.anim-l::before{animation:pvL .28s cubic-bezier(.22,.85,.26,1)}
 @keyframes pvR{from{transform:none}to{transform:translateX(100%)}}
 @keyframes pvL{from{transform:translateX(100%)}to{transform:none}}
+/* selettore a 3 voci (Live: SOLO MIEI | TUTTI | ULTIMA GARA) */
+.pv-switch.pv3::before{width:calc((100% - 6px)/3)}
+.pv-switch.pv3:has(.pv-btn:nth-child(1).active)::before{transform:none}
+.pv-switch.pv3:has(.pv-btn:nth-child(2).active)::before{transform:translateX(100%)}
+.pv-switch.pv3:has(.pv-btn:nth-child(3).active)::before{transform:translateX(200%)}
+.pv-switch.pv3.anim-r::before,.pv-switch.pv3.anim-l::before{animation:none}
 #lt-mytable.swap-r .ltbig,#lt-mytable.swap-r .ltc{animation:swapR .3s ease-out}
 #lt-mytable.swap-l .ltbig,#lt-mytable.swap-l .ltc{animation:swapL .3s ease-out}
 @keyframes swapR{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
@@ -4790,7 +4796,7 @@ function renderLtMyTable(){
   try{teams.forEach(t=>teamEntrants(t).forEach(e=>teamNums.add(String(e.num))));}catch(e){}
   const sorted=rows.map(r=>({r,pos:parseInt(r.getAttribute('data-pos'))||999})).sort((a,b)=>a.pos-b.pos);
   const mineCount=sorted.filter(x=>myNums.has(txt(x.r,C('no','4')))).length;
-  const sw='<div class="pv-switch'+(window._ltSwAnim?' anim-'+window._ltSwAnim:'')+'" style="margin-bottom:8px">'
+  const sw='<div class="pv-switch pv3'+(window._ltSwAnim?' anim-'+window._ltSwAnim:'')+'" style="margin-bottom:8px">'
     +'<button class="pv-btn'+(ltOnlyMine&&!ltLastOn?' active':'')+'" onclick="toggleLtMine(true)">SOLO MIEI</button>'
     +'<button class="pv-btn'+(!ltOnlyMine&&!ltLastOn?' active':'')+'" onclick="toggleLtMine(false)">TUTTI</button>'
     +'<button class="pv-btn'+(ltLastOn?' active':'')+'" onclick="setLtLast(true)">ULTIMA GARA</button></div>';
@@ -4944,7 +4950,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1130';
+const APP_BUILD='2026-11-14-1135';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
