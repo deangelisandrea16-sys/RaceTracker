@@ -4577,7 +4577,7 @@ function riskData(){
     rows.filter(r=>myNums.has(r.num)).forEach(r=>{
       let need=null;
       if(r.left>0){for(let p=field;p>=1;p--){const mine=r.pts+rkPts(p)*r.left;let rank=1;rows.forEach(o=>{if(o!==r&&o.pts+o.avg*o.left<mine)rank++;});if(rank<=cut){need=p;break;}}}
-      const status=r.left===0?(r.rank<=cut?'safe':'out'):(need===null?'out':need>=field?'safe':'risk');
+      const status=r.left===0?(r.rank<=cut?'safe':'out'):(need===null?'out':need>=Math.ceil(field*0.8)?'safe':'risk');
       out.push({cat,cut,num:r.num,name:(pilots.find(p=>String(p.num)===r.num)||{}).name||((r.e.lastName||'')+' '+(r.e.firstName||'')).trim(),pts:r.pts,rank:r.rank,left:r.left,need,status,n:list.length});
     });
   });
@@ -4594,7 +4594,7 @@ function renderRiskTab(){
       const head='<div class="set-sec" style="display:flex;align-items:center;gap:8px">'+esc(cat)+' <span style="font-weight:700;color:var(--text4)">· '+(c0.cut?'salvi i primi '+c0.cut:'nessuna eliminazione')+' · '+c0.n+' piloti</span>'+(isDelayAdmin()?'<button onclick="setRiskCut(\''+escAttr(cat)+'\')" style="margin-left:auto;min-height:36px;padding:0 10px;border-radius:8px;border:1px solid var(--border2);background:none;color:var(--text3);font-weight:800;cursor:pointer">TAGLIO</button>':'')+'</div>';
       if(c0.none)return head;
       return head+xs.filter(x=>!x.none).sort((a,b)=>({out:0,risk:1,safe:2}[a.status]-{out:0,risk:1,safe:2}[b.status])||a.rank-b.rank).map(x=>{
-        const t=x.status==='out'?(x.left?'Fuori anche vincendo (stima)':'Eliminato (stima)'):x.status==='safe'?(x.left?'Salvo anche arrivando ultimo (stima)':'Salvo (stima)'):'Per essere salvo deve arrivare almeno <b>P'+x.need+'</b>'+(x.left>1?' in media nelle prossime '+x.left+' gare':' nella prossima gara');
+        const t=x.status==='out'?(x.left?'Fuori anche vincendo (stima)':'Eliminato (stima)'):x.status==='safe'?(x.left?'Tranquillo: gli basta arrivare P'+x.need+' (stima)':'Salvo (stima)'):'Per essere salvo deve arrivare almeno <b>P'+x.need+'</b>'+(x.left>1?' in media nelle prossime '+x.left+' gare':' nella prossima gara');
         return'<div class="card-inner al-row" style="border-left:4px solid '+col[x.status]+'"><div class="al-time" style="font-size:18px;font-weight:900">'+x.rank+'°</div><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(x.num)+' '+esc(x.name)+'</div><div style="font-size:13px;color:var(--text2);margin-top:2px">'+t+'</div><div style="font-size:11px;color:var(--text4);margin-top:2px">'+x.pts+' punti · '+(x.left?x.left+' gare da correre':'gare finite')+'</div></div></div>';}).join('');
     }).join('');
 }
@@ -5069,7 +5069,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1330';
+const APP_BUILD='2026-11-14-1335';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
