@@ -513,6 +513,7 @@ button,input,textarea,select{font-family:inherit}
 .set-opt.on{border-color:var(--rt-orange);background:var(--bg3)}
 .sw-row{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px 2px 6px}.sw-row::-webkit-scrollbar{display:none}
 .sw-dot{width:34px;height:34px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex-shrink:0}.sw-dot.on{border-color:var(--text)}
+body.big-text .content,body.big-text #lt-mytable{zoom:1.12}
 /* niente animazione di comparsa sulle schede: ogni aggiornamento dei dati ridisegnava la pagina e la faceva lampeggiare */
 .card,.card-inner{animation:none}
 @keyframes fadein{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:none}}
@@ -577,6 +578,8 @@ button,input,textarea,select{font-family:inherit}
 #fab-top{bottom:calc(var(--tab-h) + var(--safe-b) + 140px)!important;right:22px!important}
 #fab-bottom-piloti{bottom:calc(var(--tab-h) + var(--safe-b) + 16px)!important;right:22px!important}
 #fab-top-piloti{bottom:calc(var(--tab-h) + var(--safe-b) + 74px)!important;right:22px!important}
+#fab-bottom-live{bottom:calc(var(--tab-h) + var(--safe-b) + 16px)!important;right:22px!important}
+#fab-top-live{bottom:calc(var(--tab-h) + var(--safe-b) + 74px)!important;right:22px!important}
 
 /* Intestazione su una riga: RACE TRACKER · nome gara ........ LIVE · utente */
 .header{padding:calc(env(safe-area-inset-top) + 8px) 16px 8px!important;gap:10px}
@@ -850,6 +853,8 @@ body.lt-full-open #rt-alerts,body.lt-full-open #rt-offline,body.lt-full-open .fa
 
 <!-- TAB LIVE TIMING -->
 <div id="tab-livetiming" class="tab-content" style="display:none">
+  <button class="fab-top" id="fab-top-live" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+  <button class="fab-top" id="fab-bottom-live" onclick="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})">↓</button>
   <div class="content" style="padding:8px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">
       <div id="live-timing-label" style="font-size:11px;font-weight:700;color:var(--text4);letter-spacing:1px"><i class="ic ic-timer"></i> LIVE TIMING</div>
@@ -2173,6 +2178,7 @@ function hideFabs(){
   const f3=document.getElementById('fab-top-piloti');if(f3)f3.classList.remove('visible');
   const f4=document.getElementById('fab-bottom');if(f4)f4.classList.remove('visible');
   const f5=document.getElementById('fab-bottom-piloti');if(f5)f5.classList.remove('visible');
+  ['fab-top-live','fab-bottom-live'].forEach(i=>{const x=document.getElementById(i);if(x)x.classList.remove('visible');});
   if(_tickTimer){clearInterval(_tickTimer);_tickTimer=null;}
   if(_ltTimer){clearInterval(_ltTimer);_ltTimer=null;}
 }
@@ -2195,6 +2201,7 @@ function showTab(tab){
   document.querySelectorAll('.tabbar-btn').forEach(b=>b.classList.toggle('active',b.getAttribute('data-tab')===tab));
   hideFabs();
   if(tab==='gare')renderGare();
+  if(tab==='livetiming'){['fab-top-live','fab-bottom-live'].forEach(i=>{const x=document.getElementById(i);if(x)x.classList.add('visible');});}
   if(tab==='piloti'){renderPilots();const ft=document.getElementById('fab-top-piloti');if(ft)ft.classList.add('visible');const fb=document.getElementById('fab-bottom-piloti');if(fb)fb.classList.add('visible');}
   if(tab==='programma'){
     autoSelectToday();scheduleNeedsScroll=true;
@@ -3999,6 +4006,7 @@ function renderSchedule(){
     }
 
     // No pilots at all for this slot
+    if(!ps.length&&!tHtml&&userSettings.hideEmpty===true&&!isNow)return;
     if(!ps.length&&!tHtml){
       html+='<div class="card'+(isNow?' slot-now':'')+'" style="opacity:.45" '+(isNow?'id="slot-now"':'')+'><div class="slot-header">'
         +'<span class="slot-time">'+slot.time+'</span>'+(isNow?'<span class="now-badge">ORA</span>':'')
@@ -4374,8 +4382,18 @@ const TEAM_PALETTE=['#a78bfa','#22d3ee','#f472b6','#34d399','#fb923c','#facc15',
 let userSettings={},userSettingsUser='';
 function watchUserSettings(){
   if(!currentUserId||userSettingsUser===currentUserId)return;userSettingsUser=currentUserId;userSettings={};
-  try{onValue(ref(db,'settings/'+currentUserId),s=>{userSettings=s.val()||{};try{document.body.classList.add('quiet');renderAll();}catch(e){}if(document.getElementById('settings-body'))renderSettings();});}catch(e){}
+  try{onValue(ref(db,'settings/'+currentUserId),s=>{userSettings=s.val()||{};applyUserSettings();try{document.body.classList.add('quiet');renderAll();}catch(e){}if(document.getElementById('settings-body'))renderSettings();});}catch(e){}
 }
+let _liveDefDone=false;
+function applyUserSettings(){
+  try{document.body.classList.toggle('big-text',userSettings.bigText===true);}catch(e){}
+  if(!_liveDefDone&&userSettings.liveDefault){_liveDefDone=true;const v=userSettings.liveDefault;
+    if(v==='last'){ltLastOn=true;}else{ltLastOn=false;ltOnlyMine=v!=='all';}try{renderLtMyTable();}catch(e){}}
+}
+function setUS(path,val){userSettings[path]=val;setUserSetting(path,val);applyUserSettings();renderSettings();try{document.body.classList.add('quiet');renderAll();}catch(e){}}
+window.setUS=setUS;
+function setTheme(light){const isL=document.body.classList.contains('light');if(isL!==light)toggleTheme();renderSettings();}
+window.setTheme=setTheme;
 function teamViewMode(){const v=userSettings.teamView;return v==='highlight'||v==='both'?v:'cards';}
 // nomi simili tra una gara e l'altra (es. "AKM MOTORSPORT SRL" = "AKM MOTORSPORT"): usato SOLO per ritrovare il colore del team
 function teamNorm(k){return String(k||'').toUpperCase().replace(/[._\-,'’()]/g,' ').replace(/\b(S\s?R\s?L\s?S?|S\s?P\s?A|S\s?N\s?C|S\s?A\s?S|A\s?S\s?D|S\s?S\s?D|LTD|GMBH|BV|SL|SA|TEAM|RACING TEAM)\b/g,' ').replace(/\s+/g,' ').trim();}
@@ -4389,7 +4407,18 @@ function setTeamColor(k,c){userSettings.teamColors=userSettings.teamColors||{};u
 function renderSettings(){
   const b=document.getElementById('settings-body');if(!b)return;
   const v=teamViewMode();
-  b.innerHTML='<div class="set-sec">NOTIFICHE SU QUESTO TELEFONO</div><div id="push-device"></div>'
+  const opt=(on,lbl,fn)=>'<div class="set-opt'+(on?' on':'')+'" onclick="'+fn+'"><input type="radio" '+(on?'checked':'')+' style="width:20px;height:20px"> '+lbl+'</div>';
+  const sw=(on,lbl,fn)=>'<label class="set-opt" style="justify-content:space-between"><span>'+lbl+'</span><input type="checkbox" '+(on?'checked':'')+' onchange="'+fn+'" style="width:24px;height:24px"></label>';
+  const light=document.body.classList.contains('light');const lv=userSettings.liveDefault||'mine';
+  b.innerHTML='<div class="set-sec">PROFILO</div><div class="set-opt" onclick="closeModal();showUserPicker()"><i class="ic ic-user"></i> Cambia utente <span style="margin-left:auto;color:var(--text4)">'+currentUserId+'</span></div>'
+    +'<div class="set-sec">ASPETTO (QUESTO TELEFONO)</div>'+opt(!light,'Tema scuro','setTheme(false)')+opt(light,'Tema chiaro','setTheme(true)')
+    +'<div class="set-sec">LEGGIBILITÀ E AVVISI</div>'
+    +sw(userSettings.bigText===true,'Testo più grande',"setUS('bigText',this.checked)")
+    +sw(userSettings.vibra!==false,'Vibrazione degli avvisi',"setUS('vibra',this.checked)")
+    +sw(userSettings.suono!==false,'Suono degli avvisi',"setUS('suono',this.checked)")
+    +'<div class="set-sec">LIVE ALL\'APERTURA</div>'+opt(lv==='mine','Solo miei',"setUS('liveDefault','mine')")+opt(lv==='all','Tutti',"setUS('liveDefault','all')")+opt(lv==='last','Ultima gara',"setUS('liveDefault','last')")
+    +'<div class="set-sec">PROGRAMMA</div>'+sw(userSettings.hideEmpty===true,'Nascondi le sessioni senza miei piloti',"setUS('hideEmpty',this.checked)")
+    +'<div class="set-sec">NOTIFICHE SU QUESTO TELEFONO</div><div id="push-device"></div>'
     +'<div class="set-sec">TEAM NEL PROGRAMMA</div>'
     +'<div class="set-opt'+(v==='cards'?' on':'')+'" onclick="setTeamView(\'cards\')"><input type="radio" '+(v==='cards'?'checked':'')+' style="width:20px;height:20px"> Scheda del team sotto ogni sessione</div>'
     +'<div class="set-opt'+(v==='highlight'?' on':'')+'" onclick="setTeamView(\'highlight\')"><input type="radio" '+(v==='highlight'?'checked':'')+' style="width:20px;height:20px"> Piloti del team evidenziati col colore del team</div>'
@@ -4457,8 +4486,8 @@ function rtAlert(id,title,sub,kind){
   el.innerHTML='<div style="flex:1">'+title+'<small>'+sub+' · '+hm+'</small></div><span style="cursor:pointer;font-size:16px">✕</span>';
   el.onclick=()=>el.remove();wrap.prepend(el);
   setTimeout(()=>{if(el.parentNode)el.remove();},kind==='final'||kind==='gold'?60000:25000);
-  try{if(navigator.vibrate)navigator.vibrate(kind?[300,150,300,150,300]:[200,100,200]);}catch(e){}
-  rtChime(kind);
+  try{if(userSettings.vibra!==false&&navigator.vibrate)navigator.vibrate(kind?[300,150,300,150,300]:[200,100,200]);}catch(e){}
+  if(userSettings.suono!==false)rtChime(kind);
   try{if('Notification' in window&&Notification.permission==='granted'&&navigator.serviceWorker){navigator.serviceWorker.ready.then(r=>r.showNotification(title.replace(/<[^>]+>/g,''),{body:sub,tag:id,renotify:true,vibrate:[300,150,300]}));}}catch(e){}
   renderAlertLog();
 }
@@ -4714,7 +4743,7 @@ function renderLtFull(){
   const now=Date.now();const sk=apexState.cat+'|'+apexState.sess;
   const out=[];
   if(!el.querySelector('.ltf-list')){el.innerHTML='<div class="ltf-top"><div class="ltf-sess"></div><div class="ltf-lap"></div><button class="ltf-close" onclick="closeLtFull()" aria-label="Chiudi">✕</button></div><div class="ltf-list"></div>';}
-  el.querySelector('.ltf-sess').innerHTML=sess;
+  el.querySelector('.ltf-sess').innerHTML=lightHtml(false)+' '+sess;
   el.querySelector('.ltf-lap').innerHTML=lap?'<i class="ic ic-timer"></i> '+lap.replace(/</g,'&lt;'):'';
   if(!rows.length)out.push('<div class="ltf-empty">In attesa dei dati live…</div>');
   rows.forEach(({r,pos})=>{
@@ -4819,6 +4848,11 @@ window.setLtView=setLtView;
 // Classifica live ricostruita dai dati Apex, con i piloti dell'account evidenziati
 // Giro attuale / tempo rimanente come su Apex (messaggi dyn1/dyn2 del live)
 const apexDyn={};
+// Semaforo Apex: lg verde, lr rosso, ly giallo, lf bandiera a scacchi (fine)
+let apexLight={c:'',at:0};
+function lightInfo(){const c=apexLight.c;return({lg:{col:'#22c55e',t:'VERDE'},lr:{col:'#ef4444',t:'ROSSO'},ly:{col:'#facc15',t:'GIALLO'},lf:{col:'#ffffff',t:'FINE'}})[c]||null;}
+function lightHtml(big){const L=lightInfo();if(!L)return'';const sz=big?22:18;
+  return'<span class="lt-light" style="display:inline-flex;align-items:center;gap:6px;font-weight:900;font-size:'+(big?15:13)+'px;color:'+L.col+'"><span style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:'+(apexLight.c==='lf'?'repeating-conic-gradient(#fff 0 25%,#111 0 50%) 0 0/8px 8px':L.col)+';box-shadow:0 0 12px '+L.col+';flex-shrink:0"></span>'+L.t+'</span>';}
 function apexDynFmt(ms){ms=Math.max(0,Math.round(ms/1000));const h=Math.floor(ms/3600),m=Math.floor(ms%3600/60),x=ms%60;return(h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0');}
 function apexDynText(d){
   if(!d||d.val===undefined||d.val==='')return'';
@@ -4865,11 +4899,12 @@ function renderApexDyn(){
   if(!el){el=document.createElement('div');el.id='lt-dyn';el.style.cssText="display:none;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;padding:10px 14px;border-radius:12px;background:var(--bg2);font-family:'Chakra Petch';font-weight:700";box.parentNode.insertBefore(el,box);}
   const lap=apexLapText();
   const t=[apexDynText(apexDyn.dyn1),apexDynText(apexDyn.dyn2)].filter(x=>x&&!(lap&&/(?:LAP|GIRO|TOUR)\s*\d+\s*\/\s*\d+/i.test(x)));const fin=lap==='ARRIVO';
-  if((!t.length&&!lap)||!apexWsKey){el.style.display='none';return;}
+  const lh=lightHtml(true);
+  if((!t.length&&!lap&&!lh)||!apexWsKey){el.style.display='none';return;}
   const sess=((apexState.cat||'')+' '+(apexState.sess||'')).trim();
   el.style.display='flex';
   el.style.outline=fin?'2px solid #fff':'none';
-  el.innerHTML='<span style="font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+sess.replace(/</g,'&lt;')+'</span><span style="display:flex;align-items:center;gap:12px;white-space:nowrap">'
+  el.innerHTML='<span style="display:flex;align-items:center;gap:10px;min-width:0">'+lh+'<span style="font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+sess.replace(/</g,'&lt;')+'</span></span><span style="display:flex;align-items:center;gap:12px;white-space:nowrap">'
     +(lap?'<span style="font-size:'+(fin?'24':'22')+'px;color:'+(fin?'#fff':'var(--rt-orange)')+';font-weight:900">'+(fin?'<i class="ic ic-flag"></i> ':'')+lap+'</span>':'')
     +(t.length&&!fin?'<span style="font-size:16px;color:var(--text2)"><i class="ic ic-timer" style="color:var(--rt-orange)"></i> '+t.join(' · ').replace(/</g,'&lt;')+'</span>':'')+'</span>';
 }
@@ -4958,6 +4993,7 @@ function apexParse(txt){
   let changed=false;
   txt.split('\n').forEach(line=>{
     const p=line.split('|');const k=p[0];const v=p.slice(2).join('|');
+    if(k==='light'){apexLight={c:String(p[1]||'').trim(),at:Date.now()};try{renderApexDyn();if(ltFullOn)renderLtFull();}catch(e){}return;}
     if(k==='dyn1'||k==='dyn2'){apexDyn[k]={type:p[1]||'text',val:v,at:Date.now()};renderApexDyn();return;}
     if(k==='grid'){ltGridNew=false;ltOnGrid(v);apexGrid.innerHTML=v;
       // griglia con piloti nuovi arrivata PRIMA del nome della sessione nuova: non attribuirla alla sessione vecchia
@@ -5069,7 +5105,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1335';
+const APP_BUILD='2026-11-14-1355';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
