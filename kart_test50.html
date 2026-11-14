@@ -500,6 +500,7 @@ button,input,textarea,select{font-family:inherit}
 @keyframes nowglow{50%{box-shadow:0 0 0 1.5px var(--rt-orange),0 12px 40px -10px rgba(255,90,31,.7)}}
 .task-btn{transition:background-color .25s,color .25s,transform .12s}
 .card,.card-inner{animation:fadein .25s ease-out}
+body.quiet .card,body.quiet .card-inner,body.quiet .slot-now{animation:none!important}
 @keyframes fadein{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:none}}
 
 /* Live in palette Carbon */
@@ -2050,7 +2051,9 @@ function toggleTask(num,task){
     document.querySelectorAll('button.task-btn').forEach(b=>{if(b.getAttribute('onclick')==="toggleTask('"+num+"','"+task+"')")b.className='task-btn '+st;});
     return;
   }
-  renderAll();
+  // ridisegno senza animazione di comparsa: niente lampeggio toccando una pillola
+  document.body.classList.add('quiet');renderAll();
+  clearTimeout(window._quietT);window._quietT=setTimeout(()=>document.body.classList.remove('quiet'),400);
 }
 window.toggleTask=toggleTask;
 
@@ -4804,7 +4807,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-0950';
+const APP_BUILD='2026-11-14-1015';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
