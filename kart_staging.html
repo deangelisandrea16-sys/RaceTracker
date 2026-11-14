@@ -4569,16 +4569,32 @@ function setLtLast(v){ltLastOn=!!v;renderLtMyTable();}
 window.setLtLast=setLtLast;
 // Apex al cambio sessione può mandare la griglia NUOVA prima dei titoli nuovi: la foto della griglia vecchia si prende appena prima di sostituirla
 let ltPre=null,ltPreAt=0;
-function ltOnGrid(){if(apexGridSess){ltPre=ltSnapshot(true);ltPreAt=Date.now();}}
-function ltOnTitle(){
+// "Ultima gara" scatta SOLO quando nella griglia arrivano piloti diversi (la griglia nuova sostituisce i miei),
+// non all'arrivo né al cambio del nome sessione. Il nome della sessione è quello attivo alla partenza.
+let ltCurLabel='';
+function ltGridNums(root){const head=root.querySelector('tr[data-id="r0"]');let nc='4';
+  if(head)head.querySelectorAll('td[data-type]').forEach(td=>{if(td.getAttribute('data-type')==='no')nc=(td.getAttribute('data-id')||'').replace('c','');});
+  const out=new Set();root.querySelectorAll('tr[data-id]').forEach(r=>{const id=r.getAttribute('data-id');if(id==='r0')return;const c=r.querySelector('[data-id="'+id+'c'+nc+'"]');const n=c?c.textContent.trim():'';if(n)out.add(n);});return out;}
+function ltOnGrid(v){
+  try{
+    const oldN=ltGridNums(apexGrid);if(!oldN.size)return;
+    const tmp=document.createElement('table');tmp.innerHTML=v;const newN=ltGridNums(tmp);
+    let same=0;newN.forEach(n=>{if(oldN.has(n))same++;});
+    if(newN.size&&same/Math.min(oldN.size,newN.size)>=0.5)return; // stessi piloti (aggiornamento o ripartenza): niente foto
+    const key=ltCurLabel||apexGridSess;const snap=ltSnapshot(true,key);
+    ltCurLabel='';
+    if(snap&&snap.rows&&snap.rows.length&&!(ltLast&&ltLast.key===snap.key&&ltLast.race===snap.race&&Math.abs(ltLast.at-snap.at)<60000)){ltLast=snap;try{localStorage.setItem('rt_ltlast',JSON.stringify(ltLast));}catch(e){}}
+  }catch(e){}
+}
+function ltOnTitle(){return false;
   const recent=Date.now()-ltPreAt<15000;
   if(recent){const p=ltPre;ltPre=null;if(p&&p.rows&&p.rows.length&&!(ltLast&&ltLast.key===p.key&&ltLast.race===p.race)){ltLast=p;try{localStorage.setItem('rt_ltlast',JSON.stringify(ltLast));}catch(e){}}}
   else ltSnapshot();
   return recent;
 }
-function ltSnapshot(build){
+function ltSnapshot(build,forceKey){
   try{
-    const key=apexGridSess;if(!key||(!build&&ltLast&&ltLast.key===key&&ltLast.race===activeRaceId))return null;
+    const key=forceKey||apexGridSess;if(!key||(!build&&ltLast&&ltLast.key===key&&ltLast.race===activeRaceId))return null;
     const head=apexGrid.querySelector('tr[data-id="r0"]');const col={};
     if(head)head.querySelectorAll('td[data-type]').forEach(td=>{col[td.getAttribute('data-type')]=(td.getAttribute('data-id')||'').replace('c','');});
     const C=(t,d)=>col[t]||d;
@@ -4757,7 +4773,7 @@ function apexParse(txt){
   txt.split('\n').forEach(line=>{
     const p=line.split('|');const k=p[0];const v=p.slice(2).join('|');
     if(k==='dyn1'||k==='dyn2'){apexDyn[k]={type:p[1]||'text',val:v,at:Date.now()};renderApexDyn();return;}
-    if(k==='grid'){ltOnGrid();apexGrid.innerHTML=v;apexGridSess=apexState.cat+'|'+apexState.sess;apexGridDirty();return;}
+    if(k==='grid'){ltOnGrid(v);apexGrid.innerHTML=v;apexGridSess=apexState.cat+'|'+apexState.sess;apexGridDirty();return;}
     const mc=k.match(/^r(\d+)c(\d+)$/);
     if(mc){const el=apexGrid.querySelector('[data-id="'+k+'"]');if(el){el.className=p[1]||'';el.innerHTML=v;apexGridDirty();}return;}
     if(/^r\d+$/.test(k)&&p[1]==='#'){const row=apexGrid.querySelector('tr[data-id="'+k+'"]');if(row){row.setAttribute('data-pos',p[2]);apexGridDirty();}return;}
@@ -4773,7 +4789,7 @@ function apexParse(txt){
       // PRIMA partenza della sessione: le ripartenze dopo una bandiera rossa non falsano il ritardo
       if(all.length){
         const first=all.sort((a,b)=>slotMins(a.replace(':','.'))-slotMins(b.replace(':','.')))[0];
-        if(apexState.start!==first){apexState.start=first;changed=true;}
+        if(apexState.start!==first){apexState.start=first;ltCurLabel=apexState.cat+'|'+apexState.sess;changed=true;}
       }
       const fins=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*><\/span>\s*FINISH/gi)].map(x=>x[1]).filter(t=>!apexIgnore.has(t));
       if(fins.length&&apexState.start&&!apexFinished){
@@ -4863,7 +4879,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1040';
+const APP_BUILD='2026-11-14-1050';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
