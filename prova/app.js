@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-14-1555';
+var RT_JS_BUILD='2026-11-14-1600';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3837,7 +3837,7 @@ function renderRiskList(){
         /* 14/11 15:35 (Andrea: testi poco chiari): si dice per COSA rischia (finale), quali gare mancano e la prossima con orario */
         const nx=riskNext(x);const many=x.left>1;
         const t=x.status==='out'?(x.left?'Fuori dalla finale anche vincendo (stima)':'Fuori dalla finale (stima)')
-          :x.status==='safe'?(x.left?'In finale se arriva almeno P'+x.need+(many?' di media':'')+' (stima)':'In finale (stima)')
+          :x.status==='safe'?(x.left?(x.need>=Math.ceil(x.n/2)+2?'In finale anche arrivando ultimo (stima)':'In finale se arriva almeno P'+x.need+(many?' di media':'')+' (stima)'):'In finale (stima)')
           :'Rischia la <b>FINALE</b>: deve arrivare almeno <b>P'+x.need+'</b> '+(many?'di media nelle '+x.left+' gare che mancano':nx.art);
         const sub=(x.left?'Manca: '+riskLeftTxt(x)+(nx.when?' · prossima '+nx.label+' '+nx.when:''):'Gare finite')+' · '+x.pts+' punti';
         return'<div class="card-inner al-row" style="border-left:4px solid '+col[x.status]+'"><div class="al-time" style="font-size:18px;font-weight:900">'+x.rank+'°</div><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(x.num)+' '+esc(x.name)+'</div><div style="font-size:13px;color:var(--text2);margin-top:2px">'+t+'</div><div style="font-size:11px;color:var(--text4);margin-top:2px">'+sub+'</div></div></div>';}).join('');
