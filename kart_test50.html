@@ -4407,6 +4407,10 @@ function ltScanRet(){
     const head=apexGrid.querySelector('tr[data-id="r0"]');if(!head)return;let sc=null,nc='4';
     head.querySelectorAll('td[data-type]').forEach(td=>{const t=td.getAttribute('data-type');const c=(td.getAttribute('data-id')||'').replace('c','');if(t==='sta')sc=c;if(t==='no')nc=c;});
     if(!sc)return;const sk=apexState.cat+'|'+apexState.sess;
+    // ritirato solo se rientra mentre la maggior parte è ancora in pista (a fine sessione rientrano tutti)
+    const S=ltStaCounts();if(!S||S.run<=S.inn)return;
+    if(apexGrid.querySelector('td.sf[data-id$="c'+sc+'"]'))return;
+    try{if(apexLapInfo().fin)return;}catch(e){}
     apexGrid.querySelectorAll('tr[data-id]').forEach(r=>{const id=r.getAttribute('data-id');if(id==='r0')return;
       const st=r.querySelector('[data-id="'+id+'c'+sc+'"]');const nn=r.querySelector('[data-id="'+id+'c'+nc+'"]');if(!st||!nn)return;
       const no=nn.textContent.trim();if(!no)return;const k=sk+'|'+no;const cl=' '+st.className+' ';
@@ -4415,6 +4419,14 @@ function ltScanRet(){
       else if(/ (so|sr|su|sd) /.test(cl)&&ltRet[k])delete ltRet[k];
     });
   }catch(e){}
+}
+function ltStaCounts(){
+  const head=apexGrid.querySelector('tr[data-id="r0"]');if(!head)return null;let sc=null;
+  head.querySelectorAll('td[data-type]').forEach(td=>{if(td.getAttribute('data-type')==='sta')sc=(td.getAttribute('data-id')||'').replace('c','');});
+  if(!sc)return null;let run=0,inn=0,tot=0;
+  apexGrid.querySelectorAll('tr[data-id]').forEach(r=>{const id=r.getAttribute('data-id');if(id==='r0')return;const st=r.querySelector('[data-id="'+id+'c'+sc+'"]');if(!st)return;tot++;
+    const cl=' '+st.className+' ';if(/ (so|sr|su|sd) /.test(cl))run++;else if(/ (si|ss|sf) /.test(cl))inn++;});
+  return{run,inn,tot};
 }
 function ltRetOf(no,sk){return ltRet[(sk||(apexState.cat+'|'+apexState.sess))+'|'+no]||null;}
 function ltRetBadge(r){if(!r)return'';const race=r.race!==undefined?r.race:ltIsRace();
@@ -4554,6 +4566,8 @@ function apexLapInfo(){
     led=best;
   }
   if(tot&&led!==null&&led>=tot)fin=true;
+  // sessione partita e quasi tutti rientrati = finita (Apex non sempre manda FINISH)
+  try{const S=ltStaCounts();if(apexState.start&&S&&S.tot>3&&S.run===0&&S.inn>=S.tot*0.8)fin=true;}catch(e){}
   const dt=[apexDynText(apexDyn.dyn1),apexDynText(apexDyn.dyn2)].join(' ');
   if(/finish|arriv|chequ|scacch/i.test(dt))fin=true;
   return{tot,led,fin};
@@ -4768,7 +4782,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-0905';
+const APP_BUILD='2026-11-14-0920';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
