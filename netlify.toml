@@ -6,3 +6,4 @@
   from = "/"
   to = "/kart_staging.html"
   status = 302
+  force = true
