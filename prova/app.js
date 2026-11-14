@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-14-2140';
+var RT_JS_BUILD='2026-11-14-2155';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3823,7 +3823,8 @@ function riskData(){
       let need=null;
       if(r.left>0){for(let p=field;p>=1;p--){const mine=r.pts+rkPts(p)*r.left;let rank=1;rows.forEach(o=>{if(o!==r&&o.pts+o.avg*o.left<mine)rank++;});if(rank<=cut){need=p;break;}}}
       const status=r.left===0?(r.rank<=cut?'safe':'out'):(need===null?'out':need>=Math.ceil(field*0.8)?'safe':'risk');
-      out.push({cat,cut,heatsLeft:r.heatsLeft,pfDone:r.pfDone,pf:String(r.e.prefinal||'').toUpperCase(),num:r.num,name:(pilots.find(p=>String(p.num)===r.num)||{}).name||((r.e.lastName||'')+' '+(r.e.firstName||'')).trim(),pts:r.pts,rank:r.rank,left:r.left,need,status,n:list.length});
+      const _res=r.e.result||{};const poss=Object.keys(_res).filter(k=>/^[A-H]-[A-H]$|^H\d$|^PF-/.test(k)).map(k=>parseInt(_res[k])).filter(v=>v>0);
+      out.push({cat,cut,poss,heatsLeft:r.heatsLeft,pfDone:r.pfDone,pf:String(r.e.prefinal||'').toUpperCase(),num:r.num,name:(pilots.find(p=>String(p.num)===r.num)||{}).name||((r.e.lastName||'')+' '+(r.e.firstName||'')).trim(),pts:r.pts,rank:r.rank,left:r.left,need,status,n:list.length});
     });
   });
   return out;
@@ -3835,6 +3836,24 @@ function riskSafeBlock(d,esc){
   return'<details style="margin-top:14px"><summary style="cursor:pointer;font-size:12px;font-weight:800;letter-spacing:1px;color:var(--text4);padding:8px 0">NON A RISCHIO · '+sf.length+' piloti</summary>'
     +sf.map(x=>'<div style="display:flex;gap:10px;align-items:baseline;font-size:13px;color:var(--text3);padding:5px 2px;border-top:1px solid var(--border)"><span style="color:#22c55e;font-weight:900;min-width:34px">'+x.rank+'°</span><span style="flex:1">#'+esc(x.num)+' '+esc(x.name)+'</span><span style="color:var(--text4);font-size:11px">'+esc(x.cat)+'</span></div>').join('')+'</details>';
 }
+/* 14/11 21:50 (Andrea): percentuale di rischio di NON entrare in finale, stimata dalle posizioni fatte finora
+   (media e regolarita' del pilota) rispetto alla posizione che deve ottenere. Solo stima, le posizioni non si mostrano. */
+function _ncdf(z){const t=1/(1+0.2316419*Math.abs(z)),d=0.3989423*Math.exp(-z*z/2);let pr=d*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.821256+t*1.330274))));return z>0?1-pr:pr;}
+function riskPct(x){
+  if(x.status==='out')return x.left?97:100;
+  if(!x.left)return x.status==='safe'?0:100;
+  if(x.need==null)return 97;
+  const field=Math.ceil((x.n||40)/2)+2,ps=(x.poss||[]).filter(v=>v>0),k=ps.length;
+  let mu=k?ps.reduce((a,b)=>a+b,0)/k:field/2;
+  let sd=k>1?Math.sqrt(ps.reduce((a,b)=>a+(b-mu)*(b-mu),0)/(k-1)):field/4;
+  sd=Math.max(sd,field/8);mu=(mu*k+field/2)/(k+1);
+  const se=sd/Math.sqrt(Math.max(1,x.left));
+  const ok=_ncdf((x.need+0.5-mu)/se);
+  return Math.round(Math.min(99,Math.max(1,(1-ok)*100)));
+}
+function riskColor(p){return p<25?'#22c55e':p<50?'#facc15':p<75?'#f97316':'#ef4444';}
+function riskRing(p){const c=riskColor(p),r=15,L=2*Math.PI*r,f=Math.max(0.02,p/100)*L;
+  return'<div title="Rischio stimato di non entrare in finale" style="position:relative;width:40px;height:40px;flex-shrink:0"><svg width="40" height="40" viewBox="0 0 40 40" style="transform:rotate(-90deg)"><circle cx="20" cy="20" r="'+r+'" fill="none" stroke="var(--bg3)" stroke-width="5"/><circle cx="20" cy="20" r="'+r+'" fill="none" stroke="'+c+'" stroke-width="5" stroke-linecap="round" stroke-dasharray="'+f.toFixed(1)+' '+L.toFixed(1)+'"/></svg><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:\'Chakra Petch\',sans-serif;font-size:11px;font-weight:700;color:'+c+'">'+p+'%</div></div>';}
 function riskLeftTxt(x){const h=(x.heatsLeft||[]);const p=[];if(h.length)p.push(h.length===1?'manche '+h[0]:h.length+' manche ('+h.join(', ')+')');if(!x.pfDone)p.push('prefinale'+(x.pf?' '+x.pf:''));return p.join(' + ');}
 function riskNext(x){
   const h=x.heatsLeft||[];
@@ -3902,7 +3921,7 @@ function renderRiskList(){
       /* 14/11 16:15 (Andrea): i verdi (non a rischio) non sporcano la lista: tutti insieme in fondo, chiusi */
       const xr=xs.filter(x=>!x.none&&x.status!=='safe');
       if(!xr.length)return head+'<div style="font-size:12px;color:var(--text4);padding:4px 0 10px">Nessun tuo pilota a rischio.</div>';
-      return head+xr.sort((a,b)=>({out:0,risk:1,safe:2}[a.status]-{out:0,risk:1,safe:2}[b.status])||a.rank-b.rank).map(x=>{
+      return head+xr.sort((a,b)=>({out:0,risk:1,safe:2}[a.status]-{out:0,risk:1,safe:2}[b.status])||riskPct(b)-riskPct(a)||a.rank-b.rank).map(x=>{
         /* 14/11 15:35 (Andrea: testi poco chiari): si dice per COSA rischia (finale), quali gare mancano e la prossima con orario */
         const nx=riskNext(x);const many=x.left>1;
         const t=x.status==='out'?(x.left?'Fuori dalla finale anche vincendo (stima)':'Fuori dalla finale (stima)')
@@ -3910,7 +3929,8 @@ function renderRiskList(){
           :'Rischia la <b>FINALE</b>: deve arrivare almeno <b>P'+x.need+'</b> '+(many?'di media nelle '+x.left+' gare che mancano':nx.art);
         const _pp=pilots.find(p=>String(p.num)===String(x.num));const _pg=_pp?pfOf(_pp):'';
         const sub=(_pg?'<span style="color:#22c55e;font-weight:800">In prefinale '+_pg+' (ufficiale)</span> · ':'')+(x.left?'Manca: '+riskLeftTxt(x)+(nx.when?' · prossima '+nx.label+' '+nx.when:''):'Gare finite')+' · '+x.pts+' punti';
-        return'<div class="card-inner al-row" style="border-left:4px solid '+col[x.status]+'"><div class="al-time" style="font-size:18px;font-weight:900">'+x.rank+'°</div><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(x.num)+' '+esc(x.name)+'</div><div style="font-size:13px;color:var(--text2);margin-top:2px">'+t+'</div><div style="font-size:11px;color:var(--text4);margin-top:2px">'+sub+'</div></div></div>';}).join('');
+        const _rp=riskPct(x);
+        return'<div class="card-inner al-row" style="border-left:4px solid '+riskColor(_rp)+'"><div class="al-time" style="font-size:18px;font-weight:900">'+x.rank+'°</div><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(x.num)+' '+esc(x.name)+'</div><div style="font-size:13px;color:var(--text2);margin-top:2px">'+t+'</div><div style="font-size:11px;color:var(--text4);margin-top:2px">'+sub+'</div></div>'+riskRing(_rp)+'</div>';}).join('');
     }).join('')+riskSafeBlock(d,esc);
 }
 function toggleAlertLog(){alertLogOpen=!alertLogOpen;renderAlertLog();}
