@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-14-1605';
+var RT_JS_BUILD='2026-11-14-1610';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1878,6 +1878,12 @@ function openRaceSettings(raceId){
     +'<input class="form-input" id="rs-start" type="date" value="'+(r.startDate||'')+'"></div>'
     +'<div class="form-group" style="flex:1"><label class="form-label">Data Fine</label>'
     +'<input class="form-input" id="rs-end" type="date" value="'+(r.endDate||'')+'"></div></div>'
+    /* 14/11/2026: orari delle premiazioni dal programma ufficiale (servono al server per gli avvisi pole/podio e al Programma) */
+    +'<div class="form-group"><label class="form-label">Premiazione poleman (se nel programma)</label>'
+    +'<input class="form-input" id="rs-aw-pole" type="datetime-local" value="'+(((r.awards||{}).pole)||'')+'"></div>'
+    +'<div class="form-group"><label class="form-label">Premiazione finali</label>'
+    +'<input class="form-input" id="rs-aw-final" type="datetime-local" value="'+((((r.awards||{}).final)||'')==='dopo'?'':(((r.awards||{}).final)||''))+'">'
+    +'<label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;color:var(--text2)"><input type="checkbox" id="rs-aw-dopo"'+((((r.awards||{}).final)||'')==='dopo'?' checked':'')+'> Subito dopo la finale di ogni categoria</label></div>'
     +'<button class="form-submit" onclick="saveRaceSettings(\''+raceId+'\')">SALVA</button>'
     +'<div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">'
     +'<div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:12px;letter-spacing:1px">CARICA DATI</div>'
@@ -2049,6 +2055,11 @@ function saveRaceSettings(raceId){
   u['races_index/'+raceId+'/liveTiming']=liveTiming;
   u['races_index/'+raceId+'/startDate']=startDate;
   u['races_index/'+raceId+'/endDate']=endDate;
+  const awP=((document.getElementById('rs-aw-pole')||{}).value||'').trim();
+  const awDopo=!!(document.getElementById('rs-aw-dopo')||{}).checked;
+  const awF=awDopo?'dopo':((document.getElementById('rs-aw-final')||{}).value||'').trim();
+  u['races_index/'+raceId+'/awards/pole']=awP||null;
+  u['races_index/'+raceId+'/awards/final']=awF||null;
   update(ref(db),u).then(()=>{closeModal();});
 }
 window.saveRaceSettings=saveRaceSettings;
@@ -3105,6 +3116,21 @@ function getCurrentSlotIndex(slots){
   return clockIdx;
 }
 
+/* 14/11/2026: riga premiazioni nel Programma (orari da Impostazioni gara → races_index/<gara>/awards) */
+function awardsStrip(day){
+  try{
+    const a=((races[activeRaceId]||{}).awards)||{};const out=[];
+    const DN=['DOMENICA','LUNEDI','MARTEDI','MERCOLEDI','GIOVEDI','VENERDI','SABATO'];
+    const norm=x=>String(x||'').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    const onDay=v=>{const d=new Date(v);return!isNaN(d)&&DN[d.getDay()]===norm(day);};
+    const hm=v=>{const d=new Date(v);return d.getHours()+'.'+String(d.getMinutes()).padStart(2,'0');};
+    if(a.pole&&onDay(a.pole))out.push('Premiazione poleman <b>'+hm(a.pole)+'</b>');
+    if(a.final==='dopo'){if(day===currentDays[currentDays.length-1])out.push('Premiazione finali <b>subito dopo ogni finale</b>');}
+    else if(a.final&&onDay(a.final))out.push('Premiazione finali <b>'+hm(a.final)+'</b>');
+    if(!out.length)return'';
+    return'<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);background:var(--bg3);border-left:3px solid #facc15;border-radius:10px;padding:9px 12px;margin-bottom:10px"><i class="ic ic-trophy"></i><span>'+out.join(' · ')+'</span></div>';
+  }catch(e){return'';}
+}
 function renderSchedule(){
   const dt=document.getElementById('day-tabs');
   dt.innerHTML=currentDays.map(d=>'<button class="day-tab '+(d===activeDay?'active':'')+'" onclick="setDay(\''+d+'\')">'+d+'</button>').join('');
@@ -3262,7 +3288,7 @@ function renderSchedule(){
     html+='<div style="display:flex;gap:6px;flex-wrap:wrap">'+chips+'</div>';
     html+='<div style="font-size:10px;color:var(--text4);text-align:center;padding:6px 0 2px">verde = completati sui '+tot+' tuoi piloti</div>';
   }
-  el.innerHTML=html||'<div class="empty-state"><p>Nessun tuo pilota in questa giornata</p></div>';
+  el.innerHTML=awardsStrip(activeDay)+(html||'<div class="empty-state"><p>Nessun tuo pilota in questa giornata</p></div>');
   const fab=document.getElementById('fab-now');if(fab)fab.classList.add('visible');
   const fabTop=document.getElementById('fab-top');if(fabTop)fabTop.classList.add('visible');
   const fabBot=document.getElementById('fab-bottom');if(fabBot)fabBot.classList.add('visible');
