@@ -498,6 +498,10 @@ button,input,textarea,select{font-family:inherit}
 /* animazioni leggere */
 .slot-now{animation:nowglow 2.4s ease-in-out infinite}
 @keyframes nowglow{50%{box-shadow:0 0 0 1.5px var(--rt-orange),0 12px 40px -10px rgba(255,90,31,.7)}}
+/* sessione ORA: bordo verde con alone (14/11) */
+.slot-now{border-color:#22c55e!important;box-shadow:0 0 0 1.5px #22c55e,0 0 22px -4px rgba(34,197,94,.65)!important;animation:nowglowG 2.4s ease-in-out infinite}
+@keyframes nowglowG{50%{box-shadow:0 0 0 1.5px #22c55e,0 0 32px -2px rgba(34,197,94,.85)}}
+.slot-now .slot-time{color:#22c55e}
 .task-btn{transition:background-color .25s,color .25s,transform .12s}
 /* team evidenziati nel programma: bordo e alone del colore del team attorno al singolo pilota */
 .card-inner.tglow{outline:2px solid var(--tc);outline-offset:-2px;box-shadow:0 0 16px -4px var(--tc)}
@@ -4950,7 +4954,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1135';
+const APP_BUILD='2026-11-14-1140';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
