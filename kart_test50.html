@@ -426,6 +426,8 @@ body:not(.light){background:#0d0d0f}
 .slot-header{gap:10px;margin-bottom:10px}
 .slot-time{font-family:'Saira Condensed';font-weight:900;font-style:italic;font-size:26px;letter-spacing:0;color:var(--text3)}
 .slot-now .slot-time{color:var(--rt-orange)}
+.note-txt{font-size:13px;font-weight:700;font-style:italic;color:#fff}body.light .note-txt{color:var(--text)}
+.lt-tasks{margin-top:8px}.lt-tasks .task-btn{min-height:40px}
 .slot-dur{font-family:'Saira Condensed';font-weight:900;font-style:italic;font-size:22px;color:var(--text2);white-space:nowrap}.slot-dur s{color:var(--text4);font-size:16px}.slot-dur b{color:#fbbf24;font-weight:900}
 .slot-label{font-family:'Saira Condensed';font-weight:900;font-size:19px;text-transform:uppercase}
 .slot-now{border-color:var(--rt-orange)!important;box-shadow:0 0 0 1.5px var(--rt-orange),0 12px 34px -16px rgba(255,90,31,.55)!important}
@@ -2041,7 +2043,7 @@ function taskBtn(num,task,small,readonly){
 function toggleTask(num,task){
   if(!statuses[num])statuses[num]={};
   statuses[num][task]=cycleStatus(statuses[num][task]||'red');
-  saveUserField('statuses',statuses);renderAll();
+  saveUserField('statuses',statuses);renderAll();try{renderLtMyTable();}catch(e){}
 }
 window.toggleTask=toggleTask;
 
@@ -3130,7 +3132,7 @@ function gridBadge(num,slot){
 function noteLine(num){
   const n=String((notes&&notes[num])||'').trim();if(!n)return'';
   const e=n.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  return'<div style="margin-top:4px;font-size:11px;color:var(--text4);font-style:italic;white-space:pre-wrap"><i class="ic ic-note"></i> '+e+'</div>';
+  return'<div class="note-txt" style="margin-top:4px;white-space:pre-wrap"><i class="ic ic-note"></i> '+e+'</div>';
 }
 function searchResultItem(m){
   const catCls=catClass(m.cat);const isMine=m.isMyPilot;
@@ -3295,7 +3297,7 @@ function teamsSlotHtml(slot){
     +'<span style="font-size:10px;font-weight:800;color:#a78bfa">'+(inSlot.length?inSlot.length+' in pista: '+inSlot.map(p=>'#'+p.num).join(' '):'')
     +(waiting.length?(inSlot.length?' · ':'')+'<i class="ic ic-wait"></i> '+waiting.length+' in attesa':'')+'</span></div>'
     +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,true)).join('')+'</div>'
-    +(teamNotes[t.key]?'<div style="margin-top:6px;font-size:11px;color:var(--text4);font-style:italic"><i class="ic ic-note"></i> '+teamNotes[t.key]+'</div>':'')+'</div>').join('');
+    +(teamNotes[t.key]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+teamNotes[t.key]+'</div>':'')+'</div>').join('');
 }
 function addTeam(name){
   const key=teamKey(name);
@@ -3400,7 +3402,7 @@ function renderOverviewBody(){
       +r.ts.map(({t})=>{const st=(teamStatuses[t.key]||{}).PISTA||'red';return'<span class="ov-t '+st+'" onclick="toggleTeamTask(\''+escAttr(t.key)+'\',\'PISTA\')"><i class="ic ic-team"></i> '+t.name+'</span>';}).join('');
     return'<div class="ov-row'+cls+'"><span class="ov-time">'+r.time+'</span><span class="ov-cat '+catClass(r.cat)+'">'+r.label+'<br><span style="color:var(--text4);font-size:9px">'+r.sub+'</span></span>'
       +'<div class="ov-nums">'+(nums||'<span style="font-size:10px;color:var(--text4)">—</span>')
-      +r.ps.filter(p=>String(notes[p.num]||'').trim()).map(p=>'<div style="width:100%;font-size:10px;color:var(--text4);font-style:italic">#'+p.num+' <i class="ic ic-note"></i> '+String(notes[p.num]).replace(/</g,'&lt;')+'</div>').join('')+'</div></div>';
+      +r.ps.filter(p=>String(notes[p.num]||'').trim()).map(p=>'<div class="note-txt" style="width:100%">#'+p.num+' <i class="ic ic-note"></i> '+String(notes[p.num]).replace(/</g,'&lt;')+'</div>').join('')+'</div></div>';
   }).join('');
   body.innerHTML=html||'<div class="empty-state"><p>Nessun tuo pilota o team in questa giornata</p></div>';
 }
@@ -3975,7 +3977,7 @@ function renderSchedule(){
         +'<span class="inner-team-big">'+p.team+'</span>'
         +'<button onclick="editPilotNote(\''+p.num+'\')" style="margin-left:6px;background:none;border:none;color:var(--text4);font-size:14px;cursor:pointer;padding:0 2px;flex-shrink:0"><i class="ic ic-note"></i></button></div>'
         +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+'</div>'
-        +(notes[p.num]?'<div style="margin-top:6px;font-size:11px;color:var(--text4);font-style:italic"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>';
+        +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>';
     });
     html+=tHtml+'</div></div>';
   });
@@ -3996,7 +3998,7 @@ function renderSchedule(){
           +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,{type:'final'})+'<span class="inner-name">'+p.name+'</span>'+(p.eliminated?'':runChip(p.num,1e6))
           +'<span class="inner-team-big">'+p.team+'</span></div>'
           +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+'</div>'
-          +(notes[p.num]?'<div style="margin-top:6px;font-size:11px;color:var(--text4);font-style:italic"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>';
+          +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>';
       });
       html+='</div>';
     });
@@ -4452,13 +4454,52 @@ setInterval(()=>{if(ltFullOn)renderLtFull();},1000);
 let ltView='mia'; // vista "Apex originale" rimossa il 13/11/2026
 let ltOnlyMine=localStorage.getItem('rt_ltmine')!=='0';
 function toggleLtMine(v){
-  if(ltOnlyMine===v)return;
+  if(ltOnlyMine===v&&!ltLastOn)return;ltLastOn=false;
   ltOnlyMine=v;localStorage.setItem('rt_ltmine',v?'1':'0');
   const box=document.getElementById('lt-mytable');const dir=v?'l':'r';
   if(box){box.classList.remove('swap-r','swap-l');void box.offsetWidth;box.classList.add('swap-'+dir);clearTimeout(window._ltSwT);window._ltSwT=setTimeout(()=>box.classList.remove('swap-r','swap-l'),350);}
   window._ltSwAnim=dir;renderLtMyTable();window._ltSwAnim='';
 }
 window.toggleLtMine=toggleLtMine;
+// ── ULTIMA GARA: quando nel live entra la sessione nuova, l'arrivo della precedente (solo miei) resta qui ──
+let ltLastOn=false,ltLast=null;
+try{ltLast=JSON.parse(localStorage.getItem('rt_ltlast')||'null');}catch(e){ltLast=null;}
+function setLtLast(v){ltLastOn=!!v;renderLtMyTable();}
+window.setLtLast=setLtLast;
+function ltSnapshot(){
+  try{
+    const key=apexGridSess;if(!key||(ltLast&&ltLast.key===key&&ltLast.race===activeRaceId))return;
+    const head=apexGrid.querySelector('tr[data-id="r0"]');const col={};
+    if(head)head.querySelectorAll('td[data-type]').forEach(td=>{col[td.getAttribute('data-type')]=(td.getAttribute('data-id')||'').replace('c','');});
+    const C=(t,d)=>col[t]||d;
+    const txt=(r,c)=>{const el=r.querySelector('[data-id="'+r.getAttribute('data-id')+'c'+c+'"]');return el?el.textContent.trim():'';};
+    const myNums=new Set(pilots.map(x=>String(x.num)));
+    const rows=[...apexGrid.querySelectorAll('tr[data-id]')].filter(r=>r.getAttribute('data-id')!=='r0')
+      .map(r=>({no:txt(r,C('no','4')),pos:parseInt(txt(r,C('rk','3')))||parseInt(r.getAttribute('data-pos'))||999,dr:txt(r,C('dr','5')),gap:txt(r,C('gap','13')),blp:txt(r,C('blp','12')),laps:txt(r,C('tlp','14'))}))
+      .filter(x=>myNums.has(x.no)).sort((a,b)=>a.pos-b.pos);
+    if(!rows.length)return;
+    const [cat,sess]=key.split('|');
+    ltLast={key,race:activeRaceId,cat,sess,at:Date.now(),tot:[...apexGrid.querySelectorAll('tr[data-id]')].length-1,rows};
+    try{localStorage.setItem('rt_ltlast',JSON.stringify(ltLast));}catch(e){}
+  }catch(e){}
+}
+function renderLtLast(){
+  const L=ltLast&&ltLast.race===activeRaceId?ltLast:null;
+  if(!L)return'<div class="empty-state"><p>Nessuna gara precedente con i tuoi piloti.<br>Appare qui quando nel live entra la sessione successiva.</p></div>';
+  const hm=new Date(L.at).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  const esc=x=>String(x||'').replace(/</g,'&lt;');
+  return'<div style="font-size:11px;font-weight:800;color:var(--text3);margin-bottom:6px">🏁 '+esc(L.cat)+' · '+esc(L.sess)+' <span style="color:var(--text4)">· chiusa alle '+hm+' · '+L.tot+' totali · classifica live, non ufficiale</span></div>'
+    +L.rows.map(x=>{
+      const pl=pilots.find(p=>String(p.num)===x.no)||{};const ent=(currentEntryList&&currentEntryList[x.no])||{};
+      const nt=String((notes&&notes[x.no])||'').trim();
+      return'<div class="ltbig" data-no="'+esc(x.no)+'" onclick="openPilotDetail(\''+esc(x.no)+'\')">'
+        +'<div class="pos">'+(x.pos<999?x.pos:'–')+'</div>'
+        +'<div style="flex:1;min-width:0"><div><span class="num">#'+esc(x.no)+'</span> <span class="nm">'+esc(pl.name||x.dr)+'</span></div>'
+        +'<div class="tm">'+esc(pl.team||ent.team||'')+(x.gap?' · '+esc(x.gap):'')+(x.blp?' · best '+esc(x.blp):'')+'</div>'
+        +(nt?'<div class="note-txt" style="margin-top:2px"><i class="ic ic-note"></i> '+esc(nt)+'</div>':'')
+        +'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+TASKS.map(t=>taskBtn(x.no,t,true)).join('')+'</div></div></div>';
+    }).join('');
+}
 // Animazione del contenuto quando si cambia vista con un selettore
 function viewSwap(ids,dir){ids.forEach(id=>{const el=document.getElementById(id);if(!el)return;el.classList.remove('view-swap-r','view-swap-l');void el.offsetWidth;el.classList.add('view-swap-'+dir);setTimeout(()=>el.classList.remove('view-swap-'+dir),350);});}
 function setLtView(v){if(ltView===v)return;const d=v==='apex'?'r':'l';ltView=v;localStorage.setItem('rt_ltview',v);renderLtMyTable();try{applyLiveCrop();}catch(e){}viewSwap(['lt-mytable','lt-wrap'],d);}
@@ -4556,8 +4597,10 @@ function renderLtMyTable(){
   const sorted=rows.map(r=>({r,pos:parseInt(r.getAttribute('data-pos'))||999})).sort((a,b)=>a.pos-b.pos);
   const mineCount=sorted.filter(x=>myNums.has(txt(x.r,C('no','4')))).length;
   const sw='<div class="pv-switch'+(window._ltSwAnim?' anim-'+window._ltSwAnim:'')+'" style="margin-bottom:8px">'
-    +'<button class="pv-btn'+(ltOnlyMine?' active':'')+'" onclick="toggleLtMine(true)">SOLO MIEI</button>'
-    +'<button class="pv-btn'+(!ltOnlyMine?' active':'')+'" onclick="toggleLtMine(false)">TUTTI</button></div>';
+    +'<button class="pv-btn'+(ltOnlyMine&&!ltLastOn?' active':'')+'" onclick="toggleLtMine(true)">SOLO MIEI</button>'
+    +'<button class="pv-btn'+(!ltOnlyMine&&!ltLastOn?' active':'')+'" onclick="toggleLtMine(false)">TUTTI</button>'
+    +'<button class="pv-btn'+(ltLastOn?' active':'')+'" onclick="setLtLast(true)">ULTIMA GARA</button></div>';
+  if(ltLastOn){box.innerHTML=sw+renderLtLast();ltFlip();return;}
   const title='<div style="font-size:11px;font-weight:800;color:var(--text3);margin-bottom:6px">'+(apexState.cat||'')+' · '+(apexState.sess||'')
     +' <span style="color:var(--text)">· '+mineCount+' tuoi in pista</span> <span style="color:var(--text4)">· '+sorted.length+' totali</span></div>';
   if(ltOnlyMine){
@@ -4576,7 +4619,8 @@ function renderLtMyTable(){
         +'<div style="flex:1;min-width:0"><div><span class="num">#'+no+'</span> <span class="nm">'+nm+'</span></div>'
         +'<div class="tm">'+team+'</div>'
 
-        +(nt?'<div style="font-size:11px;color:var(--text4);font-style:italic;margin-top:2px"><i class="ic ic-note"></i> '+nt.replace(/</g,'&lt;')+'</div>':'')+'</div></div>';
+        +(nt?'<div class="note-txt" style="margin-top:2px"><i class="ic ic-note"></i> '+nt.replace(/</g,'&lt;')+'</div>':'')
+        +(tm?'':'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+TASKS.map(t=>taskBtn(no,t,true)).join('')+'</div>')+'</div></div>';
     }).join(''):'<div class="empty-state"><p>Nessun tuo pilota in questa sessione</p></div>');
     ltFlip();return;
   }
@@ -4587,7 +4631,7 @@ function renderLtMyTable(){
       const llc=cls(r,C('llp','10'));
       return'<tr class="'+(mine?'mine':tm?'team':'')+'"'+(mine?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
         +'<td>'+txt(r,C('rk','3'))+'</td><td class="n">'+no+'</td><td class="d">'+txt(r,C('dr','5'))+'</td><td class="d" style="color:var(--text3)">'+(((pilots.find(x=>String(x.num)===no)||{}).team)||((currentEntryList&&currentEntryList[no])||{}).team||'')+'</td></tr>'
-        +(mine&&String((notes&&notes[no])||'').trim()?'<tr class="mine"><td></td><td colspan="6" style="font-size:11px;font-style:italic;font-weight:600;white-space:normal"><i class="ic ic-note"></i> '+String(notes[no]).replace(/</g,'&lt;')+'</td></tr>':'');
+        +(mine&&String((notes&&notes[no])||'').trim()?'<tr class="mine"><td></td><td colspan="6" class="note-txt" style="white-space:normal"><i class="ic ic-note"></i> '+String(notes[no]).replace(/</g,'&lt;')+'</td></tr>':'');
     }).join('')+'</table>'
     +'<div style="font-size:11px;color:var(--text4);margin-top:6px">Evidenziati i tuoi piloti · tocca un tuo pilota per la scheda</div>';
 }
@@ -4597,12 +4641,12 @@ function apexParse(txt){
   txt.split('\n').forEach(line=>{
     const p=line.split('|');const k=p[0];const v=p.slice(2).join('|');
     if(k==='dyn1'||k==='dyn2'){apexDyn[k]={type:p[1]||'text',val:v,at:Date.now()};renderApexDyn();return;}
-    if(k==='grid'){apexGrid.innerHTML=v;apexGridSess=apexState.cat+'|'+apexState.sess;apexGridDirty();return;}
+    if(k==='grid'){if(apexGridSess&&apexGridSess!==apexState.cat+'|'+apexState.sess)ltSnapshot();apexGrid.innerHTML=v;apexGridSess=apexState.cat+'|'+apexState.sess;apexGridDirty();return;}
     const mc=k.match(/^r(\d+)c(\d+)$/);
     if(mc){const el=apexGrid.querySelector('[data-id="'+k+'"]');if(el){el.className=p[1]||'';el.innerHTML=v;apexGridDirty();}return;}
     if(/^r\d+$/.test(k)&&p[1]==='#'){const row=apexGrid.querySelector('tr[data-id="'+k+'"]');if(row){row.setAttribute('data-pos',p[2]);apexGridDirty();}return;}
-    if(k==='title1'){if(apexState.cat!==v){if(apexState.sess&&apexState.start){apexEvaluate('change');apexState.start='';}apexState.cat=v;changed=true;}}
-    else if(k==='title2'){if(apexState.sess!==v){
+    if(k==='title1'){if(apexState.cat!==v){ltSnapshot();if(apexState.sess&&apexState.start){apexEvaluate('change');apexState.start='';}apexState.cat=v;changed=true;}}
+    else if(k==='title2'){if(apexState.sess!==v){ltSnapshot();
       // cambio sessione: le partenze già viste appartengono alla sessione precedente
       if(apexState.sess){apexEvaluate('change');apexIgnore=new Set(apexSeen);}
       apexState.sess=v;apexFinished='';clearTimeout(apexEvalT);apexState.start='';apexState.red='';changed=true;}}
@@ -4700,7 +4744,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-0820';
+const APP_BUILD='2026-11-14-0900';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
