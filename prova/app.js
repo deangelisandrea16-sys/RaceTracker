@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-14-1545';
+var RT_JS_BUILD='2026-11-14-1555';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3771,7 +3771,8 @@ function riskData(){
       let pts=0,done=0;h.forEach(k=>{const v=rkPts(res[k]);if(v!==null){pts+=v;done++;}});
       const pfDone=['PF-A','PF-B'].some(k=>rkPts(res[k])!==null);if(pfDone){const k=rkPts(res['PF-A'])!==null?'PF-A':'PF-B';pts+=rkPts(res[k]);done++;}
       const left=Math.max(0,h.length-(done-(pfDone?1:0)))+(pfDone?0:1);
-      return{num,e,pts,done,left,avg:done?pts/done:list.length/2};}).filter(r=>r.done>0);
+      const heatsLeft=h.filter(k=>rkPts(res[k])===null);
+      return{num,e,pts,done,left,heatsLeft,pfDone,avg:done?pts/done:list.length/2};}).filter(r=>r.done>0);
     if(!rows.length||!cut){if(list.some(([n])=>myNums.has(n)))out.push({cat,cut,none:true,n:list.length});return;}
     rows.sort((a,b)=>a.pts-b.pts);rows.forEach((r,i)=>r.rank=i+1);
     const field=Math.ceil(list.length/2)+2; // piloti per gara (manche a gruppi / prefinale)
@@ -3779,10 +3780,28 @@ function riskData(){
       let need=null;
       if(r.left>0){for(let p=field;p>=1;p--){const mine=r.pts+rkPts(p)*r.left;let rank=1;rows.forEach(o=>{if(o!==r&&o.pts+o.avg*o.left<mine)rank++;});if(rank<=cut){need=p;break;}}}
       const status=r.left===0?(r.rank<=cut?'safe':'out'):(need===null?'out':need>=Math.ceil(field*0.8)?'safe':'risk');
-      out.push({cat,cut,num:r.num,name:(pilots.find(p=>String(p.num)===r.num)||{}).name||((r.e.lastName||'')+' '+(r.e.firstName||'')).trim(),pts:r.pts,rank:r.rank,left:r.left,need,status,n:list.length});
+      out.push({cat,cut,heatsLeft:r.heatsLeft,pfDone:r.pfDone,pf:String(r.e.prefinal||'').toUpperCase(),num:r.num,name:(pilots.find(p=>String(p.num)===r.num)||{}).name||((r.e.lastName||'')+' '+(r.e.firstName||'')).trim(),pts:r.pts,rank:r.rank,left:r.left,need,status,n:list.length});
     });
   });
   return out;
+}
+/* gare che mancano a un pilota e prossima gara dal programma */
+function riskLeftTxt(x){const h=(x.heatsLeft||[]);const p=[];if(h.length)p.push(h.length===1?'manche '+h[0]:h.length+' manche ('+h.join(', ')+')');if(!x.pfDone)p.push('prefinale'+(x.pf?' '+x.pf:''));return p.join(' + ');}
+function riskNext(x){
+  const h=x.heatsLeft||[];
+  const label=h.length?'manche '+h[0]:'prefinale'+(x.pf?' '+x.pf:'');
+  const art=h.length?'nella manche '+h[0]:'in prefinale'+(x.pf?' '+x.pf:'');
+  try{
+    const today=typeof autoDayName==='function'?autoDayName():'';
+    for(const d of (currentDays||[])){
+      for(const sv of Object.values(currentSchedule[d]||{})){
+        if(!sv||canonCat(sv.cat)!==canonCat(x.cat))continue;
+        const ok=h.length?(sv.type==='group'&&slotKeyOf(sv)===h[0]):(sv.type==='prefinal'&&(!x.pf||String(sv.filter||'').trim().toUpperCase()===x.pf));
+        if(ok)return{label,art,when:(d===today?'oggi ':d.charAt(0)+d.slice(1,3).toLowerCase()+' ')+sv.time};
+      }
+    }
+  }catch(e){}
+  return{label,art,when:''};
 }
 function setRiskCut(cat){if(!isDelayAdmin())return;const v=prompt('Taglio per '+cat+' (posizione minima per non essere eliminati, 0 = nessuna eliminazione):',String(riskCutOf(cat,99)));if(v===null)return;const n=parseInt(v);if(isNaN(n)||n<0)return;riskCutCfg[cat]=n;saveSharedField('riskCut',riskCutCfg);renderAlertLog();}
 window.setRiskCut=setRiskCut;
@@ -3810,13 +3829,18 @@ function renderRiskList(){
   const d=riskData().filter(x=>x.none||x.status!=='out');const esc=x=>String(x||'').replace(/</g,'&lt;');
   if(!d.length)return'<div style="font-size:13px;color:var(--text4);padding:8px 0">Nessun dato: servono i risultati delle manche.</div>';
   const cats=[...new Set(d.map(x=>x.cat))];const col={risk:'#f59e0b',out:'#ef4444',safe:'#22c55e'};
-  return'<div style="font-size:12px;color:var(--text3);background:var(--bg3);border-radius:10px;padding:9px 12px;margin-bottom:10px">Stima dai risultati: punti 1°=0, 2°=2, 3°=3… La media degli altri è proiettata sulle gare che mancano. Non è un dato ufficiale.</div>'
+  return'<div style="font-size:12px;color:var(--text3);background:var(--bg3);border-radius:10px;padding:9px 12px;margin-bottom:10px">Chi rischia di non entrare in <b>finale</b>. Stima dai risultati di manche e prefinale (punti 1°=0, 2°=2, 3°=3…), con la media degli altri proiettata sulle gare che mancano. Non è un dato ufficiale.</div>'
     +cats.map(cat=>{const xs=d.filter(x=>x.cat===cat);const c0=xs[0];
-      const head='<div class="set-sec" style="display:flex;align-items:center;gap:8px">'+esc(cat)+' <span style="font-weight:700;color:var(--text4)">· '+(c0.cut?'salvi i primi '+c0.cut:'nessuna eliminazione')+' · '+c0.n+' piloti</span>'+(isDelayAdmin()?'<button onclick="setRiskCut(\''+escAttr(cat)+'\')" style="margin-left:auto;min-height:36px;padding:0 10px;border-radius:8px;border:1px solid var(--border2);background:none;color:var(--text3);font-weight:800;cursor:pointer">TAGLIO</button>':'')+'</div>';
+      const head='<div class="set-sec" style="display:flex;align-items:center;gap:8px">'+esc(cat)+' <span style="font-weight:700;color:var(--text4)">· '+(c0.cut?'in finale i primi '+c0.cut:'nessuna eliminazione')+' · '+c0.n+' piloti</span>'+(isDelayAdmin()?'<button onclick="setRiskCut(\''+escAttr(cat)+'\')" style="margin-left:auto;min-height:36px;padding:0 10px;border-radius:8px;border:1px solid var(--border2);background:none;color:var(--text3);font-weight:800;cursor:pointer">TAGLIO</button>':'')+'</div>';
       if(c0.none)return head;
       return head+xs.filter(x=>!x.none).sort((a,b)=>({out:0,risk:1,safe:2}[a.status]-{out:0,risk:1,safe:2}[b.status])||a.rank-b.rank).map(x=>{
-        const t=x.status==='out'?(x.left?'Fuori anche vincendo (stima)':'Eliminato (stima)'):x.status==='safe'?(x.left?'Tranquillo: gli basta arrivare P'+x.need+' (stima)':'Salvo (stima)'):'Per essere salvo deve arrivare almeno <b>P'+x.need+'</b>'+(x.left>1?' in media nelle prossime '+x.left+' gare':' nella prossima gara');
-        return'<div class="card-inner al-row" style="border-left:4px solid '+col[x.status]+'"><div class="al-time" style="font-size:18px;font-weight:900">'+x.rank+'°</div><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(x.num)+' '+esc(x.name)+'</div><div style="font-size:13px;color:var(--text2);margin-top:2px">'+t+'</div><div style="font-size:11px;color:var(--text4);margin-top:2px">'+x.pts+' punti · '+(x.left?x.left+' gare da correre':'gare finite')+'</div></div></div>';}).join('');
+        /* 14/11 15:35 (Andrea: testi poco chiari): si dice per COSA rischia (finale), quali gare mancano e la prossima con orario */
+        const nx=riskNext(x);const many=x.left>1;
+        const t=x.status==='out'?(x.left?'Fuori dalla finale anche vincendo (stima)':'Fuori dalla finale (stima)')
+          :x.status==='safe'?(x.left?'In finale se arriva almeno P'+x.need+(many?' di media':'')+' (stima)':'In finale (stima)')
+          :'Rischia la <b>FINALE</b>: deve arrivare almeno <b>P'+x.need+'</b> '+(many?'di media nelle '+x.left+' gare che mancano':nx.art);
+        const sub=(x.left?'Manca: '+riskLeftTxt(x)+(nx.when?' · prossima '+nx.label+' '+nx.when:''):'Gare finite')+' · '+x.pts+' punti';
+        return'<div class="card-inner al-row" style="border-left:4px solid '+col[x.status]+'"><div class="al-time" style="font-size:18px;font-weight:900">'+x.rank+'°</div><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(x.num)+' '+esc(x.name)+'</div><div style="font-size:13px;color:var(--text2);margin-top:2px">'+t+'</div><div style="font-size:11px;color:var(--text4);margin-top:2px">'+sub+'</div></div></div>';}).join('');
     }).join('');
 }
 function toggleAlertLog(){alertLogOpen=!alertLogOpen;renderAlertLog();}
