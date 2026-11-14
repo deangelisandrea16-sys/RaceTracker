@@ -4277,20 +4277,34 @@ function alertKey(r){return['rt_alerts_',r||activeRaceId,'_',currentUserId||''].
 function alertLog(){try{return JSON.parse(localStorage.getItem(alertKey())||'[]').filter(a=>a&&a.id&&!a.id.startsWith('test|'));}catch(e){return[];}}
 // Preferenze notifiche per utente (Firebase notifPrefs/<utente>/<tipo> = false spegne; default acceso).
 // Le stesse chiavi le rispetta il server push.
-const NOTIF_TYPES=[['qualifiche','Pole e top 3 in qualifica'],['finali','P1–P5 in finale'],['eliminati','Eliminati e rischio finale'],['prefinali','Passati a prefinali e finale'],['riepilogo','Riepilogo serale (orari di domani)'],['entrylist','Cambi entry list (miei piloti e team)']];
-const NOTIF_OF={quali:'qualifiche',res:'finali',elim:'eliminati',pref:'prefinali'};
+const NOTIF_TYPES=[['qualifiche','Pole e top 3 in qualifica'],['finali','P1–P5 in finale'],['eliminati','Eliminati e rischio finale'],['prefinali','Passati a prefinali e finale'],['riepilogo','Riepilogo serale (orari di domani)'],['entrylist','Cambi entry list (miei piloti e team)'],
+  ['ritiri','Mio pilota ritirato o fermo in pista'],['rossa','Bandiera rossa con i miei piloti in pista'],['partenza','Partita una sessione con i miei piloti'],['prossima','Mio pilota in pista tra 10 minuti'],['ritardo','Ritardo cambiato di 5 minuti o più']];
+// nuove (dal 14/11): spente finché l'utente non le accende
+const NOTIF_DEF_OFF=new Set(['ritiri','rossa','partenza','prossima','ritardo']);
+function notifTypeOn(k){if(notifPrefs.tutte===false)return false;return NOTIF_DEF_OFF.has(k)?notifPrefs[k]===true:notifPrefs[k]!==false;}
+const NOTIF_OF={quali:'qualifiche',res:'finali',elim:'eliminati',pref:'prefinali',ritiri:'ritiri',rossa:'rossa',partenza:'partenza',prossima:'prossima',ritardo:'ritardo'};
 let notifPrefs={},notifPrefsUser='';
 function watchNotifPrefs(){
   if(!currentUserId||notifPrefsUser===currentUserId)return;notifPrefsUser=currentUserId;
   try{onValue(ref(db,'notifPrefs/'+currentUserId),s=>{notifPrefs=s.val()||{};const m=document.getElementById('notif-prefs-body');if(m)renderNotifPrefs();});}catch(e){}
 }
-function notifOn(id){const k=NOTIF_OF[String(id).split('|')[0]];return!k||notifPrefs[k]!==false;}
+function notifOn(id){if(notifPrefs.tutte===false)return false;const k=NOTIF_OF[String(id).split('|')[0]];return!k||notifTypeOn(k);}
 function renderNotifPrefs(){
   const b=document.getElementById('notif-prefs-body');if(!b)return;
-  b.innerHTML=NOTIF_TYPES.map(([k,l])=>{const on=notifPrefs[k]!==false;
-    return'<label style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;padding:6px 2px;border-bottom:1px solid var(--border,#2a2a2e);cursor:pointer"><span style="font-size:15px">'+l+'</span><input type="checkbox" '+(on?'checked':'')+' onchange="setNotifPref(\''+k+'\',this.checked)" style="width:24px;height:24px;flex-shrink:0"></label>';}).join('')
-    +'<div style="margin-top:10px;font-size:11px;color:var(--text4)">Valgono solo per il tuo profilo ('+currentUserId+') e per i tuoi piloti.</div>';
+  const all=notifPrefs.tutte!==false;
+  const row=(lbl,chk,on,dis,big)=>'<label style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;padding:6px 2px;border-bottom:1px solid var(--border,#2a2a2e);cursor:pointer;'+(dis?'opacity:.4;pointer-events:none;':'')+'"><span style="font-size:'+(big?'16px;font-weight:900':'15px')+'">'+lbl+'</span><input type="checkbox" '+(on?'checked':'')+' onchange="'+chk+'" style="width:24px;height:24px;flex-shrink:0"></label>';
+  b.innerHTML=row('Notifiche attive','setAllNotif(this.checked)',all,false,true)
+    +NOTIF_TYPES.map(([k,l])=>row(l,"setNotifPref('"+k+"',this.checked)",all?notifTypeOn(k):false,!all,false)).join('')
+    +'<div style="margin-top:10px;font-size:11px;color:var(--text4)">Valgono solo per il tuo profilo ('+currentUserId+'). Le ultime cinque per ora arrivano con l\'app aperta.</div>';
 }
+function setAllNotif(on){
+  if(!currentUserId)return;const u={};const base='notifPrefs/'+currentUserId+'/';
+  if(!on){const prev={};NOTIF_TYPES.forEach(([k])=>{prev[k]=NOTIF_DEF_OFF.has(k)?notifPrefs[k]===true:notifPrefs[k]!==false;u[base+k]=false;});u[base+'_prima']=prev;u[base+'tutte']=false;}
+  else{const prev=notifPrefs._prima||{};NOTIF_TYPES.forEach(([k])=>{u[base+k]=prev[k]!==undefined?!!prev[k]:!NOTIF_DEF_OFF.has(k);});u[base+'tutte']=true;}
+  // il server delle notifiche push legge le singole voci: spegnere tutto = spegnere ogni voce
+  update(ref(db),u);Object.keys(u).forEach(p=>{notifPrefs[p.slice(base.length)]=u[p];});renderNotifPrefs();
+}
+window.setAllNotif=setAllNotif;
 function setNotifPref(k,on){if(!currentUserId)return;notifPrefs[k]=!!on;const u={};u['notifPrefs/'+currentUserId+'/'+k]=!!on;update(ref(db),u);}
 function openNotifPrefs(){
   if(!currentUserId){alert('Scegli prima il tuo utente.');return;}
@@ -4300,7 +4314,7 @@ function openNotifPrefs(){
 }
 window.openNotifPrefs=openNotifPrefs;window.setNotifPref=setNotifPref;
 // ── IMPOSTAZIONI per account (Firebase settings/<utente>): notifiche, team nel programma, colori dei team ──
-const TEAM_PALETTE=['#a78bfa','#22d3ee','#f472b6','#34d399','#fb923c','#facc15','#60a5fa','#f87171'];
+const TEAM_PALETTE=['#a78bfa','#22d3ee','#f472b6','#34d399','#fb923c','#facc15','#60a5fa','#f87171','#ff1a1a','#ffffff','#ff6a00','#22c55e','#2563eb','#d946ef','#a3e635','#14b8a6','#eab308','#ec4899','#7c3aed','#06b6d4','#84cc16','#f59e0b','#be123c','#94a3b8'];
 let userSettings={},userSettingsUser='';
 function watchUserSettings(){
   if(!currentUserId||userSettingsUser===currentUserId)return;userSettingsUser=currentUserId;userSettings={};
@@ -4330,7 +4344,18 @@ function openSettings(){
   openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Impostazioni</div><div id="settings-body"></div>');
   renderSettings();
 }
-window.openSettings=openSettings;window.setTeamView=setTeamView;window.setTeamColor=setTeamColor;
+window.openSettings=openSettings;
+let _lastDelayNotif=null;
+setInterval(()=>{try{
+  if(!activeRaceId||!currentUserId)return;
+  const day=typeof autoDayName==='function'?autoDayName():activeDay;let arr=currentSchedule[day]||[];arr=Array.isArray(arr)?arr:Object.values(arr);
+  const now=new Date();const nm=now.getHours()*60+now.getMinutes();const dl=scheduleDelay||0;
+  arr.forEach(sl=>{const st=slotMins(sl.time)+dl;const left=st-nm;if(left<1||left>10)return;
+    const ps=pilotsForSlot(sl);if(!ps.length)return;
+    rtAlert('prossima|'+activeRaceId+'|'+day+'|'+sl.time+'|'+sl.label+'|'+JSON.stringify(sl.filter||''),'⏱ Tra '+left+' min: '+sl.label+' '+(sl.session||''),'ore '+sl.time+(dl?' ('+(dl>0?'+':'')+dl+')':'')+' · '+ps.map(p=>'#'+p.num+' '+p.name).join(', '));});
+  if(_lastDelayNotif===null)_lastDelayNotif=dl;
+  else if(Math.abs(dl-_lastDelayNotif)>=5){rtAlert('ritardo|'+activeRaceId+'|'+day+'|'+dl+'|'+nm,'⏰ Ritardo ora '+(dl>0?'+':'')+dl+' min','prima '+(_lastDelayNotif>0?'+':'')+_lastDelayNotif+' min');_lastDelayNotif=dl;}
+}catch(e){}},30000);window.setTeamView=setTeamView;window.setTeamColor=setTeamColor;
 setTimeout(watchUserSettings,3000);
 // Piloti dei team seguiti, uno per uno con il colore del team (modalità "evidenzia")
 function teamsHighlightHtml(slot,ps){
@@ -4482,8 +4507,8 @@ function ltScanRet(){
       const no=nn.textContent.trim();if(!no)return;const k=sk+'|'+no;const cl=' '+st.className+' ';
       if(/ (in|so|sr|su|sd) /.test(cl)){ltRan[k]=1;if(ltRet[k])delete ltRet[k];}
       else if(!ltRan[k]||!canMark)return; // non ancora uscito in pista in questa sessione: non è un ritiro
-      else if(/ si /.test(cl)){if(!ltRet[k])ltRet[k]={t:'si',at:Date.now()};}
-      else if(/ ss /.test(cl)&&!apexState.red){if(!ltRet[k])ltRet[k]={t:'ss',at:Date.now()};}
+      else if(/ si /.test(cl)){if(!ltRet[k]){ltRet[k]={t:'si',at:Date.now()};ltRetAlert(no,'si');}}
+      else if(/ ss /.test(cl)&&!apexState.red){if(!ltRet[k]){ltRet[k]={t:'ss',at:Date.now()};ltRetAlert(no,'ss');}}
     });
   }catch(e){}
 }
@@ -4495,7 +4520,11 @@ function ltStaCounts(){
     const cl=' '+st.className+' ';if(/ (in|so|sr|su|sd) /.test(cl))run++;else if(/ (si|ss|sf) /.test(cl))inn++;});
   return{run,inn,tot};
 }
+function ltMineNums(){return new Set(pilots.map(p=>String(p.num)));}
+function ltNameOf(no){const p=pilots.find(x=>String(x.num)===String(no));return p?p.name:'';}
 function ltRetOf(no,sk){return ltRet[(sk||(apexState.cat+'|'+apexState.sess))+'|'+no]||null;}
+function ltRetAlert(no,t){try{if(!ltMineNums().has(String(no)))return;const sk=apexState.cat+'|'+apexState.sess;
+  rtAlert('ritiri|'+activeRaceId+'|'+sk+'|'+no,'🚩 #'+no+' '+ltNameOf(no)+' '+(t==='ss'?'FERMO IN PISTA':(ltIsRace()?'RITIRATO':'AI BOX')),apexState.cat+' · '+apexState.sess);}catch(e){}}
 function ltRetBadge(r){if(!r)return'';const race=r.race!==undefined?r.race:ltIsRace();
   const tx=r.t==='ss'?'🚩 FERMO IN PISTA':(race?'🚩 RITIRATO':'AI BOX');
   return' <span class="lt-ret'+(r.t==='si'&&!race?' box':'')+'">'+tx+'</span>';}
@@ -4790,7 +4819,8 @@ function apexParse(txt){
       // PRIMA partenza della sessione: le ripartenze dopo una bandiera rossa non falsano il ritardo
       if(all.length){
         const first=all.sort((a,b)=>slotMins(a.replace(':','.'))-slotMins(b.replace(':','.')))[0];
-        if(apexState.start!==first){apexState.start=first;ltCurLabel=apexState.cat+'|'+apexState.sess;changed=true;}
+        if(apexState.start!==first){apexState.start=first;ltCurLabel=apexState.cat+'|'+apexState.sess;changed=true;
+          try{const mine=[...ltGridNums(apexGrid)].filter(n=>ltMineNums().has(n));if(mine.length)rtAlert('partenza|'+activeRaceId+'|'+ltCurLabel+'|'+first,'🟢 PARTITA '+apexState.cat+' · '+apexState.sess,'alle '+first+' · in pista: '+mine.map(n=>'#'+n+' '+ltNameOf(n)).join(', '));}catch(e){}}
       }
       const fins=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*><\/span>\s*FINISH/gi)].map(x=>x[1]).filter(t=>!apexIgnore.has(t));
       if(fins.length&&apexState.start&&!apexFinished){
@@ -4805,7 +4835,8 @@ function apexParse(txt){
         .filter(t=>{const tm=slotMins(t.replace(':','.'));const st=apexState.start?slotMins(apexState.start.replace(':','.')):-1;
           const fin=fins.length?Math.min(...fins.map(f=>slotMins(f.replace(':','.')))):Infinity;return tm>=st&&tm<fin;});
       const lastRed=reds.length?reds.sort((a,b)=>slotMins(b.replace(':','.'))-slotMins(a.replace(':','.')))[0]:'';
-      if(apexState.red!==lastRed){apexState.red=lastRed;changed=true;}
+      if(apexState.red!==lastRed){apexState.red=lastRed;changed=true;
+        try{if(lastRed){const mine=[...ltGridNums(apexGrid)].filter(n=>ltMineNums().has(n));if(mine.length)rtAlert('rossa|'+activeRaceId+'|'+apexState.cat+'|'+apexState.sess+'|'+lastRed,'🟥 BANDIERA ROSSA '+apexState.cat,apexState.sess+' · in pista: '+mine.map(n=>'#'+n).join(' '));}}catch(e){}}
     }
   });
   if(changed){apexState.at=Date.now();renderApexDelay();}
@@ -4880,7 +4911,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1100';
+const APP_BUILD='2026-11-14-1115';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
