@@ -1876,10 +1876,15 @@ function listenRaces(){
   },err=>{setSyncStatus('err');dlog('❌ races_index: '+err.message,'err');console.error(err);});
 }
 
+/* copia dell'ultimo stato ricevuto dal server, base per salvare solo i campi cambiati (vedi rtDiff) */
+var RT_SHARED_KEYS=['entryList','schedule','days','finals','trackSections','riskCut','schedDelay','apexAuto'];
+var RT_USER_KEYS=['pilots','statuses','notes','trackStatus','teams','teamStatuses','teamNotes'];
+var _rtBaseShared={},_rtBaseUser={};
 function listenRaceData(raceId){
   if(raceDataUnsub) raceDataUnsub();
   if(!currentUserId){initialized=true;renderAll();return;}
   
+  _rtBaseShared={};_rtBaseUser={};
   const sharedRef=ref(db,'races/'+raceId);
   const userRef=ref(db,'races/'+raceId+'/users/'+currentUserId);
   let sharedData={};let userData={};let sharedReady=false;let userReady=false;
@@ -1887,7 +1892,7 @@ function listenRaceData(raceId){
   window._rtLiveSeen=false;window._rtSnapAt=0;
   const snapKey='rt_snap_'+raceId+'_'+currentUserId;
   function saveSnap(){try{localStorage.setItem(snapKey,JSON.stringify({s:sharedData,u:userData,at:Date.now()}));}catch(e){}}
-  try{const c=JSON.parse(localStorage.getItem(snapKey)||'null');if(c&&c.s&&c.u){sharedData=c.s;userData=c.u;sharedReady=true;userReady=true;window._rtSnapAt=c.at;setTimeout(()=>{if(!window._rtLiveSeen)mergeAndRender();},0);}}catch(e){}
+  try{const c=JSON.parse(localStorage.getItem(snapKey)||'null');if(c&&c.s&&c.u){sharedData=c.s;userData=c.u;rtSetBase(sharedData,userData);sharedReady=true;userReady=true;window._rtSnapAt=c.at;setTimeout(()=>{if(!window._rtLiveSeen)mergeAndRender();},0);}}catch(e){}
 
   function mergeAndRender(){
     if(!sharedReady||!userReady)return;
@@ -1935,14 +1940,14 @@ function listenRaceData(raceId){
   }
 
   const unsub1=onValue(sharedRef,snap=>{
-    sharedData=snap.val()||{};window._rtLiveSeen=true;saveSnap();
+    sharedData=snap.val()||{};window._rtLiveSeen=true;saveSnap();rtSetBase(sharedData,null);
     dlog('Dati gara condivisi: entryList='+Object.keys(sharedData.entryList||{}).length+', days='+(sharedData.days||[]).length,'ok');
     sharedReady=true;
     mergeAndRender();
   },err=>{setSyncStatus('err');dlog('❌ shared data: '+err.message,'err');});
 
   const unsub2=onValue(userRef,snap=>{
-    userData=snap.val()||{};saveSnap();
+    userData=snap.val()||{};saveSnap();rtSetBase(null,userData);
     dlog('Dati utente ['+currentUserId+']: pilots='+Object.keys(userData.pilots||{}).length,'ok');
     userReady=true;
     mergeAndRender();
@@ -1988,35 +1993,55 @@ if(!currentUserId){
 // ── SAVE HELPERS ──
 function racePath(){return 'races/'+activeRaceId;}
 function userPath(){return 'races/'+activeRaceId+'/users/'+currentUserId;}
+/* 14/11/2026 (punto 2 criticita'): si salva SOLO cio' che e' cambiato rispetto all'ultima copia ricevuta dal server.
+   Prima saveAll() riscriveva entryList/programma/piloti interi: un telefono con dati vecchi poteva cancellare
+   i dati giusti scritti dal server o dall'altro utente. Ora: confronto campo per campo (foglia per foglia)
+   e scrittura multipla solo dei campi diversi; nessuna scrittura se non e' cambiato nulla. */
+function rtClone(x){try{return x==null?null:JSON.parse(JSON.stringify(x));}catch(e){return null;}}
+function rtSetBase(sh,us){
+  if(sh){const b={};RT_SHARED_KEYS.forEach(k=>{if(sh[k]!==undefined)b[k]=rtClone(sh[k]);});_rtBaseShared=b;}
+  if(us){const b={};RT_USER_KEYS.forEach(k=>{if(us[k]!==undefined)b[k]=rtClone(us[k]);});_rtBaseUser=b;}
+}
+function rtFlat(v,p,out){
+  if(v!==null&&typeof v==='object'){Object.keys(v).forEach(k=>rtFlat(v[k],p+'/'+k,out));return out;}
+  if(v===undefined||v===null||(typeof v==='number'&&!isFinite(v)))return out;
+  out[p]=v;return out;
+}
+function rtDiff(path,base,local,u){
+  const b=rtFlat(rtClone(base),path,{}),l=rtFlat(rtClone(local),path,{});
+  const sets=[];
+  Object.keys(l).forEach(k=>{if(b[k]!==l[k]){u[k]=l[k];sets.push(k);}});
+  Object.keys(b).forEach(k=>{
+    if(k in l)return;
+    if(sets.some(x=>k.indexOf(x+'/')===0||x.indexOf(k+'/')===0))return; // percorso gia' riscritto sopra o sotto
+    u[k]=null;
+  });
+  return u;
+}
+function rtWrite(u,what){
+  const n=Object.keys(u).length;
+  if(!n){dlog('Salvataggio '+(what||'')+': nessuna modifica','info');return Promise.resolve();}
+  setSyncStatus('saving');dlog('Salvataggio '+(what||'')+': '+n+' campi','info');
+  return update(ref(db),u).then(()=>setSyncStatus('ok')).catch(e=>{setSyncStatus('err');console.error(e);dlog('❌ salvataggio: '+e.message,'err');});
+}
 function saveAll(){
   if(!activeRaceId||!currentUserId)return;
-  setSyncStatus('saving');
   const pilotsObj={};pilots.forEach(p=>pilotsObj[p.num]=p);
-  // Save user-specific data
   const teamsObj={};teams.forEach(t=>teamsObj[t.key]=t);
   const uData={pilots:pilotsObj,statuses,notes,trackStatus,teams:teamsObj,teamStatuses,teamNotes};
-  // Save shared data
   const sData={entryList:currentEntryList,schedule:currentSchedule,days:currentDays,finals:currentFinals,trackSections};
   const u={};
-  u[userPath()]=uData;
-  u[racePath()+'/entryList']=sData.entryList;
-  u[racePath()+'/schedule']=sData.schedule;
-  u[racePath()+'/days']=sData.days;
-  u[racePath()+'/finals']=sData.finals;
-  u[racePath()+'/trackSections']=sData.trackSections;
-  update(ref(db),u).then(()=>setSyncStatus('ok')).catch(e=>{setSyncStatus('err');console.error(e);});
+  Object.keys(uData).forEach(k=>rtDiff(userPath()+'/'+k,_rtBaseUser[k],uData[k],u));
+  Object.keys(sData).forEach(k=>rtDiff(racePath()+'/'+k,_rtBaseShared[k],sData[k],u));
+  rtWrite(u,'tutto');
 }
 function saveUserField(field,value){
   if(!activeRaceId||!currentUserId)return;
-  setSyncStatus('saving');
-  const u={};u[userPath()+'/'+field]=value;
-  update(ref(db),u).then(()=>setSyncStatus('ok')).catch(e=>{setSyncStatus('err');console.error(e);});
+  rtWrite(rtDiff(userPath()+'/'+field,_rtBaseUser[field],value,{}),field);
 }
 function saveSharedField(field,value){
   if(!activeRaceId)return;
-  setSyncStatus('saving');
-  const u={};u[racePath()+'/'+field]=value;
-  update(ref(db),u).then(()=>setSyncStatus('ok')).catch(e=>{setSyncStatus('err');console.error(e);});
+  rtWrite(rtDiff(racePath()+'/'+field,_rtBaseShared[field],value,{}),field);
 }
 
 // ── HELPERS ──
@@ -2499,28 +2524,32 @@ function formatDateShort(dateStr){
 function switchRaceAndRender(id){switchRace(id);renderGare();}
 window.switchRaceAndRender=switchRaceAndRender;
 
-// ── ORGANIZZAZIONI (estendibile: nuova org = nuova voce, zero logica da toccare) ──
-const ORG_CONFIG={
-  ACI:  {label:'ACI Karting', tyre:'MG', liveTiming:'https://www.apex-timing.com/live-timing/wsk/index.html', /* live Apex diretto (non YouCrono): vedi nota in applyLiveCrop */ cats:['OK-N','OK-N JUNIOR','MINI GR.3','MINI GR.3 U10','KZ2']},
-  WSK:  {label:'WSK',         tyre:'',   liveTiming:'https://www.wskarting.it/livetiming.asp?s=WSK_superMaster', cats:[]},
-  ROK:  {label:'ROK Cup',     tyre:'',   liveTiming:'', cats:[]},
-  IAME: {label:'IAME',        tyre:'',   liveTiming:'', cats:[]},
-  ROTAX:{label:'Rotax MAX',   tyre:'',   liveTiming:'', cats:[]},
-  FIA:  {label:'FIA Karting', tyre:'',   liveTiming:'', cats:[]},
-  TROFEI:{label:'Trofei',     tyre:'',   liveTiming:'', cats:[]},
-  COTF: {label:'Champions of the Future', tyre:'', liveTiming:'', cats:[]},
-  EASYKART:{label:'Easykart',  tyre:'',   liveTiming:'', cats:[]},
-  TILLOTSON:{label:'Tillotson T4', tyre:'', liveTiming:'', cats:[]},
-  BNL:  {label:'BNL Karting', tyre:'',   liveTiming:'', cats:[]},
-  ESTERO:{label:'Estero',     tyre:'',   liveTiming:'', cats:[]}
-};
-const ORG_KEYS=Object.keys(ORG_CONFIG);
-function orgOptions(sel){return '<option value="">— organizzazione —</option>'+ORG_KEYS.map(k=>'<option value="'+k+'"'+(k===sel?' selected':'')+'>'+ORG_CONFIG[k].label+'</option>').join('');}
+// ── ORGANIZZAZIONI E LIVE TIMING: dal catalogo orgs.json (14/11/2026, punto 6) ──
+/* Prima organizzazioni, link live, categorie e porte Apex erano scritti nel codice. Ora stanno in orgs.json
+   (si modifica senza toccare l'app). Ultima copia letta salvata sul telefono per l'avvio senza rete. */
+let ORG_CONFIG={},ORG_KEYS=[],CIRCUIT_LIVE=[],APEX_LIVE_PORTS={};
+function applyOrgCatalog(d){
+  if(!d||typeof d!=='object'||!d.orgs)return false;
+  ORG_CONFIG=d.orgs||{};ORG_KEYS=Object.keys(ORG_CONFIG);
+  CIRCUIT_LIVE=(Array.isArray(d.circuitLive)?d.circuitLive:[]).map(x=>{try{return{re:new RegExp(x.match,'i'),url:String(x.url||'')};}catch(e){return null;}}).filter(x=>x&&x.url);
+  APEX_LIVE_PORTS=d.apexPorts||{};
+  return true;
+}
+try{applyOrgCatalog(JSON.parse(localStorage.getItem('rt_orgs')||'null'));}catch(e){}
+function loadOrgCatalog(){
+  fetch('orgs.json',{cache:'no-cache'}).then(r=>r.json()).then(d=>{
+    if(!applyOrgCatalog(d))return;
+    try{localStorage.setItem('rt_orgs',JSON.stringify(d));}catch(e){}
+    dlog('Catalogo organizzazioni: '+ORG_KEYS.length+' org, '+CIRCUIT_LIVE.length+' circuiti','ok');
+    try{if(activeRaceId){setLiveTimingSrc();apexConnect();}}catch(e){}
+  }).catch(e=>dlog('❌ orgs.json: '+e.message,'err'));
+}
+loadOrgCatalog();
+function orgOptions(sel){
+  const ks=ORG_KEYS.slice();if(sel&&!ORG_CONFIG[sel])ks.push(sel); // org della gara non in catalogo: resta selezionabile
+  return '<option value="">— organizzazione —</option>'+ks.map(k=>'<option value="'+k+'"'+(k===sel?' selected':'')+'>'+((ORG_CONFIG[k]||{}).label||k)+'</option>').join('');
+}
 // Live timing automatico: 1) URL scritto nella gara  2) circuito riconosciuto  3) default dell'organizzazione
-const CIRCUIT_LIVE=[
-  {re:/lonato|south\s*garda/i, url:'https://www.apex-timing.com/live-timing/southgardakarting/index.html'},
-  {re:/pista\s*azzurra|jesolo/i, url:'https://www.apex-timing.com/live-timing/pista-azzurra/index.html'}
-];
 function resolveLiveUrl(r){
   r=r||{};
   if(r.liveTiming&&String(r.liveTiming).trim())return String(r.liveTiming).trim();
@@ -2528,7 +2557,6 @@ function resolveLiveUrl(r){
   const c=CIRCUIT_LIVE.find(x=>x.re.test(txt));
   if(c)return c.url;
   const cfg=ORG_CONFIG[r.org]||null;
-  if(r.org==='WSK'||r.org==='ACI')return'https://www.apex-timing.com/live-timing/wsk/index.html';
   return cfg&&cfg.liveTiming?cfg.liveTiming:'';
 }
 window.resolveLiveUrl=resolveLiveUrl;
@@ -4022,7 +4050,12 @@ function getCurrentSlotIndex(slots){
   /* 14/11/2026: la sessione caricata nel live (escono dalla pregriglia, giri di riscaldamento) e' ORA anche prima del verde.
      Solo per oggi; finita la sessione nel live, non si torna indietro rispetto all'orologio. Il ritardo resta calcolato al verde. */
   try{
-    if(apexWsKey&&apexState.sess&&typeof autoDayName==='function'&&activeDay===autoDayName()){
+    /* FIX 14/11 15:20 (Andrea: ORA scattata ben prima dell'uscita dalla pregriglia): il cronometrista carica la sessione
+       nel live molto prima. Ora il live vale solo se la sessione e' partita (verde) o se la maggior parte dei kart
+       di QUESTA sessione e' in pista (uscita pregriglia/giri di riscaldamento). Altrimenti orologio + ritardo. */
+    const _S=(apexGridSess===apexState.cat+'|'+apexState.sess&&typeof ltStaCounts==='function')?ltStaCounts():null;
+    const _moving=!!apexState.start||!!(_S&&_S.run>0&&_S.run>=_S.inn);
+    if(_moving&&apexWsKey&&apexState.sess&&typeof autoDayName==='function'&&activeDay===autoDayName()){
       const m=apexMatchSlot();
       if(m&&m.slot){const li=slots.findIndex(x=>x&&x.time===m.slot.time&&canonCat(x.cat)===canonCat(m.slot.cat)&&x.type===m.slot.type);
         if(li>=0)return apexFinished?Math.max(li,clockIdx):li;}
@@ -4306,7 +4339,6 @@ startScheduleAutoRefresh();
 // Legge dal flusso live di Apex la sessione in pista e l'ora reale della partenza,
 // la abbina allo slot del programma e propone (o applica, se AUTO) il ritardo.
 // ══════════════════════════════════════
-const APEX_LIVE_PORTS={southgardakarting:7440,wsk:7430,'pista-azzurra':8070};
 let apexWs=null,apexWsKey='',apexState={cat:'',sess:'',start:'',red:'',at:0},apexRetry=null;
 let apexSeen=new Set(),apexIgnore=new Set();
 let apexAuto=true;
@@ -5269,7 +5301,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1710';
+const APP_BUILD='2026-11-14-1525';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
