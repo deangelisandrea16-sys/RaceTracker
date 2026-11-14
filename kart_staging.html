@@ -3167,6 +3167,8 @@ function slotHasRun(slot){
 function gridBadge(num,slot){
   const k=slotKeyOf(slot);if(!k)return'';
   const e=currentEntryList[num]||{};const r=e.result&&e.result[k];
+  if(r!==undefined&&r!==null&&r!==''&&slotHasRun(slot)&&/^(X|DNF|DNS|RIT|AB|NC|RET|DSQ|SQ)/i.test(String(r)))
+    return'<span title="Uscito / non classificato" style="font-family:\'Chakra Petch\';font-size:12px;font-weight:900;color:#fff;background:#dc2626;border-radius:5px;padding:1px 7px;flex-shrink:0">✕'+(/DSQ|SQ/i.test(String(r))?' SQ':'')+'</span>';
   if(r!==undefined&&r!==null&&r!==''&&slotHasRun(slot)){const t=/^\d+$/.test(String(r))?String(r)+'°':String(r).toUpperCase();
     return'<span title="Posizione d\'arrivo (risultati Apex)" style="font-family:\'Chakra Petch\';font-size:12px;font-weight:700;color:#0d0d0f;background:#4fd69c;border-radius:5px;padding:1px 6px;flex-shrink:0"><i class="ic ic-flag"></i> '+t+'</span>';}
   const n=gridPos(num,slot);
@@ -4276,14 +4278,14 @@ function apexEvaluate(why){
     const mpf=ss.match(/PREFINAL[E]?\s+([AB])\b/),mfi=/FINAL/.test(ss)&&!/PREFINAL/.test(ss);
     if((mpf||mfi)&&activeRaceId&&_done){const fk=mpf?'PF-'+mpf[1]:'FIN';const u={};
       snap.forEach(x=>{if(!x.pos||x.pos>=999)return;const e=currentEntryList[x.num];if(!e||apexCat(e.cat)!==cat)return;e.result=e.result||{};
-        if(!e.result[fk]){e.result[fk]=String(x.pos);u['races/'+activeRaceId+'/entryList/'+x.num+'/result/'+fk]=String(x.pos);}});
+        const v=ltRetOf(x.num)?'X':String(x.pos);if(!e.result[fk]){e.result[fk]=v;u['races/'+activeRaceId+'/entryList/'+x.num+'/result/'+fk]=v;}});
       if(Object.keys(u).length){update(ref(db),u);if(activeTab==='programma')renderSchedule();}}
     if(mh&&activeRaceId&&_done){
       const pair=[mh[1],mh[2]].sort().join('-');const u={};
       snap.forEach(x=>{
         if(!x.pos||x.pos>=999)return;const e=currentEntryList[x.num];if(!e||apexCat(e.cat)!==cat)return;
         e.result=e.result||{};
-        if(!e.result[pair]){e.result[pair]=String(x.pos);u['races/'+activeRaceId+'/entryList/'+x.num+'/result/'+pair]=String(x.pos);}
+        const v=ltRetOf(x.num)?'X':String(x.pos);if(!e.result[pair]){e.result[pair]=v;u['races/'+activeRaceId+'/entryList/'+x.num+'/result/'+pair]=v;}
       });
       if(Object.keys(u).length){update(ref(db),u);if(activeTab==='programma')renderSchedule();}
     }
@@ -4625,9 +4627,9 @@ function ltMineNums(){return new Set(pilots.map(p=>String(p.num)));}
 function ltNameOf(no){const p=pilots.find(x=>String(x.num)===String(no));return p?p.name:'';}
 function ltRetOf(no,sk){return ltRet[(sk||(apexState.cat+'|'+apexState.sess))+'|'+no]||null;}
 function ltRetAlert(no,t){try{if(!ltMineNums().has(String(no)))return;const sk=apexState.cat+'|'+apexState.sess;
-  rtAlert('ritiri|'+activeRaceId+'|'+sk+'|'+no,'<i class="ic ic-redflag"></i> #'+no+' '+ltNameOf(no)+' '+(t==='ss'?'FERMO IN PISTA':(ltIsRace()?'USCITO':'AI BOX')),apexState.cat+' · '+apexState.sess);}catch(e){}}
+  rtAlert('ritiri|'+activeRaceId+'|'+sk+'|'+no,'<i class="ic ic-redflag"></i> #'+no+' '+ltNameOf(no)+' '+(ltIsRace()?'USCITO':(t==='ss'?'FERMO IN PISTA':'AI BOX')),apexState.cat+' · '+apexState.sess);}catch(e){}}
 function ltRetBadge(r){if(!r)return'';const race=r.race!==undefined?r.race:ltIsRace();
-  const tx=r.t==='ss'?'<i class="ic ic-redflag"></i> FERMO IN PISTA':(race?'<i class="ic ic-redflag"></i> USCITO':'AI BOX');
+  const tx=race?'<i class="ic ic-redflag"></i> USCITO':(r.t==='ss'?'<i class="ic ic-redflag"></i> FERMO IN PISTA':'AI BOX');
   return' <span class="lt-ret'+(r.t==='si'&&!race?' box':'')+'">'+tx+'</span>';}
 function apexGridDirty(){ltScanRet();if(_ltRenderT)return;_ltRenderT=setTimeout(()=>{_ltRenderT=null;renderLtMyTable();try{renderApexDyn();}catch(e){}if(ltFullOn)renderLtFull();},100);}
 // ── Classifica live a schermo intero (solo classifica + giro, niente barre) ──
@@ -5019,7 +5021,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1305';
+const APP_BUILD='2026-11-14-1310';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
