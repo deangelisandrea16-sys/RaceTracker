@@ -505,7 +505,8 @@ button,input,textarea,select{font-family:inherit}
 .set-sec{margin:14px 0 6px;font-size:11px;font-weight:900;letter-spacing:1px;color:var(--text3)}
 .set-opt{display:flex;align-items:center;gap:10px;min-height:48px;padding:8px 10px;border:1px solid var(--border2);border-radius:10px;margin-bottom:6px;cursor:pointer;font-size:14px}
 .set-opt.on{border-color:var(--rt-orange);background:var(--bg3)}
-.sw-dot{width:30px;height:30px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex-shrink:0}.sw-dot.on{border-color:var(--text)}
+.sw-row{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px 2px 6px}.sw-row::-webkit-scrollbar{display:none}
+.sw-dot{width:34px;height:34px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex-shrink:0}.sw-dot.on{border-color:var(--text)}
 /* niente animazione di comparsa sulle schede: ogni aggiornamento dei dati ridisegnava la pagina e la faceva lampeggiare */
 .card,.card-inner{animation:none}
 @keyframes fadein{from{opacity:.4;transform:translateY(4px)}to{opacity:1;transform:none}}
@@ -4333,7 +4334,7 @@ function renderSettings(){
     +'<div class="set-sec">TEAM NEL PROGRAMMA</div>'
     +'<div class="set-opt'+(v==='cards'?' on':'')+'" onclick="setTeamView(\'cards\')"><input type="radio" '+(v==='cards'?'checked':'')+' style="width:20px;height:20px"> Scheda del team sotto ogni sessione</div>'
     +'<div class="set-opt'+(v==='highlight'?' on':'')+'" onclick="setTeamView(\'highlight\')"><input type="radio" '+(v==='highlight'?'checked':'')+' style="width:20px;height:20px"> Piloti del team evidenziati col colore del team</div>'
-    +(teams.length?'<div class="set-sec">COLORI DEI TEAM</div>'+teams.map(t=>'<div style="margin-bottom:10px"><div style="font-size:13px;font-weight:800;margin-bottom:6px"><span class="tchip" style="--tc:'+teamColor(t.key)+'">'+String(t.name).replace(/</g,'&lt;')+'</span></div><div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +(teams.length?'<div class="set-sec">COLORI DEI TEAM</div>'+teams.map(t=>'<div style="margin-bottom:10px"><div style="font-size:13px;font-weight:800;margin-bottom:6px"><span class="tchip" style="--tc:'+teamColor(t.key)+'">'+String(t.name).replace(/</g,'&lt;')+'</span></div><div class="sw-row">'
       +TEAM_PALETTE.map(c=>'<span class="sw-dot'+(teamColor(t.key)===c?' on':'')+'" style="background:'+c+'" onclick="setTeamColor(\''+escAttr(t.key)+'\',\''+c+'\')"></span>').join('')+'</div></div>').join(''):'<div style="font-size:12px;color:var(--text4)">Nessun team aggiunto in questa gara.</div>')
     +'<div class="set-sec">LE MIE NOTIFICHE</div><div id="notif-prefs-body"></div>'
     +'<div style="margin-top:10px;font-size:11px;color:var(--text4)">Impostazioni del profilo '+currentUserId+'.</div>';
@@ -4943,7 +4944,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1125';
+const APP_BUILD='2026-11-14-1130';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
