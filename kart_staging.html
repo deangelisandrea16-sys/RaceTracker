@@ -3150,10 +3150,20 @@ function gridPos(num,slot){
 // Dopo la manche: posizione d'arrivo dai risultati Apex (entryList/{num}/result = {"A-B":"3"}), badge verde
 // Chiavi: manche "A-B"; prefinali "PF-A"/"PF-B"; finale "FIN" (scritte dal server dai documenti ufficiali Apex)
 function slotKeyOf(slot){if(!slot)return'';if(slot.type==='prefinal'){const x=String(slot.filter||'').trim().toUpperCase();return x?'PF-'+x:'';}if(slot.type==='final')return'FIN';if(slot.type!=='group')return'';const f=Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{});return f.map(x=>String(x).trim().toUpperCase()).sort().join('-');}
+// la sessione è già partita? (giorno visualizzato vs oggi, orario + ritardo). Prima della partenza si mostra sempre la griglia.
+function slotHasRun(slot){
+  try{
+    if(!slot||!slot.time)return true;
+    const days=currentDays||[];const today=typeof autoDayName==='function'?autoDayName():activeDay;
+    const di=days.indexOf(activeDay),ti=days.indexOf(today);if(di<0||ti<0)return true;
+    if(di<ti)return true;if(di>ti)return false;
+    const now=new Date();return now.getHours()*60+now.getMinutes()>=slotMins(slot.time)+(scheduleDelay||0)+3;
+  }catch(e){return true;}
+}
 function gridBadge(num,slot){
   const k=slotKeyOf(slot);if(!k)return'';
   const e=currentEntryList[num]||{};const r=e.result&&e.result[k];
-  if(r!==undefined&&r!==null&&r!==''){const t=/^\d+$/.test(String(r))?String(r)+'°':String(r).toUpperCase();
+  if(r!==undefined&&r!==null&&r!==''&&slotHasRun(slot)){const t=/^\d+$/.test(String(r))?String(r)+'°':String(r).toUpperCase();
     return'<span title="Posizione d\'arrivo (risultati Apex)" style="font-family:\'Chakra Petch\';font-size:12px;font-weight:700;color:#0d0d0f;background:#4fd69c;border-radius:5px;padding:1px 6px;flex-shrink:0"><i class="ic ic-flag"></i> '+t+'</span>';}
   const n=gridPos(num,slot);
   return n?'<span title="Posizione in griglia (lista ufficiale)" style="font-family:\'Chakra Petch\';font-size:12px;font-weight:700;color:#1a160e;background:#e9d5a8;border-radius:5px;padding:1px 7px;flex-shrink:0">P'+n+'</span>':'';
@@ -3323,7 +3333,7 @@ function teamsSlotHtml(slot){
   const list=teamsForSlot(slot);if(!list.length)return'';
   return list.map(({t,inSlot,waiting})=>'<div class="card-inner team-inner"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">'
     +'<span class="inner-num"><i class="ic ic-team"></i></span><span class="inner-name">'+t.name+'</span>'
-    +'<span style="font-size:10px;font-weight:800;color:#a78bfa">'+(inSlot.length?inSlot.length+' in pista: '+inSlot.map(p=>'#'+p.num).join(' '):'')
+    +'<span style="font-size:10px;font-weight:800;color:#a78bfa">'+(inSlot.length?inSlot.length+' in pista: '+inSlot.map(p=>'#'+p.num+(gridPos(p.num,slot)?' <span style="color:#e9d5a8">P'+gridPos(p.num,slot)+'</span>':'')).join(' · '):'')
     +(waiting.length?(inSlot.length?' · ':'')+'<i class="ic ic-wait"></i> '+waiting.length+' in attesa':'')+'</span></div>'
     +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,true)).join('')+'</div>'
     +(teamNotes[t.key]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+teamNotes[t.key]+'</div>':'')+'</div>').join('');
@@ -4955,7 +4965,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1145';
+const APP_BUILD='2026-11-14-1200';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
