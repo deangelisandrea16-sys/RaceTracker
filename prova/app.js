@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-14-1620';
+var RT_JS_BUILD='2026-11-14-1635';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3787,6 +3787,8 @@ let alertLogOpen=true;
 let riskCutCfg={};
 const rkPts=p=>{p=parseInt(p);return isNaN(p)?null:(p===1?0:p);};
 function riskCutOf(cat,n){const v=riskCutCfg[cat];if(v===0||v==='0')return 0;if(v)return+v;return n>=37?36:0;}
+/* 14/11/2026: formati senza prefinali (es. Rotax Grand Finals: manche → finale). Si guarda il programma della gara. */
+function catHasPF(cat){try{const c=canonCat(cat);return(currentDays||[]).some(d=>Object.values(currentSchedule[d]||{}).some(s=>s&&s.type==='prefinal'&&canonCat(s.cat)===c));}catch(e){return true;}}
 function riskData(){
   const byCat={};
   Object.entries(currentEntryList||{}).forEach(([num,e])=>{if(!e||!e.cat)return;(byCat[e.cat]=byCat[e.cat]||[]).push([num,e]);});
@@ -3795,8 +3797,8 @@ function riskData(){
     const cut=riskCutOf(cat,list.length);
     const rows=list.map(([num,e])=>{let h=e.heats||[];if(!Array.isArray(h))h=Object.values(h);const res=e.result||{};
       let pts=0,done=0;h.forEach(k=>{const v=rkPts(res[k]);if(v!==null){pts+=v;done++;}});
-      const pfDone=['PF-A','PF-B'].some(k=>rkPts(res[k])!==null);if(pfDone){const k=rkPts(res['PF-A'])!==null?'PF-A':'PF-B';pts+=rkPts(res[k]);done++;}
-      const left=Math.max(0,h.length-(done-(pfDone?1:0)))+(pfDone?0:1);
+      const pfDone=!catHasPF(cat)||['PF-A','PF-B'].some(k=>rkPts(res[k])!==null);if(pfDone&&catHasPF(cat)){const k=rkPts(res['PF-A'])!==null?'PF-A':'PF-B';pts+=rkPts(res[k]);done++;}
+      const left=Math.max(0,h.length-(done-(pfDone&&catHasPF(cat)?1:0)))+(pfDone?0:1);
       const heatsLeft=h.filter(k=>rkPts(res[k])===null);
       return{num,e,pts,done,left,heatsLeft,pfDone,avg:done?pts/done:list.length/2};}).filter(r=>r.done>0);
     if(!rows.length||!cut){if(list.some(([n])=>myNums.has(n)))out.push({cat,cut,none:true,n:list.length});return;}
