@@ -4330,7 +4330,7 @@ function alertLog(){try{return JSON.parse(localStorage.getItem(alertKey())||'[]'
 // Preferenze notifiche per utente (Firebase notifPrefs/<utente>/<tipo> = false spegne; default acceso).
 // Le stesse chiavi le rispetta il server push.
 const NOTIF_TYPES=[['qualifiche','Pole e top 3 in qualifica'],['finali','P1–P5 in finale'],['eliminati','Eliminati e rischio finale'],['prefinali','Passati a prefinali e finale'],['riepilogo','Riepilogo serale (orari di domani)'],['entrylist','Cambi entry list (miei piloti e team)'],
-  ['ritiri','Mio pilota ritirato o fermo in pista'],['rossa','Bandiera rossa con i miei piloti in pista'],['partenza','Partita una sessione con i miei piloti'],['prossima','Mio pilota in pista tra 10 minuti'],['ritardo','Ritardo cambiato di 5 minuti o più'],['correzioni','Correzioni ufficiali sui miei piloti (reclami, penalità)'],['comunicati','Comunicati e documenti ufficiali nuovi']];
+  ['ritiri','Mio pilota uscito o fermo in pista'],['rossa','Bandiera rossa con i miei piloti in pista'],['partenza','Partita una sessione con i miei piloti'],['prossima','Mio pilota in pista tra 10 minuti'],['ritardo','Ritardo cambiato di 5 minuti o più'],['correzioni','Correzioni ufficiali sui miei piloti (reclami, penalità)'],['comunicati','Comunicati e documenti ufficiali nuovi']];
 // nuove (dal 14/11): spente finché l'utente non le accende
 const NOTIF_DEF_OFF=new Set(['ritiri','rossa','partenza','prossima','ritardo','correzioni','comunicati']);
 function notifTypeOn(k){if(notifPrefs.tutte===false)return false;return NOTIF_DEF_OFF.has(k)?notifPrefs[k]===true:notifPrefs[k]!==false;}
@@ -4625,9 +4625,9 @@ function ltMineNums(){return new Set(pilots.map(p=>String(p.num)));}
 function ltNameOf(no){const p=pilots.find(x=>String(x.num)===String(no));return p?p.name:'';}
 function ltRetOf(no,sk){return ltRet[(sk||(apexState.cat+'|'+apexState.sess))+'|'+no]||null;}
 function ltRetAlert(no,t){try{if(!ltMineNums().has(String(no)))return;const sk=apexState.cat+'|'+apexState.sess;
-  rtAlert('ritiri|'+activeRaceId+'|'+sk+'|'+no,'<i class="ic ic-redflag"></i> #'+no+' '+ltNameOf(no)+' '+(t==='ss'?'FERMO IN PISTA':(ltIsRace()?'RITIRATO':'AI BOX')),apexState.cat+' · '+apexState.sess);}catch(e){}}
+  rtAlert('ritiri|'+activeRaceId+'|'+sk+'|'+no,'<i class="ic ic-redflag"></i> #'+no+' '+ltNameOf(no)+' '+(t==='ss'?'FERMO IN PISTA':(ltIsRace()?'USCITO':'AI BOX')),apexState.cat+' · '+apexState.sess);}catch(e){}}
 function ltRetBadge(r){if(!r)return'';const race=r.race!==undefined?r.race:ltIsRace();
-  const tx=r.t==='ss'?'<i class="ic ic-redflag"></i> FERMO IN PISTA':(race?'<i class="ic ic-redflag"></i> RITIRATO':'AI BOX');
+  const tx=r.t==='ss'?'<i class="ic ic-redflag"></i> FERMO IN PISTA':(race?'<i class="ic ic-redflag"></i> USCITO':'AI BOX');
   return' <span class="lt-ret'+(r.t==='si'&&!race?' box':'')+'">'+tx+'</span>';}
 function apexGridDirty(){ltScanRet();if(_ltRenderT)return;_ltRenderT=setTimeout(()=>{_ltRenderT=null;renderLtMyTable();try{renderApexDyn();}catch(e){}if(ltFullOn)renderLtFull();},100);}
 // ── Classifica live a schermo intero (solo classifica + giro, niente barre) ──
@@ -5019,7 +5019,7 @@ setTimeout(()=>{if(activeRaceId)apexConnect();},3000);
 // ── AGGIORNAMENTO AUTOMATICO DELL'APP ──
 // Controlla se su GitHub Pages c'è una versione più nuova e ricarica da sola,
 // così tutti i dispositivi (anche le PWA su iPhone) restano allineati.
-const APP_BUILD='2026-11-14-1300';
+const APP_BUILD='2026-11-14-1305';
 let _lastUpdateCheck=0;
 async function checkAppUpdate(){
   if(Date.now()-_lastUpdateCheck<60000)return;
