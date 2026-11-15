@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1730';
+var RT_JS_BUILD='2026-11-15-1735';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5163,7 +5163,7 @@ function raceVenue(){
 function venueMap(){if(_venues===null){loadVenues();return null;}const v=raceVenue();return v&&v.map&&v.map.d?v:null;}
 let _spView={r:0,z:1,x:0,y:0,t:0};
 function spViewKey(){const v=venueMap();return'rt_spview_'+(v?v.key:'');}
-function openSpots(num){window._rtDeferRender=true;_spSize=null;_spNum=String(num);_spTrash=false;try{_spView=Object.assign({r:0},JSON.parse(localStorage.getItem(spViewKey())||'{}'),{z:1,x:0,y:0,t:52});}catch(_){_spView={r:0,z:1,x:0,y:0,t:52};}renderSpots();}
+function openSpots(num){window._rtDeferRender=true;_spSize=null;_spNum=String(num);_spTrash=false;try{const _vr=((venueMap()||{}).map||{}).rot||0;_spView=Object.assign({r:_vr},JSON.parse(localStorage.getItem(spViewKey())||'{}'),{z:1,x:0,y:0,t:52});}catch(_){_spView={r:0,z:1,x:0,y:0,t:52};}renderSpots();}
 window.openSpots=openSpots;
 function spotNo(id){const sp=trackSpots[id]||{};if(sp.k)return sp.k;return spotIds().indexOf(id)+1;}
 function renderSpots(){
@@ -5207,6 +5207,7 @@ function spotsLayout(anim){
     const vb=String(v.map.vb).split(/\s+/).map(Number),a=vb[2]/vb[3],Wf=W-16,Hf=H-16;
     const rot=((Math.round(_spView.r/90)*90)%180+180)%180===90;
     let Sw=rot?Math.min(Hf,Wf*a):Math.min(Wf,Hf*a);let Sh=Sw/a;if(!rot&&Sh>Hf){Sh=Hf;Sw=Sh*a;}if(rot&&Sh>Wf){Sh=Wf;Sw=Sh*a;}
+    if(_spView.t){const k=1.3;Sw*=k;Sh*=k;}
     _spSize={W,H,Sw,Sh};
   }
   const Sw=_spSize.Sw,Sh=_spSize.Sh;
@@ -5224,7 +5225,7 @@ function spotsToggle3D(){_spView.t=_spView.t?0:52;const vp=document.getElementBy
 window.spotsToggle3D=spotsToggle3D;
 function spotsRotate(dg){const a=dg*Math.PI/180,c=Math.cos(a),s=Math.sin(a),x=_spView.x,y=_spView.y;_spView.x=x*c-y*s;_spView.y=x*s+y*c;_spView.r+=dg;spotsLayout(true);}
 function spotsZoom(k){_spView.z=Math.max(.6,Math.min(8,_spView.z*k));spotsLayout(true);}
-function spotsResetView(){_spView.z=1;_spView.x=0;_spView.y=0;_spView.r=Math.round(_spView.r/90)*90;spotsLayout(true);}
+function spotsResetView(){const vr=((venueMap()||{}).map||{}).rot||0;_spView.z=1;_spView.x=0;_spView.y=0;_spView.r=vr+Math.round((_spView.r-vr)/360)*360;spotsLayout(true);}
 window.spotsRotate=spotsRotate;window.spotsZoom=spotsZoom;window.spotsResetView=spotsResetView;
 /* punto dello schermo -> posizione % sulla mappa (inverso di traslazione, rotazione, zoom) */
 function spotsToMap(cx,cy){
