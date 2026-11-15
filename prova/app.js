@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1705';
+var RT_JS_BUILD='2026-11-15-1715';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -982,7 +982,8 @@ function listenRaceData(raceId){
     });
     if(!activeDay||!currentDays.includes(activeDay)) activeDay=currentDays[0]||'';
     // salvataggi ammessi solo ora: dati locali allineati a quelli appena arrivati dal server
-    if(userLive)_rtUserLiveKey=raceId+'|'+currentUserId;
+    // allineati anche con la copia salvata sul telefono (senza rete si puo' lavorare e salvare: parte al ritorno della rete)
+    _rtUserLiveKey=raceId+'|'+currentUserId;
     setSyncStatus('ok');
     initialized=true;
     // 15/11: con la mappa dei punti aperta non ridisegna tutta l'app a ogni tocco (lentezza): lo fa alla chiusura
@@ -997,7 +998,7 @@ function listenRaceData(raceId){
   },err=>{setSyncStatus('err');dlog('❌ shared data: '+err.message,'err');});
 
   const unsub2=onValue(userRef,snap=>{
-    userData=snap.val()||{};saveSnap();rtSetBase(null,userData);userLive=true;
+    userData=snap.val()||{};saveSnap();rtSetBase(null,userData);userLive=true;_rtUserLiveKey='';
     dlog('Dati utente ['+currentUserId+']: pilots='+Object.keys(userData.pilots||{}).length,'ok');
     userReady=true;
     mergeAndRender();
@@ -1085,7 +1086,7 @@ function rtWrite(u,what){
 var _rtNewPilots=new Set(),_rtUserLiveKey='';
 function saveAll(){
   if(!activeRaceId||!currentUserId)return;
-  if(_rtUserLiveKey!==activeRaceId+'|'+currentUserId){dlog('Salvataggio rimandato: dati utente non ancora aggiornati','warn');setTimeout(saveAll,1500);return;}
+  if(_rtUserLiveKey!==activeRaceId+'|'+currentUserId){dlog('Salvataggio rimandato: dati utente non ancora allineati','warn');clearTimeout(window._rtSaveRetry);window._rtSaveRetry=setTimeout(saveAll,1500);return;}
   const basePil=(_rtBaseUser&&_rtBaseUser.pilots)||{};
   const pilotsObj={};pilots.forEach(p=>{const k=String(p.num);if(basePil[k]||_rtNewPilots.has(k))pilotsObj[p.num]=p;else dlog('Pilota #'+k+' non piu\' sul server: non lo ricreo','warn');});
   const teamsObj={};teams.forEach(t=>teamsObj[t.key]=t);
