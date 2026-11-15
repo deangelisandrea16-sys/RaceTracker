@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1620';
+var RT_JS_BUILD='2026-11-15-1625';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5245,7 +5245,7 @@ function spotsToggleTrash(){_spTrash=!_spTrash;const vp=document.getElementById(
 window.spotsToggleTrash=spotsToggleTrash;
 function spotsAddAt(cx,cy){
   if(_spTrash)return;
-  const q=spotsToMap(cx,cy);if(q.x<-60||q.x>160||q.y<-60||q.y>160)return;
+  const q=spotsToMap(cx,cy);if(q.x<-100||q.x>200||q.y<-100||q.y>200)return;
   const id='s'+Date.now().toString(36);
   const k=spotIds().reduce((mx,i)=>Math.max(mx,spotNo(i)),0)+1;
   trackSpots[id]={x:Math.round(q.x*10)/10,y:Math.round(q.y*10)/10,o:Date.now(),k:k};
