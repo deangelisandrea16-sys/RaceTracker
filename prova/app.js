@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-14-2230';
+var RT_JS_BUILD='2026-11-15-0800';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3150,6 +3150,35 @@ function awardsStrip(day){
     return'<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);background:var(--bg3);border-left:3px solid #facc15;border-radius:10px;padding:9px 12px;margin-bottom:10px"><i class="ic ic-trophy"></i><span>'+out.join(' · ')+'</span></div>';
   }catch(e){return'';}
 }
+/* 15/11/2026 (Andrea): il riquadro ORA esiste solo nella giornata di oggi e solo finche' la giornata e' in corso.
+   Giornata futura: niente ORA, nessun turno "fatto", il tasto porta in cima. Giornata passata o finita: niente ORA.
+   Ricompare la mattina dopo, nella giornata nuova. Fine giornata = ultimo turno (o ultima finale) + 30 min + ritardo. */
+function progDayState(day,slotsArr){
+  const plain=s=>String(s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const N=['DOMENICA','LUNEDI','MARTEDI','MERCOLEDI','GIOVEDI','VENERDI','SABATO'];
+  const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const now=new Date(),t=iso(now),r=(races&&races[activeRaceId])||{};
+  let st='';
+  if(r.startDate&&r.endDate&&r.startDate<=r.endDate){
+    if(t<r.startDate)st='future';else if(t>r.endDate)st='past';
+    else{
+      let found='';const d=new Date(r.startDate+'T12:00:00'),e=new Date(r.endDate+'T12:00:00');
+      for(let k=0;k<14&&d<=e;k++,d.setDate(d.getDate()+1)){if(plain(day).startsWith(N[d.getDay()])){found=iso(d);break;}}
+      if(found)st=found<t?'past':found>t?'future':'today';
+    }
+  }
+  if(!st){
+    const td=autoDayName();
+    if(!td)st='future';
+    else{const a=currentDays.indexOf(day),b=currentDays.indexOf(td);st=a<b?'past':a>b?'future':'today';}
+  }
+  if(st!=='today')return st;
+  const toM=x=>{const m=String(x||'').match(/(\d{1,2})[.:](\d{2})/);return m?(+m[1])*60+(+m[2]):-1;};
+  let last=-1;(slotsArr||[]).forEach(sl=>{last=Math.max(last,toM(sl&&sl.time));});
+  if(day===currentDays[currentDays.length-1])(currentFinals||[]).forEach(f=>{last=Math.max(last,toM(f&&f.time));});
+  const nowM=now.getHours()*60+now.getMinutes()-(typeof scheduleDelay==='number'?scheduleDelay:0);
+  return (last>=0&&nowM>last+30)?'ended':'today';
+}
 function renderSchedule(){
   const dt=document.getElementById('day-tabs');
   dt.innerHTML=currentDays.map(d=>'<button class="day-tab '+(d===activeDay?'active':'')+'" onclick="setDay(\''+d+'\')">'+d+'</button>').join('');
@@ -3176,6 +3205,8 @@ function renderSchedule(){
     const _slotM=_toM((slotsArr[currentIdx]||{}).time);
     if(_finalNowKey&&_best>=_slotM)currentIdx=-1; else _finalNowKey=null;
   }
+  const _ds=progDayState(activeDay,slotsArr);
+  if(_ds!=='today'){currentIdx=_ds==='future'?-1:slotsArr.length;_finalNowKey=null;}
   let html='';let lastSession='';
   // Quante volte corre oggi ogni mio pilota e quale di queste è lo slot (es. Gara 2/3)
   // Se un turno dipende da dati non ancora ufficiali (prefinale non assegnata, finale non decisa) il totale è "?"
@@ -3253,7 +3284,7 @@ function renderSchedule(){
     });
     html+=tHtml+'</div></div>';
   });
-  updateProgTicker(slotsArr,currentIdx);
+  updateProgTicker(slotsArr,_ds==='today'?currentIdx:slotsArr.length);
   if(activeDay===currentDays[currentDays.length-1]&&currentFinals.length){
     html+='<div class="session-divider">FINALI</div>';
     const myCanon=new Set(pilots.map(p=>canonCat(p.cat)));
@@ -3318,6 +3349,10 @@ function renderSchedule(){
   if(scheduleNeedsScroll&&document.getElementById('slot-now')){
     scheduleNeedsScroll=false;
     setTimeout(()=>{const nowEl=document.getElementById('slot-now');if(nowEl)nowEl.scrollIntoView({behavior:'smooth',block:'center'});},150);
+  }
+  else if(scheduleNeedsScroll&&_ds!=='today'){ // giornata senza ORA: si parte dalla cima
+    scheduleNeedsScroll=false;
+    setTimeout(()=>{const sc=document.getElementById('schedule-content');if(sc)sc.scrollIntoView({behavior:'smooth',block:'start'});else window.scrollTo({top:0,behavior:'smooth'});},150);
   }
 }
 let scheduleNeedsScroll=true;
