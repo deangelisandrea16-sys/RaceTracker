@@ -738,3 +738,14 @@ body.light{--hl-foto:#0284c7;--hl-video:#db2777;--hl-prio:#ca8a04}
 .sp-map.trash{outline:2px dashed #ef4444;outline-offset:-2px}
 .sp-map.trash .sp-dot{border-color:#fecaca}
 
+
+/* 15/11: mappa vettoriale della sede, ruotabile e zoomabile */
+.sp-vp{position:relative;width:100%;height:min(62vh,520px);border-radius:12px;overflow:hidden;background:var(--bg3);touch-action:none;user-select:none;-webkit-user-select:none}
+.sp-vp.trash{outline:2px dashed #ef4444;outline-offset:-2px}
+.sp-stage{position:absolute;left:50%;top:50%;transform-origin:50% 50%}
+.sp-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.sp-track{fill:none;stroke:#cfd3da;stroke-linejoin:round;stroke-linecap:round}
+.sp-track-edge{fill:none;stroke:#2b2f36;stroke-linejoin:round;stroke-linecap:round}
+body.light .sp-track{stroke:#5b6170}body.light .sp-track-edge{stroke:#c9ccd3}
+.sp-stage .sp-dot{width:40px;height:40px;font-size:14px}
+.sp-tools{display:flex;gap:6px;margin-top:8px}.sp-tools .sp-btn{min-height:44px;font-size:18px}

@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1510';
+var RT_JS_BUILD='2026-11-15-1540';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -959,6 +959,8 @@ function listenRaceData(raceId){
     try{checkEliminations();}catch(e){}
     pilots.forEach(p=>{
       if(!p.group)p.group='';if(!p.prefinal)p.prefinal='';if(!p.serie)p.serie='';if(!p.eliminated)p.eliminated=false;
+      // 15/11/2026: la prefinale ufficiale (entry list, aggiornata dal server per tutti) vale piu' del dato salvato sul pilota
+      {const _e=currentEntryList&&currentEntryList[p.num];if(_e&&_e.prefinal&&String(_e.prefinal).toUpperCase()!==String(p.prefinal).toUpperCase())p.prefinal=String(_e.prefinal).toUpperCase();}
       if(!p.heats)p.heats=[];
       if(!Array.isArray(p.heats))p.heats=typeof p.heats==='object'?Object.values(p.heats):[];
       if(!p.inFinal)p.inFinal=false;
@@ -3888,16 +3890,16 @@ function openLegend(){
   h.push('<div class="lg-row"><div><span class="group-badge set">GRP B</span></div><div>Gruppo del pilota nelle manche. <b>GRP ?</b> = non ancora noto.</div></div>');
 
   // PUNTI DI SCATTO
-  h.push(sec('PUNTI DI SCATTO IN PISTA','la pillola <i class="ic ic-camera"></i> dopo PISTA, sotto ogni pilota in <b>PROGRAMMA</b>, <b>LIVE</b> e <b>PILOTI</b>'));
+  h.push(sec('PUNTI DI SCATTO IN PISTA','la pillola <i class="ic ic-camera"></i> dopo PISTA, sotto ogni pilota (solo nei circuiti con la mappa del tracciato)'));
   h.push(shot('<div class="tasks" style="max-width:340px">'+['REPORTAGE','PISTA'].map(t=>'<button class="task-btn green" style="pointer-events:none">'+t+'</button>').join('')+'<button class="task-btn spot-pill orange" style="pointer-events:none"><i class="ic ic-camera"></i><span>2/4</span></button></div>'+N(1)
     +'<div class="sp-map noimg" style="margin-top:10px">'
-    +[[18,30,1],[52,22,0],[80,55,1],[40,75,0]].map((d,i)=>'<span class="sp-dot'+(d[2]?' on':'')+'" style="left:'+d[0]+'%;top:'+d[1]+'%"><span>'+(d[2]?'✓':(i+1))+'</span></span>').join('')+'</div>'+N(2)));
+    +[[18,30,1],[52,22,0],[80,55,1],[40,75,0]].map((d,i)=>'<span class="sp-dot'+(d[2]?' on':'')+'" style="left:'+d[0]+'%;top:'+d[1]+'%"><span>'+(d[2]?'✓':(i+1))+'</span></span>').join('')+'</div>'+N(2)
+    +'<div class="sp-tools"><span class="sp-btn">⟲</span><span class="sp-btn">⟳</span><span class="sp-btn">＋</span><span class="sp-btn">－</span><span class="sp-btn">⤢</span></div>'+N(3)));
   h.push(ex([
-    'Quanti punti hai fatto con quel pilota sul totale dei tuoi punti (2 su 4). Tocca per aprire la pista.',
-    'Tocca la pista dove hai scattato: nasce un punto già spuntato <b style="color:#4fd69c">✓</b> per questo pilota; negli altri piloti compare col suo numero, da spuntare. Tocca un punto per spuntarlo o togliere la spunta.'
+    'Quanti punti hai fatto con quel pilota sul totale dei tuoi punti (2 su 4). Tocca per aprire il tracciato.',
+    'Tocca il tracciato dove hai scattato: nasce un punto già spuntato <b style="color:#4fd69c">✓</b> per questo pilota; negli altri piloti compare col suo numero, da spuntare. Tocca un punto per spuntarlo o togliere la spunta.',
+    'Ruota, ingrandisci, riduci e ricentra. Con due dita ingrandisci e ruoti, con un dito sposti.'
   ]));
-  h.push(p_('Per eliminare un punto: tasto <b><i class="ic ic-trash"></i> cestino</b> in alto, tocca i punti da togliere (spariscono da tutti i piloti), poi ritocca il cestino. I punti sono <b>tuoi</b>: ognuno ha i suoi.'));
-
   // NOTIFICHE
   h.push(chap('NOTIFICHE'));
   h.push(sec('COME FUNZIONANO','menu in basso → <b>GARA</b> (storico) · Impostazioni → <b>NOTIFICHE</b> (interruttori)'));
@@ -4193,11 +4195,13 @@ function riskData(){
   const myNums=new Set(pilots.map(p=>String(p.num)));const out=[];
   Object.entries(byCat).forEach(([cat,list])=>{
     const cut=riskCutOf(cat,list.length);
+    // 15/11/2026: ritirato / non classificato ('—') = gara fatta, punti da ultimo (prima risultava 'manca')
+    const rkP=v=>{const x=rkPts(v);if(x!==null)return x;return(v!==undefined&&v!==null&&String(v).trim()!=='')?list.length:null;};
     const rows=list.map(([num,e])=>{let h=e.heats||[];if(!Array.isArray(h))h=Object.values(h);const res=e.result||{};
-      let pts=0,done=0;h.forEach(k=>{const v=rkPts(res[k]);if(v!==null){pts+=v;done++;}});
-      const pfDone=!catHasPF(cat)||['PF-A','PF-B'].some(k=>rkPts(res[k])!==null);if(pfDone&&catHasPF(cat)){const k=rkPts(res['PF-A'])!==null?'PF-A':'PF-B';pts+=rkPts(res[k]);done++;}
+      let pts=0,done=0;h.forEach(k=>{const v=rkP(res[k]);if(v!==null){pts+=v;done++;}});
+      const pfDone=!catHasPF(cat)||['PF-A','PF-B'].some(k=>rkP(res[k])!==null);if(pfDone&&catHasPF(cat)){const k=rkP(res['PF-A'])!==null?'PF-A':'PF-B';pts+=rkP(res[k]);done++;}
       const left=Math.max(0,h.length-(done-(pfDone&&catHasPF(cat)?1:0)))+(pfDone?0:1);
-      const heatsLeft=h.filter(k=>rkPts(res[k])===null);
+      const heatsLeft=h.filter(k=>rkP(res[k])===null);
       return{num,e,pts,done,left,heatsLeft,pfDone,avg:done?pts/done:list.length/2};}).filter(r=>r.done>0);
     if(!rows.length||!cut){if(list.some(([n])=>myNums.has(n)))out.push({cat,cut,none:true,n:list.length});return;}
     rows.sort((a,b)=>a.pts-b.pts);rows.forEach((r,i)=>r.rank=i+1);
@@ -4267,7 +4271,7 @@ function renderRiskTab(){
   const sw='<div class="pv-switch" style="margin-bottom:10px"><button class="pv-btn'+(pf?' active':'')+'" onclick="setRiskSub(\'pf\')">PREFINALE</button><button class="pv-btn'+(!pf?' active':'')+'" onclick="setRiskSub(\'fin\')">FINALE</button></div>';
   return sw+(pf?renderPfTab():renderRiskList()+renderElimList());
 }
-function pfOf(p){const e=(currentEntryList||{})[p.num]||{};return String(p.prefinal||e.prefinal||'').trim().toUpperCase();}
+function pfOf(p){const e=(currentEntryList||{})[p.num]||{};return String(e.prefinal||p.prefinal||'').trim().toUpperCase();}
 function renderPfTab(){
   const esc=x=>String(x||'').replace(/</g,'&lt;');
   const cats=[...new Set(pilots.map(p=>p.cat).filter(Boolean))].sort();
@@ -5113,36 +5117,80 @@ function toggleHL(btn,num){const on=btn.classList.toggle('active');btn.setAttrib
 function spotIds(){return Object.keys(trackSpots||{}).sort((a,b)=>(trackSpots[a].o||0)-(trackSpots[b].o||0));}
 function spotCount(num){const ids=spotIds(),d=(spotDone&&spotDone[num])||{};return[ids.filter(i=>d[i]).length,ids.length];}
 function spotPill(num){
+  if(!venueMap())return'';
   if(!pilots.some(p=>String(p.num)===String(num)))return'';
   const[f,t]=spotCount(num),cls=!t?'none':f===t?'green':f?'orange':'red';
   return'<button class="task-btn spot-pill '+cls+'" aria-label="Punti di scatto in pista" onclick="event.stopPropagation();openSpots(\''+num+'\')"><i class="ic ic-camera"></i>'+(t?'<span>'+f+'/'+t+'</span>':'')+'</button>';
 }
-let _spNum=null,_spMap=null,_spMapRace=null,_spTrash=false;
-/* 15/11 (Andrea): tocco sulla pista = nuovo punto, gia' spuntato per questo pilota e da spuntare per gli altri.
-   Tocco su un punto = spunta / togli spunta. I punti si eliminano SOLO con la modalita' cestino (tasto in alto a destra).
-   Ogni punto ha un numero fisso, che non cambia quando se ne eliminano altri. */
-function spotsLoadMap(){
-  if(_spMapRace===activeRaceId&&_spMap!==null)return Promise.resolve(_spMap);
-  return ref(db,'trackMaps/'+activeRaceId).once('value').then(sn=>{const v=sn.val();_spMap=(v&&v.img)||'';_spMapRace=activeRaceId;return _spMap;}).catch(()=>{_spMap='';return'';});
+let _spNum=null,_spTrash=false;
+/* 15/11 (Andrea): la mappa e' legata al LUOGO (sede), non a campionato o organizzazione.
+   venues/<chiave> = {name, aliases[], map:{vb,d,w}}: la sede si riconosce dal circuito della gara.
+   Senza mappa per la sede la pillola dei punti di scatto non compare. */
+let _venues=null;
+function loadVenues(){if(_venues!==null)return;_venues={};ref(db,'venues').once('value').then(sn=>{_venues=sn.val()||{};try{renderAll();}catch(_){}}).catch(()=>{_venues={};});}
+function raceVenue(){
+  const r=(typeof races!=='undefined'&&races&&races[activeRaceId])||{};const c=String(r.circuit||r.name||'').toLowerCase();
+  if(!_venues||!c)return null;
+  for(const k of Object.keys(_venues)){const v=_venues[k]||{};const al=[].concat(v.aliases||[]).map(a=>String(a).toLowerCase());if(al.some(a=>a&&c.indexOf(a)>=0))return Object.assign({key:k},v);}
+  return null;
 }
-function openSpots(num){_spNum=String(num);_spTrash=false;renderSpots();spotsLoadMap().then(()=>{if(_spNum===String(num))renderSpots();});}
+function venueMap(){if(_venues===null){loadVenues();return null;}const v=raceVenue();return v&&v.map&&v.map.d?v:null;}
+let _spView={r:0,z:1,x:0,y:0};
+function spViewKey(){const v=venueMap();return'rt_spview_'+(v?v.key:'');}
+function openSpots(num){_spNum=String(num);_spTrash=false;try{_spView=Object.assign({r:0,z:1,x:0,y:0},JSON.parse(localStorage.getItem(spViewKey())||'{}'),{z:1,x:0,y:0});}catch(_){_spView={r:0,z:1,x:0,y:0};}renderSpots();}
 window.openSpots=openSpots;
 function spotNo(id){const sp=trackSpots[id]||{};if(sp.k)return sp.k;return spotIds().indexOf(id)+1;}
 function renderSpots(){
-  const p=pilots.find(x=>String(x.num)===_spNum);if(!p){closeModal();return;}
+  const p=pilots.find(x=>String(x.num)===_spNum);const v=venueMap();if(!p||!v){closeModal();return;}
   const d=(spotDone[_spNum])||{},ids=spotIds(),[f,t]=spotCount(_spNum);
   const h=[];
   h.push('<button class="modal-close" onclick="closeModal()">✕</button>');
   h.push('<button class="sp-trash'+(_spTrash?' on':'')+'" onclick="spotsToggleTrash()" aria-label="Modalità cestino: elimina punti" aria-pressed="'+_spTrash+'"><i class="ic ic-trash"></i></button>');
   h.push('<div class="modal-title">#'+p.num+' '+escapeHtmlSp(p.name||'')+'</div>');
   h.push('<div class="sp-sub">'+(_spTrash?'<b style="color:#ef4444">CESTINO</b> · tocca un punto per eliminarlo per tutti i piloti':(t?'Fatti <b>'+f+'/'+t+'</b> · ':'')+'tocca la pista dove hai scattato')+'</div>');
-  h.push('<div class="sp-map'+(_spMap?'':' noimg')+(_spTrash?' trash':'')+'" id="sp-map" onclick="spotsMapTap(event)">');
-  if(_spMap)h.push('<img src="'+_spMap+'" alt="Piantina della pista" draggable="false">');
+  h.push('<div class="sp-vp'+(_spTrash?' trash':'')+'" id="sp-vp"><div class="sp-stage" id="sp-stage">');
+  h.push('<svg viewBox="'+v.map.vb+'" preserveAspectRatio="none" class="sp-svg"><path d="'+v.map.d+'" class="sp-track-edge" style="stroke-width:'+((v.map.w||10)+4)+'"/><path d="'+v.map.d+'" class="sp-track" style="stroke-width:'+(v.map.w||10)+'"/></svg>');
   ids.forEach(id=>{const sp=trackSpots[id],on=!!d[id],n=spotNo(id);
-    h.push('<button class="sp-dot'+(on?' on':'')+'" style="left:'+sp.x+'%;top:'+sp.y+'%" onclick="event.stopPropagation();spotsTap(\''+id+'\')" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'✓':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>');});
-  h.push('</div>');
-  if(t&&!_spTrash)h.push('<div class="sp-hint">I numeri sono i punti da spuntare: toccali se li hai fatti anche con questo pilota.</div>');
+    h.push('<button class="sp-dot'+(on?' on':'')+'" data-id="'+id+'" style="left:'+sp.x+'%;top:'+sp.y+'%" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'✓':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>');});
+  h.push('</div></div>');
+  h.push('<div class="sp-tools"><button class="sp-btn" onclick="spotsRotate(-90)" aria-label="Ruota a sinistra">⟲</button><button class="sp-btn" onclick="spotsRotate(90)" aria-label="Ruota a destra">⟳</button><button class="sp-btn" onclick="spotsZoom(1.4)" aria-label="Ingrandisci">＋</button><button class="sp-btn" onclick="spotsZoom(1/1.4)" aria-label="Riduci">－</button><button class="sp-btn" onclick="spotsResetView()" aria-label="Centra">⤢</button></div>');
+  if(t&&!_spTrash)h.push('<div class="sp-hint">I numeri sono punti da spuntare. Con due dita ingrandisci e ruoti, con un dito sposti.</div>');
   openModal(h.join(''));
+  spotsLayout();spotsBindGestures();
+}
+function spotsLayout(){
+  const vp=document.getElementById('sp-vp'),st=document.getElementById('sp-stage'),v=venueMap();if(!vp||!st||!v)return;
+  const vb=String(v.map.vb).split(/\s+/).map(Number),a=vb[2]/vb[3],W=vp.clientWidth-16,H=vp.clientHeight-16;
+  const rot=((Math.round(_spView.r/90)*90)%180+180)%180===90;
+  let Sw=rot?Math.min(H,W*a):Math.min(W,H*a);let Sh=Sw/a;if(!rot&&Sh>H){Sh=H;Sw=Sh*a;}if(rot&&Sh>W){Sh=W;Sw=Sh*a;}
+  st.style.width=Sw+'px';st.style.height=Sh+'px';
+  st.style.transform='translate(-50%,-50%) translate('+_spView.x+'px,'+_spView.y+'px) rotate('+_spView.r+'deg) scale('+_spView.z+')';
+  st.querySelectorAll('.sp-dot').forEach(b=>{b.style.transform='translate(-50%,-50%) rotate('+(-_spView.r)+'deg) scale('+(1/_spView.z)+')';});
+  try{localStorage.setItem(spViewKey(),JSON.stringify({r:_spView.r}));}catch(_){}
+}
+function spotsRotate(dg){_spView.r+=dg;spotsLayout();}
+function spotsZoom(k){_spView.z=Math.max(1,Math.min(6,_spView.z*k));if(_spView.z===1){_spView.x=0;_spView.y=0;}spotsLayout();}
+function spotsResetView(){_spView.z=1;_spView.x=0;_spView.y=0;_spView.r=Math.round(_spView.r/90)*90;spotsLayout();}
+window.spotsRotate=spotsRotate;window.spotsZoom=spotsZoom;window.spotsResetView=spotsResetView;
+/* punto dello schermo -> posizione % sulla mappa (inverso di traslazione, rotazione, zoom) */
+function spotsToMap(cx,cy){
+  const vp=document.getElementById('sp-vp'),st=document.getElementById('sp-stage');const r=vp.getBoundingClientRect();
+  let dx=cx-(r.left+r.width/2)-_spView.x,dy=cy-(r.top+r.height/2)-_spView.y;
+  const a=-_spView.r*Math.PI/180,c=Math.cos(a),s=Math.sin(a);let ux=(dx*c-dy*s)/_spView.z,uy=(dx*s+dy*c)/_spView.z;
+  const Sw=st.offsetWidth,Sh=st.offsetHeight;return{x:(ux+Sw/2)/Sw*100,y:(uy+Sh/2)/Sh*100};
+}
+function spotsBindGestures(){
+  const vp=document.getElementById('sp-vp');if(!vp)return;const pts=new Map();let g=null,moved=false,downT=null;
+  vp.onpointerdown=e=>{try{vp.setPointerCapture(e.pointerId);}catch(_){}pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pts.size===1){moved=false;downT=e.target.closest('.sp-dot');g={x:e.clientX,y:e.clientY,vx:_spView.x,vy:_spView.y};}
+    else if(pts.size===2){const[a,b]=[...pts.values()];moved=true;g={d:Math.hypot(b.x-a.x,b.y-a.y),an:Math.atan2(b.y-a.y,b.x-a.x),z:_spView.z,r:_spView.r};}};
+  vp.onpointermove=e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pts.size===2&&g&&g.d){const[a,b]=[...pts.values()];_spView.z=Math.max(1,Math.min(6,g.z*Math.hypot(b.x-a.x,b.y-a.y)/g.d));_spView.r=g.r+(Math.atan2(b.y-a.y,b.x-a.x)-g.an)*180/Math.PI;spotsLayout();}
+    else if(pts.size===1&&g&&g.vx!==undefined){const dx=e.clientX-g.x,dy=e.clientY-g.y;if(Math.abs(dx)+Math.abs(dy)>8)moved=true;if(moved){_spView.x=g.vx+dx;_spView.y=g.vy+dy;spotsLayout();}}};
+  const up=e=>{const wasTap=pts.size===1&&!moved;pts.delete(e.pointerId);
+    if(wasTap){if(downT)spotsTap(downT.getAttribute('data-id'));else spotsAddAt(e.clientX,e.clientY);}
+    if(!pts.size){g=null;if(_spView.z<=1.01){_spView.x=0;_spView.y=0;spotsLayout();}}else if(pts.size===1){const q=[...pts.values()][0];g={x:q.x,y:q.y,vx:_spView.x,vy:_spView.y};}};
+  vp.onpointerup=up;vp.onpointercancel=e=>{pts.delete(e.pointerId);if(!pts.size)g=null;};
 }
 function escapeHtmlSp(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
 /* un'unica scrittura per punti e spunte: con due scritture separate l'aggiornamento locale della prima
@@ -5151,18 +5199,17 @@ function spotsSave(){if(!activeRaceId||!currentUserId)return;const u={};
   rtDiff(userPath()+'/trackSpots',_rtBaseUser.trackSpots,trackSpots,u);rtDiff(userPath()+'/spotDone',_rtBaseUser.spotDone,spotDone,u);rtWrite(u,'punti di scatto');}
 function spotsToggleTrash(){_spTrash=!_spTrash;renderSpots();}
 window.spotsToggleTrash=spotsToggleTrash;
-function spotsMapTap(e){
+function spotsAddAt(cx,cy){
   if(_spTrash)return;
-  const m=document.getElementById('sp-map');if(!m)return;const r=m.getBoundingClientRect();
-  const x=Math.max(3,Math.min(97,(e.clientX-r.left)/r.width*100)),y=Math.max(4,Math.min(96,(e.clientY-r.top)/r.height*100));
+  const q=spotsToMap(cx,cy);if(q.x<0||q.x>100||q.y<0||q.y>100)return;
   const id='s'+Date.now().toString(36);
   const k=spotIds().reduce((mx,i)=>Math.max(mx,spotNo(i)),0)+1;
-  trackSpots[id]={x:Math.round(x*10)/10,y:Math.round(y*10)/10,o:Date.now(),k:k};
+  trackSpots[id]={x:Math.round(q.x*10)/10,y:Math.round(q.y*10)/10,o:Date.now(),k:k};
   if(!spotDone[_spNum])spotDone[_spNum]={};spotDone[_spNum][id]=1;
   try{if(navigator.vibrate)navigator.vibrate(12);}catch(_){}
   spotsSave();renderSpots();try{renderAll();}catch(_){}
 }
-window.spotsMapTap=spotsMapTap;
+window.spotsAddAt=spotsAddAt;
 function spotsTap(id){
   if(_spTrash){
     delete trackSpots[id];Object.keys(spotDone).forEach(n=>{if(spotDone[n])delete spotDone[n][id];});
