@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1800';
+var RT_JS_BUILD='2026-11-15-1840';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3360,13 +3360,19 @@ function renderSchedule(){
         +(slotDurText(f)?'<div class="final-row"><span>Durata</span><span class="final-time">'+slotDurText(f)+'</span></div>':'');
       if(!ps.length)html+='<div style="font-size:12px;color:var(--text4);padding:8px 2px 2px">Nessun tuo pilota in questa finale</div>';
       else if(_poss)html+='<div class="final-poss"><i class="ic ic-wait"></i> Possibili finalisti · lista ufficiale non ancora uscita</div>';
+      // 15/11/2026 (Andrea): anche nelle finali riquadro del team e cornici foto/video/priorita', come nei turni
+      const _fhl=teamViewMode()!=='cards';const _fItems=[];
       ps.forEach(p=>{
-        html+='<div class="card-inner'+(_poss?' final-maybe':'')+'" style="margin-top:8px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
+        const _ft=_fhl?followedTeamOf(p.num,p.team):null;const _sc=hlClassOf(p.highlight||[]);
+        let html='';
+        html+='<div class="card-inner'+(_poss?' final-maybe':'')+(_sc?' '+_sc:'')+(_ft?' tglow':'')+'" style="margin-top:8px'+(_ft?';--tc:'+teamColor(_ft.key):'')+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
           +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,{type:'final'})+'<span class="inner-name">'+p.name+'</span>'+(p.eliminated?'':runChip(p.num,1e6))
           +'<span class="inner-team-big">'+p.team+'</span>'+noteBtn(p.num)+'</div>'
           +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+spotPill(p.num)+'</div>'
           +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>';
+        _fItems.push({num:p.num,key:_ft?_ft.key:null,html});
       });
+      html+=groupSlotItems(_fItems,true);
       html+='</div>';
     });
   }
@@ -3450,10 +3456,19 @@ function updateProgTicker(slotsArr,currentIdx){
   if(!wrap||!tick)return;
   const nowM=new Date().getHours()*60+new Date().getMinutes()-scheduleDelay;
   let items=[];
-  for(let i=currentIdx+1;i<slotsArr.length&&items.length<6;i++){
-    const sl=slotsArr[i];const mine=pilotsForSlot(sl);
+  /* 15/11/2026 (Andrea): solo turni ancora da correre, decisi dall'orario (prima, con una finale in corso,
+     ripartiva dall'inizio della giornata); comprese le finali con i miei piloti */
+  const toM=t=>{const pr=String(t||'').split('.');return parseInt(pr[0])*60+parseInt(pr[1]||0);};
+  const cand=[];
+  if(currentIdx<slotsArr.length)slotsArr.forEach((sl,i)=>{if(i>currentIdx&&toM(sl.time)>=nowM-1)cand.push({sl,mine:pilotsForSlot(sl)});});
+  if(currentIdx<slotsArr.length&&activeDay===currentDays[currentDays.length-1])[].concat(currentFinals||[]).filter(Boolean).forEach(f=>{
+    if(toM(f.time)<nowM-1)return;const all=pilots.filter(p=>canonCat(p.cat)===canonCat(f.cat));const fin=all.filter(p=>p.inFinal);
+    cand.push({sl:{time:f.time,label:'FINALE '+(f.cat||''),cat:f.cat},mine:fin.length?fin:all.filter(p=>!p.eliminated)});});
+  cand.sort((a,b)=>toM(a.sl.time)-toM(b.sl.time));
+  for(const c of cand){if(items.length>=6)break;
+    const sl=c.sl;const mine=c.mine;
     if(!mine.length)continue;
-    const pr=sl.time.split('.');const slM=parseInt(pr[0])*60+parseInt(pr[1]);
+    const slM=toM(sl.time);
     const mins=slM-nowM;
     // 15/11 (Andrea): e' il tempo che manca alla partenza, non la durata: "tra 7 min"
     const when=mins<=0?'a breve':'tra '+(mins>=60?Math.floor(mins/60)+'h '+String(mins%60).padStart(2,'0'):mins+' min');
@@ -3915,7 +3930,7 @@ function openLegend(){
     +'<div class="sp-tools"><span class="sp-btn">⟲</span><span class="sp-btn">⟳</span><span class="sp-btn">＋</span><span class="sp-btn">－</span><span class="sp-btn">⤢</span></div>'+N(3)));
   h.push(ex([
     'Quanti punti hai fatto con quel pilota sul totale dei tuoi punti (2 su 4). Tocca per aprire il tracciato.',
-    'Tocca il tracciato dove hai scattato: nasce un punto già spuntato <b style="color:#4fd69c">✓</b> per questo pilota; negli altri piloti compare col suo numero, da spuntare. Tocca un punto per spuntarlo o togliere la spunta.',
+    'Tocca il tracciato dove hai scattato: nasce un punto già spuntato <b style="color:#4fd69c">✓</b> per questo pilota; negli altri piloti compare col suo numero, da spuntare. Tocca un punto per spuntarlo o togliere la spunta; <b>tienilo premuto</b> e trascinalo per spostarlo.',
     'Ruota, ingrandisci, riduci e ricentra. Con due dita ingrandisci e ruoti, con un dito sposti.'
   ]));
   // NOTIFICHE
@@ -4052,8 +4067,8 @@ function teamsWaitingHtml(slot){
 }
 /* 15/11/2026 (Andrea): 2 o piu' piloti dello stesso team seguito nello stesso turno = un riquadro unico in alto, senza linee in mezzo.
    Tutto il resto in ordine di numero. */
-function groupSlotItems(items){
-  const byNum=(a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0);
+function groupSlotItems(items,keepOrder){
+  const byNum=keepOrder?(()=>0):(a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0);
   const cnt={};items.forEach(x=>{if(x.key)cnt[x.key]=(cnt[x.key]||0)+1;});
   // 15/11/2026 (Andrea): stile unico per tutti i piloti dei team seguiti: riquadro arrotondato con nome team, anche se e' uno solo
   const gk=teams.map(t=>t.key).filter(k=>cnt[k]>=1);
@@ -5188,7 +5203,7 @@ function renderSpots(){
     h.push('<button class="sp-dot'+(on?' on':'')+'" data-id="'+id+'" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'✓':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>');});
   h.push('</div></div>');
   h.push('<div class="sp-tools"><button class="sp-btn" onclick="spotsRotate(-30)" aria-label="Ruota a sinistra">⟲</button><button class="sp-btn" onclick="spotsRotate(30)" aria-label="Ruota a destra">⟳</button><button class="sp-btn" onclick="spotsZoom(1.4)" aria-label="Ingrandisci">＋</button><button class="sp-btn" onclick="spotsZoom(1/1.4)" aria-label="Riduci">－</button><button class="sp-btn" onclick="spotsResetView()" aria-label="Centra">⤢</button>'+(currentUserId===SERVER_OWNER?'<button class="sp-btn'+(_spMarkMode?' on':'')+'" onclick="spotsToggleMark()" aria-label="Aggiungi riferimento del circuito">📍</button>':'')+'</div>');
-  if(t&&!_spTrash)h.push('<div class="sp-hint">I numeri sono punti da spuntare. Con due dita ingrandisci e ruoti, con un dito sposti.</div>');
+  if(t&&!_spTrash)h.push('<div class="sp-hint">I numeri sono punti da spuntare. Tieni premuto un punto per spostarlo. Due dita: zoom e rotazione.</div>');
   openModal(h.join(''));
   spotsLayout(false);spotsBindGestures();
 }
@@ -5237,13 +5252,19 @@ function spotsToMap(cx,cy){
 }
 function spotsBindGestures(){
   const vp=document.getElementById('sp-vp');if(!vp)return;const pts=new Map();let g=null,moved=false,downT=null;
+  let drag=null,holdT=0;
   vp.onpointerdown=e=>{try{vp.setPointerCapture(e.pointerId);}catch(_){}pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
-    if(pts.size===1){moved=false;downT=e.target.closest('.sp-dot');g={x:e.clientX,y:e.clientY,vx:_spView.x,vy:_spView.y};}
+    clearTimeout(holdT);drag=null;
+    if(pts.size===1){moved=false;downT=e.target.closest('.sp-dot');g={x:e.clientX,y:e.clientY,vx:_spView.x,vy:_spView.y};
+      // 15/11 (Andrea): tieni premuto un punto mezzo secondo e trascinalo per spostarlo
+      if(downT&&!_spTrash){const id=downT.getAttribute('data-id');holdT=setTimeout(()=>{if(moved||pts.size!==1)return;drag={id,el:downT};downT.classList.add('drag');try{if(navigator.vibrate)navigator.vibrate(25);}catch(_){}},450);}}
     else if(pts.size===2){const[a,b]=[...pts.values()];moved=true;g={d:Math.hypot(b.x-a.x,b.y-a.y),an:Math.atan2(b.y-a.y,b.x-a.x),z:_spView.z,r:_spView.r,mx:(a.x+b.x)/2,my:(a.y+b.y)/2,px:_spView.x,py:_spView.y};}};
   vp.onpointermove=e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
     if(pts.size===2&&g&&g.d){const[a,b]=[...pts.values()];_spView.z=Math.max(.6,Math.min(8,g.z*Math.hypot(b.x-a.x,b.y-a.y)/g.d));_spView.r=g.r+(Math.atan2(b.y-a.y,b.x-a.x)-g.an)*180/Math.PI;_spView.x=g.px+((a.x+b.x)/2-g.mx);_spView.y=g.py+((a.y+b.y)/2-g.my);spotsLayoutSoon();}
-    else if(pts.size===1&&g&&g.vx!==undefined){const dx=e.clientX-g.x,dy=e.clientY-g.y;if(Math.abs(dx)+Math.abs(dy)>8)moved=true;if(moved){_spView.x=g.vx+dx;_spView.y=g.vy+dy;spotsLayoutSoon();}}};
-  const up=e=>{const wasTap=pts.size===1&&!moved;pts.delete(e.pointerId);
+    else if(pts.size===1&&drag){const q=spotsToMap(e.clientX,e.clientY);const sp=trackSpots[drag.id];if(sp){sp.x=Math.round(q.x*10)/10;sp.y=Math.round(q.y*10)/10;drag.el.style.left=(e.clientX-vp.getBoundingClientRect().left)+'px';drag.el.style.top=(e.clientY-vp.getBoundingClientRect().top)+'px';}}
+    else if(pts.size===1&&g&&g.vx!==undefined){const dx=e.clientX-g.x,dy=e.clientY-g.y;if(Math.abs(dx)+Math.abs(dy)>8){moved=true;clearTimeout(holdT);}if(moved){_spView.x=g.vx+dx;_spView.y=g.vy+dy;spotsLayoutSoon();}}};
+  const up=e=>{clearTimeout(holdT);if(drag){const d=drag;drag=null;pts.delete(e.pointerId);d.el.classList.remove('drag');spotsSave();spotsLayout(false);g=null;return;}
+    const wasTap=pts.size===1&&!moved;pts.delete(e.pointerId);
     if(wasTap){const mt=e.target.closest&&e.target.closest('.sp-mark');if(mt&&_spTrash){spotsDelMark(mt.getAttribute('data-mid'));}else if(_spMarkMode){spotsAddMark(e.clientX,e.clientY);}else if(downT)spotsTap(downT.getAttribute('data-id'));else spotsAddAt(e.clientX,e.clientY);}
     if(!pts.size){g=null;}else if(pts.size===1){const q=[...pts.values()][0];g={x:q.x,y:q.y,vx:_spView.x,vy:_spView.y};}};
   vp.onwheel=e=>{e.preventDefault();_spView.z=Math.max(.6,Math.min(8,_spView.z*(e.deltaY<0?1.12:1/1.12)));spotsLayoutSoon();};
