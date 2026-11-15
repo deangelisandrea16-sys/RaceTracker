@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1555';
+var RT_JS_BUILD='2026-11-15-1740';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -859,10 +859,16 @@ function showOfflineBanner(on){
 function watchConnection(){
   try{onValue(ref(db,'.info/connected'),snap=>{
     clearTimeout(_rtOfflineTimer);
-    if(snap.val()===true){showOfflineBanner(false);if(initialized)setSyncStatus('ok');}
-    else _rtOfflineTimer=setTimeout(()=>{showOfflineBanner(true);setSyncStatus('err');},4000);
+    if(snap.val()===true){_rtOfflineTimer=null;showOfflineBanner(false);if(initialized)setSyncStatus('ok');}
+    // 15/11 (Andrea): la barra compare solo se la connessione manca da 30 secondi (all'apertura la connessione impiega qualche secondo)
+    else _rtOfflineTimer=setTimeout(()=>{showOfflineBanner(true);setSyncStatus('err');},30000);
   });}catch(e){}
-  window.addEventListener('offline',()=>{showOfflineBanner(true);setSyncStatus('err');});
+  // 15/11 (Andrea): dopo un periodo in background o ad app chiusa i 30 secondi ripartono da zero al rientro (niente barra mentre si riconnette)
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;
+    if(typeof _srvBadSince!=='undefined')_srvBadSince=0;
+    if(document.getElementById('rt-offline')||_rtOfflineTimer){clearTimeout(_rtOfflineTimer);showOfflineBanner(false);
+      _rtOfflineTimer=setTimeout(()=>{ref(db,'.info/connected').once('value').then(sn=>{if(sn.val()!==true){showOfflineBanner(true);setSyncStatus('err');}});},30000);}});
+  window.addEventListener('offline',()=>{clearTimeout(_rtOfflineTimer);_rtOfflineTimer=setTimeout(()=>{if(!navigator.onLine){showOfflineBanner(true);setSyncStatus('err');}},30000);});
 }
 
 // ── Barra di stato: ora, ritardo condiviso, connessione ──
@@ -918,12 +924,13 @@ var RT_USER_KEYS=['pilots','statuses','notes','trackStatus','teams','teamStatuse
 var _rtBaseShared={},_rtBaseUser={};
 function listenRaceData(raceId){
   if(raceDataUnsub) raceDataUnsub();
+  _rtUserLiveKey='';
   if(!currentUserId){initialized=true;renderAll();return;}
   
   _rtBaseShared={};_rtBaseUser={};
   const sharedRef=ref(db,'races/'+raceId);
   const userRef=ref(db,'races/'+raceId+'/users/'+currentUserId);
-  let sharedData={};let userData={};let sharedReady=false;let userReady=false;
+  let sharedData={};let userData={};let sharedReady=false;let userReady=false;let userLive=false;
   // Modalità senza rete: ultima copia dei dati salvata sul dispositivo, mostrata subito e poi sostituita dai dati live
   window._rtLiveSeen=false;window._rtSnapAt=0;
   const snapKey='rt_snap_'+raceId+'_'+currentUserId;
@@ -974,6 +981,9 @@ function listenRaceData(raceId){
       if(notes[p.num]===undefined)notes[p.num]='';
     });
     if(!activeDay||!currentDays.includes(activeDay)) activeDay=currentDays[0]||'';
+    // salvataggi ammessi solo ora: dati locali allineati a quelli appena arrivati dal server
+    // allineati anche con la copia salvata sul telefono (senza rete si puo' lavorare e salvare: parte al ritorno della rete)
+    _rtUserLiveKey=raceId+'|'+currentUserId;
     setSyncStatus('ok');
     initialized=true;
     // 15/11: con la mappa dei punti aperta non ridisegna tutta l'app a ogni tocco (lentezza): lo fa alla chiusura
@@ -988,7 +998,7 @@ function listenRaceData(raceId){
   },err=>{setSyncStatus('err');dlog('❌ shared data: '+err.message,'err');});
 
   const unsub2=onValue(userRef,snap=>{
-    userData=snap.val()||{};saveSnap();rtSetBase(null,userData);
+    userData=snap.val()||{};saveSnap();rtSetBase(null,userData);userLive=true;_rtUserLiveKey='';
     dlog('Dati utente ['+currentUserId+']: pilots='+Object.keys(userData.pilots||{}).length,'ok');
     userReady=true;
     mergeAndRender();
@@ -1069,9 +1079,16 @@ function rtWrite(u,what){
   setSyncStatus('saving');dlog('Salvataggio '+(what||'')+': '+n+' campi','info');
   return update(ref(db),u).then(()=>setSyncStatus('ok')).catch(e=>{setSyncStatus('err');console.error(e);dlog('❌ salvataggio: '+e.message,'err');});
 }
+/* 15/11/2026 (bug #637 di Andrea): un pilota rimosso tornava indietro. Un dispositivo con dati vecchi in memoria
+   (app riaperta dopo ore, cambio utente/gara prima che arrivino i dati nuovi) salvava di nuovo l'elenco vecchio.
+   Difese: 1) niente salvataggi finche' non sono arrivati i dati aggiornati dell'utente per QUESTA gara;
+   2) un pilota che non c'e' sul server viene ricreato solo se e' stato aggiunto in questa sessione. */
+var _rtNewPilots=new Set(),_rtUserLiveKey='';
 function saveAll(){
   if(!activeRaceId||!currentUserId)return;
-  const pilotsObj={};pilots.forEach(p=>pilotsObj[p.num]=p);
+  if(_rtUserLiveKey!==activeRaceId+'|'+currentUserId){dlog('Salvataggio rimandato: dati utente non ancora allineati','warn');clearTimeout(window._rtSaveRetry);window._rtSaveRetry=setTimeout(saveAll,1500);return;}
+  const basePil=(_rtBaseUser&&_rtBaseUser.pilots)||{};
+  const pilotsObj={};pilots.forEach(p=>{const k=String(p.num);if(basePil[k]||_rtNewPilots.has(k))pilotsObj[p.num]=p;else dlog('Pilota #'+k+' non piu\' sul server: non lo ricreo','warn');});
   const teamsObj={};teams.forEach(t=>teamsObj[t.key]=t);
   const uData={pilots:pilotsObj,statuses,notes,trackStatus,teams:teamsObj,teamStatuses,teamNotes};
   const sData={entryList:currentEntryList,schedule:currentSchedule,days:currentDays,finals:currentFinals,trackSections};
@@ -2479,7 +2496,7 @@ function addPilotFromDetail(num){
   const serie=entry&&entry.serie?entry.serie.toString():'';
   const prefinal=entry&&entry.prefinal?entry.prefinal:'';
   const heats=entry&&entry.heats?entry.heats:[];
-  pilots.push({num:num.toString(),name,team,cat,parity:autoParity(num),group,prefinal,serie,heats,eliminated:false});
+  _rtNewPilots.add(String(num));pilots.push({num:num.toString(),name,team,cat,parity:autoParity(num),group,prefinal,serie,heats,eliminated:false});
   statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');
   trackStatus[num]={};notes[num]=note;
   // Update pilot count in race index
@@ -4066,14 +4083,14 @@ function renderServerBanner(){
   let b=document.getElementById('srv-banner');
   const stale=currentUserId===SERVER_OWNER&&serverStat!==null&&(!serverStat||!serverStat.at||Date.now()-serverStat.at>5*60000||serverStat.watcher===false);
   /* 15/11 (Andrea): l'avviso compare solo se il problema dura piu' di 1 minuto (all'apertura il dato puo' essere vecchio di qualche secondo) */
-  if(!stale){_srvBadSince=0;if(b)b.remove();return;}
+  if(!stale||document.visibilityState!=='visible'){_srvBadSince=0;if(b&&!stale)b.remove();return;}
   if(!_srvBadSince)_srvBadSince=Date.now();
-  if(Date.now()-_srvBadSince<60000){if(b)b.remove();return;}
+  if(Date.now()-_srvBadSince<30000){if(b)b.remove();return;}
   if(!b){b=document.createElement('div');b.id='srv-banner';b.style.cssText='position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:9999;background:#b3261e;color:#fff;border-radius:10px;padding:10px 12px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.4)';document.body.appendChild(b);}
   const min=serverStat&&serverStat.at?Math.round((Date.now()-serverStat.at)/60000):null;
   b.textContent='Server notifiche fermo'+(min!==null?' da '+min+' min':'')+(serverStat&&serverStat.watcher===false?' (live non attivo)':'')+': le notifiche push non partono.';
 }
-setTimeout(()=>{if(currentUserId!==SERVER_OWNER)return;try{onValue(ref(db,'serverStatus/pc'),s=>{serverStat=s.val()||false;renderServerBanner();});}catch(e){}setInterval(renderServerBanner,15000);},5000);
+setTimeout(()=>{if(currentUserId!==SERVER_OWNER)return;try{onValue(ref(db,'serverStatus/pc'),s=>{serverStat=s.val()||false;renderServerBanner();});}catch(e){}setInterval(renderServerBanner,5000);},5000);
 function rtAlert(id,title,sub,kind){
   if(!notifOn(id))return;
   const log=alertLog();if(log.some(a=>a.id===id))return;
@@ -4620,6 +4637,12 @@ function apexNextInfo(){
     const day=typeof autoDayName==='function'?autoDayName():'';let arr=(day&&currentSchedule[day])||[];arr=Array.isArray(arr)?arr:Object.values(arr);
     if(!arr.length)return out;
     const same=(a,b)=>a&&b&&a.time===b.time&&canonCat(a.cat)===canonCat(b.cat)&&a.type===b.type;
+    // 15/11: le finali stanno nell'elenco finali, non tra i turni: prima davano un falso "non trovata nel programma"
+    if(/FINAL/i.test(apexNext.sess)&&!/PRE/i.test(apexNext.sess)){
+      const fl=[].concat(currentFinals||[]).filter(Boolean);const f=fl.find(x=>canonCat(x.cat)===canonCat(apexNext.cat));
+      if(!f){out.warn='finale non trovata nel programma';return out;}
+      out.mine=pilots.filter(p=>canonCat(p.cat)===canonCat(f.cat)&&!p.eliminated&&(p.inFinal||!(currentEntryList[p.num]||{}).eliminated)).map(p=>p.num);return out;
+    }
     const nm=apexMatchFor(apexNext.cat,apexNext.sess,null);
     if(!nm||!nm.slot){out.warn='non trovata nel programma di oggi';return out;}
     out.mine=pilotsForSlot(nm.slot).map(p=>p.num);
@@ -5054,7 +5077,7 @@ function confirmFromEntryList(){
   const group=_entryPreview.group||'';
   const serie=_entryPreview.serie?_entryPreview.serie.toString():'';
   const prefinal=_entryPreview.prefinal||'';
-  pilots.push({num,name:(_entryPreview.lastName||'')+' '+(_entryPreview.firstName||''),team:_entryPreview.team||'',cat:_entryPreview.cat||'OK',parity:_entryPreview.parity||autoParity(num),group,prefinal,serie,eliminated:false});
+  _rtNewPilots.add(String(num));pilots.push({num,name:(_entryPreview.lastName||'')+' '+(_entryPreview.firstName||''),team:_entryPreview.team||'',cat:_entryPreview.cat||'OK',parity:_entryPreview.parity||autoParity(num),group,prefinal,serie,eliminated:false});
   statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');trackStatus[num]={};notes[num]=note;
   const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;update(ref(db),u);
   saveAll();closeModal();
@@ -5069,7 +5092,7 @@ function savePilotManual(){
   const note=document.getElementById('f-note-m')?document.getElementById('f-note-m').value.trim():'';
   if(!num||!name||!team){alert('Compila tutti i campi');return;}
   if(pilots.find(p=>p.num===num)){alert('Numero già presente');return;}
-  pilots.push({num,name,team,cat,parity:autoParity(num),group:'',prefinal:'',serie:'',heats:[],eliminated:false});
+  _rtNewPilots.add(String(num));pilots.push({num,name,team,cat,parity:autoParity(num),group:'',prefinal:'',serie:'',heats:[],eliminated:false});
   statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');trackStatus[num]={};notes[num]=note;
   const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;update(ref(db),u);
   saveAll();closeModal();
@@ -5125,7 +5148,7 @@ function spotPill(num){
   const[f,t]=spotCount(num),cls=!t?'none':f===t?'green':f?'orange':'red';
   return'<button class="task-btn spot-pill '+cls+'" aria-label="Punti di scatto in pista" onclick="event.stopPropagation();openSpots(\''+num+'\')"><i class="ic ic-camera"></i>'+(t?'<span>'+f+'/'+t+'</span>':'')+'</button>';
 }
-let _spNum=null,_spTrash=false;
+let _spNum=null,_spTrash=false,_spMarkMode=false;
 /* 15/11 (Andrea): la mappa e' legata al LUOGO (sede), non a campionato o organizzazione.
    venues/<chiave> = {name, aliases[], map:{vb,d,w}}: la sede si riconosce dal circuito della gara.
    Senza mappa per la sede la pillola dei punti di scatto non compare. */
@@ -5138,9 +5161,9 @@ function raceVenue(){
   return null;
 }
 function venueMap(){if(_venues===null){loadVenues();return null;}const v=raceVenue();return v&&v.map&&v.map.d?v:null;}
-let _spView={r:0,z:1,x:0,y:0};
+let _spView={r:0,z:1,x:0,y:0,t:0};
 function spViewKey(){const v=venueMap();return'rt_spview_'+(v?v.key:'');}
-function openSpots(num){window._rtDeferRender=true;_spNum=String(num);_spTrash=false;try{_spView=Object.assign({r:0,z:1,x:0,y:0},JSON.parse(localStorage.getItem(spViewKey())||'{}'),{z:1,x:0,y:0});}catch(_){_spView={r:0,z:1,x:0,y:0};}renderSpots();}
+function openSpots(num){window._rtDeferRender=true;_spSize=null;_spNum=String(num);_spTrash=false;try{const _vr=((venueMap()||{}).map||{}).rot||0;_spView=Object.assign({r:_vr},JSON.parse(localStorage.getItem(spViewKey())||'{}'),{z:1,x:0,y:0,t:52});}catch(_){_spView={r:0,z:1,x:0,y:0,t:52};}renderSpots();}
 window.openSpots=openSpots;
 function spotNo(id){const sp=trackSpots[id]||{};if(sp.k)return sp.k;return spotIds().indexOf(id)+1;}
 function renderSpots(){
@@ -5150,49 +5173,80 @@ function renderSpots(){
   h.push('<button class="modal-close" onclick="closeModal()">✕</button>');
   h.push('<button class="sp-trash'+(_spTrash?' on':'')+'" onclick="spotsToggleTrash()" aria-label="Modalità cestino: elimina punti" aria-pressed="'+_spTrash+'"><i class="ic ic-trash"></i></button>');
   h.push('<div class="modal-title">#'+p.num+' '+escapeHtmlSp(p.name||'')+'</div>');
-  h.push('<div class="sp-sub">'+(_spTrash?'<b style="color:#ef4444">CESTINO</b> · tocca un punto per eliminarlo per tutti i piloti':(t?'Fatti <b>'+f+'/'+t+'</b> · ':'')+'tocca la pista dove hai scattato')+'</div>');
-  h.push('<div class="sp-vp'+(_spTrash?' trash':'')+'" id="sp-vp"><div class="sp-stage" id="sp-stage">');
-  h.push('<svg viewBox="'+v.map.vb+'" preserveAspectRatio="none" class="sp-svg"><path d="'+v.map.d+'" class="sp-track-edge" style="stroke-width:'+((v.map.w||10)+4)+'"/><path d="'+v.map.d+'" class="sp-track" style="stroke-width:'+(v.map.w||10)+'"/></svg>');
-  ids.forEach(id=>{const sp=trackSpots[id],on=!!d[id],n=spotNo(id);
-    h.push('<button class="sp-dot'+(on?' on':'')+'" data-id="'+id+'" style="left:'+sp.x+'%;top:'+sp.y+'%" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'✓':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>');});
+  h.push('<div class="sp-sub">'+(_spMarkMode?'<b style="color:#38bdf8">RIFERIMENTO</b> · tocca il punto del circuito (es. ingresso pregriglia) e dagli un nome':_spTrash?'<b style="color:#ef4444">CESTINO</b> · tocca un punto per eliminarlo per tutti i piloti':(t?'Fatti <b>'+f+'/'+t+'</b> · ':'')+'tocca la pista dove hai scattato')+'</div>');
+  const w=v.map.w||10,dd=v.map.d;
+  h.push('<div class="sp-vp'+(_spTrash?' trash':'')+(_spView.t?' td':'')+'" id="sp-vp"><div class="sp-stage" id="sp-stage">');
+  h.push('<svg viewBox="'+v.map.vb+'" preserveAspectRatio="none" class="sp-svg">'
+    +'<path d="'+dd+'" class="sp-track-shadow" style="stroke-width:'+(w+6)+'"/>'
+    +'<path d="'+dd+'" class="sp-track-edge" style="stroke-width:'+(w+4)+'"/>'
+    +'<path d="'+dd+'" class="sp-kerb" style="stroke-width:'+(w+4)+'"/>'
+    +'<path d="'+dd+'" class="sp-track" style="stroke-width:'+w+'"/>'
+    +'<path d="'+dd+'" class="sp-track-line" style="stroke-width:'+Math.max(.6,w/14)+'"/></svg>');
+  h.push('</div><div class="sp-marks" id="sp-marks">'+spotsMarksHtml(v)+'</div><div class="sp-dots" id="sp-dots">');
+  ids.forEach(id=>{const on=!!d[id],n=spotNo(id);
+    h.push('<button class="sp-dot'+(on?' on':'')+'" data-id="'+id+'" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'✓':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>');});
   h.push('</div></div>');
-  h.push('<div class="sp-tools"><button class="sp-btn" onclick="spotsRotate(-90)" aria-label="Ruota a sinistra">⟲</button><button class="sp-btn" onclick="spotsRotate(90)" aria-label="Ruota a destra">⟳</button><button class="sp-btn" onclick="spotsZoom(1.4)" aria-label="Ingrandisci">＋</button><button class="sp-btn" onclick="spotsZoom(1/1.4)" aria-label="Riduci">－</button><button class="sp-btn" onclick="spotsResetView()" aria-label="Centra">⤢</button></div>');
+  h.push('<div class="sp-tools"><button class="sp-btn" onclick="spotsRotate(-30)" aria-label="Ruota a sinistra">⟲</button><button class="sp-btn" onclick="spotsRotate(30)" aria-label="Ruota a destra">⟳</button><button class="sp-btn" onclick="spotsZoom(1.4)" aria-label="Ingrandisci">＋</button><button class="sp-btn" onclick="spotsZoom(1/1.4)" aria-label="Riduci">－</button><button class="sp-btn" onclick="spotsResetView()" aria-label="Centra">⤢</button>'+(currentUserId===SERVER_OWNER?'<button class="sp-btn'+(_spMarkMode?' on':'')+'" onclick="spotsToggleMark()" aria-label="Aggiungi riferimento del circuito">📍</button>':'')+'</div>');
   if(t&&!_spTrash)h.push('<div class="sp-hint">I numeri sono punti da spuntare. Con due dita ingrandisci e ruoti, con un dito sposti.</div>');
   openModal(h.join(''));
-  spotsLayout();spotsBindGestures();
+  spotsLayout(false);spotsBindGestures();
 }
-function spotsLayout(){
+let _spM=null;
+function spotsMatrix(Sw,Sh,W,H){
+  const P=new DOMMatrix([1,0,0,0, 0,1,0,0, 0,0,1,-1/Math.max(W,H,300)/1.6, 0,0,0,1]);
+  const m=new DOMMatrix().translateSelf(W/2+_spView.x,H/2+_spView.y);m.multiplySelf(P);
+  if(_spView.t)m.rotateSelf(_spView.t,0,0);
+  m.rotateSelf(0,0,_spView.r);m.scaleSelf(_spView.z,_spView.z);m.translateSelf(-Sw/2,-Sh/2);return m;
+}
+let _spSize=null,_spRaf=0;
+function spotsLayoutSoon(){if(_spRaf)return;_spRaf=requestAnimationFrame(()=>{_spRaf=0;spotsLayout(false);});}
+function spotsLayout(anim){
   const vp=document.getElementById('sp-vp'),st=document.getElementById('sp-stage'),v=venueMap();if(!vp||!st||!v)return;
-  const vb=String(v.map.vb).split(/\s+/).map(Number),a=vb[2]/vb[3],W=vp.clientWidth-16,H=vp.clientHeight-16;
-  const rot=((Math.round(_spView.r/90)*90)%180+180)%180===90;
-  let Sw=rot?Math.min(H,W*a):Math.min(W,H*a);let Sh=Sw/a;if(!rot&&Sh>H){Sh=H;Sw=Sh*a;}if(rot&&Sh>W){Sh=W;Sw=Sh*a;}
+  const W=vp.clientWidth,H=vp.clientHeight;
+  if(!_spSize||_spSize.W!==W||_spSize.H!==H){
+    const vb=String(v.map.vb).split(/\s+/).map(Number),a=vb[2]/vb[3],Wf=W-16,Hf=H-16;
+    const rot=((Math.round(_spView.r/90)*90)%180+180)%180===90;
+    let Sw=rot?Math.min(Hf,Wf*a):Math.min(Wf,Hf*a);let Sh=Sw/a;if(!rot&&Sh>Hf){Sh=Hf;Sw=Sh*a;}if(rot&&Sh>Wf){Sh=Wf;Sw=Sh*a;}
+    if(_spView.t){const k=1.02;Sw*=k;Sh*=k;}
+    _spSize={W,H,Sw,Sh};
+  }
+  const Sw=_spSize.Sw,Sh=_spSize.Sh;
   st.style.width=Sw+'px';st.style.height=Sh+'px';
-  st.style.transform='translate(-50%,-50%) translate('+_spView.x+'px,'+_spView.y+'px) rotate('+_spView.r+'deg) scale('+_spView.z+')';
-  st.querySelectorAll('.sp-dot').forEach(b=>{b.style.transform='translate(-50%,-50%) rotate('+(-_spView.r)+'deg) scale('+(1/_spView.z)+')';});
-  try{localStorage.setItem(spViewKey(),JSON.stringify({r:_spView.r}));}catch(_){}
+  const tr=anim?'transform .55s cubic-bezier(.25,.8,.25,1)':'none';st.style.transition=tr;
+  const m=spotsMatrix(Sw,Sh,W,H);_spM={m,Sw,Sh};
+  st.style.transform=m.toString();
+  const mk=(v.marks)||{};document.querySelectorAll('#sp-marks .sp-mark').forEach(b=>{const sp=mk[b.getAttribute('data-mid')];if(!sp)return;
+    const q=m.transformPoint(new DOMPoint(sp.x/100*Sw,sp.y/100*Sh,0,1));b.style.transition=anim?'left .55s cubic-bezier(.25,.8,.25,1),top .55s cubic-bezier(.25,.8,.25,1)':'none';b.style.left=(q.x/q.w)+'px';b.style.top=(q.y/q.w)+'px';});
+  document.querySelectorAll('#sp-dots .sp-dot').forEach(b=>{const sp=trackSpots[b.getAttribute('data-id')];if(!sp)return;
+    const q=m.transformPoint(new DOMPoint(sp.x/100*Sw,sp.y/100*Sh,0,1));b.style.transition=anim?'left .55s cubic-bezier(.25,.8,.25,1),top .55s cubic-bezier(.25,.8,.25,1)':'none';b.style.left=(q.x/q.w)+'px';b.style.top=(q.y/q.w)+'px';});
+  try{localStorage.setItem(spViewKey(),JSON.stringify({r:_spView.r,t:_spView.t}));}catch(_){}
 }
-function spotsRotate(dg){_spView.r+=dg;spotsLayout();}
-function spotsZoom(k){_spView.z=Math.max(1,Math.min(6,_spView.z*k));if(_spView.z===1){_spView.x=0;_spView.y=0;}spotsLayout();}
-function spotsResetView(){_spView.z=1;_spView.x=0;_spView.y=0;_spView.r=Math.round(_spView.r/90)*90;spotsLayout();}
+function spotsToggle3D(){_spView.t=_spView.t?0:52;const vp=document.getElementById('sp-vp');if(vp)vp.classList.toggle('td',!!_spView.t);document.querySelectorAll('.sp-tools .sp-btn').forEach(b=>{if(b.textContent==='3D')b.classList.toggle('on',!!_spView.t);});spotsLayout(true);}
+window.spotsToggle3D=spotsToggle3D;
+function spotsRotate(dg){const a=dg*Math.PI/180,c=Math.cos(a),s=Math.sin(a),x=_spView.x,y=_spView.y;_spView.x=x*c-y*s;_spView.y=x*s+y*c;_spView.r+=dg;spotsLayout(true);}
+function spotsZoom(k){_spView.z=Math.max(.6,Math.min(8,_spView.z*k));spotsLayout(true);}
+function spotsResetView(){const vr=((venueMap()||{}).map||{}).rot||0;_spView.z=1;_spView.x=0;_spView.y=0;_spView.r=vr+Math.round((_spView.r-vr)/360)*360;spotsLayout(true);}
 window.spotsRotate=spotsRotate;window.spotsZoom=spotsZoom;window.spotsResetView=spotsResetView;
 /* punto dello schermo -> posizione % sulla mappa (inverso di traslazione, rotazione, zoom) */
 function spotsToMap(cx,cy){
-  const vp=document.getElementById('sp-vp'),st=document.getElementById('sp-stage');const r=vp.getBoundingClientRect();
-  let dx=cx-(r.left+r.width/2)-_spView.x,dy=cy-(r.top+r.height/2)-_spView.y;
-  const a=-_spView.r*Math.PI/180,c=Math.cos(a),s=Math.sin(a);let ux=(dx*c-dy*s)/_spView.z,uy=(dx*s+dy*c)/_spView.z;
-  const Sw=st.offsetWidth,Sh=st.offsetHeight;return{x:(ux+Sw/2)/Sw*100,y:(uy+Sh/2)/Sh*100};
+  const vp=document.getElementById('sp-vp');if(!vp||!_spM)return{x:-1,y:-1};const r=vp.getBoundingClientRect(),m=_spM.m;
+  const X=cx-r.left,Y=cy-r.top;
+  const a1=m.m11-X*m.m14,b1=m.m21-X*m.m24,c1=X*m.m44-m.m41,a2=m.m12-Y*m.m14,b2=m.m22-Y*m.m24,c2=Y*m.m44-m.m42;
+  const det=a1*b2-a2*b1;if(Math.abs(det)<1e-9)return{x:-1,y:-1};
+  const lx=(c1*b2-c2*b1)/det,ly=(a1*c2-a2*c1)/det;return{x:lx/_spM.Sw*100,y:ly/_spM.Sh*100};
 }
 function spotsBindGestures(){
   const vp=document.getElementById('sp-vp');if(!vp)return;const pts=new Map();let g=null,moved=false,downT=null;
   vp.onpointerdown=e=>{try{vp.setPointerCapture(e.pointerId);}catch(_){}pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
     if(pts.size===1){moved=false;downT=e.target.closest('.sp-dot');g={x:e.clientX,y:e.clientY,vx:_spView.x,vy:_spView.y};}
-    else if(pts.size===2){const[a,b]=[...pts.values()];moved=true;g={d:Math.hypot(b.x-a.x,b.y-a.y),an:Math.atan2(b.y-a.y,b.x-a.x),z:_spView.z,r:_spView.r};}};
+    else if(pts.size===2){const[a,b]=[...pts.values()];moved=true;g={d:Math.hypot(b.x-a.x,b.y-a.y),an:Math.atan2(b.y-a.y,b.x-a.x),z:_spView.z,r:_spView.r,mx:(a.x+b.x)/2,my:(a.y+b.y)/2,px:_spView.x,py:_spView.y};}};
   vp.onpointermove=e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
-    if(pts.size===2&&g&&g.d){const[a,b]=[...pts.values()];_spView.z=Math.max(1,Math.min(6,g.z*Math.hypot(b.x-a.x,b.y-a.y)/g.d));_spView.r=g.r+(Math.atan2(b.y-a.y,b.x-a.x)-g.an)*180/Math.PI;spotsLayout();}
-    else if(pts.size===1&&g&&g.vx!==undefined){const dx=e.clientX-g.x,dy=e.clientY-g.y;if(Math.abs(dx)+Math.abs(dy)>8)moved=true;if(moved){_spView.x=g.vx+dx;_spView.y=g.vy+dy;spotsLayout();}}};
+    if(pts.size===2&&g&&g.d){const[a,b]=[...pts.values()];_spView.z=Math.max(.6,Math.min(8,g.z*Math.hypot(b.x-a.x,b.y-a.y)/g.d));_spView.r=g.r+(Math.atan2(b.y-a.y,b.x-a.x)-g.an)*180/Math.PI;_spView.x=g.px+((a.x+b.x)/2-g.mx);_spView.y=g.py+((a.y+b.y)/2-g.my);spotsLayoutSoon();}
+    else if(pts.size===1&&g&&g.vx!==undefined){const dx=e.clientX-g.x,dy=e.clientY-g.y;if(Math.abs(dx)+Math.abs(dy)>8)moved=true;if(moved){_spView.x=g.vx+dx;_spView.y=g.vy+dy;spotsLayoutSoon();}}};
   const up=e=>{const wasTap=pts.size===1&&!moved;pts.delete(e.pointerId);
-    if(wasTap){if(downT)spotsTap(downT.getAttribute('data-id'));else spotsAddAt(e.clientX,e.clientY);}
-    if(!pts.size){g=null;if(_spView.z<=1.01){_spView.x=0;_spView.y=0;spotsLayout();}}else if(pts.size===1){const q=[...pts.values()][0];g={x:q.x,y:q.y,vx:_spView.x,vy:_spView.y};}};
+    if(wasTap){const mt=e.target.closest&&e.target.closest('.sp-mark');if(mt&&_spTrash){spotsDelMark(mt.getAttribute('data-mid'));}else if(_spMarkMode){spotsAddMark(e.clientX,e.clientY);}else if(downT)spotsTap(downT.getAttribute('data-id'));else spotsAddAt(e.clientX,e.clientY);}
+    if(!pts.size){g=null;}else if(pts.size===1){const q=[...pts.values()][0];g={x:q.x,y:q.y,vx:_spView.x,vy:_spView.y};}};
+  vp.onwheel=e=>{e.preventDefault();_spView.z=Math.max(.6,Math.min(8,_spView.z*(e.deltaY<0?1.12:1/1.12)));spotsLayoutSoon();};
   vp.onpointerup=up;vp.onpointercancel=e=>{pts.delete(e.pointerId);if(!pts.size)g=null;};
 }
 function escapeHtmlSp(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
@@ -5200,17 +5254,32 @@ function escapeHtmlSp(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;
    ricaricava le spunte vecchie prima di salvare la seconda (punti che sparivano o si rinumeravano) */
 function spotsSave(){if(!activeRaceId||!currentUserId)return;const u={};
   rtDiff(userPath()+'/trackSpots',_rtBaseUser.trackSpots,trackSpots,u);rtDiff(userPath()+'/spotDone',_rtBaseUser.spotDone,spotDone,u);rtWrite(u,'punti di scatto');}
-function spotsToggleTrash(){_spTrash=!_spTrash;renderSpots();}
+function spotsRefresh(){
+  const dl=document.getElementById('sp-dots'),sub=document.querySelector('.sp-sub');if(!dl){renderSpots();return;}
+  const d=(spotDone[_spNum])||{},[f,t]=spotCount(_spNum);
+  if(sub)sub.innerHTML=_spTrash?'<b style="color:#ef4444">CESTINO</b> · tocca un punto per eliminarlo per tutti i piloti':(t?'Fatti <b>'+f+'/'+t+'</b> · ':'')+'tocca la pista dove hai scattato';
+  dl.innerHTML=spotIds().map(id=>{const on=!!d[id],n=spotNo(id);return'<button class="sp-dot'+(on?' on':'')+'" data-id="'+id+'" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'✓':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>';}).join('');
+  spotsLayout(false);
+}
+function spotsMarksHtml(v){const mk=(v&&v.marks)||{};return Object.keys(mk).map(k=>'<span class="sp-mark" data-mid="'+k+'"><i>📍</i>'+escapeHtmlSp(mk[k].n||'')+'</span>').join('');}
+function spotsToggleMark(){_spMarkMode=!_spMarkMode;renderSpots();}
+window.spotsToggleMark=spotsToggleMark;
+function spotsAddMark(cx,cy){const v=venueMap();if(!v)return;const q=spotsToMap(cx,cy);const n=prompt('Nome del riferimento (es. Ingresso pregriglia). Vuoto = annulla');
+  if(!n||!n.trim())return;const id='m'+Date.now().toString(36);const val={x:Math.round(q.x*10)/10,y:Math.round(q.y*10)/10,n:n.trim().slice(0,30)};
+  ref(db,'venues/'+v.key+'/marks/'+id).set(val).then(()=>{_venues[v.key].marks=Object.assign({},_venues[v.key].marks||{},{[id]:val});_spMarkMode=false;renderSpots();});}
+function spotsDelMark(mid){const v=venueMap();if(!v||currentUserId!==SERVER_OWNER)return;if(!confirm('Eliminare il riferimento?'))return;
+  ref(db,'venues/'+v.key+'/marks/'+mid).remove().then(()=>{delete _venues[v.key].marks[mid];renderSpots();});}
+function spotsToggleTrash(){_spTrash=!_spTrash;const vp=document.getElementById('sp-vp'),b=document.querySelector('.sp-trash');if(vp)vp.classList.toggle('trash',_spTrash);if(b)b.classList.toggle('on',_spTrash);spotsRefresh();}
 window.spotsToggleTrash=spotsToggleTrash;
 function spotsAddAt(cx,cy){
   if(_spTrash)return;
-  const q=spotsToMap(cx,cy);if(q.x<0||q.x>100||q.y<0||q.y>100)return;
+  const q=spotsToMap(cx,cy);if(q.x<-100||q.x>200||q.y<-100||q.y>200)return;
   const id='s'+Date.now().toString(36);
   const k=spotIds().reduce((mx,i)=>Math.max(mx,spotNo(i)),0)+1;
   trackSpots[id]={x:Math.round(q.x*10)/10,y:Math.round(q.y*10)/10,o:Date.now(),k:k};
   if(!spotDone[_spNum])spotDone[_spNum]={};spotDone[_spNum][id]=1;
   try{if(navigator.vibrate)navigator.vibrate(12);}catch(_){}
-  spotsSave();window._rtRenderDirty=true;renderSpots();
+  spotsSave();window._rtRenderDirty=true;spotsRefresh();
 }
 window.spotsAddAt=spotsAddAt;
 function spotsTap(id){
@@ -5222,7 +5291,7 @@ function spotsTap(id){
     if(spotDone[_spNum][id])delete spotDone[_spNum][id];else spotDone[_spNum][id]=1;
     try{if(navigator.vibrate)navigator.vibrate(12);}catch(_){}
   }
-  spotsSave();window._rtRenderDirty=true;renderSpots();
+  spotsSave();window._rtRenderDirty=true;spotsRefresh();
 }
 window.spotsTap=spotsTap;
 
