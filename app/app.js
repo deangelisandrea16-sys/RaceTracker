@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1740';
+var RT_JS_BUILD='2026-11-15-1800';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5152,7 +5152,8 @@ let _spNum=null,_spTrash=false,_spMarkMode=false;
 /* 15/11 (Andrea): la mappa e' legata al LUOGO (sede), non a campionato o organizzazione.
    venues/<chiave> = {name, aliases[], map:{vb,d,w}}: la sede si riconosce dal circuito della gara.
    Senza mappa per la sede la pillola dei punti di scatto non compare. */
-let _venues=null;
+let _venues=null,_spBg=null;
+function loadSpBg(){if(_spBg!==null)return;_spBg='';ref(db,'appAssets/mapBg/img').once('value').then(sn=>{_spBg=sn.val()||'';const vp=document.getElementById('sp-vp');if(vp&&_spBg){vp.style.setProperty('--spbg','url("'+_spBg+'")');vp.classList.add('hasbg');}}).catch(()=>{});}
 function loadVenues(){if(_venues!==null)return;_venues={};ref(db,'venues').once('value').then(sn=>{_venues=sn.val()||{};try{renderAll();}catch(_){}}).catch(()=>{_venues={};});}
 function raceVenue(){
   const r=(typeof races!=='undefined'&&races&&races[activeRaceId])||{};const c=String(r.circuit||r.name||'').toLowerCase();
@@ -5163,7 +5164,7 @@ function raceVenue(){
 function venueMap(){if(_venues===null){loadVenues();return null;}const v=raceVenue();return v&&v.map&&v.map.d?v:null;}
 let _spView={r:0,z:1,x:0,y:0,t:0};
 function spViewKey(){const v=venueMap();return'rt_spview_'+(v?v.key:'');}
-function openSpots(num){window._rtDeferRender=true;_spSize=null;_spNum=String(num);_spTrash=false;try{const _vr=((venueMap()||{}).map||{}).rot||0;_spView=Object.assign({r:_vr},JSON.parse(localStorage.getItem(spViewKey())||'{}'),{z:1,x:0,y:0,t:52});}catch(_){_spView={r:0,z:1,x:0,y:0,t:52};}renderSpots();}
+function openSpots(num){loadSpBg();window._rtDeferRender=true;_spSize=null;_spNum=String(num);_spTrash=false;try{const _vr=((venueMap()||{}).map||{}).rot||0;_spView={r:_vr,z:1,x:0,y:0,t:52};}catch(_){_spView={r:0,z:1,x:0,y:0,t:52};}renderSpots();}
 window.openSpots=openSpots;
 function spotNo(id){const sp=trackSpots[id]||{};if(sp.k)return sp.k;return spotIds().indexOf(id)+1;}
 function renderSpots(){
@@ -5175,7 +5176,7 @@ function renderSpots(){
   h.push('<div class="modal-title">#'+p.num+' '+escapeHtmlSp(p.name||'')+'</div>');
   h.push('<div class="sp-sub">'+(_spMarkMode?'<b style="color:#38bdf8">RIFERIMENTO</b> · tocca il punto del circuito (es. ingresso pregriglia) e dagli un nome':_spTrash?'<b style="color:#ef4444">CESTINO</b> · tocca un punto per eliminarlo per tutti i piloti':(t?'Fatti <b>'+f+'/'+t+'</b> · ':'')+'tocca la pista dove hai scattato')+'</div>');
   const w=v.map.w||10,dd=v.map.d;
-  h.push('<div class="sp-vp'+(_spTrash?' trash':'')+(_spView.t?' td':'')+'" id="sp-vp"><div class="sp-stage" id="sp-stage">');
+  h.push('<div class="sp-vp'+(_spTrash?' trash':'')+(_spView.t?' td':'')+(_spBg?' hasbg':'')+'" id="sp-vp"'+(_spBg?' style="--spbg:url(&quot;'+_spBg+'&quot;)"':'')+'><div class="sp-stage" id="sp-stage">');
   h.push('<svg viewBox="'+v.map.vb+'" preserveAspectRatio="none" class="sp-svg">'
     +'<path d="'+dd+'" class="sp-track-shadow" style="stroke-width:'+(w+6)+'"/>'
     +'<path d="'+dd+'" class="sp-track-edge" style="stroke-width:'+(w+4)+'"/>'
@@ -5219,7 +5220,6 @@ function spotsLayout(anim){
     const q=m.transformPoint(new DOMPoint(sp.x/100*Sw,sp.y/100*Sh,0,1));b.style.transition=anim?'left .55s cubic-bezier(.25,.8,.25,1),top .55s cubic-bezier(.25,.8,.25,1)':'none';b.style.left=(q.x/q.w)+'px';b.style.top=(q.y/q.w)+'px';});
   document.querySelectorAll('#sp-dots .sp-dot').forEach(b=>{const sp=trackSpots[b.getAttribute('data-id')];if(!sp)return;
     const q=m.transformPoint(new DOMPoint(sp.x/100*Sw,sp.y/100*Sh,0,1));b.style.transition=anim?'left .55s cubic-bezier(.25,.8,.25,1),top .55s cubic-bezier(.25,.8,.25,1)':'none';b.style.left=(q.x/q.w)+'px';b.style.top=(q.y/q.w)+'px';});
-  try{localStorage.setItem(spViewKey(),JSON.stringify({r:_spView.r,t:_spView.t}));}catch(_){}
 }
 function spotsToggle3D(){_spView.t=_spView.t?0:52;const vp=document.getElementById('sp-vp');if(vp)vp.classList.toggle('td',!!_spView.t);document.querySelectorAll('.sp-tools .sp-btn').forEach(b=>{if(b.textContent==='3D')b.classList.toggle('on',!!_spView.t);});spotsLayout(true);}
 window.spotsToggle3D=spotsToggle3D;
