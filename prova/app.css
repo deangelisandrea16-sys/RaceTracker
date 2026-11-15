@@ -710,3 +710,23 @@ body.light{--hl-foto:#0284c7;--hl-video:#db2777;--hl-prio:#ca8a04}
 /* 15/11/2026 (Andrea): un po' di respiro tra la cornice (priorita'/foto/video) e il contenuto */
 .card-inner.hl-prio,.card-inner.hl-foto,.card-inner.hl-video,.card-inner.hl-both{padding-left:12px!important;padding-right:10px!important}
 .card-inner.hl-prio{padding-top:12px!important;padding-bottom:12px!important}
+
+/* 15/11/2026: punti di scatto in pista */
+.tasks .task-btn.spot-pill{flex:0 0 auto!important;padding:7px 8px!important;gap:3px}
+.tasks .task-btn.spot-pill::before{display:none!important}
+.task-btn.spot-pill.none{color:var(--text3)}
+.sp-sub{font-size:12px;color:var(--text2);margin:2px 0 10px;line-height:1.4}
+.sp-map{position:relative;width:100%;min-height:240px;border-radius:12px;overflow:hidden;background:var(--bg3) repeating-linear-gradient(0deg,transparent 0 39px,var(--border) 39px 40px),repeating-linear-gradient(90deg,transparent 0 39px,var(--border) 39px 40px);touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.sp-map.edit{outline:2px dashed var(--accent);outline-offset:-2px;cursor:crosshair}
+.sp-map img{display:block;width:100%;height:auto;pointer-events:none}
+.sp-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;font-size:12px;color:var(--text3)}
+.sp-dot{position:absolute;transform:translate(-50%,-50%);width:44px;height:44px;border-radius:50%;border:3px solid #fff;background:rgba(20,20,24,.85);color:#fff;font-weight:900;font-size:15px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.6);touch-action:none;padding:0;cursor:pointer}
+.sp-dot.on{background:#16a34a;border-color:#bbf7d0}
+.sp-dot.sel{box-shadow:0 0 0 4px var(--accent),0 2px 8px rgba(0,0,0,.6)}
+.sp-dot em{position:absolute;top:44px;left:50%;transform:translateX(-50%);font-style:normal;font-size:10px;font-weight:800;white-space:nowrap;background:rgba(0,0,0,.7);color:#fff;border-radius:4px;padding:0 4px;pointer-events:none}
+.sp-actions{display:flex;gap:8px;margin-top:12px}
+.sp-btn{flex:1;min-height:46px;border-radius:10px;border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}
+.sp-btn.on{background:var(--accent);border-color:var(--accent);color:#000}
+.sp-btn.danger{flex:0 0 auto;padding:0 14px;color:#ef4444;border-color:#ef4444}
+.sp-edit-bar{display:flex;gap:8px;margin-top:10px}.sp-edit-bar input{flex:1;min-height:44px}
+.sp-hint{font-size:11px;color:var(--text4);margin-top:8px}
