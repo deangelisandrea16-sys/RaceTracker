@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1800';
+var RT_JS_BUILD='2026-11-15-1810';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3450,10 +3450,19 @@ function updateProgTicker(slotsArr,currentIdx){
   if(!wrap||!tick)return;
   const nowM=new Date().getHours()*60+new Date().getMinutes()-scheduleDelay;
   let items=[];
-  for(let i=currentIdx+1;i<slotsArr.length&&items.length<6;i++){
-    const sl=slotsArr[i];const mine=pilotsForSlot(sl);
+  /* 15/11/2026 (Andrea): solo turni ancora da correre, decisi dall'orario (prima, con una finale in corso,
+     ripartiva dall'inizio della giornata); comprese le finali con i miei piloti */
+  const toM=t=>{const pr=String(t||'').split('.');return parseInt(pr[0])*60+parseInt(pr[1]||0);};
+  const cand=[];
+  if(currentIdx<slotsArr.length)slotsArr.forEach((sl,i)=>{if(i>currentIdx&&toM(sl.time)>=nowM-1)cand.push({sl,mine:pilotsForSlot(sl)});});
+  if(currentIdx<slotsArr.length&&activeDay===currentDays[currentDays.length-1])[].concat(currentFinals||[]).filter(Boolean).forEach(f=>{
+    if(toM(f.time)<nowM-1)return;const all=pilots.filter(p=>canonCat(p.cat)===canonCat(f.cat));const fin=all.filter(p=>p.inFinal);
+    cand.push({sl:{time:f.time,label:'FINALE '+(f.cat||''),cat:f.cat},mine:fin.length?fin:all.filter(p=>!p.eliminated)});});
+  cand.sort((a,b)=>toM(a.sl.time)-toM(b.sl.time));
+  for(const c of cand){if(items.length>=6)break;
+    const sl=c.sl;const mine=c.mine;
     if(!mine.length)continue;
-    const pr=sl.time.split('.');const slM=parseInt(pr[0])*60+parseInt(pr[1]);
+    const slM=toM(sl.time);
     const mins=slM-nowM;
     // 15/11 (Andrea): e' il tempo che manca alla partenza, non la durata: "tra 7 min"
     const when=mins<=0?'a breve':'tra '+(mins>=60?Math.floor(mins/60)+'h '+String(mins%60).padStart(2,'0'):mins+' min');
