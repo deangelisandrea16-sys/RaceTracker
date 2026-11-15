@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1335';
+var RT_JS_BUILD='2026-11-15-1510';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -59,7 +59,8 @@ function _fixArrays(obj){
 }
 
 // ── CONSTANTS ──
-const TASKS=["PADDOK","PREGRIGLIA","BILANCIA","PISTA","REPORTAGE"];
+// 15/11/2026 (Andrea): PISTA per ultima, accanto alla pillola dei punti di scatto
+const TASKS=["PADDOK","PREGRIGLIA","BILANCIA","REPORTAGE","PISTA"];
 const STATUS_CYCLE=["red","green","orange"];
 const ALL_TABS=['gare','piloti','programma','entrylist','gara','livetiming','debug'];
 
@@ -797,6 +798,8 @@ let statuses={};
 let notes={};
 let trackSections=["PARTENZA","CURVA 1","RETTILINEO 1","CURVA 2","ESSE","RETTILINEO 2","ARRIVO"];
 let trackStatus={};
+// 15/11/2026 (Andrea): punti di scatto in pista, posizionati da ogni operatore sulla piantina, e fatti per pilota
+let trackSpots={},spotDone={};
 let teams=[];          // team seguiti dall'utente {key,name}
 let teamStatuses={};   // pillole dei team
 let teamNotes={};      // note dei team
@@ -911,7 +914,7 @@ function listenRaces(){
 
 /* copia dell'ultimo stato ricevuto dal server, base per salvare solo i campi cambiati (vedi rtDiff) */
 var RT_SHARED_KEYS=['entryList','schedule','days','finals','trackSections','riskCut','schedDelay','apexAuto'];
-var RT_USER_KEYS=['pilots','statuses','notes','trackStatus','teams','teamStatuses','teamNotes'];
+var RT_USER_KEYS=['pilots','statuses','notes','trackStatus','teams','teamStatuses','teamNotes','trackSpots','spotDone'];
 var _rtBaseShared={},_rtBaseUser={};
 function listenRaceData(raceId){
   if(raceDataUnsub) raceDataUnsub();
@@ -944,6 +947,7 @@ function listenRaceData(raceId){
     statuses=userData.statuses||{};
     notes=userData.notes||{};
     trackStatus=userData.trackStatus||{};
+    trackSpots=userData.trackSpots||{};spotDone=userData.spotDone||{};
     teams=userData.teams?Object.values(userData.teams):[];
     teamStatuses=userData.teamStatuses||{};
     teamNotes=userData.teamNotes||{};
@@ -1894,12 +1898,12 @@ function openRaceSettings(raceId){
     +'<input class="form-input" id="rs-end" type="date" value="'+(r.endDate||'')+'"></div></div>'
     /* 14/11/2026: orari delle premiazioni dal programma ufficiale (servono al server per gli avvisi pole/podio e al Programma) */
     /* 14/11/2026: percorso dei risultati Apex della gara (serve al server multi-gara per seguirla da solo) */
-    +'<div class="form-group"><label class="form-label">Risultati Apex (link o percorso)</label>'
+    +'<div class="form-group"><label class="form-label">Risultati ufficiali (link o percorso)</label>'
     +'<input class="form-input" id="rs-apex" placeholder="https://www.apex-timing.com/goracing/results.php?path=/…" value="'+(r.apexPath||'')+'">'
     +'<div style="font-size:11px;color:var(--text4);margin-top:4px">Con questo il server segue la gara da solo: entry list, gruppi, arrivi, live.</div></div>'
     +'<div class="form-group"><label class="form-label">Pagina con i PDF dell\'entry list (facoltativo)</label>'
     +'<input class="form-input" id="rs-elpage" placeholder="https://… (pagina con i PDF Entry List)" value="'+(r.entryListPage||'')+'">'
-    +'<div style="font-size:11px;color:var(--text4);margin-top:4px">Prima che Apex abbia i piloti, il server legge i PDF (anche scansionati): piloti segnati DA CONFERMARE.</div></div>'
+    +'<div style="font-size:11px;color:var(--text4);margin-top:4px">Prima che i risultati ufficiali abbiano i piloti, l\'app legge i PDF (anche scansionati): piloti segnati DA CONFERMARE.</div></div>'
     +'<div class="form-group"><label class="form-label">Premiazione poleman (se nel programma)</label>'
     +'<input class="form-input" id="rs-aw-pole" type="datetime-local" value="'+(((r.awards||{}).pole)||'')+'"></div>'
     +'<div class="form-group"><label class="form-label">Premiazione finali</label>'
@@ -2079,7 +2083,7 @@ function saveRaceSettings(raceId){
   const apx=((document.getElementById('rs-apex')||{}).value||'').trim();
   let apxPath='';try{apxPath=/^https?:/i.test(apx)?(new URL(apx).searchParams.get('path')||''):apx;}catch(e){apxPath='';}
   apxPath=decodeURIComponent(apxPath||'').trim();if(apxPath&&!apxPath.startsWith('/'))apxPath='/'+apxPath;
-  if(apx&&!/^\/[a-z0-9\-_]+\/\d{4}\/[^\s]+$/i.test(apxPath)){alert('Link dei risultati Apex non valido');return;}
+  if(apx&&!/^\/[a-z0-9\-_]+\/\d{4}\/[^\s]+$/i.test(apxPath)){alert('Link dei risultati ufficiali non valido');return;}
   u['races_index/'+raceId+'/apexPath']=apxPath||null;
   const elp=((document.getElementById('rs-elpage')||{}).value||'').trim();
   if(elp&&!/^https:\/\//i.test(elp)){alert('La pagina entry list deve iniziare con https://');return;}
@@ -2371,7 +2375,7 @@ function gridBadge(num,slot){
     return'<span title="Uscito: posizione in classifica" style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:900;color:#fff;background:#dc2626;border-radius:5px;padding:1px 7px;flex-shrink:0">✕'+(/^\d+$/.test(String(r))?' '+r+'°':/DSQ|SQ/i.test(String(r))?' SQ':'')+'</span>';
   if(r!==undefined&&r!==null&&r!==''&&slotHasRun(slot)){const t=/^\d+$/.test(String(r))?String(r)+'°':String(r).toUpperCase();
     const rs=resStatusOf(e.cat,k),uff=!!(rs&&rs.st==='ufficiale'),cor=!!(rs&&rs.corr);
-    const tip=(uff?'Arrivo ufficiale (Apex)':'Arrivo provvisorio'+(rs?' (Apex)':' (dal live)'))+(cor?' · corretto dopo la pubblicazione':'');
+    const tip=(uff?'Arrivo ufficiale':'Arrivo provvisorio'+(rs?' (classifica non ancora ufficiale)':' (dal live)'))+(cor?' · corretto dopo la pubblicazione':'');
     const sty=uff?'color:#0d0d0f;background:#4fd69c;border:1px solid #4fd69c':'color:#4fd69c;background:transparent;border:1px dashed #4fd69c';
     return'<span title="'+tip+'" style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:700;'+sty+';border-radius:5px;padding:0 6px;flex-shrink:0"><i class="ic ic-flag"></i> '+t+(cor?' <span style="color:#facc15">●</span>':'')+'</span>';}
   const n=gridPos(num,slot);
@@ -3007,7 +3011,7 @@ function renderEntryList(){
         +'<span class="entry-num" style="'+(isMine?'color:#22c55e':'')+'">#'+p.num+'</span>'
         +'<div style="flex:1;min-width:0">'
         +'<div class="entry-name">'+(p.lastName||'')+' '+(p.firstName||'')+(isMine?' <span style="font-size:9px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i> TUO</span>':'')+'</div>'
-        +'<div class="entry-team">'+( p.team||'')+(p.source==='ocr'?' <span title="Letto dal PDF scansionato: verra\' sostituito dai dati Apex" style="font-size:9px;font-weight:800;color:#facc15;border:1px dashed #facc15;border-radius:4px;padding:0 5px">DA CONFERMARE</span>':'')+'</div>'+noteLine(p.num)+'</div>'
+        +'<div class="entry-team">'+( p.team||'')+(p.source==='ocr'?' <span title="Letto dal PDF scansionato: verra\' sostituito dai dati ufficiali" style="font-size:9px;font-weight:800;color:#facc15;border:1px dashed #facc15;border-radius:4px;padding:0 5px">DA CONFERMARE</span>':'')+'</div>'+noteLine(p.num)+'</div>'
         +'<div class="entry-badges">'
         +'<span style="font-size:9px;font-weight:700;color:var(--text4);padding:2px 6px;border:1px solid var(--border);border-radius:4px">'+( p.parity||autoParity(p.num))+'</span>'
         +(p.group?'<span style="font-size:9px;font-weight:900;color:#60a5fa;padding:2px 6px;border:1px solid #60a5fa;border-radius:4px">GRP '+p.group+'</span>':'')
@@ -3059,7 +3063,7 @@ function renderPilots(){
     +'<button class="pilot-edit-btn" onclick="openEditPilot(\''+p.num+'\')"><i class="ic ic-note"></i> modifica</button>'
     +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="deletePilot(\''+p.num+'\')">✕ rimuovi</button>'
     +'</div></div>'
-    +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,false,isElim)).join('')+'</div>'
+    +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,false,isElim)).join('')+spotPill(p.num)+'</div>'
     +'<div class="note-wrap"><span class="note-label">Note</span>'
     +'<textarea class="note-area" id="note-'+p.num+'" placeholder="Aggiungi una nota..." onblur="saveNote(\''+p.num+'\')">'+(notes[p.num]||'')+'</textarea></div></div>';
   }).join('')+missingDashHtml();
@@ -3313,7 +3317,7 @@ function renderSchedule(){
         +(p.group?'<span class="inner-group">GRP '+p.group+'</span>':'')
         +'<span class="inner-team-big">'+p.team+'</span>'
         +noteBtn(p.num)+'</div>'
-        +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+'</div>'
+        +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+spotPill(p.num)+'</div>'
         +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>'});
     });
     if(_hl&&!_pf){teamsHighlightItems(slot,ps).forEach(x=>_items.push(x));}
@@ -3340,7 +3344,7 @@ function renderSchedule(){
         html+='<div class="card-inner'+(_poss?' final-maybe':'')+'" style="margin-top:8px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
           +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,{type:'final'})+'<span class="inner-name">'+p.name+'</span>'+(p.eliminated?'':runChip(p.num,1e6))
           +'<span class="inner-team-big">'+p.team+'</span>'+noteBtn(p.num)+'</div>'
-          +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+'</div>'
+          +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+spotPill(p.num)+'</div>'
           +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>';
       });
       html+='</div>';
@@ -3431,7 +3435,8 @@ function updateProgTicker(slotsArr,currentIdx){
     if(!mine.length)continue;
     const pr=sl.time.split('.');const slM=parseInt(pr[0])*60+parseInt(pr[1]);
     const mins=slM-nowM;
-    const when=mins<=0?'a breve':(mins>=60?Math.floor(mins/60)+'h'+(mins%60):mins+'min');
+    // 15/11 (Andrea): e' il tempo che manca alla partenza, non la durata: "tra 7 min"
+    const when=mins<=0?'a breve':'tra '+(mins>=60?Math.floor(mins/60)+'h '+String(mins%60).padStart(2,'0'):mins+' min');
     items.push('<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;margin-right:8px;background:var(--bg3);border:1px solid var(--border2);border-left:3px solid var(--amber);border-radius:20px;font-size:11px;white-space:nowrap">'
       +'<b style="color:var(--amber);font-weight:900">'+sl.time+'</b>'
       +'<span style="color:var(--text3);font-weight:700">'+(sl.label||sl.cat)+'</span>'
@@ -3442,6 +3447,9 @@ function updateProgTicker(slotsArr,currentIdx){
   if(!items.length){wrap.style.display='none';if(_tickTimer){clearInterval(_tickTimer);_tickTimer=null;}return;}
   wrap.style.display='block';
   const h=items.join('');
+  // 15/11 (Andrea): duplicato solo se serve lo scorrimento (altrimenti lo stesso turno compariva due volte)
+  tick.innerHTML=h;
+  if(tick.scrollWidth<=tick.clientWidth+4){if(_tickTimer){clearInterval(_tickTimer);_tickTimer=null;}tick.scrollLeft=0;return;}
   tick.innerHTML=h+h;
   if(!tick._bound){
     tick.addEventListener('touchstart',function(){_tickPaused=true;},{passive:true});
@@ -3719,7 +3727,12 @@ function setTeamColor(k,c){userSettings.teamColors=userSettings.teamColors||{};u
 function openLegend(){
   const N=n=>'<b class="lg-n">'+n+'</b>';
   const ex=(items)=>'<ol class="lg-list">'+items.map(t=>'<li>'+t+'</li>').join('')+'</ol>';
-  const sec=(t,w)=>'<div class="set-sec" style="margin-top:22px">'+t+'</div>'+(w?'<div class="lg-where"><i class="ic ic-eye"></i> <span>Dove: '+w+'</span></div>':'');
+  const toc=[];let secN=0;
+  // 15/11/2026 (Andrea): la legenda diventa una guida completa con indice cliccabile e ricerca
+  const sec=(t,w)=>{secN++;toc.push([secN,t]);return (secN>1?'<a href="#" class="gd-top" onclick="document.getElementById(\'gd-body\').scrollTop=0;return false">↑ indice</a>':'')+'</div><div class="gd-sec" id="gd-s'+secN+'"><div class="set-sec" style="margin-top:22px">'+t+'</div>'+(w?'<div class="lg-where"><i class="ic ic-eye"></i> <span>Dove: '+w+'</span></div>':'');};
+  const chap=t=>{toc.push([0,t]);return '</div><div class="gd-chap">'+t+'</div><div>';};
+  const p_=t=>'<p class="gd-p">'+t+'</p>';
+  const notif=(t,b)=>'<div class="gd-notif"><div class="gd-notif-app"><i class="ic ic-flag"></i> RACE TRACKER · ora</div><div class="gd-notif-t">'+t+'</div><div class="gd-notif-b">'+b+'</div></div>';
   const shot=html=>'<div class="lg-shot">'+html+'</div>';
   const tri=c=>'<span style="color:'+c+';font-size:11px;line-height:1">▲</span>';
   const badgeGrid='<span style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:700;color:#1a160e;background:#e9d5a8;border-radius:5px;padding:1px 7px">P5</span>';
@@ -3733,51 +3746,88 @@ function openLegend(){
   h.push('<style>.lg-shot{pointer-events:none;border:1px dashed var(--border2);border-radius:12px;padding:10px;margin:8px 0;background:var(--bg);overflow:hidden}.lg-shot .slot-header{flex-wrap:wrap;row-gap:6px}.lg-shot .slot-type{white-space:nowrap}.lg-shot .tasks{flex-wrap:wrap}.lg-row{flex-wrap:wrap}.lg-where{display:flex;gap:6px;align-items:flex-start;font-size:12px;color:var(--text2);background:var(--bg3);border-radius:8px;padding:7px 10px;margin:4px 0 2px}.lg-where b{color:var(--text)}.lg-shot .card{margin-bottom:0}'
     +'.lg-n{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 3px;border-radius:9px;background:var(--accent);color:#000;font-size:10px;font-weight:900;font-style:normal;vertical-align:middle;margin:0 2px;font-family:Arial,sans-serif;line-height:1}'
     +'.lg-list{margin:4px 0 6px 18px;padding:0;font-size:13px;color:var(--text2);line-height:1.4}.lg-list li{margin:4px 0}.lg-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--border);font-size:13px;color:var(--text2)}.lg-row>div:first-child{min-width:96px;display:flex;justify-content:center;gap:4px;flex-wrap:wrap}</style>');
-  h.push('<div style="font-size:12px;color:var(--text3)">Ogni sezione dice <b>dove</b> si trova nell\'app. Le schermate sono esempi: i numeri <b class="lg-n">1</b> indicano a cosa si riferisce ogni spiegazione.</div>');
+  h.push('<style>.gd-chap{margin:30px 0 4px;padding:8px 12px;border-radius:10px;background:var(--accent);color:#000;font-weight:900;letter-spacing:1px;font-size:13px}.gd-p{font-size:13px;color:var(--text2);line-height:1.45;margin:6px 0}.gd-toc{display:flex;flex-direction:column;gap:2px;margin:8px 0 4px}.gd-toc a{display:block;padding:7px 10px;border-radius:8px;color:var(--text);text-decoration:none;font-size:13px;font-weight:700;background:var(--bg3);min-height:20px}.gd-toc .gd-toc-c{background:none;color:var(--accent);font-size:11px;letter-spacing:1px;padding:10px 4px 2px;font-weight:900}.gd-search{width:100%;box-sizing:border-box;padding:11px 12px;border-radius:10px;border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:15px;margin:6px 0}.gd-top{display:inline-block;margin-top:8px;font-size:11px;font-weight:800;color:var(--accent);text-decoration:none}.gd-notif{background:var(--bg3);border-radius:14px;padding:9px 12px;margin:8px 0;border:1px solid var(--border2)}.gd-notif-app{font-size:10px;color:var(--text4);font-weight:700;letter-spacing:.5px}.gd-notif-t{font-size:13px;font-weight:800;color:var(--text);margin-top:2px}.gd-notif-b{font-size:12px;color:var(--text2)}.gd-tag{display:inline-block;font-size:10px;font-weight:800;border-radius:5px;padding:1px 6px;margin:2px 4px 2px 0;border:1px solid var(--border2);color:var(--text3)}.gd-tag.on{border-color:#4fd69c;color:#4fd69c}.gd-tag.off{border-color:#f59e0b;color:#f59e0b}.gd-hide{display:none}</style>');
+  h.push('<div style="font-size:12px;color:var(--text3)">Tocca una voce per saltarci, oppure cerca una parola. Nelle schermate di esempio i numeri <b class="lg-n">1</b> rimandano alle spiegazioni sotto. Le notifiche si accendono e spengono in Impostazioni → <b>NOTIFICHE</b>.</div>');
+  h.push('<input class="gd-search" id="gd-search" type="search" placeholder="Cerca nella guida (es. priorità, eliminati, ritardo)" oninput="guideSearch(this.value)">');
+  h.push('<div id="gd-toc-slot"></div><div>');
+
+  // PRIMI PASSI
+  h.push(chap('PRIMI PASSI'));
+  h.push(sec('A COSA SERVE L\'APP'));
+  h.push(p_('Race Tracker ti dice <b>dove sono i tuoi piloti</b> durante il weekend: quando girano, da dove partono, come arrivano, se passano o sono eliminati. I dati si aggiornano da soli: tu scegli solo <b>chi seguire</b>.'));
+  h.push(sec('MENU IN BASSO','sempre visibile in fondo allo schermo'));
+  // 15/11 (Andrea): icone prese dal menu vero, cosi' coincidono sempre con l'app
+  h.push(shot('<div style="display:flex;justify-content:space-around;font-size:10px;font-weight:800;color:var(--text3);text-align:center">'+[...document.querySelectorAll('#tabbar .tabbar-btn')].map((b,i)=>{const ic=b.querySelector('.ic');return '<div>'+(ic?ic.outerHTML:'')+'<br>'+(b.textContent||'').trim().toUpperCase()+N(i+1)+'</div>';}).join('')+'</div>'));
+  h.push(ex([
+    '<b>GARE</b>: scegli il weekend di gara su cui lavori.',
+    '<b>PILOTI</b>: i piloti che segui, con lavori, note, filtri e foto/video/priorità.',
+    '<b>PROGRAMMA</b>: i turni giorno per giorno, con dentro i tuoi piloti.',
+    '<b>ENTRY</b>: tutti gli iscritti della gara, da cui aggiungi i piloti da seguire.',
+    '<b>GARA</b>: storico degli avvisi ed eliminazioni (chi rischia, chi passa).',
+    '<b>LIVE</b>: il cronometraggio in diretta, con i tuoi piloti in evidenza.'
+  ]));
+  h.push(sec('IN 4 PASSI','dal primo avvio'));
+  h.push(ex([
+    'In <b>GARE</b> tocca la gara del weekend.',
+    'In <b>ENTRY</b> cerca numero, nome o team e aggiungi i piloti da seguire (oppure in Impostazioni segui un intero team).',
+    'In Impostazioni → <b>NOTIFICHE</b> attiva le notifiche sul telefono e scegli quali ricevere.',
+    'Durante la gara apri <b>PROGRAMMA</b>: il tasto <b>ORA</b> ti porta al turno in corso.'
+  ]));
+
+  // GARE
+  h.push(chap('GARE'));
+  h.push(sec('ELENCO GARE','menu in basso → <b>GARE</b>'));
+  h.push(shot('<div class="race-card active-race" style="pointer-events:none"><div style="font-weight:900">TROFEO DELLE INDUSTRIE</div>'+N(1)+'<div style="font-size:12px;color:var(--text3)">South Garda Karting · 12–15 nov</div>'+N(2)+'</div>'));
+  h.push(ex([
+    'La gara attiva ha il bordo colorato: tutta l\'app si riferisce a lei.',
+    'Circuito e date. Tocca un\'altra gara per passare a quella: piloti e note restano separati per gara.'
+  ]));
 
   // PROGRAMMA
+  h.push(chap('PROGRAMMA'));
   h.push(sec('PROGRAMMA · un turno','menu in basso → <b>PROGRAMMA</b>, scegli il giorno in alto'));
   h.push(shot('<div class="card slot-now"><div class="slot-header"><span class="slot-time">9.40</span>'+N(1)+'<span class="now-badge">ORA</span>'+N(2)+'<span class="slot-label cat-okn">OKN</span>'+N(3)+'<span class="slot-type">Manche A-B</span><span class="slot-dur">8\'</span>'+N(4)+'</div>'
     +'<div style="margin-top:8px"><div class="card-inner"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap"><span class="inner-num">#404</span>'+N(5)+tri('#f97316')+N(6)+badgeGrid+'<span class="inner-name">ROSSI MARIO</span><span class="run-chip">Gara 2/3</span>'+N(7)+'<span class="inner-team-big">TEAM ESEMPIO</span>'+pencil+N(8)+'</div>'
     +tasks(['green','orange','red','red','red'])+N(9)
     +'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> tenda vicino alla torretta</div>'+N(10)+'</div></div></div>'));
   h.push(ex([
-    'Cornice verde + <b>ORA</b>: il turno in corso. C\'è solo nella giornata di oggi e sparisce 30 minuti dopo l\'ultimo turno. Il tasto ORA in basso ci riporta.',
-    'Categoria: il colore è assegnato in automatico a ogni categoria della gara.',
+    'Cornice verde + <b>ORA</b>: il turno in corso. Il tasto ORA in basso ti ci riporta.',
+    'Categoria, ognuna con il suo colore.',
     'Tipo di turno (prove, manche con i gruppi, prefinale…).',
-    'Durata del turno (minuti o giri) dal programma ufficiale. Se nel live la sessione ha una durata diversa vedi <s>16 giri</s> <b>14 giri</b>: barrata quella del programma, in grassetto quella vera.',
-    '<b>Triangolo</b>: rischio di non entrare in finale (stima): '+tri('#22c55e')+' verde sotto 25% · '+tri('#facc15')+' giallo 25–49% · '+tri('#f97316')+' arancione 50–74% · '+tri('#ef4444')+' rosso 75% e oltre. Sparisce quando esce la lista ufficiale della Finale.',
+    'Durata del turno. Se in pista è diversa vedi <s>16 giri</s> <b>14 giri</b>: barrata quella prevista, in grassetto quella vera.',
+    '<b>Triangolo</b>: quanto rischia di non entrare in finale. '+tri('#22c55e')+' poco · '+tri('#facc15')+' medio · '+tri('#f97316')+' alto · '+tri('#ef4444')+' molto alto. Sparisce quando escono i finalisti.',
     'Riquadro posizione: prima del turno la <b>griglia</b>, dopo il turno l\'<b>arrivo</b> (vedi “Posizioni”).',
-    '<b>Gara 2/3</b>: è la 2ª delle 3 uscite in pista di oggi del pilota (warm up compresi). <b>?</b> = dipende da dati non ancora ufficiali.',
+    '<b>Gara 2/3</b>: è la 2ª delle 3 uscite in pista di oggi del pilota. <b>?</b> = non ancora sicuro.',
     'Matita: scrivi o modifica la nota del pilota.',
     'Lavori da fare per il pilota (vedi “Lavori”).',
     'La tua nota sul pilota.'
   ]));
   h.push(sec('PROGRAMMA · posizioni','<b>PROGRAMMA</b>, accanto al numero di ogni tuo pilota'));
-  h.push('<div class="lg-row"><div>'+badgeGrid+'</div><div>Posizione in <b>griglia</b> (lista ufficiale), prima del turno</div></div>');
+  h.push('<div class="lg-row"><div>'+badgeGrid+'</div><div>Posizione in <b>griglia</b>, prima del turno</div></div>');
   h.push('<div class="lg-row"><div>'+badgeUff+'</div><div>Arrivo <b>ufficiale</b> (pieno)</div></div>');
-  h.push('<div class="lg-row"><div>'+badgeProv+'</div><div>Arrivo <b>provvisorio</b> (tratteggiato): dal live o classifica non ancora ufficiale</div></div>');
-  h.push('<div class="lg-row"><div>'+badgeCorr+'</div><div>Classifica <b>corretta</b> dopo la pubblicazione (penalità, verifiche)</div></div>');
+  h.push('<div class="lg-row"><div>'+badgeProv+'</div><div>Arrivo <b>provvisorio</b> (tratteggiato): può ancora cambiare</div></div>');
+  h.push('<div class="lg-row"><div>'+badgeCorr+'</div><div>Classifica <b>corretta</b> (penalità, verifiche)</div></div>');
   h.push('<div class="lg-row"><div>'+badgeOut+'</div><div><b>Uscito</b> o ritirato nel turno, con la posizione in classifica</div></div>');
   h.push(sec('PROGRAMMA · turni particolari','<b>PROGRAMMA</b>; le finali sono in fondo all\'ultimo giorno'));
   h.push(shot('<div class="card" style="opacity:.35;padding:10px 14px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:900;color:var(--text4)">11.20</span><span class="cat-kz2" style="font-size:10px;font-weight:800">KZ2</span><span style="font-size:9px;color:#fbbf24;font-weight:700;margin-left:auto;letter-spacing:1px"><i class="ic ic-wait"></i> ATTESA PREFINAL</span>'+N(1)+'</div></div>'
     +'<div class="card" style="opacity:.45;margin-top:8px"><div class="slot-header"><span class="slot-time">12.00</span><span class="slot-label cat-u10">MINI U10</span></div><div style="font-size:11px;font-weight:700;color:var(--text4);padding:2px 0">— NESSUNO —</div>'+N(2)+'</div>'
     +'<div class="final-card" style="margin-top:8px"><div class="final-title"><i class="ic ic-trophy"></i> FINALE KZ2</div><div class="final-row"><span>Partenza</span><span class="final-time">16.00</span></div><div style="font-size:12px;color:var(--text4);padding:8px 2px 2px">Nessun tuo pilota in questa finale</div>'+N(3)+'</div>'));
   h.push(ex([
-    '<b>ATTESA</b>: il turno dipende da un\'assegnazione non ancora uscita (gruppo, serie, prefinale).',
-    '<b>NESSUNO</b>: turno senza tuoi piloti. Il programma resta sempre completo.',
-    '<b>Finale</b> (bordo giallo): prima della lista ufficiale compare “Possibili finalisti”: i tuoi piloti della categoria, attenuati, dal più sicuro al più a rischio. Quando esce la lista restano solo i finalisti, a colori pieni.'
+    '<b>ATTESA</b>: non si sa ancora chi gira (gruppi o prefinali non ancora usciti).',
+    '<b>NESSUNO</b>: turno senza tuoi piloti.',
+    '<b>Finale</b> (bordo giallo): finché non escono i finalisti vedi i “Possibili finalisti”, attenuati, dal più sicuro al più a rischio. Poi restano solo i finalisti.'
   ]));
 
   // BARRA IN ALTO
+  h.push(chap('BARRA IN ALTO E LIVE'));
   h.push(sec('BARRA IN ALTO','in cima allo schermo, sempre visibile'));
   h.push(shot('<div style="display:flex;gap:14px;align-items:center;font-size:12px;font-weight:700;color:var(--text3)"><span>ORA <b style="color:var(--text)">09:31</b></span>'+N(1)+'<span>RITARDO <b style="color:#4fd69c">-2\'</b> AUTO</span>'+N(2)+'<span class="sync-status ok">● LIVE</span>'+N(3)+'</div>'
     +'<div style="margin-top:8px;background:#b3261e;color:#fff;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:700">Server notifiche fermo da 14 min</div>'+N(4)));
   h.push(ex([
     'Ora attuale.',
-    'Ritardo (+) o anticipo (−) della giornata rispetto al programma. <b>AUTO</b> = calcolato dal live.',
-    'Collegamento ai dati: <b>LIVE</b> = aggiornato; se manca la rete compare una barra "Senza rete" e le modifiche partono quando torna.',
-    'Il server delle notifiche non dà segni di vita: le notifiche push potrebbero non arrivare. Riaprendo l\'app si aggiorna.'
+    'Ritardo (+) o anticipo (−) della giornata. <b>AUTO</b> = si aggiorna da solo.',
+    '<b>LIVE</b> = dati aggiornati. Senza rete compare “Senza rete”: le tue modifiche partono quando torna.',
+    'Le notifiche ad app chiusa potrebbero non arrivare finché la barra non sparisce. L\'app intanto funziona.'
   ]));
 
   // LIVE
@@ -3788,49 +3838,143 @@ function openLegend(){
     +tasks(['green','green','red','red','red'])+'</div></div>'
     +'<div class="ltbig" style="margin-top:8px"><div class="pos"><span class="lt-x">✕</span></div>'+N(4)+'<div style="flex:1"><div><span class="num">#212</span> <span class="nm">BIANCHI LUCA</span></div></div></div>'));
   h.push(ex([
-    'Posizione attuale; sotto, la pillola <b style="color:#4fd69c">▲3</b> / <b style="color:#ef6a7a">▼2</b> = posizioni guadagnate o perse (bordo verde/rosso). Ha sempre il numero: non è il triangolo di rischio.',
+    'Posizione attuale; sotto, <b style="color:#4fd69c">▲3</b> / <b style="color:#ef6a7a">▼2</b> = posizioni guadagnate o perse (non è il triangolo di rischio).',
     '<b>AI BOX</b> = rientrato ai box; <b>FERMO IN PISTA</b> = fermo sul tracciato (prove e qualifiche).',
     'Team, distacco e giro migliore.',
     '<b>✕ rossa</b> al posto della posizione: ritirato in gara.'
   ]));
 
   // LAVORI
+  h.push(chap('LAVORI ED ELIMINAZIONI'));
   h.push(sec('LAVORI','pillole sotto ogni pilota in <b>PROGRAMMA</b>, <b>LIVE</b> e <b>PILOTI</b>: tocca per cambiare stato'));
   h.push('<div class="lg-row"><div><button class="task-btn red" style="padding:4px 8px;font-size:10px;pointer-events:none">PISTA</button></div><div>Da fare</div></div>');
   h.push('<div class="lg-row"><div><button class="task-btn green" style="padding:4px 8px;font-size:10px;pointer-events:none">PISTA</button></div><div>Fatto (1 tocco)</div></div>');
-  h.push('<div class="lg-row"><div><button class="task-btn orange" style="padding:4px 8px;font-size:10px;pointer-events:none">PISTA</button></div><div>Parziale / da completare (2 tocchi; il 3° torna rosso)</div></div>');
+  h.push('<div class="lg-row"><div><button class="task-btn orange" style="padding:4px 8px;font-size:10px;pointer-events:none">PISTA</button></div><div>A metà (2 tocchi; il 3° torna rosso)</div></div>');
 
   // ELIMINAZIONI
   h.push(sec('GARA → ELIMINAZIONI','menu in basso → <b>GARA</b> → <b>ELIMINAZIONI</b> → <b>PREFINALE</b> / <b>FINALE</b>'));
-  h.push('<div class="lg-row"><div>'+riskRing(12)+riskRing(62)+riskRing(90)+'</div><div>Anello nella scheda <b>FINALE</b>: rischio stimato di non entrare in finale, con gli stessi colori del triangolo. 100% solo se è fuori anche vincendo.</div></div>');
-  h.push('<div class="lg-row"><div><span style="display:inline-block;width:5px;height:24px;background:#22c55e;border-radius:2px"></span><span style="display:inline-block;width:5px;height:24px;background:#6b7280;border-radius:2px"></span><span style="display:inline-block;width:5px;height:24px;background:#ef4444;border-radius:2px"></span></div><div>Barra a sinistra: <b>verde</b> ammesso (ufficiale) · <b>grigia</b> in attesa delle liste · <b>rossa</b> fuori (ufficiale)</div></div>');
+  h.push('<div class="lg-row"><div>'+riskRing(12)+riskRing(62)+riskRing(90)+'</div><div>Anello nella scheda <b>FINALE</b>: quanto rischia di non entrare in finale, con gli stessi colori del triangolo.</div></div>');
+  h.push('<div class="lg-row"><div><span style="display:inline-block;width:5px;height:24px;background:#22c55e;border-radius:2px"></span><span style="display:inline-block;width:5px;height:24px;background:#6b7280;border-radius:2px"></span><span style="display:inline-block;width:5px;height:24px;background:#ef4444;border-radius:2px"></span></div><div>Barra a sinistra: <b>verde</b> passa · <b>grigia</b> non si sa ancora · <b>rossa</b> fuori</div></div>');
 
   // PILOTI / TEAM
+  h.push(chap('PILOTI E TEAM'));
   h.push(sec('PILOTI DA SEGUIRE (FOTO, VIDEO, PRIORITÀ)','menu in basso → <b>PILOTI</b> → <b>modifica</b> sul pilota → <b>EVIDENZIA PILOTA</b>'));
   h.push(shot('<div class="hl-picker"><div class="hl-option hl-foto active"><i class="ic ic-hl-foto"></i><span>FOTO</span></div><div class="hl-option hl-video"><i class="ic ic-hl-video"></i><span>VIDEO</span></div><div class="hl-option hl-priority active"><i class="ic ic-hl-prio"></i><span>PRIORITÀ</span></div></div>'+N(1)
     +'<div class="card-inner hl-foto hl-prio" style="margin-top:10px"><div style="display:flex;align-items:center;gap:6px"><span class="hl-badge hl-foto hl-mini"><i class="ic ic-hl-foto"></i></span><span class="hl-badge hl-priority hl-mini"><i class="ic ic-hl-prio"></i></span>'+N(2)+'<span class="inner-num">#404</span><span class="inner-name">ROSSI MARIO</span></div></div>'+N(3)
     +'<div class="card-inner hl-both" style="margin-top:8px"><div style="display:flex;align-items:center;gap:6px"><span class="inner-num">#212</span><span class="inner-name">BIANCHI LUCA</span></div></div>'+N(4)));
   h.push(ex([
-    'Nella scheda del pilota (matita “modifica” in Piloti): tocca per accendere o spegnere: si salva subito. <b>Acceso</b> = pieno colorato con la spunta; spento = grigio.',
+    'Tocca per accendere o spegnere: si salva subito. Acceso = colorato, spento = grigio.',
     'Nel Programma, accanto al numero: <span class="hl-badge hl-foto hl-mini"><i class="ic ic-hl-foto"></i></span> foto · <span class="hl-badge hl-video hl-mini"><i class="ic ic-hl-video"></i></span> video · <span class="hl-badge hl-priority hl-mini"><i class="ic ic-hl-prio"></i></span> priorità.',
-    'Barra a sinistra della scheda del pilota: <b style="color:#38bdf8">azzurra</b> = foto, <b style="color:#ec4899">magenta</b> = video. Priorità = <b>cornice dorata</b> (lo stesso giallo delle note) ovunque: Programma, Live, Piloti, Pista.',
+    'Barra a sinistra: <b style="color:#38bdf8">azzurra</b> = foto, <b style="color:#ec4899">magenta</b> = video. Priorità = <b>cornice dorata</b>, in tutta l\'app.',
     'Foto <b>e</b> video: barra doppia azzurra e magenta.'
   ]));
   h.push(sec('PILOTI, TEAM, ENTRY LIST','<b>PILOTI</b> e <b>ENTRY</b>; i team si seguono in Impostazioni → <b>TEAM NEL PROGRAMMA</b>'));
-  h.push('<div class="lg-row"><div><span class="tchip" style="--tc:#38bdf8">TEAM</span></div><div>Pilota di un <b>team che segui</b>: bordo luminoso del colore del team (colori in Impostazioni)</div></div>');
-  h.push('<div class="lg-row"><div><span style="font-size:9px;font-weight:800;color:#facc15;border:1px dashed #facc15;border-radius:4px;padding:0 5px">DA CONFERMARE</span></div><div>Pilota letto da un PDF scansionato: sarà sostituito dai dati ufficiali Apex</div></div>');
-  h.push('<div class="lg-row"><div><span style="color:#ef4444;font-size:10px;font-weight:800">ELIMINATO</span></div><div>Pilota fuori dalla gara: finisce in fondo al Programma, in "Ritirati / Eliminati"</div></div>');
+  h.push('<div class="lg-row"><div><span class="tchip" style="--tc:#38bdf8">TEAM</span></div><div>Piloti di un <b>team che segui</b>: riquadro del colore del team con il suo nome, in cima al turno</div></div>');
+  h.push('<div class="lg-row"><div><span style="font-size:9px;font-weight:800;color:#facc15;border:1px dashed #facc15;border-radius:4px;padding:0 5px">DA CONFERMARE</span></div><div>Dati non ancora ufficiali: si aggiornano da soli</div></div>');
+  h.push('<div class="lg-row"><div><span style="color:#ef4444;font-size:10px;font-weight:800">ELIMINATO</span></div><div>Pilota fuori dalla gara: lo trovi in fondo al Programma</div></div>');
 
-  openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Legenda</div><div style="max-height:72vh;overflow-y:auto;overflow-x:hidden;padding-right:2px">'+h.join('')+'</div>');
+  // FILTRI
+  h.push(sec('FILTRI DELLA LISTA PILOTI','menu in basso → <b>PILOTI</b>, sopra la lista'));
+  h.push(shot('<div class="filter-row"><span class="filter-row-label">TASK</span><button class="filter-chip">TUTTI</button><button class="filter-chip active">PADDOK</button><button class="filter-chip active">PREGRGL</button></div>'+N(1)
+    +'<div class="filter-row"><span class="filter-row-label">STATO</span><button class="filter-chip">TUTTI</button><button class="filter-chip f-red active"><span class="dotc" style="background:#ff5c7a"></span></button><button class="filter-chip f-orange active"><span class="dotc" style="background:#ffb400"></span></button><button class="filter-chip f-green"><span class="dotc" style="background:#21d07a"></span></button></div>'+N(2)
+    +'<div class="filter-row"><span class="filter-row-label">EVID.</span><button class="filter-chip">TUTTI</button><button class="filter-chip f-hl-foto"><i class="ic ic-hl-foto"></i> FOTO</button><button class="filter-chip f-hl-video active"><i class="ic ic-hl-video"></i> VIDEO</button><button class="filter-chip f-hl-priority"><i class="ic ic-hl-prio"></i> PRIORITÀ</button></div>'+N(3)));
+  h.push(ex([
+    '<b>TASK</b>: scegli su quali lavori guardare il colore (anche più di uno).',
+    '<b>STATO</b>: il colore da cercare (anche più di uno). Il pilota compare se <b>almeno uno</b> dei lavori scelti ha quel colore.',
+    '<b>EVID.</b>: FOTO e VIDEO si sommano. PRIORITÀ lascia solo i prioritari: da sola = tutti i prioritari, con FOTO = prioritari in foto.'
+  ]));
+  h.push(p_('Esempio: <b>piloti VIDEO con ancora PADDOK o PREGRIGLIA da fare</b>. <b>TUTTI</b> azzera la riga; <b>FILTRO 5/21</b> dice quanti ne vedi.'));
+  h.push(sec('GRUPPO DEL PILOTA','<b>PILOTI</b>, a destra di ogni pilota'));
+  h.push('<div class="lg-row"><div><span class="group-badge set">GRP B</span></div><div>Gruppo del pilota nelle manche. <b>GRP ?</b> = non ancora noto.</div></div>');
+
+  // PUNTI DI SCATTO
+  h.push(sec('PUNTI DI SCATTO IN PISTA','la pillola <i class="ic ic-camera"></i> dopo PISTA, sotto ogni pilota in <b>PROGRAMMA</b>, <b>LIVE</b> e <b>PILOTI</b>'));
+  h.push(shot('<div class="tasks" style="max-width:340px">'+['REPORTAGE','PISTA'].map(t=>'<button class="task-btn green" style="pointer-events:none">'+t+'</button>').join('')+'<button class="task-btn spot-pill orange" style="pointer-events:none"><i class="ic ic-camera"></i><span>2/4</span></button></div>'+N(1)
+    +'<div class="sp-map noimg" style="margin-top:10px">'
+    +[[18,30,1],[52,22,0],[80,55,1],[40,75,0]].map((d,i)=>'<span class="sp-dot'+(d[2]?' on':'')+'" style="left:'+d[0]+'%;top:'+d[1]+'%"><span>'+(d[2]?'✓':(i+1))+'</span></span>').join('')+'</div>'+N(2)));
+  h.push(ex([
+    'Quanti punti hai fatto con quel pilota sul totale dei tuoi punti (2 su 4). Tocca per aprire la pista.',
+    'Tocca la pista dove hai scattato: nasce un punto già spuntato <b style="color:#4fd69c">✓</b> per questo pilota; negli altri piloti compare col suo numero, da spuntare. Tocca un punto per spuntarlo o togliere la spunta.'
+  ]));
+  h.push(p_('Per eliminare un punto: tasto <b><i class="ic ic-trash"></i> cestino</b> in alto, tocca i punti da togliere (spariscono da tutti i piloti), poi ritocca il cestino. I punti sono <b>tuoi</b>: ognuno ha i suoi.'));
+
+  // NOTIFICHE
+  h.push(chap('NOTIFICHE'));
+  h.push(sec('COME FUNZIONANO','menu in basso → <b>GARA</b> (storico) · Impostazioni → <b>NOTIFICHE</b> (interruttori)'));
+  h.push(p_('Parlano <b>solo dei tuoi piloti</b> e dei team che segui. Sono brevi: i dettagli li trovi nell\'app. Le ritrovi tutte nella scheda <b>GARA</b>.'));
+  h.push('<div class="lg-row"><div><span class="gd-tag on">APP CHIUSA</span></div><div>Arriva anche con l\'app chiusa o il telefono bloccato.</div></div>');
+  h.push('<div class="lg-row"><div><span class="gd-tag">APP APERTA</span></div><div>Arriva solo se l\'app è aperta o in secondo piano.</div></div>');
+  h.push('<div class="lg-row"><div><span class="gd-tag off">SPENTA DI BASE</span></div><div>Va accesa a mano in Impostazioni → Notifiche.</div></div>');
+  h.push('<div class="lg-row"><div><span style="font-weight:900;color:#4fd69c">PROVVISORIO</span></div><div>Può ancora cambiare (reclami, verifiche). Quando diventa ufficiale arriva la conferma.</div></div>');
+  NOTIF_TYPES.forEach(([k,l])=>{
+    const g=NOTIF_GUIDE[k]||{};
+    h.push(sec('NOTIFICA · '+l.split(':')[0].toUpperCase()));
+    h.push((g.ex||[]).map(e=>notif(e[0],e[1])).join(''));
+    h.push(p_(g.when||l));
+    h.push('<div>'+(g.closed?'<span class="gd-tag on">APP CHIUSA</span>':'<span class="gd-tag">APP APERTA</span>')+(NOTIF_DEF_OFF.has(k)?'<span class="gd-tag off">SPENTA DI BASE</span>':'<span class="gd-tag">ACCESA DI BASE</span>')+(notifTypeOn(k)?'<span class="gd-tag on">ORA ACCESA PER TE</span>':'<span class="gd-tag">ORA SPENTA PER TE</span>')+'</div>');
+  });
+
+  // IMPOSTAZIONI
+  h.push(chap('IMPOSTAZIONI'));
+  h.push(sec('COSA PUOI REGOLARE','icona ingranaggio in alto a destra'));
+  h.push(ex([
+    '<b>Profilo</b>: cambia utente. Ogni utente ha i suoi piloti, note e notifiche.',
+    '<b>Aspetto</b>: tema scuro o chiaro (solo su questo telefono).',
+    '<b>Leggibilità e avvisi</b>: testo più grande, vibrazione e suono degli avvisi.',
+    '<b>Live all\'apertura</b>: cosa mostra il LIVE quando lo apri (solo miei, tutti, ultima gara).',
+    '<b>Team nel programma</b>: segui un team intero e scegli il suo colore.',
+    '<b>Notifiche</b>: attiva le notifiche sul telefono e accendi o spegni ogni tipo.'
+  ]));
+
+  // PROBLEMI
+  h.push(chap('PROBLEMI COMUNI'));
+  h.push(sec('LE NOTIFICHE ARRIVANO SOLO QUANDO APRO L\'APP'));
+  h.push(p_('È il risparmio batteria di Android che blocca Chrome in background. Vai in Impostazioni del telefono → App → <b>Chrome</b> (e l\'app Race Tracker se l\'hai installata) → Batteria → <b>Senza restrizioni</b>, e controlla che le notifiche siano consentite.'));
+  h.push(sec('NON VEDO LE ULTIME NOVITÀ'));
+  h.push(p_('Chiudi del tutto l\'app e riaprila: si aggiorna da sola.'));
+  h.push(sec('BARRA “SERVER NOTIFICHE FERMO”'));
+  h.push(p_('L\'app funziona, ma le notifiche ad app chiusa potrebbero non arrivare. Se resta a lungo avvisa chi gestisce l\'app.'));
+  h.push(sec('UN DATO È SBAGLIATO'));
+  h.push(p_('Griglie, arrivi e finalisti si correggono da soli quando gli organizzatori pubblicano le correzioni (arriva “Classifica corretta”). Note e lavori li modifichi tu.'));
+  h.push('</div>');
+
+  const tocH='<div class="gd-toc">'+toc.map(([n,t])=>n?'<a href="#" onclick="guideGo('+n+');return false">'+t+'</a>':'<div class="gd-toc-c">'+t+'</div>').join('')+'</div>';
+  openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Guida</div><div id="gd-body" style="max-height:78vh;overflow-y:auto;overflow-x:hidden;padding-right:2px">'+h.join('').replace('<div id="gd-toc-slot"></div>','<div id="gd-toc">'+tocH+'</div>')+'</div>');
 }
 window.openLegend=openLegend;
+function guideGo(n){const b=document.getElementById('gd-body'),e=document.getElementById('gd-s'+n);if(!b||!e)return;b.scrollTop=b.scrollTop+e.getBoundingClientRect().top-b.getBoundingClientRect().top-6;}
+window.guideGo=guideGo;
+function guideSearch(q){q=String(q||'').trim().toLowerCase();
+  document.querySelectorAll('#gd-body .gd-sec').forEach(s=>s.classList.toggle('gd-hide',!!q&&s.textContent.toLowerCase().indexOf(q)<0));
+  document.querySelectorAll('#gd-body .gd-chap').forEach(c=>c.classList.toggle('gd-hide',!!q));
+  const t=document.getElementById('gd-toc');if(t)t.classList.toggle('gd-hide',!!q);}
+window.guideSearch=guideSearch;
+// 15/11/2026: dettagli delle notifiche per la guida (esempio, quando arriva, se arriva ad app chiusa)
+const NOTIF_GUIDE={
+  programma:{closed:true,ex:[['Griglia cambiata · OKN Prefinale A','3 tuoi piloti spostati · apri l\'app'],['Prefinali cambiate · OKN','2 tuoi piloti cambiano gruppo · apri l\'app'],['Programma ufficiale aggiornato','Controlla orari e turni nell\'app']],when:'Cambia la griglia con tuoi piloti spostati, un tuo pilota cambia gruppo di prefinale, o esce un nuovo programma.'},
+  top3:{closed:true,ex:[['P1 Prefinal A OKN: #404 ROSSI MARIO','PROVVISORIO da live timing, verifica reclami']],when:'Un tuo pilota chiude nei primi 3 una manche o prefinale: subito a fine gara, poi la conferma ufficiale.'},
+  qualifiche:{closed:true,ex:[['🏆 POLE qualifiche OKN: #404 ROSSI MARIO','Classifica combinata S1+S2 · PROVVISORIO, verifica reclami']],when:'Un tuo pilota fa la pole o entra nei primi 3 in qualifica.'},
+  finali:{closed:true,ex:[['🏁 FINALE P2 OKN Final: #404 ROSSI MARIO','PROVVISORIO da live timing, verifica reclami']],when:'Un tuo pilota chiude la finale nei primi 5: subito a fine gara, poi la conferma ufficiale.'},
+  eliminati:{closed:true,ex:[['⚠️ Rischio finale OK-NJ','2 a rischio, 1 fuori zona finale · apri l\'app']],when:'Tuoi piloti a rischio di non entrare in finale, o risultati eliminati.'},
+  prefinali:{closed:true,ex:[['✅ Alle prefinali · OKN','3 tuoi piloti passano · apri l\'app'],['❌ Eliminati · OKN','#250 eliminato, non passa · apri l\'app'],['🏁 Finale OKN adesso disponibile','2 tuoi piloti in finale · apri l\'app']],when:'Escono le liste di prefinale e finale: chi passa, chi è eliminato, e quando la finale è disponibile.'},
+  riepilogo:{closed:true,ex:[['🌙 Domani (domenica): 6 piloti in pista','Prima uscita 8.30 · orari nell\'app']],when:'La sera prima di ogni giorno di gara.'},
+  entrylist:{closed:true,ex:[['📋 Entry list OKN cambiata','#404 non più iscritto · apri l\'app']],when:'Cambia la lista iscritti per i tuoi piloti o team.'},
+  ritiri:{closed:true,ex:[['#404 ROSSI MARIO USCITO','OKN · Prefinal A']],when:'Un tuo pilota esce in gara, rientra ai box o si ferma in pista.'},
+  rossa:{closed:true,ex:[['BANDIERA ROSSA OKN','Prefinal A · in pista: #404 #212']],when:'Bandiera rossa durante una sessione con tuoi piloti in pista.'},
+  partenza:{closed:true,ex:[['PARTITA OKN · Prefinal A','alle 11.20 · in pista: #404, #212']],when:'Parte una sessione con tuoi piloti in pista.'},
+  prossima:{closed:false,ex:[['Tra 10 min: OKN Prefinal A','ore 11.20 · #404 ROSSI MARIO']],when:'Un tuo pilota entra in pista tra circa 10 minuti.'},
+  ritardo:{closed:false,ex:[['Ritardo ora +15 min','prima +10 min']],when:'Il ritardo della giornata cambia di almeno 5 minuti.'},
+  correzioni:{closed:true,ex:[['Classifica corretta: OKN Prefinal A','#404 P3→P5 · apri l\'app']],when:'Una classifica viene corretta e cambia la posizione di un tuo pilota.'},
+  comunicati:{closed:true,ex:[['Nuovo documento ufficiale','Comunicato n. 12']],when:'Esce un nuovo comunicato ufficiale.'},
+  promozioni:{closed:true,ex:[['Podio Finale: #404 ROSSI MARIO P3 (OKN)','Era P4, dopo le verifiche è P3']],when:'Dopo le verifiche un tuo pilota sale in pole o sul podio della finale.'}
+};
 function renderSettings(){
   const b=document.getElementById('settings-body');if(!b)return;
   const v=teamViewMode();
   const opt=(on,lbl,fn)=>'<div class="set-opt'+(on?' on':'')+'" onclick="'+fn+'"><input type="radio" '+(on?'checked':'')+' style="width:20px;height:20px"> '+lbl+'</div>';
   const sw=(on,lbl,fn)=>'<label class="set-opt" style="justify-content:space-between"><span>'+lbl+'</span><input type="checkbox" '+(on?'checked':'')+' onchange="'+fn+'" style="width:24px;height:24px"></label>';
   const light=document.body.classList.contains('light');const lv=userSettings.liveDefault||'mine';
-  b.innerHTML='<div class="set-opt" onclick="openLegend()" style="border:1px solid var(--accent);border-radius:10px;margin-bottom:6px"><i class="ic ic-note"></i> <b>LEGENDA</b> · colori, cornici e simboli</div>'
+  b.innerHTML='<div class="set-opt" onclick="openLegend()" style="border:1px solid var(--accent);border-radius:10px;margin-bottom:6px"><i class="ic ic-note"></i> <b>GUIDA</b> · come funziona l\'app, simboli e notifiche</div>'
     +'<div class="set-sec">PROFILO</div><div class="set-opt" onclick="closeModal();showUserPicker()"><i class="ic ic-user"></i> Cambia utente <span style="margin-left:auto;color:var(--text4)">'+currentUserId+'</span></div>'
     +'<div class="set-sec">ASPETTO (QUESTO TELEFONO)</div>'+opt(!light,'Tema scuro','setTheme(false)')+opt(light,'Tema chiaro','setTheme(true)')
     +'<div class="set-sec">LEGGIBILITÀ E AVVISI</div>'
@@ -3889,11 +4033,12 @@ function teamsWaitingHtml(slot){
 function groupSlotItems(items){
   const byNum=(a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0);
   const cnt={};items.forEach(x=>{if(x.key)cnt[x.key]=(cnt[x.key]||0)+1;});
-  const gk=teams.map(t=>t.key).filter(k=>cnt[k]>=2);
+  // 15/11/2026 (Andrea): stile unico per tutti i piloti dei team seguiti: riquadro arrotondato con nome team, anche se e' uno solo
+  const gk=teams.map(t=>t.key).filter(k=>cnt[k]>=1);
   const out=[];
   gk.forEach(k=>{const g=items.filter(x=>x.key===k).sort(byNum);const t=teams.find(x=>x.key===k)||{name:k};const c=teamColor(k);
-    out.push('<div class="tgroup" style="--tc:'+c+'"><div class="tgroup-head"><span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span><span>'+g.length+' piloti</span></div>'+g.map(x=>x.html.replace(' tglow','')).join('')+'</div>');});
-  items.filter(x=>!x.key||cnt[x.key]<2).sort(byNum).forEach(x=>out.push(x.html));
+    out.push('<div class="tgroup" style="--tc:'+c+'"><div class="tgroup-head"><span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span><span>'+g.length+(g.length===1?' pilota':' piloti')+'</span></div>'+g.map(x=>x.html.replace(' tglow','').replace(/<span class="tchip"[^>]*>[^<]*<\/span>/,'')).join('')+'</div>');});
+  items.filter(x=>!x.key||!cnt[x.key]||!gk.includes(x.key)).sort(byNum).forEach(x=>out.push(x.html));
   return out.join('');
 }
 function teamsHighlightHtml(slot,ps){
@@ -4387,7 +4532,7 @@ function renderLtLast(){
         +'<div style="flex:1;min-width:0"><div><span class="num">#'+esc(x.no)+'</span>'+riskTri(x.no)+' <span class="nm">'+esc(pl.name||x.dr)+'</span>'+ltRetBadge(x.ret)+'<span onclick="event.stopPropagation()" style="float:right">'+noteBtn(x.no)+'</span></div>'
         +'<div class="tm">'+esc(pl.team||ent.team||'')+(x.gap?' · '+esc(x.gap):'')+(x.blp?' · best '+esc(x.blp):'')+'</div>'
         +(nt?'<div class="note-txt" style="margin-top:2px"><i class="ic ic-note"></i> '+esc(nt)+'</div>':'')
-        +'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+TASKS.map(t=>taskBtn(x.no,t,true)).join('')+'</div></div></div>';
+        +'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+TASKS.map(t=>taskBtn(x.no,t,true)).join('')+spotPill(x.no)+'</div></div></div>';
     }).join('');
 }
 // Animazione del contenuto quando si cambia vista con un selettore
@@ -4520,7 +4665,7 @@ function renderLtMyTable(){
   box.style.display='';if(wrap)wrap.style.display='none';
   if(activeTab!=='livetiming')return;
   const rows=[...apexGrid.querySelectorAll('tr[data-id]')].filter(r=>r.getAttribute('data-id')!=='r0');
-  if(!rows.length){box.innerHTML='<div class="empty-state"><p>'+(apexWsKey?'In attesa dei dati live di Apex…':'Live timing Apex non disponibile per questa gara')+'</p></div>';return;}
+  if(!rows.length){box.innerHTML='<div class="empty-state"><p>'+(apexWsKey?'In attesa dei dati live…':'Live timing non disponibile per questa gara')+'</p></div>';return;}
   const txt=(r,c)=>{const el=r.querySelector('[data-id="'+r.getAttribute('data-id')+'c'+c+'"]');return el?el.textContent.trim():'';};
   const cls=(r,c)=>{const el=r.querySelector('[data-id="'+r.getAttribute('data-id')+'c'+c+'"]');return el?el.className:'';};
   // colonne dall'intestazione (data-type), con ripiego sugli indici standard
@@ -4559,7 +4704,7 @@ function renderLtMyTable(){
         +'<div class="tm">'+team+'</div>'
 
         +(nt?'<div class="note-txt" style="margin-top:2px"><i class="ic ic-note"></i> '+nt.replace(/</g,'&lt;')+'</div>':'')
-        +(tm?'':'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+TASKS.map(t=>taskBtn(no,t,true)).join('')+'</div>')+'</div></div>';
+        +(tm?'':'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+TASKS.map(t=>taskBtn(no,t,true)).join('')+spotPill(no)+'</div>')+'</div></div>';
     }).join(''):'<div class="empty-state"><p>Nessun tuo pilota in questa sessione</p></div>');
     ltFlip();return;
   }
@@ -4668,7 +4813,7 @@ function renderApexDelay(){
   const m=apexMatchSlot();
   box.style.display='';
   const head='<div style="font-size:11px;font-weight:800;color:var(--text3);padding:8px 10px;border:1px solid var(--border2);border-radius:10px;background:var(--bg2)">'
-    +'<i class="ic ic-signal"></i> APEX: '+apexState.cat+' · '+apexState.sess+(apexState.start?' · partita '+apexState.start:'')
+    +'<i class="ic ic-signal"></i> LIVE: '+apexState.cat+' · '+apexState.sess+(apexState.start?' · partita '+apexState.start:'')
     +(apexState.red?'<div style="color:#f87171;margin-top:4px"><i class="ic ic-redflag"></i> Bandiera rossa alle '+apexState.red+': le prossime sessioni probabilmente slittano</div>':'');
   if(!m||m.delay===null){box.innerHTML=head+'<div style="color:var(--text4);margin-top:4px">'+(m?'In attesa della partenza':'Sessione non trovata nel programma di oggi')+'</div></div>';return;}
   const d=m.delay;const lbl=(d>0?'+':'')+d+' min';
@@ -4962,6 +5107,75 @@ function toggleHL(btn,num){const on=btn.classList.toggle('active');btn.setAttrib
   p.highlight=h;saveAll();
   const lb=document.getElementById('ef-hl-saved');if(lb){lb.textContent='Salvato';lb.style.opacity=1;clearTimeout(lb._t);lb._t=setTimeout(()=>{lb.style.opacity=0;},1500);}
   try{renderAll();}catch(e){}}
+
+/* ══ PUNTI DI SCATTO IN PISTA (15/11/2026, Andrea) ══
+   Ogni operatore ha i SUOI punti (dove si mette lui, non solo curve). Piantina per gara in trackMaps/<gara>. */
+function spotIds(){return Object.keys(trackSpots||{}).sort((a,b)=>(trackSpots[a].o||0)-(trackSpots[b].o||0));}
+function spotCount(num){const ids=spotIds(),d=(spotDone&&spotDone[num])||{};return[ids.filter(i=>d[i]).length,ids.length];}
+function spotPill(num){
+  if(!pilots.some(p=>String(p.num)===String(num)))return'';
+  const[f,t]=spotCount(num),cls=!t?'none':f===t?'green':f?'orange':'red';
+  return'<button class="task-btn spot-pill '+cls+'" aria-label="Punti di scatto in pista" onclick="event.stopPropagation();openSpots(\''+num+'\')"><i class="ic ic-camera"></i>'+(t?'<span>'+f+'/'+t+'</span>':'')+'</button>';
+}
+let _spNum=null,_spMap=null,_spMapRace=null,_spTrash=false;
+/* 15/11 (Andrea): tocco sulla pista = nuovo punto, gia' spuntato per questo pilota e da spuntare per gli altri.
+   Tocco su un punto = spunta / togli spunta. I punti si eliminano SOLO con la modalita' cestino (tasto in alto a destra).
+   Ogni punto ha un numero fisso, che non cambia quando se ne eliminano altri. */
+function spotsLoadMap(){
+  if(_spMapRace===activeRaceId&&_spMap!==null)return Promise.resolve(_spMap);
+  return ref(db,'trackMaps/'+activeRaceId).once('value').then(sn=>{const v=sn.val();_spMap=(v&&v.img)||'';_spMapRace=activeRaceId;return _spMap;}).catch(()=>{_spMap='';return'';});
+}
+function openSpots(num){_spNum=String(num);_spTrash=false;renderSpots();spotsLoadMap().then(()=>{if(_spNum===String(num))renderSpots();});}
+window.openSpots=openSpots;
+function spotNo(id){const sp=trackSpots[id]||{};if(sp.k)return sp.k;return spotIds().indexOf(id)+1;}
+function renderSpots(){
+  const p=pilots.find(x=>String(x.num)===_spNum);if(!p){closeModal();return;}
+  const d=(spotDone[_spNum])||{},ids=spotIds(),[f,t]=spotCount(_spNum);
+  const h=[];
+  h.push('<button class="modal-close" onclick="closeModal()">✕</button>');
+  h.push('<button class="sp-trash'+(_spTrash?' on':'')+'" onclick="spotsToggleTrash()" aria-label="Modalità cestino: elimina punti" aria-pressed="'+_spTrash+'"><i class="ic ic-trash"></i></button>');
+  h.push('<div class="modal-title">#'+p.num+' '+escapeHtmlSp(p.name||'')+'</div>');
+  h.push('<div class="sp-sub">'+(_spTrash?'<b style="color:#ef4444">CESTINO</b> · tocca un punto per eliminarlo per tutti i piloti':(t?'Fatti <b>'+f+'/'+t+'</b> · ':'')+'tocca la pista dove hai scattato')+'</div>');
+  h.push('<div class="sp-map'+(_spMap?'':' noimg')+(_spTrash?' trash':'')+'" id="sp-map" onclick="spotsMapTap(event)">');
+  if(_spMap)h.push('<img src="'+_spMap+'" alt="Piantina della pista" draggable="false">');
+  ids.forEach(id=>{const sp=trackSpots[id],on=!!d[id],n=spotNo(id);
+    h.push('<button class="sp-dot'+(on?' on':'')+'" style="left:'+sp.x+'%;top:'+sp.y+'%" onclick="event.stopPropagation();spotsTap(\''+id+'\')" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'✓':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>');});
+  h.push('</div>');
+  if(t&&!_spTrash)h.push('<div class="sp-hint">I numeri sono i punti da spuntare: toccali se li hai fatti anche con questo pilota.</div>');
+  openModal(h.join(''));
+}
+function escapeHtmlSp(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
+/* un'unica scrittura per punti e spunte: con due scritture separate l'aggiornamento locale della prima
+   ricaricava le spunte vecchie prima di salvare la seconda (punti che sparivano o si rinumeravano) */
+function spotsSave(){if(!activeRaceId||!currentUserId)return;const u={};
+  rtDiff(userPath()+'/trackSpots',_rtBaseUser.trackSpots,trackSpots,u);rtDiff(userPath()+'/spotDone',_rtBaseUser.spotDone,spotDone,u);rtWrite(u,'punti di scatto');}
+function spotsToggleTrash(){_spTrash=!_spTrash;renderSpots();}
+window.spotsToggleTrash=spotsToggleTrash;
+function spotsMapTap(e){
+  if(_spTrash)return;
+  const m=document.getElementById('sp-map');if(!m)return;const r=m.getBoundingClientRect();
+  const x=Math.max(3,Math.min(97,(e.clientX-r.left)/r.width*100)),y=Math.max(4,Math.min(96,(e.clientY-r.top)/r.height*100));
+  const id='s'+Date.now().toString(36);
+  const k=spotIds().reduce((mx,i)=>Math.max(mx,spotNo(i)),0)+1;
+  trackSpots[id]={x:Math.round(x*10)/10,y:Math.round(y*10)/10,o:Date.now(),k:k};
+  if(!spotDone[_spNum])spotDone[_spNum]={};spotDone[_spNum][id]=1;
+  try{if(navigator.vibrate)navigator.vibrate(12);}catch(_){}
+  spotsSave();renderSpots();try{renderAll();}catch(_){}
+}
+window.spotsMapTap=spotsMapTap;
+function spotsTap(id){
+  if(_spTrash){
+    delete trackSpots[id];Object.keys(spotDone).forEach(n=>{if(spotDone[n])delete spotDone[n][id];});
+    try{if(navigator.vibrate)navigator.vibrate([20,40,20]);}catch(_){}
+  }else{
+    if(!spotDone[_spNum])spotDone[_spNum]={};
+    if(spotDone[_spNum][id])delete spotDone[_spNum][id];else spotDone[_spNum][id]=1;
+    try{if(navigator.vibrate)navigator.vibrate(12);}catch(_){}
+  }
+  spotsSave();renderSpots();try{renderAll();}catch(_){}
+}
+window.spotsTap=spotsTap;
+
 /* 15/11/2026 (Andrea): le manche A-B, B-D, B-C hanno in comune solo la B = il pilota e' del gruppo B */
 function heatsGroup(heats){if(!Array.isArray(heats)||!heats.length)return'';let common=null;
   heats.forEach(h=>{const l=new Set(String(h).toUpperCase().split(/[^A-Z]+/).filter(Boolean));common=common?new Set([...common].filter(x=>l.has(x))):l;});
