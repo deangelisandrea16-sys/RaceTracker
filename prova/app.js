@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1815';
+var RT_JS_BUILD='2026-11-15-1825';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3924,7 +3924,7 @@ function openLegend(){
     +'<div class="sp-tools"><span class="sp-btn">⟲</span><span class="sp-btn">⟳</span><span class="sp-btn">＋</span><span class="sp-btn">－</span><span class="sp-btn">⤢</span></div>'+N(3)));
   h.push(ex([
     'Quanti punti hai fatto con quel pilota sul totale dei tuoi punti (2 su 4). Tocca per aprire il tracciato.',
-    'Tocca il tracciato dove hai scattato: nasce un punto già spuntato <b style="color:#4fd69c">✓</b> per questo pilota; negli altri piloti compare col suo numero, da spuntare. Tocca un punto per spuntarlo o togliere la spunta.',
+    'Tocca il tracciato dove hai scattato: nasce un punto già spuntato <b style="color:#4fd69c">✓</b> per questo pilota; negli altri piloti compare col suo numero, da spuntare. Tocca un punto per spuntarlo o togliere la spunta; <b>tienilo premuto</b> e trascinalo per spostarlo.',
     'Ruota, ingrandisci, riduci e ricentra. Con due dita ingrandisci e ruoti, con un dito sposti.'
   ]));
   // NOTIFICHE
@@ -5246,13 +5246,19 @@ function spotsToMap(cx,cy){
 }
 function spotsBindGestures(){
   const vp=document.getElementById('sp-vp');if(!vp)return;const pts=new Map();let g=null,moved=false,downT=null;
+  let drag=null,holdT=0;
   vp.onpointerdown=e=>{try{vp.setPointerCapture(e.pointerId);}catch(_){}pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
-    if(pts.size===1){moved=false;downT=e.target.closest('.sp-dot');g={x:e.clientX,y:e.clientY,vx:_spView.x,vy:_spView.y};}
+    clearTimeout(holdT);drag=null;
+    if(pts.size===1){moved=false;downT=e.target.closest('.sp-dot');g={x:e.clientX,y:e.clientY,vx:_spView.x,vy:_spView.y};
+      // 15/11 (Andrea): tieni premuto un punto mezzo secondo e trascinalo per spostarlo
+      if(downT&&!_spTrash){const id=downT.getAttribute('data-id');holdT=setTimeout(()=>{if(moved||pts.size!==1)return;drag={id,el:downT};downT.classList.add('drag');try{if(navigator.vibrate)navigator.vibrate(25);}catch(_){}},450);}}
     else if(pts.size===2){const[a,b]=[...pts.values()];moved=true;g={d:Math.hypot(b.x-a.x,b.y-a.y),an:Math.atan2(b.y-a.y,b.x-a.x),z:_spView.z,r:_spView.r,mx:(a.x+b.x)/2,my:(a.y+b.y)/2,px:_spView.x,py:_spView.y};}};
   vp.onpointermove=e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
     if(pts.size===2&&g&&g.d){const[a,b]=[...pts.values()];_spView.z=Math.max(.6,Math.min(8,g.z*Math.hypot(b.x-a.x,b.y-a.y)/g.d));_spView.r=g.r+(Math.atan2(b.y-a.y,b.x-a.x)-g.an)*180/Math.PI;_spView.x=g.px+((a.x+b.x)/2-g.mx);_spView.y=g.py+((a.y+b.y)/2-g.my);spotsLayoutSoon();}
-    else if(pts.size===1&&g&&g.vx!==undefined){const dx=e.clientX-g.x,dy=e.clientY-g.y;if(Math.abs(dx)+Math.abs(dy)>8)moved=true;if(moved){_spView.x=g.vx+dx;_spView.y=g.vy+dy;spotsLayoutSoon();}}};
-  const up=e=>{const wasTap=pts.size===1&&!moved;pts.delete(e.pointerId);
+    else if(pts.size===1&&drag){const q=spotsToMap(e.clientX,e.clientY);const sp=trackSpots[drag.id];if(sp){sp.x=Math.round(q.x*10)/10;sp.y=Math.round(q.y*10)/10;drag.el.style.left=(e.clientX-vp.getBoundingClientRect().left)+'px';drag.el.style.top=(e.clientY-vp.getBoundingClientRect().top)+'px';}}
+    else if(pts.size===1&&g&&g.vx!==undefined){const dx=e.clientX-g.x,dy=e.clientY-g.y;if(Math.abs(dx)+Math.abs(dy)>8){moved=true;clearTimeout(holdT);}if(moved){_spView.x=g.vx+dx;_spView.y=g.vy+dy;spotsLayoutSoon();}}};
+  const up=e=>{clearTimeout(holdT);if(drag){const d=drag;drag=null;pts.delete(e.pointerId);d.el.classList.remove('drag');spotsSave();spotsLayout(false);g=null;return;}
+    const wasTap=pts.size===1&&!moved;pts.delete(e.pointerId);
     if(wasTap){const mt=e.target.closest&&e.target.closest('.sp-mark');if(mt&&_spTrash){spotsDelMark(mt.getAttribute('data-mid'));}else if(_spMarkMode){spotsAddMark(e.clientX,e.clientY);}else if(downT)spotsTap(downT.getAttribute('data-id'));else spotsAddAt(e.clientX,e.clientY);}
     if(!pts.size){g=null;}else if(pts.size===1){const q=[...pts.values()][0];g={x:q.x,y:q.y,vx:_spView.x,vy:_spView.y};}};
   vp.onwheel=e=>{e.preventDefault();_spView.z=Math.max(.6,Math.min(8,_spView.z*(e.deltaY<0?1.12:1/1.12)));spotsLayoutSoon();};
