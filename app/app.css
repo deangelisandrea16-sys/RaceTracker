@@ -246,6 +246,16 @@ body.light .form-submit{color:#fff;}
 .cat-u10{color:#3bdcf0;} body.light .cat-u10{color:#0891b2;}
 .cat-nj{color:#ffce4a;} body.light .cat-nj{color:#d97706;}
 .cat-okn{color:#f472b6;} body.light .cat-okn{color:#db2777;}
+/* 15/11/2026: colori automatici per le categorie non note (cat-dyn0..7, da catClass) */
+.cat-dyn0{color:#a78bfa;} body.light .cat-dyn0{color:#7c3aed;}
+.cat-dyn1{color:#fb923c;} body.light .cat-dyn1{color:#c2410c;}
+.cat-dyn2{color:#60a5fa;} body.light .cat-dyn2{color:#2563eb;}
+.cat-dyn3{color:#a3e635;} body.light .cat-dyn3{color:#4d7c0f;}
+.cat-dyn4{color:#f87171;} body.light .cat-dyn4{color:#b91c1c;}
+.cat-dyn5{color:#2dd4bf;} body.light .cat-dyn5{color:#0f766e;}
+.cat-dyn6{color:#e879f9;} body.light .cat-dyn6{color:#a21caf;}
+.cat-dyn7{color:#fbbf24;} body.light .cat-dyn7{color:#b45309;}
+
 /* TEAM */
 .pv-switch{display:flex;gap:8px;margin-bottom:12px;}
 .pv-btn{flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--border2);background:none;color:var(--text4);font-family:inherit;font-weight:900;font-size:12px;letter-spacing:1px;cursor:pointer;}

@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1005';
+var RT_JS_BUILD='2026-11-15-1010';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1086,7 +1086,11 @@ function saveSharedField(field,value){
 function cycleStatus(cur){const i=STATUS_CYCLE.indexOf(cur);return STATUS_CYCLE[(i+1)%STATUS_CYCLE.length];}
 function catClass(cat){
   if(cat==='KZ2')return'cat-kz2';if(cat==='OK')return'cat-ok';if(cat==='OKJ')return'cat-okj';
-  if(cat==='MINI GR3')return'cat-gr3';if(cat==='MINI U10')return'cat-u10';if(cat==='OK-NJ')return'cat-nj';if(cat==='OKN')return'cat-okn';return'';
+  if(cat==='MINI GR3')return'cat-gr3';if(cat==='MINI U10')return'cat-u10';if(cat==='OK-NJ')return'cat-nj';if(cat==='OKN')return'cat-okn';
+  /* 15/11/2026 (Andrea): le categorie cambiano da gara a gara: quelle non note prendono un colore stabile ricavato dal nome */
+  const k=String(cat||'').toUpperCase().replace(/[^A-Z0-9]/g,'');if(!k)return'';
+  let hsh=0;for(let i=0;i<k.length;i++)hsh=(hsh*31+k.charCodeAt(i))>>>0;
+  return'cat-dyn'+(hsh%8);
 }
 // Normalizza i nomi categoria scritti in modi diversi dagli organizzatori
 function normCat(c){
@@ -3710,7 +3714,7 @@ function openLegend(){
     +'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> tenda vicino alla torretta</div>'+N(10)+'</div></div></div>'));
   h.push(ex([
     'Cornice verde + <b>ORA</b>: il turno in corso. C\'è solo nella giornata di oggi e sparisce 30 minuti dopo l\'ultimo turno. Il tasto ORA in basso ci riporta.',
-    'Categoria: ogni categoria ha il suo colore (vedi sotto).',
+    'Categoria: il colore è assegnato in automatico a ogni categoria della gara.',
     'Tipo di turno (prove, manche con i gruppi, prefinale…).',
     'Durata del turno; se il live dice un\'altra durata la vecchia è barrata.',
     '<b>Triangolo</b>: rischio di non entrare in finale (stima): '+tri('#22c55e')+' verde sotto 25% · '+tri('#facc15')+' giallo 25–49% · '+tri('#f97316')+' arancione 50–74% · '+tri('#ef4444')+' rosso 75% e oltre. Sparisce quando esce la lista ufficiale della Finale.',
@@ -3778,10 +3782,6 @@ function openLegend(){
   h.push('<div class="lg-row"><div><span class="tchip" style="--tc:#38bdf8">TEAM</span></div><div>Pilota di un <b>team che segui</b>: bordo luminoso del colore del team (colori in Impostazioni)</div></div>');
   h.push('<div class="lg-row"><div><span style="font-size:9px;font-weight:800;color:#facc15;border:1px dashed #facc15;border-radius:4px;padding:0 5px">DA CONFERMARE</span></div><div>Pilota letto da un PDF scansionato: sarà sostituito dai dati ufficiali Apex</div></div>');
   h.push('<div class="lg-row"><div><span style="color:#ef4444;font-size:10px;font-weight:800">ELIMINATO</span></div><div>Pilota fuori dalla gara: finisce in fondo al Programma, in "Ritirati / Eliminati"</div></div>');
-
-  // CATEGORIE
-  h.push(sec('COLORI DELLE CATEGORIE'));
-  h.push('<div class="lg-row" style="flex-wrap:wrap;gap:14px;font-weight:900">'+[['KZ2','KZ2'],['OKN','OKN'],['OK-NJ','OK-NJ'],['MINI GR3','MINI GR3'],['MINI U10','MINI U10']].map(c=>'<span class="'+catClass(c[0])+'">'+c[1]+'</span>').join('')+'</div>');
 
   openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Legenda</div><div style="max-height:72vh;overflow-y:auto;overflow-x:hidden;padding-right:2px">'+h.join('')+'</div>');
 }
