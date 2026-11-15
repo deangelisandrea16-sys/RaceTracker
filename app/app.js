@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1840';
+var RT_JS_BUILD='2026-11-15-1850';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1671,12 +1671,21 @@ function renderLtMyNums(){
     slotsArr=Array.isArray(slots)?slots:(slots&&typeof slots==='object'?Object.values(slots):[]);
     currentIdx=getCurrentSlotIndex(slotsArr);
   }catch(e){slotsArr=[];}
+  /* 15/11/2026 (Andrea): solo il turno in corso e quelli dopo, finali comprese; il turno "ORA" si decide dall'orario
+     (prima, finiti i turni, restava ferma sull'ultimo turno della mattina) */
+  const toM=t=>{const pr=String(t||'').split('.');return parseInt(pr[0])*60+parseInt(pr[1]||0);};
+  const nowM=new Date().getHours()*60+new Date().getMinutes()-(scheduleDelay||0);
+  const all=slotsArr.map(sl=>({time:sl.time,label:sl.label||sl.cat||'',ps:pilotsForSlot(sl)}));
+  if(activeDay===currentDays[currentDays.length-1])[].concat(currentFinals||[]).filter(Boolean).forEach(f=>{
+    const ac=pilots.filter(p=>canonCat(p.cat)===canonCat(f.cat));const fin=ac.filter(p=>p.inFinal);
+    all.push({time:f.time,label:'FINALE '+(f.cat||''),ps:fin.length?fin:ac.filter(p=>!p.eliminated)});});
+  all.sort((a,b)=>toM(a.time)-toM(b.time));
+  let ni=-1;all.forEach((it,i)=>{if(toM(it.time)<=nowM)ni=i;});
   const items=[];
-  slotsArr.forEach(function(slot,idx){
-    const mine=pilotsForSlot(slot);
-    const isNow=idx===currentIdx;
-    if(!mine.length&&!isNow)return;
-    items.push({time:slot.time,label:slot.label||slot.cat||'',nums:mine.map(function(p){return p.num;}),now:isNow});
+  all.forEach(function(it,i){
+    if(i<ni)return;const isNow=i===ni;
+    if(!it.ps.length&&!isNow)return;
+    items.push({time:it.time,label:it.label,nums:it.ps.map(function(p){return p.num;}),now:isNow});
   });
   if(!items.length){box.style.display='none';box.innerHTML='';if(_ltTimer){clearInterval(_ltTimer);_ltTimer=null;}return;}
   box.style.display='block';
