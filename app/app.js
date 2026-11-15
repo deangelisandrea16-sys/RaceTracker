@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1210';
+var RT_JS_BUILD='2026-11-15-1300';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1485,7 +1485,7 @@ function circuitMapHtml(r,active,size){
 }
 function renderGare(){
   const el=document.getElementById('gare-content');
-  const raceIds=Object.keys(races);
+  const raceIds=Object.keys(races).filter(id=>!isDemoRace(id)||canSeeDemo());
   let html='<div style="margin-bottom:16px">'
     +'<button class="mgmt-btn" onclick="openCalendar()" style="border-color:var(--rt-orange,#ff5a1f);color:var(--rt-orange,#ff5a1f);margin-bottom:8px"><i class="ic ic-calendar"></i> GARE DISPONIBILI</button>'
     +'<button class="mgmt-btn" onclick="openNewRace()" style="border-color:#22c55e;color:#22c55e">+ NUOVA GARA</button></div>';
@@ -3500,15 +3500,32 @@ let apexWs=null,apexWsKey='',apexState={cat:'',sess:'',start:'',red:'',at:0},ape
 let apexSeen=new Set(),apexIgnore=new Set();
 let apexAuto=true;
 let apexLastApplied='';
+/* 15/11/2026 (Andrea): EVENTO TEST per la demo. La gara con demo:true non usa Apex: il live arriva dal database
+   (races/<id>/demoLive = {seq, frame}) scritto dalla pagina Regia, nello stesso formato dei messaggi Apex. */
+function isDemoRace(id){const r=(typeof races!=='undefined'&&races[id||activeRaceId])||{};return r.demo===true;}
+function canSeeDemo(){return['demo','andrea','utente prova'].includes(String(currentUserId||''));}
+let demoLiveUnsub=null,demoLiveSeq=null;
 function apexLiveName(){
   const r=(typeof races!=='undefined'&&races[activeRaceId])?races[activeRaceId]:{};
+  if(r.demo===true)return'demo';
   const cfg=ORG_CONFIG[r.org]||null;
   const url=resolveLiveUrl(r);
   const m=url.match(/apex-timing\.com\/live-timing\/([a-z0-9\-]+)\//i);
   return m?m[1].toLowerCase():'';
 }
 function apexConnect(){
-  const name=apexLiveName();const port=APEX_LIVE_PORTS[name];
+  const name=apexLiveName();
+  if(name==='demo'){
+    const key='demo:'+activeRaceId;if(key===apexWsKey&&demoLiveUnsub)return;
+    try{if(apexWs)apexWs.close();}catch(e){}apexWs=null;try{if(demoLiveUnsub)demoLiveUnsub();}catch(e){}
+    apexWsKey=key;apexState={cat:'',sess:'',start:'',red:'',at:0};apexNext=null;apexSeen=new Set();apexIgnore=new Set();demoLiveSeq=null;
+    const r=ref(db,'races/'+activeRaceId+'/demoLive');
+    onValue(r,snap=>{const v=snap.val();if(!v||!v.frame||v.seq===demoLiveSeq)return;demoLiveSeq=v.seq;try{apexParse(String(v.frame));}catch(e){console.warn('demo live',e);}});
+    demoLiveUnsub=()=>{try{off(r);}catch(e){}demoLiveUnsub=null;};
+    return;
+  }
+  try{if(demoLiveUnsub)demoLiveUnsub();}catch(e){}
+  const port=APEX_LIVE_PORTS[name];
   const key=name&&port?name+':'+port:'';
   if(key===apexWsKey&&apexWs&&apexWs.readyState<=1)return;
   try{if(apexWs)apexWs.close();}catch(e){}
@@ -4587,7 +4604,7 @@ function apexParse(txt){
       if(fins.length&&apexState.start&&!apexFinished){
         apexFinished=fins[0];clearTimeout(apexEvalT);
         // aspetta che tutti passino sotto la bandiera a scacchi, poi valuta
-        apexEvalT=setTimeout(()=>apexEvaluate('finish'),75000);
+        apexEvalT=setTimeout(()=>apexEvaluate('finish'),isDemoRace()?5000:75000);
       }
       const reds=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*data-flag="([^"]*)"[^>]*><\/span>\s*([^<]*)/gi)]
         .filter(x=>!apexIgnore.has(x[1])&&(/red|rouge|rossa/i.test(x[2])||/RED|ROSSA|ROUGE/i.test(x[3])))
