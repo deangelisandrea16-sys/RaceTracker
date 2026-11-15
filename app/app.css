@@ -682,7 +682,12 @@ body.light{--hl-foto:#0284c7;--hl-video:#9333ea;--hl-prio:#ca8a04}
 .card.hl-foto,.card-inner.hl-foto{box-shadow:inset 4px 0 0 var(--hl-foto)}
 .card.hl-video,.card-inner.hl-video{box-shadow:inset 4px 0 0 var(--hl-video)}
 .card.hl-both,.card-inner.hl-both{box-shadow:inset 4px 0 0 var(--hl-foto),inset 8px 0 0 var(--hl-video)}
-.card.hl-prio,.card-inner.hl-prio{border-color:var(--hl-prio)!important}
+/* 15/11 (Andrea): PRIORITA' = cornice dorata, stesso giallo delle note, ovunque (si somma a foto/video/team) */
+:root{--prio-frame:#ffcc33}body.light{--prio-frame:#ca8a04}
+.card.hl-prio,.card-inner.hl-prio,.ltbig.hl-prio{position:relative}
+.card.hl-prio::after,.card-inner.hl-prio::after,.ltbig.hl-prio::after{content:'';position:absolute;inset:0;border:2px solid var(--prio-frame);border-radius:inherit;box-shadow:0 0 12px -2px rgba(255,204,51,.55);pointer-events:none;z-index:1}
+.ltc tr.hl-prio td{border-top:2px solid var(--prio-frame);border-bottom:2px solid var(--prio-frame)}
+.ltc tr.hl-prio td:first-child{border-left:2px solid var(--prio-frame)}.ltc tr.hl-prio td:last-child{border-right:2px solid var(--prio-frame)}
 /* 15/11/2026 (Andrea): piloti dello stesso team nello stesso turno in un riquadro unico */
 .tgroup{border:2px solid var(--tc);border-radius:12px;box-shadow:0 0 16px -4px var(--tc);margin:0 0 10px;padding:4px 8px 2px;overflow:hidden}
 .tgroup-head{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:800;color:var(--text3);padding:4px 2px 2px}

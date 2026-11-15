@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1110';
+var RT_JS_BUILD='2026-11-15-1125';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3789,7 +3789,7 @@ function openLegend(){
   h.push(ex([
     'Nella scheda del pilota (matita “modifica” in Piloti): tocca per accendere o spegnere. <b>Acceso</b> = pieno colorato con la spunta; spento = grigio.',
     'Nel Programma, accanto al numero: <span class="hl-badge hl-foto hl-mini"><i class="ic ic-hl-foto"></i></span> foto · <span class="hl-badge hl-video hl-mini"><i class="ic ic-hl-video"></i></span> video · <span class="hl-badge hl-priority hl-mini"><i class="ic ic-hl-prio"></i></span> priorità.',
-    'Barra a sinistra della scheda del pilota: <b style="color:#38bdf8">azzurra</b> = foto, <b style="color:#c084fc">viola</b> = video. Priorità aggiunge un bordo dorato.',
+    'Barra a sinistra della scheda del pilota: <b style="color:#38bdf8">azzurra</b> = foto, <b style="color:#c084fc">viola</b> = video. Priorità = <b>cornice dorata</b> (lo stesso giallo delle note) ovunque: Programma, Live, Piloti, Pista.',
     'Foto <b>e</b> video: barra doppia azzurra e viola.'
   ]));
   h.push(sec('PILOTI, TEAM, ENTRY LIST','<b>PILOTI</b> e <b>ENTRY</b>; i team si seguono in Impostazioni → <b>TEAM NEL PROGRAMMA</b>'));
@@ -3887,15 +3887,19 @@ function teamsHighlightHtml(slot,ps){
 setTimeout(watchNotifPrefs,3000);
 // Avviso (solo titolare) se il server notifiche/monitor non aggiorna serverStatus/pc da più di 5 minuti
 const SERVER_OWNER='andrea';let serverStat=null;
+let _srvBadSince=0;
 function renderServerBanner(){
   let b=document.getElementById('srv-banner');
   const stale=currentUserId===SERVER_OWNER&&serverStat!==null&&(!serverStat||!serverStat.at||Date.now()-serverStat.at>5*60000||serverStat.watcher===false);
-  if(!stale){if(b)b.remove();return;}
+  /* 15/11 (Andrea): l'avviso compare solo se il problema dura piu' di 1 minuto (all'apertura il dato puo' essere vecchio di qualche secondo) */
+  if(!stale){_srvBadSince=0;if(b)b.remove();return;}
+  if(!_srvBadSince)_srvBadSince=Date.now();
+  if(Date.now()-_srvBadSince<60000){if(b)b.remove();return;}
   if(!b){b=document.createElement('div');b.id='srv-banner';b.style.cssText='position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:9999;background:#b3261e;color:#fff;border-radius:10px;padding:10px 12px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.4)';document.body.appendChild(b);}
   const min=serverStat&&serverStat.at?Math.round((Date.now()-serverStat.at)/60000):null;
   b.textContent='Server notifiche fermo'+(min!==null?' da '+min+' min':'')+(serverStat&&serverStat.watcher===false?' (live non attivo)':'')+': le notifiche push non partono.';
 }
-setTimeout(()=>{if(currentUserId!==SERVER_OWNER)return;try{onValue(ref(db,'serverStatus/pc'),s=>{serverStat=s.val()||false;renderServerBanner();});}catch(e){}setInterval(renderServerBanner,60000);},5000);
+setTimeout(()=>{if(currentUserId!==SERVER_OWNER)return;try{onValue(ref(db,'serverStatus/pc'),s=>{serverStat=s.val()||false;renderServerBanner();});}catch(e){}setInterval(renderServerBanner,15000);},5000);
 function rtAlert(id,title,sub,kind){
   if(!notifOn(id))return;
   const log=alertLog();if(log.some(a=>a.id===id))return;
@@ -4354,7 +4358,7 @@ function renderLtLast(){
     +L.rows.map(x=>{
       const pl=pilots.find(p=>String(p.num)===x.no)||{};const ent=(currentEntryList&&currentEntryList[x.no])||{};
       const nt=String((notes&&notes[x.no])||'').trim();
-      return'<div class="ltbig" data-no="'+esc(x.no)+'" onclick="openPilotDetail(\''+esc(x.no)+'\')">'
+      return'<div class="ltbig '+hlOfNum(x.no)+'" data-no="'+esc(x.no)+'" onclick="openPilotDetail(\''+esc(x.no)+'\')">'
         +'<div class="pos">'+(x.ret?ltXSpan(x.ret):(x.pos<999?x.pos:'–'))+'</div>'
         +'<div style="flex:1;min-width:0"><div><span class="num">#'+esc(x.no)+'</span>'+riskTri(x.no)+' <span class="nm">'+esc(pl.name||x.dr)+'</span>'+ltRetBadge(x.ret)+'<span onclick="event.stopPropagation()" style="float:right">'+noteBtn(x.no)+'</span></div>'
         +'<div class="tm">'+esc(pl.team||ent.team||'')+(x.gap?' · '+esc(x.gap):'')+(x.blp?' · best '+esc(x.blp):'')+'</div>'
@@ -4525,7 +4529,7 @@ function renderLtMyTable(){
       const nt=String((notes&&notes[no])||'').trim();
       const pos=parseInt(txt(r,C('rk','3')))||0;const mv=ltMove(no,pos);
       const rt=ltRetOf(no);
-      return'<div class="ltbig'+(tm?' team':'')+(rt?' ret':'')+(mv>0?' up':mv<0?' down':'')+'" data-no="'+no+'"'+(tm?'':' onclick="openPilotDetail(\''+no+'\')"')+'>'
+      return'<div class="ltbig '+(tm?'':hlOfNum(no))+(tm?' team':'')+(rt?' ret':'')+(mv>0?' up':mv<0?' down':'')+'" data-no="'+no+'"'+(tm?'':' onclick="openPilotDetail(\''+no+'\')"')+'>'
         +'<div class="pos">'+(rt?ltXSpan(rt):(txt(r,C('rk','3'))||'–'))+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>'
         +'<div style="flex:1;min-width:0"><div><span class="num">#'+no+'</span>'+(tm?'':riskTri(no))+' <span class="nm">'+nm+'</span>'+ltRetBadge(rt)+(tm?'':'<span onclick="event.stopPropagation()" style="float:right">'+noteBtn(no)+'</span>')+'</div>'
         +'<div class="tm">'+team+'</div>'
@@ -4540,7 +4544,7 @@ function renderLtMyTable(){
     +sorted.map(({r})=>{
       const no=txt(r,C('no','4'));const mine=myNums.has(no);const tm=!mine&&teamNums.has(no);
       const llc=cls(r,C('llp','10'));
-      return'<tr data-no="'+no+'" class="'+(mine?'mine':tm?'team':'')+'"'+(mine?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
+      return'<tr data-no="'+no+'" class="'+(mine?'mine '+hlOfNum(no):tm?'team':'')+'"'+(mine?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
         +'<td>'+(ltRetOf(no)?ltXSpan(ltRetOf(no)):txt(r,C('rk','3')))+'</td><td class="n">'+no+(mine?riskTri(no):'')+'</td><td class="d">'+txt(r,C('dr','5'))+ltRetBadge(ltRetOf(no))+'</td><td class="d" style="color:var(--text3)">'+(((pilots.find(x=>String(x.num)===no)||{}).team)||((currentEntryList&&currentEntryList[no])||{}).team||'')+'</td></tr>'
         +(mine&&String((notes&&notes[no])||'').trim()?'<tr class="mine"><td></td><td colspan="6" class="note-txt" style="white-space:normal"><i class="ic ic-note"></i> '+String(notes[no]).replace(/</g,'&lt;')+'</td></tr>':'');
     }).join('')+'</table>'
@@ -4783,7 +4787,7 @@ function renderPista(){
   const el=document.getElementById('pista-content');
   if(!pilots.length){el.innerHTML='<div class="empty-state"><p>Nessun pilota</p></div>';return;}
   if(pistaView==='pilota'){
-    el.innerHTML=pilots.map(p=>'<div class="card">'
+    el.innerHTML=pilots.map(p=>'<div class="card '+hlClassOf(p.highlight)+'">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
       +'<span class="pilot-num">#'+p.num+'</span>'+riskTri(p.num)+'<span class="pilot-name">'+p.name+'</span>'
       +'<span class="pilot-cat '+catClass(p.cat)+'" style="margin-left:auto">'+p.cat+'</span>'+noteBtn(p.num)+'</div>'
@@ -4928,6 +4932,7 @@ window.openEditPilot=openEditPilot;
 
 function toggleHL(btn){const on=btn.classList.toggle('active');btn.setAttribute('aria-pressed',on);try{if(navigator.vibrate)navigator.vibrate(15);}catch(e){}}
 /* 15/11/2026 (Andrea): classe di evidenziazione del pilota (foto/video/entrambi) + priorita' */
+function hlOfNum(no){const p=pilots.find(q=>String(q.num)===String(no));return p?hlClassOf(p.highlight):'';}
 function hlClassOf(hl){hl=Array.isArray(hl)?hl:[];const f=hl.indexOf('foto')>=0,v=hl.indexOf('video')>=0;return(f&&v?'hl-both':f?'hl-foto':v?'hl-video':'')+(hl.indexOf('priority')>=0?' hl-prio':'');}
 window.toggleHL=toggleHL;
 
