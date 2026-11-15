@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1310';
+var RT_JS_BUILD='2026-11-15-1330';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1343,40 +1343,46 @@ function showTab(tab){
 window.showTab=showTab;
 
 // ── FILTER ──
-let filterTask='all';
-let filterStatus='all';
-
-function setFilterTask(t){
-  filterTask=t;
-  document.querySelectorAll('.filter-row:first-child .filter-chip').forEach(c=>{
-    const m=(c.getAttribute('onclick')||'').match(/setFilterTask\('(\w+)'\)/);
-    if(m)c.classList.toggle('active',m[1]===t);
+// 15/11/2026 (Andrea): filtri multipli e incrociabili.
+// Task: piu' task accesi = basta che UNO dei task scelti sia nello stato scelto.
+// Stato: piu' colori accesi = uno qualsiasi dei colori scelti.
+// Evidenziazione: FOTO e VIDEO si sommano (foto O video); PRIORITA' restringe (solo prioritari).
+const filterTasks=new Set(),filterStatuses=new Set(),filterHL=new Set();
+function filtersActive(){return filterStatuses.size>0||filterHL.size>0;}
+function syncFilterChips(){
+  document.querySelectorAll('.filter-chip[data-fk]').forEach(c=>{
+    const k=c.getAttribute('data-fk'),v=c.getAttribute('data-fv');
+    const set=k==='task'?filterTasks:k==='status'?filterStatuses:filterHL;
+    const on=v==='all'?set.size===0:set.has(v);
+    c.classList.toggle('active',on);c.setAttribute('aria-pressed',on);
   });
-  renderPilots();
 }
+function toggleFilter(kind,v){
+  const set=kind==='task'?filterTasks:kind==='status'?filterStatuses:filterHL;
+  if(v==='all')set.clear();else if(set.has(v))set.delete(v);else set.add(v);
+  try{if(navigator.vibrate)navigator.vibrate(10);}catch(e){}
+  syncFilterChips();renderPilots();
+}
+window.toggleFilter=toggleFilter;
+function setFilterTask(t){filterTasks.clear();if(t!=='all')filterTasks.add(t);syncFilterChips();renderPilots();}
 window.setFilterTask=setFilterTask;
-
-function setFilterStatus(s){
-  filterStatus=s;
-  document.querySelectorAll('.filter-row:nth-child(2) .filter-chip').forEach(c=>{
-    const m=(c.getAttribute('onclick')||'').match(/setFilterStatus\('(\w+)'\)/);
-    if(m)c.classList.toggle('active',m[1]===s);
-  });
-  renderPilots();
-}
+function setFilterStatus(s){filterStatuses.clear();if(s!=='all')filterStatuses.add(s);syncFilterChips();renderPilots();}
 window.setFilterStatus=setFilterStatus;
-
+function statusMatches(s){
+  if(!filterStatuses.size)return true;
+  const ts=filterTasks.size?[...filterTasks]:TASKS;
+  return ts.some(t=>filterStatuses.has(s[t]||'red'));
+}
+function hlMatches(p){
+  if(!filterHL.size)return true;
+  const hl=Array.isArray(p.highlight)?p.highlight:[];
+  if(filterHL.has('priority')&&hl.indexOf('priority')<0)return false;
+  const want=['foto','video'].filter(x=>filterHL.has(x));
+  return !want.length||want.some(x=>hl.indexOf(x)>=0);
+}
 function pilotMatchesFilter(p){
-  if(filterTask==='all'&&filterStatus==='all')return true;
-  const s=statuses[p.num]||{};
-  if(filterTask!=='all'&&filterStatus!=='all'){
-    return s[filterTask]===filterStatus;
-  }
-  if(filterTask!=='all'){
-    return true; // show all with any status for that task
-  }
-  // filterStatus only
-  return TASKS.some(t=>s[t]===filterStatus);
+  if(!filtersActive())return true;
+  return statusMatches(statuses[p.num]||{})&&hlMatches(p);
 }
 
 // ══════════════════════════════════════
@@ -2581,17 +2587,15 @@ function setPilotsView(v){
 }
 window.setPilotsView=setPilotsView;
 function teamMatchesFilter(t){
-  if(filterStatus==='all')return true;
-  const s=teamStatuses[t.key]||{};
-  if(filterTask!=='all')return s[filterTask]===filterStatus;
-  return TASKS.some(k=>s[k]===filterStatus);
+  if(!filterStatuses.size)return true;
+  return statusMatches(teamStatuses[t.key]||{});
 }
 function renderTeams(){
   const el=document.getElementById('pilots-list');
   if(!teams.length){el.innerHTML='<p class="no-pilots">Nessun team. Cerca per <i class="ic ic-team"></i> TEAM e premi <i class="ic ic-plus"></i> AGGIUNGI TEAM.</p>';return;}
   const filtered=teams.filter(teamMatchesFilter).sort((a,b)=>a.name.localeCompare(b.name));
   const counter='<div style="font-size:11px;font-weight:700;color:var(--text4);margin-bottom:14px;letter-spacing:1px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">'
-    +(filterStatus!=='all'?'FILTRO':'TOTALE TEAM')+' <span style="color:var(--text);font-size:18px;font-weight:900;margin-left:8px;">'+filtered.length+(filterStatus!=='all'?'/'+teams.length:'')+'</span></div>';
+    +(filterStatuses.size?'FILTRO':'TOTALE TEAM')+' <span style="color:var(--text);font-size:18px;font-weight:900;margin-left:8px;">'+filtered.length+(filterStatuses.size?'/'+teams.length:'')+'</span></div>';
   el.innerHTML=counter+filtered.map(t=>{
     const ents=teamEntrants(t);
     const cats=[...new Set(ents.map(p=>p.cat))];
@@ -3030,8 +3034,8 @@ function renderPilots(){
   const total=pilots.length;
   const showing=filtered.length;
   const counter='<div style="font-size:11px;font-weight:700;color:var(--text4);margin-bottom:14px;letter-spacing:1px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">'
-    +((filterTask!=='all'||filterStatus!=='all')?'FILTRO':'TOTALE PILOTI')
-    +' <span style="color:var(--text);font-size:18px;font-weight:900;margin-left:8px;">'+showing+((filterTask!=='all'||filterStatus!=='all')?'/'+total:'')+'</span></div>';
+    +(filtersActive()?'FILTRO':'TOTALE PILOTI')
+    +' <span style="color:var(--text);font-size:18px;font-weight:900;margin-left:8px;">'+showing+(filtersActive()?'/'+total:'')+'</span></div>';
   el.innerHTML=counter+filtered.map((p,i)=>{
     const isElim=p.eliminated;
     const hl=p.highlight||[];

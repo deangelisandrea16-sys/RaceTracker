@@ -158,19 +158,26 @@ var t=q('meta[name="apple-mobile-web-app-title"]');if(t)t.content='RT Prova';})(
     <div class="filter-section">
       <div class="filter-row">
         <span class="filter-row-label">TASK</span>
-        <button class="filter-chip active" onclick="setFilterTask('all')">TUTTI</button>
-        <button class="filter-chip" onclick="setFilterTask('PADDOK')">PADDOK</button>
-        <button class="filter-chip" onclick="setFilterTask('PREGRIGLIA')">PREGRGL</button>
-        <button class="filter-chip" onclick="setFilterTask('BILANCIA')">BILANCIA</button>
-        <button class="filter-chip" onclick="setFilterTask('PISTA')">PISTA</button>
-        <button class="filter-chip" onclick="setFilterTask('REPORTAGE')">REPORT</button>
+        <button class="filter-chip active" data-fk="task" data-fv="all" onclick="toggleFilter('task','all')">TUTTI</button>
+        <button class="filter-chip" data-fk="task" data-fv="PADDOK" onclick="toggleFilter('task','PADDOK')">PADDOK</button>
+        <button class="filter-chip" data-fk="task" data-fv="PREGRIGLIA" onclick="toggleFilter('task','PREGRIGLIA')">PREGRGL</button>
+        <button class="filter-chip" data-fk="task" data-fv="BILANCIA" onclick="toggleFilter('task','BILANCIA')">BILANCIA</button>
+        <button class="filter-chip" data-fk="task" data-fv="PISTA" onclick="toggleFilter('task','PISTA')">PISTA</button>
+        <button class="filter-chip" data-fk="task" data-fv="REPORTAGE" onclick="toggleFilter('task','REPORTAGE')">REPORT</button>
       </div>
       <div class="filter-row">
         <span class="filter-row-label">STATO</span>
-        <button class="filter-chip active" onclick="setFilterStatus('all')">TUTTI</button>
-        <button class="filter-chip f-red" onclick="setFilterStatus('red')"><span class="dotc" style="background:#ff5c7a"></span></button>
-        <button class="filter-chip f-orange" onclick="setFilterStatus('orange')"><span class="dotc" style="background:#ffb400"></span></button>
-        <button class="filter-chip f-green" onclick="setFilterStatus('green')"><span class="dotc" style="background:#21d07a"></span></button>
+        <button class="filter-chip active" data-fk="status" data-fv="all" onclick="toggleFilter('status','all')">TUTTI</button>
+        <button class="filter-chip f-red" data-fk="status" data-fv="red" aria-label="Rosso" onclick="toggleFilter('status','red')"><span class="dotc" style="background:#ff5c7a"></span></button>
+        <button class="filter-chip f-orange" data-fk="status" data-fv="orange" aria-label="Giallo" onclick="toggleFilter('status','orange')"><span class="dotc" style="background:#ffb400"></span></button>
+        <button class="filter-chip f-green" data-fk="status" data-fv="green" aria-label="Verde" onclick="toggleFilter('status','green')"><span class="dotc" style="background:#21d07a"></span></button>
+      </div>
+      <div class="filter-row">
+        <span class="filter-row-label">EVID.</span>
+        <button class="filter-chip active" data-fk="hl" data-fv="all" onclick="toggleFilter('hl','all')">TUTTI</button>
+        <button class="filter-chip f-hl-foto" data-fk="hl" data-fv="foto" onclick="toggleFilter('hl','foto')"><i class="ic ic-hl-foto"></i> FOTO</button>
+        <button class="filter-chip f-hl-video" data-fk="hl" data-fv="video" onclick="toggleFilter('hl','video')"><i class="ic ic-hl-video"></i> VIDEO</button>
+        <button class="filter-chip f-hl-priority" data-fk="hl" data-fv="priority" onclick="toggleFilter('hl','priority')"><i class="ic ic-hl-prio"></i> PRIORITÀ</button>
       </div>
     </div>
     <div class="pv-switch">
@@ -314,7 +321,7 @@ var t=q('meta[name="apple-mobile-web-app-title"]');if(t)t.content='RT Prova';})(
 
 <script src="vendor/firebase-app-compat.js"></script>
 <script src="vendor/firebase-database-compat.js"></script>
-<script>const APP_BUILD='2026-11-15-1310';</script>
+<script>const APP_BUILD='2026-11-15-1330';</script>
 <script src="prova/app.js"></script>
 <script>/* file dello script vecchio rimasto in cache: lo riscarica una volta e ricarica la pagina */
 if(window.RT_JS_BUILD!==APP_BUILD){try{if(sessionStorage.getItem('rt_jsfix')!==APP_BUILD){sessionStorage.setItem('rt_jsfix',APP_BUILD);Promise.all(['prova/app.js','prova/app.css'].map(function(u){return fetch(u,{cache:'reload'});})).then(function(){location.reload();});}}catch(e){}}</script>
