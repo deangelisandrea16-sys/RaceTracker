@@ -162,7 +162,7 @@ function lap(base){return(base+Math.random()*0.6).toFixed(3);}
 function gridHtml(){const s=cur();const el=D.entryList||{};const run=ctl.phase==='gara'||ctl.phase==='rossa';const fin=ctl.phase==='finita';
   const base=s.cat==='OKN'?52.4:55.8;
   return HEAD+ctl.order.map((n,i)=>{const e=el[n]||{};const id='r'+(i+1);const pit=ctl.pit.includes(n);
-    const sta=pit?(run||fin?'si':'si'):(fin?'sf':run?'sr':'si');
+    const sta=pit?'si':(fin?'sf':run?'sr':''); // in pregriglia nessuno stato: non sono "ai box"
     const ll=run||fin?lap(base):'',bl=run||fin?(base+0.05*i).toFixed(3):'';
     const gap=i===0?(run||fin?(ctl.lap+' Laps'):''):(run||fin?'+'+(i*0.4+Math.random()*0.2).toFixed(3):'');
     return'<tr data-id="'+id+'" data-pos="'+(i+1)+'"><td data-id="'+id+'c1" class="gs"></td><td data-id="'+id+'c2" class="'+sta+'"></td><td class="rk"><div><p data-id="'+id+'c3">'+(i+1)+'</p></div></td><td class="rku"><div><p data-id="'+id+'c4"></p></div></td><td class="no"><div data-id="'+id+'c5">'+n+'</div></td><td data-id="'+id+'c6" class="dr">'+((e.lastName||'')+' '+(e.firstName||'').charAt(0)+'.')+'</td><td data-id="'+id+'c7" class="ITA nat"></td><td data-id="'+id+'c8" class="tn">'+(ll?(+ll*0.4).toFixed(3):'')+'</td><td data-id="'+id+'c9" class="tn">'+(ll?(+ll*0.3).toFixed(3):'')+'</td><td data-id="'+id+'c10" class="tn">'+(ll?(+ll*0.3).toFixed(3):'')+'</td><td data-id="'+id+'c11" class="ti">'+ll+'</td><td data-id="'+id+'c12" class="tn"></td><td data-id="'+id+'c13" class="ib">'+gap+'</td><td data-id="'+id+'c14" class="in"></td><td data-id="'+id+'c15" class="in">'+bl+'</td><td data-id="'+id+'c16" class="in"></td></tr>';}).join('');}
