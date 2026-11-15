@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1430';
+var RT_JS_BUILD='2026-11-15-1435';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3889,7 +3889,7 @@ function openLegend(){
   // PUNTI DI SCATTO
   h.push(sec('PUNTI DI SCATTO IN PISTA','la pillola <i class="ic ic-camera"></i> accanto ai lavori del pilota, in <b>PROGRAMMA</b>, <b>LIVE</b> e <b>PILOTI</b>'));
   h.push(shot('<div class="tasks" style="max-width:340px">'+['PADDOK','PISTA'].map(t=>'<button class="task-btn green" style="pointer-events:none">'+t+'</button>').join('')+'<button class="task-btn spot-pill orange" style="pointer-events:none"><i class="ic ic-camera"></i><span>2/4</span></button></div>'+N(1)
-    +'<div class="sp-map" style="min-height:150px;margin-top:10px">'
+    +'<div class="sp-map noimg" style="margin-top:10px">'
     +[[18,30,1,'CURVA 1'],[52,22,0,'TRIBUNA'],[80,55,1,''],[40,75,0,'']].map((d,i)=>'<span class="sp-dot'+(d[2]?' on':'')+'" style="left:'+d[0]+'%;top:'+d[1]+'%"><span>'+(d[2]?'✓':(i+1))+'</span>'+(d[3]?'<em>'+d[3]+'</em>':'')+'</span>').join('')+'</div>'+N(2)
     +'<div class="sp-actions"><span class="sp-btn">MODIFICA PUNTI</span><span class="sp-btn"><i class="ic ic-upload"></i> PIANTINA</span></div>'+N(3)));
   h.push(ex([
@@ -5132,8 +5132,8 @@ function renderSpots(){
   h.push('<button class="modal-close" onclick="closeModal()">✕</button>');
   h.push('<div class="modal-title">#'+p.num+' '+(p.name||'')+'</div>');
   h.push('<div class="sp-sub">'+(_spEdit?'<b>MODIFICA PUNTI</b> · tocca la piantina per aggiungere un punto, trascinalo per spostarlo, toccalo per rinominarlo':(t?'Punti fatti <b>'+f+'/'+t+'</b> · tocca un punto per segnarlo fatto o da fare':'Nessun punto: premi <b>MODIFICA PUNTI</b> e tocca la piantina dove scatti'))+'</div>');
-  h.push('<div class="sp-map'+(_spEdit?' edit':'')+'" id="sp-map" onclick="spotsMapTap(event)">');
-  h.push(_spMap?'<img src="'+_spMap+'" alt="Piantina della pista" draggable="false">':'<div class="sp-empty">'+(_spMap===null?'Caricamento…':'Nessuna piantina: puoi metterne una con <b>PIANTINA</b>, oppure usare i punti anche così')+'</div>');
+  h.push('<div class="sp-map'+(_spEdit?' edit':'')+(_spMap?'':' noimg')+'" id="sp-map" onclick="spotsMapTap(event)">');
+  h.push(_spMap?'<img src="'+_spMap+'" alt="Piantina della pista" draggable="false">':'<div class="sp-empty">'+(_spMap===null?'Caricamento…':'Nessuna piantina: caricala con <b>PIANTINA</b> (foto o screenshot del tracciato)')+'</div>');
   ids.forEach((id,i)=>{const sp=trackSpots[id],on=!!d[id];
     h.push('<button class="sp-dot'+(on?' on':'')+(_spSel===id?' sel':'')+'" style="left:'+sp.x+'%;top:'+sp.y+'%" data-id="'+id+'" onpointerdown="spotsDown(event,\''+id+'\')" onclick="event.stopPropagation();spotsTap(\''+id+'\')"><span>'+(on?'✓':(i+1))+'</span><em>'+escapeHtmlSp(sp.n||('P'+(i+1)))+'</em></button>');});
   h.push('</div>');
