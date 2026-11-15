@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1130';
+var RT_JS_BUILD='2026-11-15-1145';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3787,10 +3787,10 @@ function openLegend(){
     +'<div class="card-inner hl-foto hl-prio" style="margin-top:10px"><div style="display:flex;align-items:center;gap:6px"><span class="hl-badge hl-foto hl-mini"><i class="ic ic-hl-foto"></i></span><span class="hl-badge hl-priority hl-mini"><i class="ic ic-hl-prio"></i></span>'+N(2)+'<span class="inner-num">#404</span><span class="inner-name">ROSSI MARIO</span></div></div>'+N(3)
     +'<div class="card-inner hl-both" style="margin-top:8px"><div style="display:flex;align-items:center;gap:6px"><span class="inner-num">#212</span><span class="inner-name">BIANCHI LUCA</span></div></div>'+N(4)));
   h.push(ex([
-    'Nella scheda del pilota (matita “modifica” in Piloti): tocca per accendere o spegnere. <b>Acceso</b> = pieno colorato con la spunta; spento = grigio.',
+    'Nella scheda del pilota (matita “modifica” in Piloti): tocca per accendere o spegnere: si salva subito. <b>Acceso</b> = pieno colorato con la spunta; spento = grigio.',
     'Nel Programma, accanto al numero: <span class="hl-badge hl-foto hl-mini"><i class="ic ic-hl-foto"></i></span> foto · <span class="hl-badge hl-video hl-mini"><i class="ic ic-hl-video"></i></span> video · <span class="hl-badge hl-priority hl-mini"><i class="ic ic-hl-prio"></i></span> priorità.',
-    'Barra a sinistra della scheda del pilota: <b style="color:#38bdf8">azzurra</b> = foto, <b style="color:#c084fc">viola</b> = video. Priorità = <b>cornice dorata</b> (lo stesso giallo delle note) ovunque: Programma, Live, Piloti, Pista.',
-    'Foto <b>e</b> video: barra doppia azzurra e viola.'
+    'Barra a sinistra della scheda del pilota: <b style="color:#38bdf8">azzurra</b> = foto, <b style="color:#ec4899">magenta</b> = video. Priorità = <b>cornice dorata</b> (lo stesso giallo delle note) ovunque: Programma, Live, Piloti, Pista.',
+    'Foto <b>e</b> video: barra doppia azzurra e magenta.'
   ]));
   h.push(sec('PILOTI, TEAM, ENTRY LIST','<b>PILOTI</b> e <b>ENTRY</b>; i team si seguono in Impostazioni → <b>TEAM NEL PROGRAMMA</b>'));
   h.push('<div class="lg-row"><div><span class="tchip" style="--tc:#38bdf8">TEAM</span></div><div>Pilota di un <b>team che segui</b>: bordo luminoso del colore del team (colori in Impostazioni)</div></div>');
@@ -4919,18 +4919,24 @@ function openEditPilot(num){
     +'<div class="form-group"><label class="form-label">Serie (1/2/3)</label>'
     +'<select class="form-select" id="ef-serie"><option value=""'+(!p.serie?' selected':'')+'>—</option>'+['1','2','3'].map(g=>'<option'+(p.serie===g?' selected':'')+'>'+g+'</option>').join('')+'</select></div>'
     +'<div class="form-group"><label class="form-label">Evidenzia pilota</label>'
-    +'<div style="font-size:10px;color:var(--text4);margin-bottom:8px">Puoi selezionare più opzioni</div>'
-    +'<div class="hl-picker" id="ef-hl-picker">'
-    +'<button type="button" class="hl-option hl-foto'+(hl.indexOf("foto")>=0?' active':'')+'" data-hl="foto" aria-pressed="'+(hl.indexOf("foto")>=0)+'" onclick="toggleHL(this)"><i class="ic ic-hl-foto"></i><span>FOTO</span></button>'
-    +'<button type="button" class="hl-option hl-video'+(hl.indexOf("video")>=0?' active':'')+'" data-hl="video" aria-pressed="'+(hl.indexOf("video")>=0)+'" onclick="toggleHL(this)"><i class="ic ic-hl-video"></i><span>VIDEO</span></button>'
-    +'<button type="button" class="hl-option hl-priority'+(hl.indexOf("priority")>=0?' active':'')+'" data-hl="priority" aria-pressed="'+(hl.indexOf("priority")>=0)+'" onclick="toggleHL(this)"><i class="ic ic-hl-prio"></i><span>PRIORITÀ</span></button>'
+    +'<div style="font-size:10px;color:var(--text4);margin-bottom:8px">Puoi selezionare più opzioni · si salva subito, senza SALVA</div>'
+    +'<div id="ef-hl-saved" style="font-size:11px;font-weight:800;color:#4fd69c;opacity:0;transition:opacity .3s;height:14px"></div>'+'<div class="hl-picker" id="ef-hl-picker">'
+    +'<button type="button" class="hl-option hl-foto'+(hl.indexOf("foto")>=0?' active':'')+'" data-hl="foto" aria-pressed="'+(hl.indexOf("foto")>=0)+'" onclick="toggleHL(this,\''+p.num+'\')"><i class="ic ic-hl-foto"></i><span>FOTO</span></button>'
+    +'<button type="button" class="hl-option hl-video'+(hl.indexOf("video")>=0?' active':'')+'" data-hl="video" aria-pressed="'+(hl.indexOf("video")>=0)+'" onclick="toggleHL(this,\''+p.num+'\')"><i class="ic ic-hl-video"></i><span>VIDEO</span></button>'
+    +'<button type="button" class="hl-option hl-priority'+(hl.indexOf("priority")>=0?' active':'')+'" data-hl="priority" aria-pressed="'+(hl.indexOf("priority")>=0)+'" onclick="toggleHL(this,\''+p.num+'\')"><i class="ic ic-hl-prio"></i><span>PRIORITÀ</span></button>'
     +'</div></div>'
     +'<button class="form-submit" onclick="updatePilot(\''+num+'\')">SALVA</button>'
     +'<button class="form-delete" onclick="deletePilot(\''+num+'\')">Elimina pilota</button>');
 }
 window.openEditPilot=openEditPilot;
 
-function toggleHL(btn){const on=btn.classList.toggle('active');btn.setAttribute('aria-pressed',on);try{if(navigator.vibrate)navigator.vibrate(15);}catch(e){}}
+/* 15/11/2026 (Andrea): FOTO/VIDEO/PRIORITA' si salvano subito al tocco, senza premere SALVA */
+function toggleHL(btn,num){const on=btn.classList.toggle('active');btn.setAttribute('aria-pressed',on);try{if(navigator.vibrate)navigator.vibrate(15);}catch(e){}
+  if(num===undefined)return;const p=pilots.find(x=>String(x.num)===String(num));if(!p)return;
+  const h=[];document.querySelectorAll('#ef-hl-picker .hl-option.active').forEach(b=>{const v=b.getAttribute('data-hl');if(v)h.push(v);});
+  p.highlight=h;saveAll();
+  const lb=document.getElementById('ef-hl-saved');if(lb){lb.textContent='Salvato';lb.style.opacity=1;clearTimeout(lb._t);lb._t=setTimeout(()=>{lb.style.opacity=0;},1500);}
+  try{renderAll();}catch(e){}}
 /* 15/11/2026 (Andrea): classe di evidenziazione del pilota (foto/video/entrambi) + priorita' */
 function hlOfNum(no){const p=pilots.find(q=>String(q.num)===String(no));return p?hlClassOf(p.highlight):'';}
 function hlClassOf(hl){hl=Array.isArray(hl)?hl:[];const f=hl.indexOf('foto')>=0,v=hl.indexOf('video')>=0;return(f&&v?'hl-both':f?'hl-foto':v?'hl-video':'')+(hl.indexOf('priority')>=0?' hl-prio':'');}
