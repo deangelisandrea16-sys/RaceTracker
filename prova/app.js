@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1900';
+var RT_JS_BUILD='2026-11-15-1905';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -4004,7 +4004,7 @@ const NOTIF_GUIDE={
   qualifiche:{closed:true,ex:[['🏆 POLE qualifiche OKN: #404 ROSSI MARIO','Classifica combinata S1+S2 · PROVVISORIO, verifica reclami']],when:'Un tuo pilota fa la pole o entra nei primi 3 in qualifica.'},
   finali:{closed:true,ex:[['🏁 FINALE P2 OKN Final: #404 ROSSI MARIO','PROVVISORIO da live timing, verifica reclami']],when:'Un tuo pilota chiude la finale nei primi 5: subito a fine gara, poi la conferma ufficiale.'},
   eliminati:{closed:true,ex:[['⚠️ Rischio finale OK-NJ','2 a rischio, 1 fuori zona finale · apri l\'app']],when:'Tuoi piloti a rischio di non entrare in finale, o risultati eliminati.'},
-  prefinali:{closed:true,ex:[['✅ Alle prefinali · OKN','3 tuoi piloti passano · apri l\'app'],['❌ Eliminati · OKN','#250 eliminato, non passa · apri l\'app'],['🏁 Finale OKN adesso disponibile','2 tuoi piloti in finale · apri l\'app']],when:'Escono le liste di prefinale e finale: chi passa, chi è eliminato, e quando la finale è disponibile.'},
+  prefinali:{closed:true,ex:[['✅ Prefinali uscite · OKN','3 tuoi passano · nessun tuo eliminato · apri l\'app'],['🏁 Finale OKN adesso disponibile','2 tuoi in finale · #250 eliminato · apri l\'app']],when:'Escono le liste di prefinale e finale: un solo avviso con quanti passano e se ci sono tuoi eliminati.'},
   riepilogo:{closed:true,ex:[['🌙 Domani (domenica): 6 piloti in pista','Prima uscita 8.30 · orari nell\'app']],when:'La sera prima di ogni giorno di gara.'},
   entrylist:{closed:true,ex:[['📋 Entry list OKN cambiata','#404 non più iscritto · apri l\'app']],when:'Cambia la lista iscritti per i tuoi piloti o team.'},
   ritiri:{closed:true,ex:[['#404 ROSSI MARIO USCITO','OKN · Prefinal A']],when:'Un tuo pilota esce in gara, rientra ai box o si ferma in pista.'},
