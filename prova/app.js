@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1350';
+var RT_JS_BUILD='2026-11-15-1400';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1894,12 +1894,12 @@ function openRaceSettings(raceId){
     +'<input class="form-input" id="rs-end" type="date" value="'+(r.endDate||'')+'"></div></div>'
     /* 14/11/2026: orari delle premiazioni dal programma ufficiale (servono al server per gli avvisi pole/podio e al Programma) */
     /* 14/11/2026: percorso dei risultati Apex della gara (serve al server multi-gara per seguirla da solo) */
-    +'<div class="form-group"><label class="form-label">Risultati Apex (link o percorso)</label>'
+    +'<div class="form-group"><label class="form-label">Risultati ufficiali (link o percorso)</label>'
     +'<input class="form-input" id="rs-apex" placeholder="https://www.apex-timing.com/goracing/results.php?path=/…" value="'+(r.apexPath||'')+'">'
     +'<div style="font-size:11px;color:var(--text4);margin-top:4px">Con questo il server segue la gara da solo: entry list, gruppi, arrivi, live.</div></div>'
     +'<div class="form-group"><label class="form-label">Pagina con i PDF dell\'entry list (facoltativo)</label>'
     +'<input class="form-input" id="rs-elpage" placeholder="https://… (pagina con i PDF Entry List)" value="'+(r.entryListPage||'')+'">'
-    +'<div style="font-size:11px;color:var(--text4);margin-top:4px">Prima che Apex abbia i piloti, il server legge i PDF (anche scansionati): piloti segnati DA CONFERMARE.</div></div>'
+    +'<div style="font-size:11px;color:var(--text4);margin-top:4px">Prima che i risultati ufficiali abbiano i piloti, l\'app legge i PDF (anche scansionati): piloti segnati DA CONFERMARE.</div></div>'
     +'<div class="form-group"><label class="form-label">Premiazione poleman (se nel programma)</label>'
     +'<input class="form-input" id="rs-aw-pole" type="datetime-local" value="'+(((r.awards||{}).pole)||'')+'"></div>'
     +'<div class="form-group"><label class="form-label">Premiazione finali</label>'
@@ -2079,7 +2079,7 @@ function saveRaceSettings(raceId){
   const apx=((document.getElementById('rs-apex')||{}).value||'').trim();
   let apxPath='';try{apxPath=/^https?:/i.test(apx)?(new URL(apx).searchParams.get('path')||''):apx;}catch(e){apxPath='';}
   apxPath=decodeURIComponent(apxPath||'').trim();if(apxPath&&!apxPath.startsWith('/'))apxPath='/'+apxPath;
-  if(apx&&!/^\/[a-z0-9\-_]+\/\d{4}\/[^\s]+$/i.test(apxPath)){alert('Link dei risultati Apex non valido');return;}
+  if(apx&&!/^\/[a-z0-9\-_]+\/\d{4}\/[^\s]+$/i.test(apxPath)){alert('Link dei risultati ufficiali non valido');return;}
   u['races_index/'+raceId+'/apexPath']=apxPath||null;
   const elp=((document.getElementById('rs-elpage')||{}).value||'').trim();
   if(elp&&!/^https:\/\//i.test(elp)){alert('La pagina entry list deve iniziare con https://');return;}
@@ -2371,7 +2371,7 @@ function gridBadge(num,slot){
     return'<span title="Uscito: posizione in classifica" style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:900;color:#fff;background:#dc2626;border-radius:5px;padding:1px 7px;flex-shrink:0">✕'+(/^\d+$/.test(String(r))?' '+r+'°':/DSQ|SQ/i.test(String(r))?' SQ':'')+'</span>';
   if(r!==undefined&&r!==null&&r!==''&&slotHasRun(slot)){const t=/^\d+$/.test(String(r))?String(r)+'°':String(r).toUpperCase();
     const rs=resStatusOf(e.cat,k),uff=!!(rs&&rs.st==='ufficiale'),cor=!!(rs&&rs.corr);
-    const tip=(uff?'Arrivo ufficiale (Apex)':'Arrivo provvisorio'+(rs?' (Apex)':' (dal live)'))+(cor?' · corretto dopo la pubblicazione':'');
+    const tip=(uff?'Arrivo ufficiale':'Arrivo provvisorio'+(rs?' (classifica non ancora ufficiale)':' (dal live)'))+(cor?' · corretto dopo la pubblicazione':'');
     const sty=uff?'color:#0d0d0f;background:#4fd69c;border:1px solid #4fd69c':'color:#4fd69c;background:transparent;border:1px dashed #4fd69c';
     return'<span title="'+tip+'" style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:700;'+sty+';border-radius:5px;padding:0 6px;flex-shrink:0"><i class="ic ic-flag"></i> '+t+(cor?' <span style="color:#facc15">●</span>':'')+'</span>';}
   const n=gridPos(num,slot);
@@ -3007,7 +3007,7 @@ function renderEntryList(){
         +'<span class="entry-num" style="'+(isMine?'color:#22c55e':'')+'">#'+p.num+'</span>'
         +'<div style="flex:1;min-width:0">'
         +'<div class="entry-name">'+(p.lastName||'')+' '+(p.firstName||'')+(isMine?' <span style="font-size:9px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i> TUO</span>':'')+'</div>'
-        +'<div class="entry-team">'+( p.team||'')+(p.source==='ocr'?' <span title="Letto dal PDF scansionato: verra\' sostituito dai dati Apex" style="font-size:9px;font-weight:800;color:#facc15;border:1px dashed #facc15;border-radius:4px;padding:0 5px">DA CONFERMARE</span>':'')+'</div>'+noteLine(p.num)+'</div>'
+        +'<div class="entry-team">'+( p.team||'')+(p.source==='ocr'?' <span title="Letto dal PDF scansionato: verra\' sostituito dai dati ufficiali" style="font-size:9px;font-weight:800;color:#facc15;border:1px dashed #facc15;border-radius:4px;padding:0 5px">DA CONFERMARE</span>':'')+'</div>'+noteLine(p.num)+'</div>'
         +'<div class="entry-badges">'
         +'<span style="font-size:9px;font-weight:700;color:var(--text4);padding:2px 6px;border:1px solid var(--border);border-radius:4px">'+( p.parity||autoParity(p.num))+'</span>'
         +(p.group?'<span style="font-size:9px;font-weight:900;color:#60a5fa;padding:2px 6px;border:1px solid #60a5fa;border-radius:4px">GRP '+p.group+'</span>':'')
@@ -3431,7 +3431,8 @@ function updateProgTicker(slotsArr,currentIdx){
     if(!mine.length)continue;
     const pr=sl.time.split('.');const slM=parseInt(pr[0])*60+parseInt(pr[1]);
     const mins=slM-nowM;
-    const when=mins<=0?'a breve':(mins>=60?Math.floor(mins/60)+'h'+(mins%60):mins+'min');
+    // 15/11 (Andrea): e' il tempo che manca alla partenza, non la durata: "tra 7 min"
+    const when=mins<=0?'a breve':'tra '+(mins>=60?Math.floor(mins/60)+'h '+String(mins%60).padStart(2,'0'):mins+' min');
     items.push('<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;margin-right:8px;background:var(--bg3);border:1px solid var(--border2);border-left:3px solid var(--amber);border-radius:20px;font-size:11px;white-space:nowrap">'
       +'<b style="color:var(--amber);font-weight:900">'+sl.time+'</b>'
       +'<span style="color:var(--text3);font-weight:700">'+(sl.label||sl.cat)+'</span>'
@@ -3442,6 +3443,9 @@ function updateProgTicker(slotsArr,currentIdx){
   if(!items.length){wrap.style.display='none';if(_tickTimer){clearInterval(_tickTimer);_tickTimer=null;}return;}
   wrap.style.display='block';
   const h=items.join('');
+  // 15/11 (Andrea): duplicato solo se serve lo scorrimento (altrimenti lo stesso turno compariva due volte)
+  tick.innerHTML=h;
+  if(tick.scrollWidth<=tick.clientWidth+4){if(_tickTimer){clearInterval(_tickTimer);_tickTimer=null;}tick.scrollLeft=0;return;}
   tick.innerHTML=h+h;
   if(!tick._bound){
     tick.addEventListener('touchstart',function(){_tickPaused=true;},{passive:true});
@@ -3746,7 +3750,7 @@ function openLegend(){
   // PRIMI PASSI
   h.push(chap('PRIMI PASSI'));
   h.push(sec('A COSA SERVE L\'APP'));
-  h.push(p_('Race Tracker ti dice <b>dove sono i tuoi piloti</b> durante il weekend di gara: quando girano, in che posizione partono, come arrivano, se passano o sono eliminati. I dati arrivano da soli dal programma ufficiale, dalle classifiche Apex e dal live timing: tu scegli solo <b>chi seguire</b>.'));
+  h.push(p_('Race Tracker ti dice <b>dove sono i tuoi piloti</b> durante il weekend di gara: quando girano, in che posizione partono, come arrivano, se passano o sono eliminati. I dati arrivano da soli dal programma ufficiale, dalle classifiche ufficiali e dal live timing: tu scegli solo <b>chi seguire</b>.'));
   h.push(sec('MENU IN BASSO','sempre visibile in fondo allo schermo'));
   h.push(shot('<div style="display:flex;justify-content:space-around;font-size:10px;font-weight:800;color:var(--text3);text-align:center"><div><i class="ic ic-flag"></i><br>GARE</div>'+N(1)+'<div><i class="ic ic-user"></i><br>PILOTI</div>'+N(2)+'<div style="color:var(--accent)"><i class="ic ic-list"></i><br>PROGRAMMA</div>'+N(3)+'<div><i class="ic ic-list"></i><br>ENTRY</div>'+N(4)+'<div><i class="ic ic-trophy"></i><br>GARA</div>'+N(5)+'<div><i class="ic ic-flag"></i><br>LIVE</div>'+N(6)+'</div>'));
   h.push(ex([
@@ -3861,7 +3865,7 @@ function openLegend(){
   ]));
   h.push(sec('PILOTI, TEAM, ENTRY LIST','<b>PILOTI</b> e <b>ENTRY</b>; i team si seguono in Impostazioni → <b>TEAM NEL PROGRAMMA</b>'));
   h.push('<div class="lg-row"><div><span class="tchip" style="--tc:#38bdf8">TEAM</span></div><div>Pilota di un <b>team che segui</b>: bordo luminoso del colore del team (colori in Impostazioni)</div></div>');
-  h.push('<div class="lg-row"><div><span style="font-size:9px;font-weight:800;color:#facc15;border:1px dashed #facc15;border-radius:4px;padding:0 5px">DA CONFERMARE</span></div><div>Pilota letto da un PDF scansionato: sarà sostituito dai dati ufficiali Apex</div></div>');
+  h.push('<div class="lg-row"><div><span style="font-size:9px;font-weight:800;color:#facc15;border:1px dashed #facc15;border-radius:4px;padding:0 5px">DA CONFERMARE</span></div><div>Pilota letto da un PDF scansionato: sarà sostituito dai dati ufficiali</div></div>');
   h.push('<div class="lg-row"><div><span style="color:#ef4444;font-size:10px;font-weight:800">ELIMINATO</span></div><div>Pilota fuori dalla gara: finisce in fondo al Programma, in "Ritirati / Eliminati"</div></div>');
 
   // FILTRI
@@ -3915,7 +3919,7 @@ function openLegend(){
   h.push(sec('BARRA “SERVER NOTIFICHE FERMO”'));
   h.push(p_('Compare solo se il server non risponde da più di un minuto. L\'app continua a funzionare; possono mancare le notifiche ad app chiusa. Se resta per molti minuti avvisa chi gestisce l\'app.'));
   h.push(sec('UN DATO È SBAGLIATO'));
-  h.push(p_('I dati ufficiali (griglie, arrivi, finalisti) vengono da Apex e si correggono da soli quando gli organizzatori pubblicano le correzioni: in quel caso arriva la notifica “Classifica corretta”. Le tue note e i lavori li modifichi tu.'));
+  h.push(p_('I dati ufficiali (griglie, arrivi, finalisti) arrivano dalle classifiche ufficiali e si correggono da soli quando gli organizzatori pubblicano le correzioni: in quel caso arriva la notifica “Classifica corretta”. Le tue note e i lavori li modifichi tu.'));
   h.push('</div>');
 
   const tocH='<div class="gd-toc">'+toc.map(([n,t])=>n?'<a href="#" onclick="guideGo('+n+');return false">'+t+'</a>':'<div class="gd-toc-c">'+t+'</div>').join('')+'</div>';
@@ -3944,8 +3948,8 @@ const NOTIF_GUIDE={
   partenza:{closed:true,ex:[['PARTITA OKN · Prefinal A','alle 11.20 · in pista: #404, #212']],when:'Parte una sessione con tuoi piloti in pista.'},
   prossima:{closed:false,ex:[['Tra 10 min: OKN Prefinal A','ore 11.20 · #404 ROSSI MARIO']],when:'Un tuo pilota sta per entrare in pista tra circa 10 minuti.'},
   ritardo:{closed:false,ex:[['Ritardo ora +15 min','prima +10 min']],when:'Il ritardo della giornata cambia di 5 minuti o più.'},
-  correzioni:{closed:true,ex:[['Classifica corretta: OKN Prefinal A','#404 P3→P5 · fonte Apex']],when:'Una classifica già pubblicata viene corretta (reclami, penalità) e cambia la posizione di un tuo pilota.'},
-  comunicati:{closed:true,ex:[['Nuovo documento ufficiale','Comunicato n. 12 · Apex']],when:'Gli organizzatori pubblicano un nuovo comunicato o documento ufficiale.'},
+  correzioni:{closed:true,ex:[['Classifica corretta: OKN Prefinal A','#404 P3→P5 · apri l\'app']],when:'Una classifica già pubblicata viene corretta (reclami, penalità) e cambia la posizione di un tuo pilota.'},
+  comunicati:{closed:true,ex:[['Nuovo documento ufficiale','Comunicato n. 12']],when:'Gli organizzatori pubblicano un nuovo comunicato o documento ufficiale.'},
   promozioni:{closed:true,ex:[['Podio Finale: #404 ROSSI MARIO P3 (OKN)','Era P4, dopo le verifiche è P3']],when:'Dopo le verifiche un tuo pilota sale in pole o sul podio della finale.'}
 };
 function renderSettings(){
@@ -4644,7 +4648,7 @@ function renderLtMyTable(){
   box.style.display='';if(wrap)wrap.style.display='none';
   if(activeTab!=='livetiming')return;
   const rows=[...apexGrid.querySelectorAll('tr[data-id]')].filter(r=>r.getAttribute('data-id')!=='r0');
-  if(!rows.length){box.innerHTML='<div class="empty-state"><p>'+(apexWsKey?'In attesa dei dati live di Apex…':'Live timing Apex non disponibile per questa gara')+'</p></div>';return;}
+  if(!rows.length){box.innerHTML='<div class="empty-state"><p>'+(apexWsKey?'In attesa dei dati live…':'Live timing non disponibile per questa gara')+'</p></div>';return;}
   const txt=(r,c)=>{const el=r.querySelector('[data-id="'+r.getAttribute('data-id')+'c'+c+'"]');return el?el.textContent.trim():'';};
   const cls=(r,c)=>{const el=r.querySelector('[data-id="'+r.getAttribute('data-id')+'c'+c+'"]');return el?el.className:'';};
   // colonne dall'intestazione (data-type), con ripiego sugli indici standard
@@ -4792,7 +4796,7 @@ function renderApexDelay(){
   const m=apexMatchSlot();
   box.style.display='';
   const head='<div style="font-size:11px;font-weight:800;color:var(--text3);padding:8px 10px;border:1px solid var(--border2);border-radius:10px;background:var(--bg2)">'
-    +'<i class="ic ic-signal"></i> APEX: '+apexState.cat+' · '+apexState.sess+(apexState.start?' · partita '+apexState.start:'')
+    +'<i class="ic ic-signal"></i> LIVE: '+apexState.cat+' · '+apexState.sess+(apexState.start?' · partita '+apexState.start:'')
     +(apexState.red?'<div style="color:#f87171;margin-top:4px"><i class="ic ic-redflag"></i> Bandiera rossa alle '+apexState.red+': le prossime sessioni probabilmente slittano</div>':'');
   if(!m||m.delay===null){box.innerHTML=head+'<div style="color:var(--text4);margin-top:4px">'+(m?'In attesa della partenza':'Sessione non trovata nel programma di oggi')+'</div></div>';return;}
   const d=m.delay;const lbl=(d>0?'+':'')+d+' min';

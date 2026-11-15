@@ -207,7 +207,7 @@ var t=q('meta[name="apple-mobile-web-app-title"]');if(t)t.content='RT Prova';})(
         <div class="adv-cat-grid" id="p-cat-grid"></div>
       </div>
     </div>
-    <div id="pilots-list"><div class="loading">Connessione a Firebase...</div></div>
+    <div id="pilots-list"><div class="loading">Caricamento...</div></div>
     <div id="pilots-search-results" style="display:none"></div>
   </div>
   <button class="fab-top" id="fab-top-piloti" style="bottom:calc(var(--tab-h) + var(--safe-b) + 16px)" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
@@ -284,7 +284,7 @@ var t=q('meta[name="apple-mobile-web-app-title"]');if(t)t.content='RT Prova';})(
     <div id="lt-mynums" style="display:none;margin-bottom:8px"></div>
     <div class="pv-switch" style="margin-bottom:8px">
       <button class="pv-btn" id="ltv-mia" onclick="setLtView('mia')"><i class="ic ic-star"></i> MIA CLASSIFICA</button>
-      <button class="pv-btn" id="ltv-apex" onclick="setLtView('apex')">APEX ORIGINALE</button>
+      <button class="pv-btn" id="ltv-apex" onclick="setLtView('apex')">ORIGINALE</button>
     </div>
     <button class="lt-full-btn" onclick="openLtFull()"><i class="ic ic-eye"></i> CLASSIFICA A SCHERMO INTERO</button>
     <div id="lt-mytable" style="display:none"></div>
@@ -309,7 +309,7 @@ var t=q('meta[name="apple-mobile-web-app-title"]');if(t)t.content='RT Prova';})(
 <!-- TAB DEBUG -->
 <div id="tab-debug" class="tab-content" style="display:none">
   <div class="content">
-    <div style="font-size:14px;font-weight:900;margin-bottom:12px"><i class="ic ic-wrench"></i> FIREBASE DEBUG</div>
+    <div style="font-size:14px;font-weight:900;margin-bottom:12px"><i class="ic ic-wrench"></i> DIAGNOSTICA</div>
     <button class="mgmt-btn" onclick="runFirebaseTest()" style="border-color:#60a5fa;color:#60a5fa"><i class="ic ic-refresh"></i> ESEGUI TEST</button>
     <div id="debug-logs" style="max-height:60vh;overflow-y:auto"></div>
   </div>
@@ -321,7 +321,7 @@ var t=q('meta[name="apple-mobile-web-app-title"]');if(t)t.content='RT Prova';})(
 
 <script src="vendor/firebase-app-compat.js"></script>
 <script src="vendor/firebase-database-compat.js"></script>
-<script>const APP_BUILD='2026-11-15-1350';</script>
+<script>const APP_BUILD='2026-11-15-1400';</script>
 <script src="prova/app.js"></script>
 <script>/* file dello script vecchio rimasto in cache: lo riscarica una volta e ricarica la pagina */
 if(window.RT_JS_BUILD!==APP_BUILD){try{if(sessionStorage.getItem('rt_jsfix')!==APP_BUILD){sessionStorage.setItem('rt_jsfix',APP_BUILD);Promise.all(['prova/app.js','prova/app.css'].map(function(u){return fetch(u,{cache:'reload'});})).then(function(){location.reload();});}}catch(e){}}</script>
