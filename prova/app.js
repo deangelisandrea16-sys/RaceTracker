@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1635';
+var RT_JS_BUILD='2026-11-15-1645';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -860,9 +860,10 @@ function watchConnection(){
   try{onValue(ref(db,'.info/connected'),snap=>{
     clearTimeout(_rtOfflineTimer);
     if(snap.val()===true){showOfflineBanner(false);if(initialized)setSyncStatus('ok');}
-    else _rtOfflineTimer=setTimeout(()=>{showOfflineBanner(true);setSyncStatus('err');},4000);
+    // 15/11 (Andrea): la barra compare solo se la connessione manca da 30 secondi (all'apertura la connessione impiega qualche secondo)
+    else _rtOfflineTimer=setTimeout(()=>{showOfflineBanner(true);setSyncStatus('err');},30000);
   });}catch(e){}
-  window.addEventListener('offline',()=>{showOfflineBanner(true);setSyncStatus('err');});
+  window.addEventListener('offline',()=>{clearTimeout(_rtOfflineTimer);_rtOfflineTimer=setTimeout(()=>{if(!navigator.onLine){showOfflineBanner(true);setSyncStatus('err');}},30000);});
 }
 
 // ── Barra di stato: ora, ritardo condiviso, connessione ──
@@ -4068,12 +4069,12 @@ function renderServerBanner(){
   /* 15/11 (Andrea): l'avviso compare solo se il problema dura piu' di 1 minuto (all'apertura il dato puo' essere vecchio di qualche secondo) */
   if(!stale){_srvBadSince=0;if(b)b.remove();return;}
   if(!_srvBadSince)_srvBadSince=Date.now();
-  if(Date.now()-_srvBadSince<60000){if(b)b.remove();return;}
+  if(Date.now()-_srvBadSince<30000){if(b)b.remove();return;}
   if(!b){b=document.createElement('div');b.id='srv-banner';b.style.cssText='position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:9999;background:#b3261e;color:#fff;border-radius:10px;padding:10px 12px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.4)';document.body.appendChild(b);}
   const min=serverStat&&serverStat.at?Math.round((Date.now()-serverStat.at)/60000):null;
   b.textContent='Server notifiche fermo'+(min!==null?' da '+min+' min':'')+(serverStat&&serverStat.watcher===false?' (live non attivo)':'')+': le notifiche push non partono.';
 }
-setTimeout(()=>{if(currentUserId!==SERVER_OWNER)return;try{onValue(ref(db,'serverStatus/pc'),s=>{serverStat=s.val()||false;renderServerBanner();});}catch(e){}setInterval(renderServerBanner,15000);},5000);
+setTimeout(()=>{if(currentUserId!==SERVER_OWNER)return;try{onValue(ref(db,'serverStatus/pc'),s=>{serverStat=s.val()||false;renderServerBanner();});}catch(e){}setInterval(renderServerBanner,5000);},5000);
 function rtAlert(id,title,sub,kind){
   if(!notifOn(id))return;
   const log=alertLog();if(log.some(a=>a.id===id))return;
