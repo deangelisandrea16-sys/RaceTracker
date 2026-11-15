@@ -748,7 +748,8 @@ body.light{--hl-foto:#0284c7;--hl-video:#db2777;--hl-prio:#ca8a04}
 .sp-track{fill:none;stroke:#cfd3da;stroke-linejoin:round;stroke-linecap:round}
 .sp-track-edge{fill:none;stroke:#2b2f36;stroke-linejoin:round;stroke-linecap:round}
 body.light .sp-track{stroke:#5b6170}body.light .sp-track-edge{stroke:#c9ccd3}
-.sp-dots .sp-dot{width:40px;height:40px;font-size:14px}
+.sp-dots .sp-dot{width:28px;height:28px;font-size:11px;border-width:2px}
+.sp-dots .sp-dot em{top:28px;font-size:9px}
 .sp-tools{display:flex;gap:6px;margin-top:8px}.sp-tools .sp-btn{min-height:44px;font-size:18px}
 
 .sp-track-shadow{fill:none;stroke:transparent;stroke-linejoin:round}
