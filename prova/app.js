@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1700';
+var RT_JS_BUILD='2026-11-15-1705';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -930,7 +930,7 @@ function listenRaceData(raceId){
   _rtBaseShared={};_rtBaseUser={};
   const sharedRef=ref(db,'races/'+raceId);
   const userRef=ref(db,'races/'+raceId+'/users/'+currentUserId);
-  let sharedData={};let userData={};let sharedReady=false;let userReady=false;
+  let sharedData={};let userData={};let sharedReady=false;let userReady=false;let userLive=false;
   // Modalità senza rete: ultima copia dei dati salvata sul dispositivo, mostrata subito e poi sostituita dai dati live
   window._rtLiveSeen=false;window._rtSnapAt=0;
   const snapKey='rt_snap_'+raceId+'_'+currentUserId;
@@ -981,6 +981,8 @@ function listenRaceData(raceId){
       if(notes[p.num]===undefined)notes[p.num]='';
     });
     if(!activeDay||!currentDays.includes(activeDay)) activeDay=currentDays[0]||'';
+    // salvataggi ammessi solo ora: dati locali allineati a quelli appena arrivati dal server
+    if(userLive)_rtUserLiveKey=raceId+'|'+currentUserId;
     setSyncStatus('ok');
     initialized=true;
     // 15/11: con la mappa dei punti aperta non ridisegna tutta l'app a ogni tocco (lentezza): lo fa alla chiusura
@@ -995,7 +997,7 @@ function listenRaceData(raceId){
   },err=>{setSyncStatus('err');dlog('❌ shared data: '+err.message,'err');});
 
   const unsub2=onValue(userRef,snap=>{
-    userData=snap.val()||{};saveSnap();rtSetBase(null,userData);_rtUserLiveKey=raceId+'|'+currentUserId;
+    userData=snap.val()||{};saveSnap();rtSetBase(null,userData);userLive=true;
     dlog('Dati utente ['+currentUserId+']: pilots='+Object.keys(userData.pilots||{}).length,'ok');
     userReady=true;
     mergeAndRender();
