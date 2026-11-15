@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1830';
+var RT_JS_BUILD='2026-11-15-1840';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3360,13 +3360,19 @@ function renderSchedule(){
         +(slotDurText(f)?'<div class="final-row"><span>Durata</span><span class="final-time">'+slotDurText(f)+'</span></div>':'');
       if(!ps.length)html+='<div style="font-size:12px;color:var(--text4);padding:8px 2px 2px">Nessun tuo pilota in questa finale</div>';
       else if(_poss)html+='<div class="final-poss"><i class="ic ic-wait"></i> Possibili finalisti · lista ufficiale non ancora uscita</div>';
+      // 15/11/2026 (Andrea): anche nelle finali riquadro del team e cornici foto/video/priorita', come nei turni
+      const _fhl=teamViewMode()!=='cards';const _fItems=[];
       ps.forEach(p=>{
-        html+='<div class="card-inner'+(_poss?' final-maybe':'')+'" style="margin-top:8px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
+        const _ft=_fhl?followedTeamOf(p.num,p.team):null;const _sc=hlClassOf(p.highlight||[]);
+        let html='';
+        html+='<div class="card-inner'+(_poss?' final-maybe':'')+(_sc?' '+_sc:'')+(_ft?' tglow':'')+'" style="margin-top:8px'+(_ft?';--tc:'+teamColor(_ft.key):'')+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
           +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,{type:'final'})+'<span class="inner-name">'+p.name+'</span>'+(p.eliminated?'':runChip(p.num,1e6))
           +'<span class="inner-team-big">'+p.team+'</span>'+noteBtn(p.num)+'</div>'
           +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+spotPill(p.num)+'</div>'
           +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>';
+        _fItems.push({num:p.num,key:_ft?_ft.key:null,html});
       });
+      html+=groupSlotItems(_fItems,true);
       html+='</div>';
     });
   }
@@ -4061,8 +4067,8 @@ function teamsWaitingHtml(slot){
 }
 /* 15/11/2026 (Andrea): 2 o piu' piloti dello stesso team seguito nello stesso turno = un riquadro unico in alto, senza linee in mezzo.
    Tutto il resto in ordine di numero. */
-function groupSlotItems(items){
-  const byNum=(a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0);
+function groupSlotItems(items,keepOrder){
+  const byNum=keepOrder?(()=>0):(a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0);
   const cnt={};items.forEach(x=>{if(x.key)cnt[x.key]=(cnt[x.key]||0)+1;});
   // 15/11/2026 (Andrea): stile unico per tutti i piloti dei team seguiti: riquadro arrotondato con nome team, anche se e' uno solo
   const gk=teams.map(t=>t.key).filter(k=>cnt[k]>=1);
