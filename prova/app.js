@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1200';
+var RT_JS_BUILD='2026-11-15-1210';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3077,11 +3077,14 @@ function applySharedDelay(d,auto){
   else if(changed&&typeof renderApexDelay==='function')renderApexDelay();
   applyDelayPerms();
 }
+/* 15/11/2026 (Andrea): con il live timing collegato il ritardo e' automatico: niente comandi manuali.
+   I comandi (-5, +5, 0, modifica) compaiono solo se il live non e' disponibile. */
+function delayManualOn(){return isDelayAdmin()&&!apexWsKey;}
 function applyDelayPerms(){
-  const adm=isDelayAdmin();
-  document.querySelectorAll('[onclick^="setDelay("]').forEach(b=>{b.style.display=adm?'':'none';});
+  const man=delayManualOn();
+  document.querySelectorAll('[onclick^="setDelay("]').forEach(b=>{if(!b.closest('#apex-delay-box'))b.style.display=man?'':'none';});
   const dd=document.getElementById('delay-display');
-  if(dd){dd.style.pointerEvents=adm?'':'none';}
+  if(dd){dd.style.pointerEvents=man?'':'none';dd.style.borderColor=man?'':'transparent';}
 }
 window.applyDelayPerms=applyDelayPerms;
 function setDelay(d,fromAuto){
@@ -4638,6 +4641,7 @@ function apexMatchFor(catTxt,sessTxt,startTxt){
   return{slot,delay:st-slotMins(slot.time)};
 }
 function renderApexDelay(){
+  try{applyDelayPerms();}catch(e){}
   const box=document.getElementById('apex-delay-box');if(!box)return;
   if(!apexWsKey||!apexState.sess){box.style.display='none';return;}
   const m=apexMatchSlot();
@@ -4656,7 +4660,7 @@ function renderApexDelay(){
     +(jump&&!same?'<div style="width:100%;color:#fbbf24;font-weight:800"><i class="ic ic-wait"></i> Salto di '+Math.abs(d-(scheduleDelay||0))+' min: sessione ripetuta o fuori programma? Non applicato in automatico</div>':'')
     +'<span>Previsto '+m.slot.time+' → <b style="color:'+(d>0?'#f87171':d<0?'#60a5fa':'#4ade80')+'">'+(d===0?'in orario':lbl)+'</b></span>'
     +(same?'<span style="color:#4ade80">✓ applicato</span>':(isDelayAdmin()?'<button onclick="setDelay('+d+')" style="padding:5px 10px;border-radius:7px;border:none;background:#22c55e;color:#000;font-weight:900;font-size:11px;cursor:pointer;font-family:inherit">APPLICA '+lbl+'</button>':''))
-    +(isDelayAdmin()
+    +(isDelayAdmin()&&!apexAuto
       ?'<button onclick="toggleApexAuto()" style="margin-left:auto;padding:5px 8px;border-radius:7px;border:1px solid '+(apexAuto?'#22c55e':'var(--border2)')+';background:none;color:'+(apexAuto?'#22c55e':'var(--text4)')+';font-weight:800;font-size:10px;cursor:pointer;font-family:inherit">AUTO '+(apexAuto?'ON':'OFF')+'</button>'
       :'<span style="margin-left:auto;font-size:10px;font-weight:800;color:'+(apexAuto?'#22c55e':'var(--text4)')+'">AUTO '+(apexAuto?'ON':'OFF')+'</span>')
     +'</div></div>';
