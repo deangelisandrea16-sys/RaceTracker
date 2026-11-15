@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1025';
+var RT_JS_BUILD='2026-11-15-1045';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3294,21 +3294,23 @@ function renderSchedule(){
       +'<span class="slot-type">'+slotFilterLabel(slot)+'</span>'+slotDur(slot)+'</div>'
       +(awaiting.length?'<div style="font-size:9px;color:#fbbf24;font-weight:600;margin-top:4px"><i class="ic ic-wait"></i> '+awaiting.map(p=>'#'+p.num).join(' ')+' in attesa</div>':'')
       +'<div style="margin-top:8px">';
+    const _items=[]; // 15/11 (Andrea): raccolti per poter raggruppare i piloti dello stesso team
     ps.forEach(p=>{
       var sh=p.highlight||[];
       var shCls=hlClassOf(sh);
       var shIco={foto:'<i class="ic ic-hl-foto"></i>',video:'<i class="ic ic-hl-video"></i>',priority:'<i class="ic ic-hl-prio"></i>'};
       var _ft=_hl?followedTeamOf(p.num,p.team):null;
-      html+='<div class="card-inner'+(shCls?' '+shCls:'')+(_ft?' tglow':'')+'"'+(_ft?' style="--tc:'+teamColor(_ft.key)+'"':'')+'><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
+      _items.push({num:p.num,key:_ft?_ft.key:null,html:'<div class="card-inner'+(shCls?' '+shCls:'')+(_ft?' tglow':'')+'"'+(_ft?' style="--tc:'+teamColor(_ft.key)+'"':'')+'><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
         +(sh.length?sh.map(function(h){return'<span class="hl-badge hl-'+h+' hl-mini">'+(shIco[h]||'')+'</span>';}).join(''):'')
         +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,slot)+'<span class="inner-name">'+p.name+'</span>'+runChip(p.num,idx)
         +(p.group?'<span class="inner-group">GRP '+p.group+'</span>':'')
         +'<span class="inner-team-big">'+p.team+'</span>'
         +noteBtn(p.num)+'</div>'
         +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+'</div>'
-        +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>';
+        +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>'});
     });
-    html+=tHtml+'</div></div>';
+    if(_hl&&!_pf){teamsHighlightItems(slot,ps).forEach(x=>_items.push(x));}
+    html+=groupSlotItems(_items)+(_hl&&!_pf?teamsWaitingHtml(slot)+(_tv==='both'?teamsSlotHtml(slot):''):tHtml)+'</div></div>';
   });
   updateProgTicker(slotsArr,_ds==='today'?currentIdx:slotsArr.length);
   if(activeDay===currentDays[currentDays.length-1]&&currentFinals.length){
@@ -3318,14 +3320,17 @@ function renderSchedule(){
     currentFinals.slice().sort((a,b)=>_toM(a.time)-_toM(b.time)).forEach(f=>{
       const allCat=pilots.filter(p=>canonCat(p.cat)===canonCat(f.cat));
       const finalists=allCat.filter(p=>p.inFinal);
-      const ps=finalists.length?finalists:allCat;
+      /* 15/11/2026 (Andrea): prima della lista ufficiale = "possibili finalisti", attenuati, dal piu' sicuro al piu' a rischio */
+      const _poss=!finalists.length;const _rm=_poss?riskMarkMap():{};
+      const ps=finalists.length?finalists:allCat.filter(p=>!p.eliminated).sort((a,b)=>((_rm[String(a.num)]??50)-(_rm[String(b.num)]??50))||((parseInt(a.num)||0)-(parseInt(b.num)||0)));
       const _fNow=_finalNowKey===(f.label+'|'+f.time);
       html+='<div class="final-card'+(_fNow?' slot-now':'')+'"'+(_fNow?' id="slot-now"':'')+'><div class="final-title"><i class="ic ic-trophy"></i> '+f.label+(_fNow?' <span class="now-badge">ORA</span>':'')+'</div>'
         +'<div class="final-row"><span>Partenza</span><span class="final-time">'+f.time+'</span></div>'
         +(slotDurText(f)?'<div class="final-row"><span>Durata</span><span class="final-time">'+slotDurText(f)+'</span></div>':'');
       if(!ps.length)html+='<div style="font-size:12px;color:var(--text4);padding:8px 2px 2px">Nessun tuo pilota in questa finale</div>';
+      else if(_poss)html+='<div class="final-poss"><i class="ic ic-wait"></i> Possibili finalisti · lista ufficiale non ancora uscita</div>';
       ps.forEach(p=>{
-        html+='<div class="card-inner" style="margin-top:8px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
+        html+='<div class="card-inner'+(_poss?' final-maybe':'')+'" style="margin-top:8px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
           +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,{type:'final'})+'<span class="inner-name">'+p.name+'</span>'+(p.eliminated?'':runChip(p.num,1e6))
           +'<span class="inner-team-big">'+p.team+'</span>'+noteBtn(p.num)+'</div>'
           +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+'</div>'
@@ -3737,7 +3742,7 @@ function openLegend(){
   h.push(ex([
     '<b>ATTESA</b>: il turno dipende da un\'assegnazione non ancora uscita (gruppo, serie, prefinale).',
     '<b>NESSUNO</b>: turno senza tuoi piloti. Il programma resta sempre completo.',
-    '<b>Finale</b> (bordo giallo): prima della lista ufficiale mostra tutti i tuoi piloti della categoria, poi solo i finalisti.'
+    '<b>Finale</b> (bordo giallo): prima della lista ufficiale compare “Possibili finalisti”: i tuoi piloti della categoria, attenuati, dal più sicuro al più a rischio. Quando esce la lista restano solo i finalisti, a colori pieni.'
   ]));
 
   // BARRA IN ALTO
@@ -3841,6 +3846,32 @@ setInterval(()=>{try{
 }catch(e){}},30000);window.setTeamView=setTeamView;window.setTeamColor=setTeamColor;
 setTimeout(watchUserSettings,3000);
 // Piloti dei team seguiti, uno per uno con il colore del team (modalità "evidenzia")
+/* 15/11/2026 (Andrea): piloti dei team seguiti (non miei) come elementi singoli, per raggrupparli con i miei */
+function teamsHighlightItems(slot,ps){
+  const mine=new Set(ps.map(p=>String(p.num)));const out=[];
+  teamsForSlot(slot).forEach(({t,inSlot})=>{const c=teamColor(t.key);
+    inSlot.filter(p=>!mine.has(String(p.num))).forEach(p=>out.push({num:p.num,key:t.key,html:'<div class="card-inner tglow" style="--tc:'+c+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">'
+      +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,slot)+'<span class="inner-name">'+String(p.name).replace(/</g,'&lt;')+'</span>'
+      +'<span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span></div>'
+      +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,true)).join('')+'</div>'
+      +(teamNotes[t.key]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+teamNotes[t.key]+'</div>':'')+'</div>'}));});
+  return out;
+}
+function teamsWaitingHtml(slot){
+  return teamsForSlot(slot).map(({t,waiting})=>waiting.length?'<div style="font-size:10px;font-weight:800;margin:4px 0 8px;color:'+teamColor(t.key)+'"><i class="ic ic-wait"></i> '+String(t.name).replace(/</g,'&lt;')+': '+waiting.length+' in attesa</div>':'').join('');
+}
+/* 15/11/2026 (Andrea): 2 o piu' piloti dello stesso team seguito nello stesso turno = un riquadro unico in alto, senza linee in mezzo.
+   Tutto il resto in ordine di numero. */
+function groupSlotItems(items){
+  const byNum=(a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0);
+  const cnt={};items.forEach(x=>{if(x.key)cnt[x.key]=(cnt[x.key]||0)+1;});
+  const gk=teams.map(t=>t.key).filter(k=>cnt[k]>=2);
+  const out=[];
+  gk.forEach(k=>{const g=items.filter(x=>x.key===k).sort(byNum);const t=teams.find(x=>x.key===k)||{name:k};const c=teamColor(k);
+    out.push('<div class="tgroup" style="--tc:'+c+'"><div class="tgroup-head"><span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span><span>'+g.length+' piloti</span></div>'+g.map(x=>x.html.replace(' tglow','')).join('')+'</div>');});
+  items.filter(x=>!x.key||cnt[x.key]<2).sort(byNum).forEach(x=>out.push(x.html));
+  return out.join('');
+}
 function teamsHighlightHtml(slot,ps){
   const mine=new Set(ps.map(p=>String(p.num)));
   return teamsForSlot(slot).map(({t,inSlot,waiting})=>{
