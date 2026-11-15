@@ -683,3 +683,8 @@ body.light{--hl-foto:#0284c7;--hl-video:#9333ea;--hl-prio:#ca8a04}
 .card.hl-video,.card-inner.hl-video{box-shadow:inset 4px 0 0 var(--hl-video)}
 .card.hl-both,.card-inner.hl-both{box-shadow:inset 4px 0 0 var(--hl-foto),inset 8px 0 0 var(--hl-video)}
 .card.hl-prio,.card-inner.hl-prio{border-color:var(--hl-prio)!important}
+/* 15/11/2026 (Andrea): piloti dello stesso team nello stesso turno in un riquadro unico */
+.tgroup{border:2px solid var(--tc);border-radius:12px;box-shadow:0 0 16px -4px var(--tc);margin:0 0 10px;padding:4px 8px 2px;overflow:hidden}
+.tgroup-head{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:800;color:var(--text3);padding:4px 2px 2px}
+.tgroup>.card-inner{border:none!important;border-top:none!important;outline:none!important;margin:0!important;padding-left:6px}
+.tgroup>.card-inner:not(.hl-foto):not(.hl-video):not(.hl-both){box-shadow:none}
