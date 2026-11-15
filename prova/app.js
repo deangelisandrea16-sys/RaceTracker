@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1010';
+var RT_JS_BUILD='2026-11-15-1020';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3035,8 +3035,8 @@ function renderPilots(){
   el.innerHTML=counter+filtered.map((p,i)=>{
     const isElim=p.eliminated;
     const hl=p.highlight||[];
-    const hlLabels={foto:'<i class="ic ic-camera"></i> FOTO',video:'<i class="ic ic-video"></i> VIDEO',priority:'<i class="ic ic-star"></i> PRIORITÀ'};
-    const hlCls=hl.indexOf('foto')>=0&&hl.indexOf('video')>=0?'hl-both':hl.length===1?'hl-'+hl[0]:'';
+    const hlLabels={foto:'<i class="ic ic-hl-foto"></i> FOTO',video:'<i class="ic ic-hl-video"></i> VIDEO',priority:'<i class="ic ic-hl-prio"></i> PRIORITÀ'};
+    const hlCls=hlClassOf(hl);
     return'<div class="card '+hlCls+'">'
     +'<div class="pilot-header">'
     +'<div style="display:flex;align-items:flex-start;gap:10px;">'
@@ -3296,11 +3296,11 @@ function renderSchedule(){
       +'<div style="margin-top:8px">';
     ps.forEach(p=>{
       var sh=p.highlight||[];
-      var shCls=sh.indexOf('foto')>=0&&sh.indexOf('video')>=0?'hl-both':sh.length===1?'hl-'+sh[0]:'';
-      var shIco={foto:'<i class="ic ic-camera"></i>',video:'<i class="ic ic-video"></i>',priority:'<i class="ic ic-star"></i>'};
+      var shCls=hlClassOf(sh);
+      var shIco={foto:'<i class="ic ic-hl-foto"></i>',video:'<i class="ic ic-hl-video"></i>',priority:'<i class="ic ic-hl-prio"></i>'};
       var _ft=_hl?followedTeamOf(p.num,p.team):null;
       html+='<div class="card-inner'+(shCls?' '+shCls:'')+(_ft?' tglow':'')+'"'+(_ft?' style="--tc:'+teamColor(_ft.key)+'"':'')+'><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
-        +(sh.length?sh.map(function(h){return'<span class="hl-badge hl-'+h+'" style="padding:1px 5px;font-size:8px">'+(shIco[h]||'')+'</span>';}).join(''):'')
+        +(sh.length?sh.map(function(h){return'<span class="hl-badge hl-'+h+' hl-mini">'+(shIco[h]||'')+'</span>';}).join(''):'')
         +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,slot)+'<span class="inner-name">'+p.name+'</span>'+runChip(p.num,idx)
         +(p.group?'<span class="inner-group">GRP '+p.group+'</span>':'')
         +'<span class="inner-team-big">'+p.team+'</span>'
@@ -3778,7 +3778,16 @@ function openLegend(){
 
   // PILOTI / TEAM
   h.push(sec('PILOTI, TEAM, ENTRY LIST'));
-  h.push('<div class="lg-row"><div><span class="hl-badge hl-foto"><i class="ic ic-camera"></i> FOTO</span><span class="hl-badge hl-video"><i class="ic ic-video"></i> VIDEO</span><span class="hl-badge hl-priority"><i class="ic ic-star"></i></span></div><div>Pilota da seguire per foto, video, o prioritario (si imposta nella scheda del pilota)</div></div>');
+  h.push(sec('PILOTI DA SEGUIRE (FOTO, VIDEO, PRIORITÀ)'));
+  h.push(shot('<div class="hl-picker"><div class="hl-option hl-foto active"><i class="ic ic-hl-foto"></i><span>FOTO</span></div><div class="hl-option hl-video"><i class="ic ic-hl-video"></i><span>VIDEO</span></div><div class="hl-option hl-priority active"><i class="ic ic-hl-prio"></i><span>PRIORITÀ</span></div></div>'+N(1)
+    +'<div class="card-inner hl-foto hl-prio" style="margin-top:10px"><div style="display:flex;align-items:center;gap:6px"><span class="hl-badge hl-foto hl-mini"><i class="ic ic-hl-foto"></i></span><span class="hl-badge hl-priority hl-mini"><i class="ic ic-hl-prio"></i></span>'+N(2)+'<span class="inner-num">#404</span><span class="inner-name">ROSSI MARIO</span></div></div>'+N(3)
+    +'<div class="card-inner hl-both" style="margin-top:8px"><div style="display:flex;align-items:center;gap:6px"><span class="inner-num">#212</span><span class="inner-name">BIANCHI LUCA</span></div></div>'+N(4)));
+  h.push(ex([
+    'Nella scheda del pilota (matita “modifica” in Piloti): tocca per accendere o spegnere. <b>Acceso</b> = pieno colorato con la spunta; spento = grigio.',
+    'Nel Programma, accanto al numero: <span class="hl-badge hl-foto hl-mini"><i class="ic ic-hl-foto"></i></span> foto · <span class="hl-badge hl-video hl-mini"><i class="ic ic-hl-video"></i></span> video · <span class="hl-badge hl-priority hl-mini"><i class="ic ic-hl-prio"></i></span> priorità.',
+    'Barra a sinistra della scheda del pilota: <b style="color:#38bdf8">azzurra</b> = foto, <b style="color:#c084fc">viola</b> = video. Priorità aggiunge un bordo dorato.',
+    'Foto <b>e</b> video: barra doppia azzurra e viola.'
+  ]));
   h.push('<div class="lg-row"><div><span class="tchip" style="--tc:#38bdf8">TEAM</span></div><div>Pilota di un <b>team che segui</b>: bordo luminoso del colore del team (colori in Impostazioni)</div></div>');
   h.push('<div class="lg-row"><div><span style="font-size:9px;font-weight:800;color:#facc15;border:1px dashed #facc15;border-radius:4px;padding:0 5px">DA CONFERMARE</span></div><div>Pilota letto da un PDF scansionato: sarà sostituito dai dati ufficiali Apex</div></div>');
   h.push('<div class="lg-row"><div><span style="color:#ef4444;font-size:10px;font-weight:800">ELIMINATO</span></div><div>Pilota fuori dalla gara: finisce in fondo al Programma, in "Ritirati / Eliminati"</div></div>');
@@ -4877,16 +4886,18 @@ function openEditPilot(num){
     +'<div class="form-group"><label class="form-label">Evidenzia pilota</label>'
     +'<div style="font-size:10px;color:var(--text4);margin-bottom:8px">Puoi selezionare più opzioni</div>'
     +'<div class="hl-picker" id="ef-hl-picker">'
-    +'<button class="hl-option'+(hl.indexOf("foto")>=0?' active':'')+'" data-hl="foto" onclick="toggleHL(this)"><i class="ic ic-camera"></i> FOTO</button>'
-    +'<button class="hl-option'+(hl.indexOf("video")>=0?' active':'')+'" data-hl="video" onclick="toggleHL(this)"><i class="ic ic-video"></i> VIDEO</button>'
-    +'<button class="hl-option'+(hl.indexOf("priority")>=0?' active':'')+'" data-hl="priority" onclick="toggleHL(this)"><i class="ic ic-star"></i> PRIORITÀ</button>'
+    +'<button type="button" class="hl-option hl-foto'+(hl.indexOf("foto")>=0?' active':'')+'" data-hl="foto" aria-pressed="'+(hl.indexOf("foto")>=0)+'" onclick="toggleHL(this)"><i class="ic ic-hl-foto"></i><span>FOTO</span></button>'
+    +'<button type="button" class="hl-option hl-video'+(hl.indexOf("video")>=0?' active':'')+'" data-hl="video" aria-pressed="'+(hl.indexOf("video")>=0)+'" onclick="toggleHL(this)"><i class="ic ic-hl-video"></i><span>VIDEO</span></button>'
+    +'<button type="button" class="hl-option hl-priority'+(hl.indexOf("priority")>=0?' active':'')+'" data-hl="priority" aria-pressed="'+(hl.indexOf("priority")>=0)+'" onclick="toggleHL(this)"><i class="ic ic-hl-prio"></i><span>PRIORITÀ</span></button>'
     +'</div></div>'
     +'<button class="form-submit" onclick="updatePilot(\''+num+'\')">SALVA</button>'
     +'<button class="form-delete" onclick="deletePilot(\''+num+'\')">Elimina pilota</button>');
 }
 window.openEditPilot=openEditPilot;
 
-function toggleHL(btn){btn.classList.toggle('active');}
+function toggleHL(btn){const on=btn.classList.toggle('active');btn.setAttribute('aria-pressed',on);try{if(navigator.vibrate)navigator.vibrate(15);}catch(e){}}
+/* 15/11/2026 (Andrea): classe di evidenziazione del pilota (foto/video/entrambi) + priorita' */
+function hlClassOf(hl){hl=Array.isArray(hl)?hl:[];const f=hl.indexOf('foto')>=0,v=hl.indexOf('video')>=0;return(f&&v?'hl-both':f?'hl-foto':v?'hl-video':'')+(hl.indexOf('priority')>=0?' hl-prio':'');}
 window.toggleHL=toggleHL;
 
 function toggleEliminated(num){
