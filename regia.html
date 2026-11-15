@@ -91,6 +91,8 @@ async function patch(p,v){const r=await fetch(DB+'/'+p+'.json',{method:'PATCH',b
 function unlock(){$('lock').style.display='none';try{sessionStorage.setItem('regia_ok','1');}catch(e){}}
 try{if(sessionStorage.getItem('regia_ok')==='1')$('lock').style.display='none';}catch(e){}
 const hm=d=>String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+/* orario degli eventi live: mai lo stesso minuto di un evento precedente (l'app scarta gli orari gia' visti) */
+function evT(){const d=new Date();let m=d.getHours()*60+d.getMinutes();const last=(ctl&&ctl.lastT)||0;if(m<=last)m=last+1;ctl.lastT=m;return String(Math.floor(m/60)%24).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
 const hmDot=d=>d.getHours()+'.'+String(d.getMinutes()).padStart(2,'0');
 const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 
@@ -153,7 +155,7 @@ function show(){const s=cur();if(!s){$('now').textContent='—';return;}
   $('now').innerHTML=s.time+' · '+s.label+' · '+sessName(s)+'<small>'+ph+(ctl.phase==='gara'||ctl.phase==='rossa'?' · giro '+ctl.lap+'/'+ctl.laps:'')+' · '+entrants(s).length+' piloti</small>';
   const m=mine();$('ord').textContent=ctl.order.length?ctl.order.slice(0,10).map((n,i)=>(i+1)+'° #'+n+(m.has(n)?'★':'')+(ctl.pit.includes(n)?'(box)':'')).join('  '):'';}
 async function saveCtl(){await put(BASE+'/demoCtl',ctl);show();}
-function scegliTurno(i){ctl={slot:i,phase:'',lap:0,laps:parseInt(allSlots()[i].dur)||8,order:[],pit:[],coms:[],start:''};saveCtl();log('Turno: '+allSlots()[i].label+' '+sessName(allSlots()[i]));}
+function scegliTurno(i){ctl={lastT:(ctl&&ctl.lastT)||0,slot:i,phase:'',lap:0,laps:parseInt(allSlots()[i].dur)||8,order:[],pit:[],coms:[],start:''};saveCtl();log('Turno: '+allSlots()[i].label+' '+sessName(allSlots()[i]));}
 function turno(d){const n=Math.max(0,Math.min(allSlots().length-1,ctl.slot+d));$('slotSel').value=n;scegliTurno(n);}
 
 /* ── Live: messaggi nello stesso formato del cronometraggio Apex ── */
@@ -173,14 +175,14 @@ function need(ph,msg){if(!D){log('prima premi "Rileggi stato"');return false;}if
 async function pregriglia(){if(!need())return;const s=cur();const es=entrants(s);
   ctl.order=es.map(e=>e.num).sort(()=>Math.random()-.5);ctl.phase='griglia';ctl.lap=0;ctl.laps=parseInt(s.dur)||8;ctl.pit=[];ctl.coms=[];ctl.start='';
   await sendLive();log('Pregriglia '+s.label+' '+sessName(s)+': '+es.length+' kart');}
-async function via(){if(!need(['griglia'],'prima la pregriglia'))return;const t=hm(new Date());ctl.start=t;ctl.coms.push('<b>'+t+'</b><span data-flag="green"></span>START<br>');ctl.phase='gara';ctl.lap=0;await sendLive();log('VIA alle '+t);}
+async function via(){if(!need(['griglia'],'prima la pregriglia'))return;const t=evT();ctl.start=t;ctl.coms.push('<b>'+t+'</b><span data-flag="green"></span>START<br>');ctl.phase='gara';ctl.lap=0;await sendLive();log('VIA alle '+t);}
 function swap(i){if(i<=0||i>=ctl.order.length)return;const a=ctl.order[i-1];ctl.order[i-1]=ctl.order[i];ctl.order[i]=a;}
 async function giro(n){if(!need(['gara'],'la gara non è in corso'))return;n=n||1;for(let j=0;j<n;j++){ctl.lap=Math.min(ctl.lap+1,ctl.laps-1);for(let x=0;x<rnd(1,2);x++)swap(rnd(1,ctl.order.length-1));}await sendLive();log('Giro '+ctl.lap+'/'+ctl.laps);}
 async function sorpassoMio(){if(!need(['gara'],'la gara non è in corso'))return;const m=mine();const i=ctl.order.findIndex((n,i)=>i>0&&m.has(n)&&!ctl.pit.includes(n));if(i<0){log('nessun mio pilota da far salire');return;}swap(i);await sendLive();log('Sorpasso: #'+ctl.order[i-1]+' sale '+i+'°');}
 async function aiBox(){if(!need(['gara','griglia','rossa'],'nessuna sessione attiva'))return;const m=mine();const n=ctl.order.find(n=>m.has(n)&&!ctl.pit.includes(n));if(!n){log('nessun mio pilota in pista');return;}ctl.pit.push(n);ctl.order=ctl.order.filter(x=>x!==n).concat([n]);await sendLive();log('#'+n+' AI BOX');}
-async function rossa(){if(!need(['gara'],'la gara non è in corso'))return;const t=hm(new Date());ctl.coms.push('<b>'+t+'</b><span data-flag="red"></span>RED FLAG<br>');ctl.phase='rossa';await sendLive();log('BANDIERA ROSSA alle '+t);}
+async function rossa(){if(!need(['gara'],'la gara non è in corso'))return;const t=evT();ctl.coms.push('<b>'+t+'</b><span data-flag="red"></span>RED FLAG<br>');ctl.phase='rossa';await sendLive();log('BANDIERA ROSSA alle '+t);}
 async function ripartenza(){if(!need(['rossa'],'nessuna bandiera rossa in corso'))return;ctl.phase='gara';await sendLive();log('Ripartenza');}
-async function arrivo(){if(!need(['gara'],'la gara non è in corso'))return;const t=hm(new Date());ctl.lap=ctl.laps;ctl.coms.push('<b>'+t+'</b><span data-flag="chequered"></span>FINISH<br>');ctl.phase='finita';await sendLive();
+async function arrivo(){if(!need(['gara'],'la gara non è in corso'))return;const t=evT();ctl.lap=ctl.laps;ctl.coms.push('<b>'+t+'</b><span data-flag="chequered"></span>FINISH<br>');ctl.phase='finita';await sendLive();
   // arrivo provvisorio come lo scriverebbe l'app dal live
   const s=cur(),k=slotKey(s),u={};ctl.order.forEach((n,i)=>{u['entryList/'+n+'/result/'+k]=String(i+1);if(ctl.pit.includes(n))u['entryList/'+n+'/out/'+k]=true;});
   u['resultStatus/'+fk(s.cat)+'/'+k]={st:'provvisoria',at:Date.now(),corr:0};await patch(BASE,u);log('ARRIVO: 1° #'+ctl.order[0]+' 2° #'+ctl.order[1]+' 3° #'+ctl.order[2]+' (provvisorio)');}
