@@ -770,3 +770,4 @@ body.light .sp-vp.td .sp-track{stroke:#4a4e57}
 .sp-mark{position:absolute;transform:translate(-50%,-100%);display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;color:#fff;background:rgba(14,90,128,.92);border:1px solid #38bdf8;border-radius:6px;padding:2px 6px;white-space:nowrap;pointer-events:auto}
 .sp-mark i{font-style:normal;font-size:11px}
 .sp-vp.td::after{z-index:1}.sp-marks,.sp-dots{z-index:2}
+.sp-vp.td.hasbg{background:var(--spbg) center/cover no-repeat,#111}
