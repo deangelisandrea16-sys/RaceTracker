@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0d">
+<title>Regia demo · Race Tracker</title>
+<style>
+:root{--bg:#0b0b0d;--bg2:#16161a;--bg3:#1f1f24;--bd:#2c2c33;--tx:#f2f2f4;--tx2:#b4b4bc;--tx3:#7c7c86;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--acc:#ff5a1f}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.35 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:12px 12px calc(24px + env(safe-area-inset-bottom))}
+h1{font-size:18px;margin:4px 0 2px;letter-spacing:.5px}h2{font-size:12px;letter-spacing:1.5px;color:var(--tx3);margin:18px 0 8px;text-transform:uppercase}
+.sub{color:var(--tx3);font-size:12px}
+.card{background:var(--bg2);border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:10px}
+.now{font-size:16px;font-weight:800}.now small{display:block;font-size:12px;font-weight:600;color:var(--tx2);margin-top:2px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+button{min-height:52px;border-radius:12px;border:1px solid var(--bd);background:var(--bg3);color:var(--tx);font:inherit;font-weight:800;font-size:14px;cursor:pointer;padding:8px;touch-action:manipulation}
+button:active{transform:scale(.97)}button:disabled{opacity:.35}
+.go{background:#123d24;border-color:#1f7a44;color:#5ee79b}.red{background:#3a1411;border-color:#9a2b27;color:#ff8a82}.amb{background:#37260a;border-color:#9a6411;color:#fbbf24}.acc{background:var(--acc);border-color:var(--acc);color:#000}
+select{width:100%;min-height:46px;border-radius:10px;background:var(--bg3);color:var(--tx);border:1px solid var(--bd);font:inherit;padding:0 10px}
+#log{font:12px/1.4 ui-monospace,Menlo,monospace;color:var(--tx2);max-height:180px;overflow:auto;white-space:pre-wrap}
+.lock{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;z-index:9;padding:24px;text-align:center}
+.order{font:13px/1.5 ui-monospace,Menlo,monospace;color:var(--tx2)}
+</style>
+</head>
+<body>
+<div class="lock" id="lock"><h1>Regia demo</h1><div class="sub">Pagina riservata ad Andrea. Comanda l'"Evento test" che PH24 vede sul suo telefono.</div><button class="acc" onclick="unlock()" style="width:220px">Sono Andrea, entra</button></div>
+
+<h1>Regia demo</h1>
+<div class="sub">Comandi per l'<b>Evento test</b>. Ogni pulsante aggiorna subito l'app di chi guarda. Le gare vere non vengono toccate.</div>
+
+<h2>Preparazione</h2>
+<div class="grid">
+  <button class="acc" onclick="prepara()">Prepara / Azzera demo</button>
+  <button onclick="ricarica()">Rileggi stato</button>
+</div>
+
+<h2>Turno</h2>
+<div class="card"><div class="now" id="now">—</div><div class="order" id="ord"></div></div>
+<select id="slotSel" onchange="scegliTurno(+this.value)"></select>
+<div class="grid" style="margin-top:8px">
+  <button onclick="turno(-1)">◀ Turno prima</button>
+  <button onclick="turno(1)">Turno dopo ▶</button>
+</div>
+
+<h2>Live</h2>
+<div class="grid3">
+  <button onclick="pregriglia()">Pregriglia</button>
+  <button class="go" onclick="via()">VIA</button>
+  <button onclick="giro()">Giro +1</button>
+  <button class="go" onclick="sorpassoMio()">Sorpasso mio pilota</button>
+  <button class="amb" onclick="aiBox()">Mio pilota AI BOX</button>
+  <button class="red" onclick="rossa()">Bandiera rossa</button>
+  <button onclick="ripartenza()">Ripartenza</button>
+  <button onclick="giro(3)">+3 giri</button>
+  <button class="acc" onclick="arrivo()">ARRIVO</button>
+</div>
+
+<h2>Classifiche e liste ufficiali</h2>
+<div class="grid">
+  <button onclick="ufficiale()">Arrivo → UFFICIALE</button>
+  <button onclick="correzione()">Penalità: cambia podio</button>
+  <button onclick="pubblicaPrefinali()">Pubblica liste prefinali</button>
+  <button onclick="pubblicaFinalisti()">Pubblica finalisti</button>
+</div>
+
+<h2>Programma</h2>
+<div class="grid3">
+  <button onclick="ritardo(5)">Ritardo +5'</button>
+  <button onclick="ritardo(-5)">Ritardo −5'</button>
+  <button onclick="ritardo(0,true)">In orario</button>
+</div>
+
+<h2>Registro</h2>
+<div class="card" id="log"></div>
+
+<script>
+/* Regia demo (15/11/2026). Scrive SOLO sotto races/race_demo_ph24, races_index/race_demo_ph24 e i dati utente di quella gara.
+   Nota sicurezza: finche' il database non ha regole e login, questa pagina non e' protetta davvero (vedi prodotto/demo-ph24.md). */
+const DB='https://karting-tools-default-rtdb.firebaseio.com',RACE='race_demo_ph24',BASE='races/'+RACE;
+const USERS=['demo','andrea','utente prova'];
+const DN=['DOMENICA','LUNEDÌ','MARTEDÌ','MERCOLEDÌ','GIOVEDÌ','VENERDÌ','SABATO'];
+const CATS=[{cat:'OKN',apex:'OKN',label:'OKN',base:401},{cat:'MINI GR3',apex:'MINI Gr.3',label:'MINI GR3',base:501}];
+const NOMI=['ROSSI MARCO','BIANCHI LUCA','FERRARI GIULIO','ESPOSITO MATTEO','ROMANO ANDREA','COLOMBO PIETRO','RICCI TOMMASO','MARINO LEONARDO','GRECO DAVIDE','BRUNO SIMONE','GALLO EDOARDO','CONTI FILIPPO','DE LUCA NICOLO','MANCINI SAMUELE','COSTA GABRIELE','GIORDANO RICCARDO','RIZZO ALESSIO','LOMBARDI MATTIA','MORETTI DIEGO','BARBIERI ELIA','FONTANA CHRISTIAN','SANTORO EMANUELE','MARIANI LORENZO','RINALDI FEDERICO','KOWALSKI JAN','MULLER FELIX','DUBOIS HUGO','SMITH OLIVER','JANSEN DAAN','NOVAK FILIP','GARCIA PABLO','SILVA JOAO','HANSEN EMIL','LEROY LUCAS','WEBER NOAH','BROWN JACK','NIELSEN OSCAR','PETROV IVAN','KOVAC LUKA','MOREAU LEO','SCHMIDT BEN','EVANS ALFIE','RUSSO SERGIO','VITALE ENEA','LEONE ETTORE','SERRA DANTE','PELLEGRINI IVO','CARUSO ALAN'];
+const TEAMS=['TEAM ALFA RACING','BETA KART','GAMMA MOTORSPORT','DELTA CORSE','OMEGA RACING','SIGMA KART TEAM'];
+let D=null,ctl=null;
+const $=id=>document.getElementById(id);
+function log(t){const l=$('log');const d=new Date();l.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0')+'  '+t+'\n'+l.textContent;}
+async function get(p){const r=await fetch(DB+'/'+p+'.json');if(!r.ok)throw new Error('GET '+p+' '+r.status);return r.json();}
+async function put(p,v){const r=await fetch(DB+'/'+p+'.json',{method:'PUT',body:JSON.stringify(v)});if(!r.ok)throw new Error('PUT '+p+' '+r.status);}
+async function patch(p,v){const r=await fetch(DB+'/'+p+'.json',{method:'PATCH',body:JSON.stringify(v)});if(!r.ok)throw new Error('PATCH '+p+' '+r.status);}
+function unlock(){$('lock').style.display='none';try{sessionStorage.setItem('regia_ok','1');}catch(e){}}
+try{if(sessionStorage.getItem('regia_ok')==='1')$('lock').style.display='none';}catch(e){}
+const hm=d=>String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+const hmDot=d=>d.getHours()+'.'+String(d.getMinutes()).padStart(2,'0');
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+
+/* ── Preparazione: dati finti ── */
+async function prepara(){
+  if(!confirm('Preparo l\'Evento test da zero (programma a partire da adesso). Le gare vere non vengono toccate. Procedo?'))return;
+  const now=new Date(),day=DN[now.getDay()];
+  const el={};let ni=0;
+  CATS.forEach(C=>{
+    for(let i=0;i<24;i++){
+      const num=String(C.base+i),[ln,fn]=NOMI[(ni++)%NOMI.length].split(' ');
+      const g=['A','B','C'][i%3];const heats=g==='A'?['A-B','A-C']:g==='B'?['A-B','B-C']:['A-C','B-C'];
+      el[num]={num,cat:C.cat,lastName:ln,firstName:fn,team:TEAMS[i%TEAMS.length],group:g,heats,parity:(+num)%2?'ODD':'EVEN'};
+    }
+  });
+  // programma: un turno ogni 12 minuti a partire da adesso + 10'
+  const t0=new Date(now.getTime()+10*60000);t0.setSeconds(0);t0.setMinutes(Math.ceil(t0.getMinutes()/5)*5);
+  const slots=[];let k=0;const at=()=>hmDot(new Date(t0.getTime()+(k++)*12*60000));
+  [['A','B'],['A','C'],['B','C']].forEach((f,mi)=>CATS.forEach(C=>slots.push({time:at(),cat:C.cat,label:C.label,type:'group',filter:f,session:'MANCHE '+(mi+1),dur:'8 giri'})));
+  CATS.forEach(C=>['A','B'].forEach(g=>slots.push({time:at(),cat:C.cat,label:C.label,type:'prefinal',filter:g,session:'PREFINALI',dur:'10 giri'})));
+  const finals=CATS.map(C=>({time:at(),cat:C.cat,label:C.label+' FINALE',dur:'12 giri'}));
+  const schedule={};schedule[day]=slots;
+  const shared={entryList:el,schedule,days:[day],finals,riskCut:{'OKN':16,'MINI GR3':16},schedDelay:0,apexAuto:true,demoLive:{seq:Date.now(),frame:'light||\n'},demoCtl:{slot:0,phase:'',lap:0,laps:8,order:[],pit:[],coms:[],start:''}};
+  // utenti: stessi piloti seguiti (8), con note, evidenziazioni e un team seguito
+  const pick=['402','405','408','411','503','507','512','520'];
+  const NOTE={'402':'tenda vicino alla torretta','408':'casco giallo, papà al box 12','503':'chiede foto di gruppo con la squadra','512':'reel 30" da consegnare stasera'};
+  const HL={'402':['foto','priority'],'405':['video'],'503':['foto','video'],'512':['priority']};
+  const pilots={},notes={},statuses={};
+  pick.forEach(n=>{const e=el[n];pilots[n]={num:n,name:e.lastName+' '+e.firstName,team:e.team,cat:e.cat,group:e.group,heats:e.heats,parity:e.parity,prefinal:'',serie:'',eliminated:false,inFinal:false,highlight:HL[n]||[]};notes[n]=NOTE[n]||'';statuses[n]={PADDOK:'green',PREGRIGLIA:n==='402'?'green':'red',BILANCIA:'red',PISTA:n==='405'?'orange':'red',REPORTAGE:'red'};});
+  const teams={'GAMMA MOTORSPORT':{key:'GAMMA MOTORSPORT',name:'GAMMA MOTORSPORT'}};
+  const user={pilots,notes,statuses,teams,teamNotes:{'GAMMA MOTORSPORT':'gazebo blu in fondo al paddock'},teamStatuses:{}};
+  shared.users={};USERS.forEach(u=>shared.users[u]=user);
+  await put(BASE,shared);
+  await patch('notifPrefs/demo',{partenza:true,rossa:true,ritiri:true,prossima:true,ritardo:true,top3:true,finali:true,qualifiche:true,correzioni:true,promozioni:true});
+  await put('races_index/'+RACE,{name:'Evento test',circuit:'Circuito Demo',org:'DEMO',demo:true,createdAt:'2020-01-01T00:00:00.000Z',entryCount:48,pilotCount:8,knownUsers:{demo:true}});
+  log('Evento test pronto: '+slots.length+' turni + 2 finali, primo turno alle '+slots[0].time+' ('+day+')');
+  await ricarica();
+}
+
+/* ── Stato ── */
+async function ricarica(){
+  try{D=await get(BASE);}catch(e){log('errore lettura: '+e.message);return;}
+  if(!D||!D.schedule){$('now').textContent='Evento test non ancora preparato: premi "Prepara / Azzera demo".';return;}
+  ctl=D.demoCtl||{slot:0,phase:'',lap:0,laps:8,order:[],pit:[],coms:[],start:''};ctl.order=ctl.order||[];ctl.pit=ctl.pit||[];ctl.coms=ctl.coms||[];
+  const sl=allSlots();$('slotSel').innerHTML=sl.map((s,i)=>'<option value="'+i+'"'+(i===ctl.slot?' selected':'')+'>'+s.time+' · '+s.label+' · '+sessName(s)+'</option>').join('');
+  show();
+}
+function allSlots(){const d=(D.days||[])[0];let a=(D.schedule||{})[d]||[];a=Array.isArray(a)?a:Object.values(a);const f=Array.isArray(D.finals)?D.finals:Object.values(D.finals||{});return a.concat(f.map(x=>Object.assign({type:'final'},x)));}
+function cur(){return allSlots()[ctl.slot]||null;}
+function catOf(s){return CATS.find(c=>c.cat===s.cat)||CATS[0];}
+function sessName(s){if(s.type==='group')return'Eliminatory Heats '+[].concat(s.filter).join('-');if(s.type==='prefinal')return'Prefinal '+s.filter;return'Final';}
+function slotKey(s){if(s.type==='group')return[].concat(s.filter).join('-');if(s.type==='prefinal')return'PF-'+s.filter;return'FIN';}
+function entrants(s){const el=Object.values(D.entryList||{}).filter(e=>e&&e.cat===s.cat);
+  if(s.type==='group'){const f=[].concat(s.filter);return el.filter(e=>f.includes(e.group));}
+  if(s.type==='prefinal')return el.filter(e=>e.prefinal===s.filter);
+  const fin=el.filter(e=>e.inFinal);return fin.length?fin:el;}
+function mine(){const u=(D.users||{}).demo||{};return new Set(Object.keys(u.pilots||{}));}
+function show(){const s=cur();if(!s){$('now').textContent='—';return;}
+  const ph={'' :'pronto','griglia':'in pregriglia','gara':'in pista','rossa':'BANDIERA ROSSA','finita':'arrivata'}[ctl.phase||'']||ctl.phase;
+  $('now').innerHTML=s.time+' · '+s.label+' · '+sessName(s)+'<small>'+ph+(ctl.phase==='gara'||ctl.phase==='rossa'?' · giro '+ctl.lap+'/'+ctl.laps:'')+' · '+entrants(s).length+' piloti</small>';
+  const m=mine();$('ord').textContent=ctl.order.length?ctl.order.slice(0,10).map((n,i)=>(i+1)+'° #'+n+(m.has(n)?'★':'')+(ctl.pit.includes(n)?'(box)':'')).join('  '):'';}
+async function saveCtl(){await put(BASE+'/demoCtl',ctl);show();}
+function scegliTurno(i){ctl={slot:i,phase:'',lap:0,laps:parseInt(allSlots()[i].dur)||8,order:[],pit:[],coms:[],start:''};saveCtl();log('Turno: '+allSlots()[i].label+' '+sessName(allSlots()[i]));}
+function turno(d){const n=Math.max(0,Math.min(allSlots().length-1,ctl.slot+d));$('slotSel').value=n;scegliTurno(n);}
+
+/* ── Live: messaggi nello stesso formato del cronometraggio Apex ── */
+const HEAD='<tr data-id="r0" class="head" data-pos="0"><td data-id="c1" data-type="grp"></td><td data-id="c2" data-type="sta"></td><td data-id="c3" data-type="rk">Rnk</td><td data-id="c4" data-type="rku"></td><td data-id="c5" data-type="no">N°</td><td data-id="c6" data-type="dr">Driver</td><td data-id="c7" data-type="nat">Nat</td><td data-id="c8" data-type="s1">S1</td><td data-id="c9" data-type="s2">S2</td><td data-id="c10" data-type="s3">S3</td><td data-id="c11" data-type="llp">Last Lap</td><td data-id="c12" data-type="sp1">Spd</td><td data-id="c13" data-type="gap">Gap</td><td data-id="c14" data-type="int">Interv.</td><td data-id="c15" data-type="blp">Best lap</td><td data-id="c16" data-type="">Penalty</td></tr>';
+function lap(base){return(base+Math.random()*0.6).toFixed(3);}
+function gridHtml(){const s=cur();const el=D.entryList||{};const run=ctl.phase==='gara'||ctl.phase==='rossa';const fin=ctl.phase==='finita';
+  const base=s.cat==='OKN'?52.4:55.8;
+  return HEAD+ctl.order.map((n,i)=>{const e=el[n]||{};const id='r'+(i+1);const pit=ctl.pit.includes(n);
+    const sta=pit?(run||fin?'si':'si'):(fin?'sf':run?'sr':'si');
+    const ll=run||fin?lap(base):'',bl=run||fin?(base+0.05*i).toFixed(3):'';
+    const gap=i===0?(run||fin?(ctl.lap+' Laps'):''):(run||fin?'+'+(i*0.4+Math.random()*0.2).toFixed(3):'');
+    return'<tr data-id="'+id+'" data-pos="'+(i+1)+'"><td data-id="'+id+'c1" class="gs"></td><td data-id="'+id+'c2" class="'+sta+'"></td><td class="rk"><div><p data-id="'+id+'c3">'+(i+1)+'</p></div></td><td class="rku"><div><p data-id="'+id+'c4"></p></div></td><td class="no"><div data-id="'+id+'c5">'+n+'</div></td><td data-id="'+id+'c6" class="dr">'+((e.lastName||'')+' '+(e.firstName||'').charAt(0)+'.')+'</td><td data-id="'+id+'c7" class="ITA nat"></td><td data-id="'+id+'c8" class="tn">'+(ll?(+ll*0.4).toFixed(3):'')+'</td><td data-id="'+id+'c9" class="tn">'+(ll?(+ll*0.3).toFixed(3):'')+'</td><td data-id="'+id+'c10" class="tn">'+(ll?(+ll*0.3).toFixed(3):'')+'</td><td data-id="'+id+'c11" class="ti">'+ll+'</td><td data-id="'+id+'c12" class="tn"></td><td data-id="'+id+'c13" class="ib">'+gap+'</td><td data-id="'+id+'c14" class="in"></td><td data-id="'+id+'c15" class="in">'+bl+'</td><td data-id="'+id+'c16" class="in"></td></tr>';}).join('');}
+async function sendLive(){const s=cur();const light={'gara':'lg','rossa':'lr','finita':'lf'}[ctl.phase]||'';
+  const frame=['title1||'+catOf(s).apex,'title2||'+sessName(s),'grid||'+gridHtml(),'com||'+ctl.coms.join(''),'light|'+light+'|','dyn1|text|'+(ctl.phase==='gara'||ctl.phase==='rossa'||ctl.phase==='finita'?'Lap '+Math.min(ctl.lap+1,ctl.laps)+'/'+ctl.laps:'')].join('\n');
+  await put(BASE+'/demoLive',{seq:Date.now(),frame});await saveCtl();}
+function need(ph,msg){if(!D){log('prima premi "Rileggi stato"');return false;}if(ph&&!ph.includes(ctl.phase)){log(msg);return false;}return true;}
+async function pregriglia(){if(!need())return;const s=cur();const es=entrants(s);
+  ctl.order=es.map(e=>e.num).sort(()=>Math.random()-.5);ctl.phase='griglia';ctl.lap=0;ctl.laps=parseInt(s.dur)||8;ctl.pit=[];ctl.coms=[];ctl.start='';
+  await sendLive();log('Pregriglia '+s.label+' '+sessName(s)+': '+es.length+' kart');}
+async function via(){if(!need(['griglia'],'prima la pregriglia'))return;const t=hm(new Date());ctl.start=t;ctl.coms.push('<b>'+t+'</b><span data-flag="green"></span>START<br>');ctl.phase='gara';ctl.lap=0;await sendLive();log('VIA alle '+t);}
+function swap(i){if(i<=0||i>=ctl.order.length)return;const a=ctl.order[i-1];ctl.order[i-1]=ctl.order[i];ctl.order[i]=a;}
+async function giro(n){if(!need(['gara'],'la gara non è in corso'))return;n=n||1;for(let j=0;j<n;j++){ctl.lap=Math.min(ctl.lap+1,ctl.laps-1);for(let x=0;x<rnd(1,2);x++)swap(rnd(1,ctl.order.length-1));}await sendLive();log('Giro '+ctl.lap+'/'+ctl.laps);}
+async function sorpassoMio(){if(!need(['gara'],'la gara non è in corso'))return;const m=mine();const i=ctl.order.findIndex((n,i)=>i>0&&m.has(n)&&!ctl.pit.includes(n));if(i<0){log('nessun mio pilota da far salire');return;}swap(i);await sendLive();log('Sorpasso: #'+ctl.order[i-1]+' sale '+i+'°');}
+async function aiBox(){if(!need(['gara','griglia','rossa'],'nessuna sessione attiva'))return;const m=mine();const n=ctl.order.find(n=>m.has(n)&&!ctl.pit.includes(n));if(!n){log('nessun mio pilota in pista');return;}ctl.pit.push(n);ctl.order=ctl.order.filter(x=>x!==n).concat([n]);await sendLive();log('#'+n+' AI BOX');}
+async function rossa(){if(!need(['gara'],'la gara non è in corso'))return;const t=hm(new Date());ctl.coms.push('<b>'+t+'</b><span data-flag="red"></span>RED FLAG<br>');ctl.phase='rossa';await sendLive();log('BANDIERA ROSSA alle '+t);}
+async function ripartenza(){if(!need(['rossa'],'nessuna bandiera rossa in corso'))return;ctl.phase='gara';await sendLive();log('Ripartenza');}
+async function arrivo(){if(!need(['gara'],'la gara non è in corso'))return;const t=hm(new Date());ctl.lap=ctl.laps;ctl.coms.push('<b>'+t+'</b><span data-flag="chequered"></span>FINISH<br>');ctl.phase='finita';await sendLive();
+  // arrivo provvisorio come lo scriverebbe l'app dal live
+  const s=cur(),k=slotKey(s),u={};ctl.order.forEach((n,i)=>{u['entryList/'+n+'/result/'+k]=String(i+1);if(ctl.pit.includes(n))u['entryList/'+n+'/out/'+k]=true;});
+  u['resultStatus/'+fk(s.cat)+'/'+k]={st:'provvisoria',at:Date.now(),corr:0};await patch(BASE,u);log('ARRIVO: 1° #'+ctl.order[0]+' 2° #'+ctl.order[1]+' 3° #'+ctl.order[2]+' (provvisorio)');}
+const fk=s=>String(s).replace(/[.#$\[\]\/]/g,'_');
+async function ufficiale(){if(!need(['finita'],'prima l\'ARRIVO'))return;const s=cur();await patch(BASE+'/resultStatus/'+fk(s.cat),{[slotKey(s)]:{st:'ufficiale',at:Date.now(),corr:0}});log('Classifica '+sessName(s)+' UFFICIALE');}
+async function correzione(){if(!need(['finita'],'prima l\'ARRIVO'))return;const s=cur(),k=slotKey(s);swap(2);const u={};ctl.order.forEach((n,i)=>u['entryList/'+n+'/result/'+k]=String(i+1));u['resultStatus/'+fk(s.cat)+'/'+k]={st:'ufficiale',at:Date.now(),corr:Date.now()};await patch(BASE,u);await saveCtl();log('Penalità: ora 2° #'+ctl.order[1]+', 3° #'+ctl.order[2]);}
+
+/* ── Liste ufficiali ── */
+function punti(e){let p=0;Object.entries(e.result||{}).forEach(([k,v])=>{if(/^[A-D]-[A-D]$/.test(k)){const n=parseInt(v);p+=n===1?0:n>0?n:30;}});return p+Math.random();}
+async function pubblicaPrefinali(){if(!need())return;D=await get(BASE);const u={},us={};
+  CATS.forEach(C=>{const es=Object.values(D.entryList).filter(e=>e.cat===C.cat).sort((a,b)=>punti(a)-punti(b));es.forEach((e,i)=>{const g=i%2?'B':'A';u['entryList/'+e.num+'/prefinal']=g;u['entryList/'+e.num+'/grid/PF-'+g]=Math.floor(i/2)+1;});});
+  USERS.forEach(x=>{Object.keys(((D.users||{})[x]||{}).pilots||{}).forEach(n=>{if(u['entryList/'+n+'/prefinal'])us['users/'+x+'/pilots/'+n+'/prefinal']=u['entryList/'+n+'/prefinal'];});});
+  await patch(BASE,Object.assign(u,us));D=await get(BASE);log('Liste prefinali A/B pubblicate');show();}
+async function pubblicaFinalisti(){if(!need())return;D=await get(BASE);const u={};
+  CATS.forEach(C=>{const es=Object.values(D.entryList).filter(e=>e.cat===C.cat).map(e=>{const pf=e.result&&(e.result['PF-A']||e.result['PF-B']);return{e,p:punti(e)+(pf?parseInt(pf)*2:20)};}).sort((a,b)=>a.p-b.p);
+    es.forEach((x,i)=>{const inF=i<16;u['entryList/'+x.e.num+'/inFinal']=inF;u['entryList/'+x.e.num+'/eliminated']=!inF;if(inF)u['entryList/'+x.e.num+'/grid/FIN']=i+1;
+      USERS.forEach(us=>{if((((D.users||{})[us]||{}).pilots||{})[x.e.num]){u['users/'+us+'/pilots/'+x.e.num+'/inFinal']=inF;u['users/'+us+'/pilots/'+x.e.num+'/eliminated']=!inF;}});});});
+  await patch(BASE,u);D=await get(BASE);log('Finalisti pubblicati (primi 16 per categoria)');show();}
+async function ritardo(d,zero){if(!need())return;D=await get(BASE);const v=zero?0:(parseInt(D.schedDelay)||0)+d;await patch(BASE,{schedDelay:v});log('Ritardo '+(v>0?'+':'')+v+'\'');}
+ricarica();
+</script>
+</body>
+</html>
