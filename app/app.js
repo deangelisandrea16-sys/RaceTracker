@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1100';
+var RT_JS_BUILD='2026-11-15-1105';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3721,7 +3721,7 @@ function openLegend(){
     'Cornice verde + <b>ORA</b>: il turno in corso. C\'è solo nella giornata di oggi e sparisce 30 minuti dopo l\'ultimo turno. Il tasto ORA in basso ci riporta.',
     'Categoria: il colore è assegnato in automatico a ogni categoria della gara.',
     'Tipo di turno (prove, manche con i gruppi, prefinale…).',
-    'Durata del turno; se il live dice un\'altra durata la vecchia è barrata.',
+    'Durata del turno (minuti o giri) dal programma ufficiale. Se nel live la sessione ha una durata diversa vedi <s>16 giri</s> <b>14 giri</b>: barrata quella del programma, in grassetto quella vera.',
     '<b>Triangolo</b>: rischio di non entrare in finale (stima): '+tri('#22c55e')+' verde sotto 25% · '+tri('#facc15')+' giallo 25–49% · '+tri('#f97316')+' arancione 50–74% · '+tri('#ef4444')+' rosso 75% e oltre. Sparisce quando esce la lista ufficiale della Finale.',
     'Riquadro posizione: prima del turno la <b>griglia</b>, dopo il turno l\'<b>arrivo</b> (vedi “Posizioni”).',
     '<b>Gara 2/3</b>: è la 2ª delle 3 uscite in pista di oggi del pilota (warm up compresi). <b>?</b> = dipende da dati non ancora ufficiali.',
