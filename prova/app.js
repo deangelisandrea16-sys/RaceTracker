@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1405';
+var RT_JS_BUILD='2026-11-15-1415';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3743,14 +3743,14 @@ function openLegend(){
     +'.lg-n{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 3px;border-radius:9px;background:var(--accent);color:#000;font-size:10px;font-weight:900;font-style:normal;vertical-align:middle;margin:0 2px;font-family:Arial,sans-serif;line-height:1}'
     +'.lg-list{margin:4px 0 6px 18px;padding:0;font-size:13px;color:var(--text2);line-height:1.4}.lg-list li{margin:4px 0}.lg-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--border);font-size:13px;color:var(--text2)}.lg-row>div:first-child{min-width:96px;display:flex;justify-content:center;gap:4px;flex-wrap:wrap}</style>');
   h.push('<style>.gd-chap{margin:30px 0 4px;padding:8px 12px;border-radius:10px;background:var(--accent);color:#000;font-weight:900;letter-spacing:1px;font-size:13px}.gd-p{font-size:13px;color:var(--text2);line-height:1.45;margin:6px 0}.gd-toc{display:flex;flex-direction:column;gap:2px;margin:8px 0 4px}.gd-toc a{display:block;padding:7px 10px;border-radius:8px;color:var(--text);text-decoration:none;font-size:13px;font-weight:700;background:var(--bg3);min-height:20px}.gd-toc .gd-toc-c{background:none;color:var(--accent);font-size:11px;letter-spacing:1px;padding:10px 4px 2px;font-weight:900}.gd-search{width:100%;box-sizing:border-box;padding:11px 12px;border-radius:10px;border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:15px;margin:6px 0}.gd-top{display:inline-block;margin-top:8px;font-size:11px;font-weight:800;color:var(--accent);text-decoration:none}.gd-notif{background:var(--bg3);border-radius:14px;padding:9px 12px;margin:8px 0;border:1px solid var(--border2)}.gd-notif-app{font-size:10px;color:var(--text4);font-weight:700;letter-spacing:.5px}.gd-notif-t{font-size:13px;font-weight:800;color:var(--text);margin-top:2px}.gd-notif-b{font-size:12px;color:var(--text2)}.gd-tag{display:inline-block;font-size:10px;font-weight:800;border-radius:5px;padding:1px 6px;margin:2px 4px 2px 0;border:1px solid var(--border2);color:var(--text3)}.gd-tag.on{border-color:#4fd69c;color:#4fd69c}.gd-tag.off{border-color:#f59e0b;color:#f59e0b}.gd-hide{display:none}</style>');
-  h.push('<div style="font-size:12px;color:var(--text3)">Ogni sezione dice <b>dove</b> si trova nell\'app. Le schermate sono esempi: i numeri <b class="lg-n">1</b> indicano a cosa si riferisce ogni spiegazione. Tocca una voce dell\'indice per saltarci, oppure cerca una parola.</div>');
+  h.push('<div style="font-size:12px;color:var(--text3)">Tocca una voce per saltarci, oppure cerca una parola. Nelle schermate di esempio i numeri <b class="lg-n">1</b> rimandano alle spiegazioni sotto. Le notifiche si accendono e spengono in Impostazioni → <b>NOTIFICHE</b>.</div>');
   h.push('<input class="gd-search" id="gd-search" type="search" placeholder="Cerca nella guida (es. priorità, eliminati, ritardo)" oninput="guideSearch(this.value)">');
   h.push('<div id="gd-toc-slot"></div><div>');
 
   // PRIMI PASSI
   h.push(chap('PRIMI PASSI'));
   h.push(sec('A COSA SERVE L\'APP'));
-  h.push(p_('Race Tracker ti dice <b>dove sono i tuoi piloti</b> durante il weekend di gara: quando girano, in che posizione partono, come arrivano, se passano o sono eliminati. I dati arrivano da soli dal programma ufficiale, dalle classifiche ufficiali e dal live timing: tu scegli solo <b>chi seguire</b>.'));
+  h.push(p_('Race Tracker ti dice <b>dove sono i tuoi piloti</b> durante il weekend: quando girano, da dove partono, come arrivano, se passano o sono eliminati. I dati si aggiornano da soli: tu scegli solo <b>chi seguire</b>.'));
   h.push(sec('MENU IN BASSO','sempre visibile in fondo allo schermo'));
   // 15/11 (Andrea): icone prese dal menu vero, cosi' coincidono sempre con l'app
   h.push(shot('<div style="display:flex;justify-content:space-around;font-size:10px;font-weight:800;color:var(--text3);text-align:center">'+[...document.querySelectorAll('#tabbar .tabbar-btn')].map((b,i)=>{const ic=b.querySelector('.ic');return '<div>'+(ic?ic.outerHTML:'')+'<br>'+(b.textContent||'').trim().toUpperCase()+N(i+1)+'</div>';}).join('')+'</div>'));
@@ -3775,8 +3775,8 @@ function openLegend(){
   h.push(sec('ELENCO GARE','menu in basso → <b>GARE</b>'));
   h.push(shot('<div class="race-card active-race" style="pointer-events:none"><div style="font-weight:900">TROFEO DELLE INDUSTRIE</div>'+N(1)+'<div style="font-size:12px;color:var(--text3)">South Garda Karting · 12–15 nov</div>'+N(2)+'</div>'));
   h.push(ex([
-    'La gara attiva ha il bordo colorato: tutto il resto dell\'app (programma, live, avvisi) si riferisce a lei.',
-    'Circuito e date. Tocca un\'altra gara per passare a quella: i tuoi piloti e le note restano separati gara per gara.'
+    'La gara attiva ha il bordo colorato: tutta l\'app si riferisce a lei.',
+    'Circuito e date. Tocca un\'altra gara per passare a quella: piloti e note restano separati per gara.'
   ]));
 
   // PROGRAMMA
@@ -3787,31 +3787,31 @@ function openLegend(){
     +tasks(['green','orange','red','red','red'])+N(9)
     +'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> tenda vicino alla torretta</div>'+N(10)+'</div></div></div>'));
   h.push(ex([
-    'Cornice verde + <b>ORA</b>: il turno in corso. C\'è solo nella giornata di oggi e sparisce 30 minuti dopo l\'ultimo turno. Il tasto ORA in basso ci riporta.',
-    'Categoria: il colore è assegnato in automatico a ogni categoria della gara.',
+    'Cornice verde + <b>ORA</b>: il turno in corso. Il tasto ORA in basso ti ci riporta.',
+    'Categoria, ognuna con il suo colore.',
     'Tipo di turno (prove, manche con i gruppi, prefinale…).',
-    'Durata del turno (minuti o giri) dal programma ufficiale. Se nel live la sessione ha una durata diversa vedi <s>16 giri</s> <b>14 giri</b>: barrata quella del programma, in grassetto quella vera.',
-    '<b>Triangolo</b>: rischio di non entrare in finale (stima): '+tri('#22c55e')+' verde sotto 25% · '+tri('#facc15')+' giallo 25–49% · '+tri('#f97316')+' arancione 50–74% · '+tri('#ef4444')+' rosso 75% e oltre. Sparisce quando esce la lista ufficiale della Finale.',
+    'Durata del turno. Se in pista è diversa vedi <s>16 giri</s> <b>14 giri</b>: barrata quella prevista, in grassetto quella vera.',
+    '<b>Triangolo</b>: quanto rischia di non entrare in finale. '+tri('#22c55e')+' poco · '+tri('#facc15')+' medio · '+tri('#f97316')+' alto · '+tri('#ef4444')+' molto alto. Sparisce quando escono i finalisti.',
     'Riquadro posizione: prima del turno la <b>griglia</b>, dopo il turno l\'<b>arrivo</b> (vedi “Posizioni”).',
-    '<b>Gara 2/3</b>: è la 2ª delle 3 uscite in pista di oggi del pilota (warm up compresi). <b>?</b> = dipende da dati non ancora ufficiali.',
+    '<b>Gara 2/3</b>: è la 2ª delle 3 uscite in pista di oggi del pilota. <b>?</b> = non ancora sicuro.',
     'Matita: scrivi o modifica la nota del pilota.',
     'Lavori da fare per il pilota (vedi “Lavori”).',
     'La tua nota sul pilota.'
   ]));
   h.push(sec('PROGRAMMA · posizioni','<b>PROGRAMMA</b>, accanto al numero di ogni tuo pilota'));
-  h.push('<div class="lg-row"><div>'+badgeGrid+'</div><div>Posizione in <b>griglia</b> (lista ufficiale), prima del turno</div></div>');
+  h.push('<div class="lg-row"><div>'+badgeGrid+'</div><div>Posizione in <b>griglia</b>, prima del turno</div></div>');
   h.push('<div class="lg-row"><div>'+badgeUff+'</div><div>Arrivo <b>ufficiale</b> (pieno)</div></div>');
-  h.push('<div class="lg-row"><div>'+badgeProv+'</div><div>Arrivo <b>provvisorio</b> (tratteggiato): dal live o classifica non ancora ufficiale</div></div>');
-  h.push('<div class="lg-row"><div>'+badgeCorr+'</div><div>Classifica <b>corretta</b> dopo la pubblicazione (penalità, verifiche)</div></div>');
+  h.push('<div class="lg-row"><div>'+badgeProv+'</div><div>Arrivo <b>provvisorio</b> (tratteggiato): può ancora cambiare</div></div>');
+  h.push('<div class="lg-row"><div>'+badgeCorr+'</div><div>Classifica <b>corretta</b> (penalità, verifiche)</div></div>');
   h.push('<div class="lg-row"><div>'+badgeOut+'</div><div><b>Uscito</b> o ritirato nel turno, con la posizione in classifica</div></div>');
   h.push(sec('PROGRAMMA · turni particolari','<b>PROGRAMMA</b>; le finali sono in fondo all\'ultimo giorno'));
   h.push(shot('<div class="card" style="opacity:.35;padding:10px 14px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:900;color:var(--text4)">11.20</span><span class="cat-kz2" style="font-size:10px;font-weight:800">KZ2</span><span style="font-size:9px;color:#fbbf24;font-weight:700;margin-left:auto;letter-spacing:1px"><i class="ic ic-wait"></i> ATTESA PREFINAL</span>'+N(1)+'</div></div>'
     +'<div class="card" style="opacity:.45;margin-top:8px"><div class="slot-header"><span class="slot-time">12.00</span><span class="slot-label cat-u10">MINI U10</span></div><div style="font-size:11px;font-weight:700;color:var(--text4);padding:2px 0">— NESSUNO —</div>'+N(2)+'</div>'
     +'<div class="final-card" style="margin-top:8px"><div class="final-title"><i class="ic ic-trophy"></i> FINALE KZ2</div><div class="final-row"><span>Partenza</span><span class="final-time">16.00</span></div><div style="font-size:12px;color:var(--text4);padding:8px 2px 2px">Nessun tuo pilota in questa finale</div>'+N(3)+'</div>'));
   h.push(ex([
-    '<b>ATTESA</b>: il turno dipende da un\'assegnazione non ancora uscita (gruppo, serie, prefinale).',
-    '<b>NESSUNO</b>: turno senza tuoi piloti. Il programma resta sempre completo.',
-    '<b>Finale</b> (bordo giallo): prima della lista ufficiale compare “Possibili finalisti”: i tuoi piloti della categoria, attenuati, dal più sicuro al più a rischio. Quando esce la lista restano solo i finalisti, a colori pieni.'
+    '<b>ATTESA</b>: non si sa ancora chi gira (gruppi o prefinali non ancora usciti).',
+    '<b>NESSUNO</b>: turno senza tuoi piloti.',
+    '<b>Finale</b> (bordo giallo): finché non escono i finalisti vedi i “Possibili finalisti”, attenuati, dal più sicuro al più a rischio. Poi restano solo i finalisti.'
   ]));
 
   // BARRA IN ALTO
@@ -3821,9 +3821,9 @@ function openLegend(){
     +'<div style="margin-top:8px;background:#b3261e;color:#fff;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:700">Server notifiche fermo da 14 min</div>'+N(4)));
   h.push(ex([
     'Ora attuale.',
-    'Ritardo (+) o anticipo (−) della giornata rispetto al programma. <b>AUTO</b> = calcolato dal live.',
-    'Collegamento ai dati: <b>LIVE</b> = aggiornato; se manca la rete compare una barra "Senza rete" e le modifiche partono quando torna.',
-    'Il server delle notifiche non dà segni di vita: le notifiche push potrebbero non arrivare. Riaprendo l\'app si aggiorna.'
+    'Ritardo (+) o anticipo (−) della giornata. <b>AUTO</b> = si aggiorna da solo.',
+    '<b>LIVE</b> = dati aggiornati. Senza rete compare “Senza rete”: le tue modifiche partono quando torna.',
+    'Le notifiche ad app chiusa potrebbero non arrivare finché la barra non sparisce. L\'app intanto funziona.'
   ]));
 
   // LIVE
@@ -3834,7 +3834,7 @@ function openLegend(){
     +tasks(['green','green','red','red','red'])+'</div></div>'
     +'<div class="ltbig" style="margin-top:8px"><div class="pos"><span class="lt-x">✕</span></div>'+N(4)+'<div style="flex:1"><div><span class="num">#212</span> <span class="nm">BIANCHI LUCA</span></div></div></div>'));
   h.push(ex([
-    'Posizione attuale; sotto, la pillola <b style="color:#4fd69c">▲3</b> / <b style="color:#ef6a7a">▼2</b> = posizioni guadagnate o perse (bordo verde/rosso). Ha sempre il numero: non è il triangolo di rischio.',
+    'Posizione attuale; sotto, <b style="color:#4fd69c">▲3</b> / <b style="color:#ef6a7a">▼2</b> = posizioni guadagnate o perse (non è il triangolo di rischio).',
     '<b>AI BOX</b> = rientrato ai box; <b>FERMO IN PISTA</b> = fermo sul tracciato (prove e qualifiche).',
     'Team, distacco e giro migliore.',
     '<b>✕ rossa</b> al posto della posizione: ritirato in gara.'
@@ -3845,12 +3845,12 @@ function openLegend(){
   h.push(sec('LAVORI','pillole sotto ogni pilota in <b>PROGRAMMA</b>, <b>LIVE</b> e <b>PILOTI</b>: tocca per cambiare stato'));
   h.push('<div class="lg-row"><div><button class="task-btn red" style="padding:4px 8px;font-size:10px;pointer-events:none">PISTA</button></div><div>Da fare</div></div>');
   h.push('<div class="lg-row"><div><button class="task-btn green" style="padding:4px 8px;font-size:10px;pointer-events:none">PISTA</button></div><div>Fatto (1 tocco)</div></div>');
-  h.push('<div class="lg-row"><div><button class="task-btn orange" style="padding:4px 8px;font-size:10px;pointer-events:none">PISTA</button></div><div>Parziale / da completare (2 tocchi; il 3° torna rosso)</div></div>');
+  h.push('<div class="lg-row"><div><button class="task-btn orange" style="padding:4px 8px;font-size:10px;pointer-events:none">PISTA</button></div><div>A metà (2 tocchi; il 3° torna rosso)</div></div>');
 
   // ELIMINAZIONI
   h.push(sec('GARA → ELIMINAZIONI','menu in basso → <b>GARA</b> → <b>ELIMINAZIONI</b> → <b>PREFINALE</b> / <b>FINALE</b>'));
-  h.push('<div class="lg-row"><div>'+riskRing(12)+riskRing(62)+riskRing(90)+'</div><div>Anello nella scheda <b>FINALE</b>: rischio stimato di non entrare in finale, con gli stessi colori del triangolo. 100% solo se è fuori anche vincendo.</div></div>');
-  h.push('<div class="lg-row"><div><span style="display:inline-block;width:5px;height:24px;background:#22c55e;border-radius:2px"></span><span style="display:inline-block;width:5px;height:24px;background:#6b7280;border-radius:2px"></span><span style="display:inline-block;width:5px;height:24px;background:#ef4444;border-radius:2px"></span></div><div>Barra a sinistra: <b>verde</b> ammesso (ufficiale) · <b>grigia</b> in attesa delle liste · <b>rossa</b> fuori (ufficiale)</div></div>');
+  h.push('<div class="lg-row"><div>'+riskRing(12)+riskRing(62)+riskRing(90)+'</div><div>Anello nella scheda <b>FINALE</b>: quanto rischia di non entrare in finale, con gli stessi colori del triangolo.</div></div>');
+  h.push('<div class="lg-row"><div><span style="display:inline-block;width:5px;height:24px;background:#22c55e;border-radius:2px"></span><span style="display:inline-block;width:5px;height:24px;background:#6b7280;border-radius:2px"></span><span style="display:inline-block;width:5px;height:24px;background:#ef4444;border-radius:2px"></span></div><div>Barra a sinistra: <b>verde</b> passa · <b>grigia</b> non si sa ancora · <b>rossa</b> fuori</div></div>');
 
   // PILOTI / TEAM
   h.push(chap('PILOTI E TEAM'));
@@ -3859,15 +3859,15 @@ function openLegend(){
     +'<div class="card-inner hl-foto hl-prio" style="margin-top:10px"><div style="display:flex;align-items:center;gap:6px"><span class="hl-badge hl-foto hl-mini"><i class="ic ic-hl-foto"></i></span><span class="hl-badge hl-priority hl-mini"><i class="ic ic-hl-prio"></i></span>'+N(2)+'<span class="inner-num">#404</span><span class="inner-name">ROSSI MARIO</span></div></div>'+N(3)
     +'<div class="card-inner hl-both" style="margin-top:8px"><div style="display:flex;align-items:center;gap:6px"><span class="inner-num">#212</span><span class="inner-name">BIANCHI LUCA</span></div></div>'+N(4)));
   h.push(ex([
-    'Nella scheda del pilota (matita “modifica” in Piloti): tocca per accendere o spegnere: si salva subito. <b>Acceso</b> = pieno colorato con la spunta; spento = grigio.',
+    'Tocca per accendere o spegnere: si salva subito. Acceso = colorato, spento = grigio.',
     'Nel Programma, accanto al numero: <span class="hl-badge hl-foto hl-mini"><i class="ic ic-hl-foto"></i></span> foto · <span class="hl-badge hl-video hl-mini"><i class="ic ic-hl-video"></i></span> video · <span class="hl-badge hl-priority hl-mini"><i class="ic ic-hl-prio"></i></span> priorità.',
-    'Barra a sinistra della scheda del pilota: <b style="color:#38bdf8">azzurra</b> = foto, <b style="color:#ec4899">magenta</b> = video. Priorità = <b>cornice dorata</b> (lo stesso giallo delle note) ovunque: Programma, Live, Piloti, Pista.',
+    'Barra a sinistra: <b style="color:#38bdf8">azzurra</b> = foto, <b style="color:#ec4899">magenta</b> = video. Priorità = <b>cornice dorata</b>, in tutta l\'app.',
     'Foto <b>e</b> video: barra doppia azzurra e magenta.'
   ]));
   h.push(sec('PILOTI, TEAM, ENTRY LIST','<b>PILOTI</b> e <b>ENTRY</b>; i team si seguono in Impostazioni → <b>TEAM NEL PROGRAMMA</b>'));
-  h.push('<div class="lg-row"><div><span class="tchip" style="--tc:#38bdf8">TEAM</span></div><div>Pilota di un <b>team che segui</b>: bordo luminoso del colore del team (colori in Impostazioni)</div></div>');
-  h.push('<div class="lg-row"><div><span style="font-size:9px;font-weight:800;color:#facc15;border:1px dashed #facc15;border-radius:4px;padding:0 5px">DA CONFERMARE</span></div><div>Pilota letto da un PDF scansionato: sarà sostituito dai dati ufficiali</div></div>');
-  h.push('<div class="lg-row"><div><span style="color:#ef4444;font-size:10px;font-weight:800">ELIMINATO</span></div><div>Pilota fuori dalla gara: finisce in fondo al Programma, in "Ritirati / Eliminati"</div></div>');
+  h.push('<div class="lg-row"><div><span class="tchip" style="--tc:#38bdf8">TEAM</span></div><div>Pilota di un <b>team che segui</b>: bordo del colore del team</div></div>');
+  h.push('<div class="lg-row"><div><span style="font-size:9px;font-weight:800;color:#facc15;border:1px dashed #facc15;border-radius:4px;padding:0 5px">DA CONFERMARE</span></div><div>Dati non ancora ufficiali: si aggiornano da soli</div></div>');
+  h.push('<div class="lg-row"><div><span style="color:#ef4444;font-size:10px;font-weight:800">ELIMINATO</span></div><div>Pilota fuori dalla gara: lo trovi in fondo al Programma</div></div>');
 
   // FILTRI
   h.push(sec('FILTRI DELLA LISTA PILOTI','menu in basso → <b>PILOTI</b>, sopra la lista'));
@@ -3875,25 +3875,25 @@ function openLegend(){
     +'<div class="filter-row"><span class="filter-row-label">STATO</span><button class="filter-chip">TUTTI</button><button class="filter-chip f-red active"><span class="dotc" style="background:#ff5c7a"></span></button><button class="filter-chip f-orange active"><span class="dotc" style="background:#ffb400"></span></button><button class="filter-chip f-green"><span class="dotc" style="background:#21d07a"></span></button></div>'+N(2)
     +'<div class="filter-row"><span class="filter-row-label">EVID.</span><button class="filter-chip">TUTTI</button><button class="filter-chip f-hl-foto"><i class="ic ic-hl-foto"></i> FOTO</button><button class="filter-chip f-hl-video active"><i class="ic ic-hl-video"></i> VIDEO</button><button class="filter-chip f-hl-priority"><i class="ic ic-hl-prio"></i> PRIORITÀ</button></div>'+N(3)));
   h.push(ex([
-    '<b>TASK</b>: puoi accenderne più di uno. Da soli non filtrano: dicono <b>su quali lavori</b> guardare il colore scelto in STATO.',
-    '<b>STATO</b>: più colori accesi = uno qualsiasi. Con i task accesi il pilota compare se <b>almeno uno</b> di quei lavori è in quel colore.',
-    '<b>EVID.</b>: FOTO e VIDEO si sommano (chi è foto <b>o</b> video). PRIORITÀ restringe ai soli prioritari: da sola = tutti i prioritari; con FOTO = prioritari in foto.'
+    '<b>TASK</b>: scegli su quali lavori guardare il colore (anche più di uno).',
+    '<b>STATO</b>: il colore da cercare (anche più di uno). Il pilota compare se <b>almeno uno</b> dei lavori scelti ha quel colore.',
+    '<b>EVID.</b>: FOTO e VIDEO si sommano. PRIORITÀ lascia solo i prioritari: da sola = tutti i prioritari, con FOTO = prioritari in foto.'
   ]));
-  h.push(p_('Esempio della schermata: <b>piloti VIDEO che hanno ancora PADDOK o PREGRIGLIA da fare</b> (rosso o giallo). Spariscono quando entrambi sono verdi. <b>TUTTI</b> azzera la riga. In alto il contatore <b>FILTRO 5/21</b> dice quanti ne vedi sul totale.'));
+  h.push(p_('Esempio: <b>piloti VIDEO con ancora PADDOK o PREGRIGLIA da fare</b>. <b>TUTTI</b> azzera la riga; <b>FILTRO 5/21</b> dice quanti ne vedi.'));
   h.push(sec('GRUPPO DEL PILOTA','<b>PILOTI</b>, a destra di ogni pilota'));
-  h.push('<div class="lg-row"><div><span class="group-badge set">GRP B</span></div><div>Gruppo delle manche, ricavato dagli accoppiamenti (A-B, B-C, B-D hanno in comune la B). Se non c\'è una lettera comune vedi le manche per intero; <b>GRP ?</b> = gruppo non ancora noto.</div></div>');
+  h.push('<div class="lg-row"><div><span class="group-badge set">GRP B</span></div><div>Gruppo del pilota nelle manche. <b>GRP ?</b> = non ancora noto.</div></div>');
 
   // NOTIFICHE
   h.push(chap('NOTIFICHE'));
   h.push(sec('COME FUNZIONANO','menu in basso → <b>GARA</b> (storico) · Impostazioni → <b>NOTIFICHE</b> (interruttori)'));
-  h.push(p_('Le notifiche parlano <b>solo dei tuoi piloti</b> (e dei team che segui). Sono brevi: dicono cosa è cambiato, i dettagli li trovi aprendo l\'app. Tutte finiscono anche nello storico della scheda <b>GARA</b>.'));
-  h.push('<div class="lg-row"><div><span class="gd-tag on">APP CHIUSA</span></div><div>Arriva anche con l\'app chiusa o il telefono bloccato (la manda il server).</div></div>');
+  h.push(p_('Parlano <b>solo dei tuoi piloti</b> e dei team che segui. Sono brevi: i dettagli li trovi nell\'app. Le ritrovi tutte nella scheda <b>GARA</b>.'));
+  h.push('<div class="lg-row"><div><span class="gd-tag on">APP CHIUSA</span></div><div>Arriva anche con l\'app chiusa o il telefono bloccato.</div></div>');
   h.push('<div class="lg-row"><div><span class="gd-tag">APP APERTA</span></div><div>Arriva solo se l\'app è aperta o in secondo piano.</div></div>');
   h.push('<div class="lg-row"><div><span class="gd-tag off">SPENTA DI BASE</span></div><div>Va accesa a mano in Impostazioni → Notifiche.</div></div>');
-  h.push('<div class="lg-row"><div><span style="font-weight:900;color:#4fd69c">PROVVISORIO</span></div><div>Dal live o da una classifica non ancora ufficiale: può cambiare dopo reclami e verifiche. Quando diventa ufficiale arriva la conferma.</div></div>');
+  h.push('<div class="lg-row"><div><span style="font-weight:900;color:#4fd69c">PROVVISORIO</span></div><div>Può ancora cambiare (reclami, verifiche). Quando diventa ufficiale arriva la conferma.</div></div>');
   NOTIF_TYPES.forEach(([k,l])=>{
     const g=NOTIF_GUIDE[k]||{};
-    h.push(sec('NOTIFICA · '+l.split(':')[0].toUpperCase(),'Impostazioni → <b>NOTIFICHE</b> → “'+l+'”'));
+    h.push(sec('NOTIFICA · '+l.split(':')[0].toUpperCase()));
     h.push((g.ex||[]).map(e=>notif(e[0],e[1])).join(''));
     h.push(p_(g.when||l));
     h.push('<div>'+(g.closed?'<span class="gd-tag on">APP CHIUSA</span>':'<span class="gd-tag">APP APERTA</span>')+(NOTIF_DEF_OFF.has(k)?'<span class="gd-tag off">SPENTA DI BASE</span>':'<span class="gd-tag">ACCESA DI BASE</span>')+(notifTypeOn(k)?'<span class="gd-tag on">ORA ACCESA PER TE</span>':'<span class="gd-tag">ORA SPENTA PER TE</span>')+'</div>');
@@ -3916,11 +3916,11 @@ function openLegend(){
   h.push(sec('LE NOTIFICHE ARRIVANO SOLO QUANDO APRO L\'APP'));
   h.push(p_('È il risparmio batteria di Android che blocca Chrome in background. Vai in Impostazioni del telefono → App → <b>Chrome</b> (e l\'app Race Tracker se l\'hai installata) → Batteria → <b>Senza restrizioni</b>, e controlla che le notifiche siano consentite.'));
   h.push(sec('NON VEDO LE ULTIME NOVITÀ'));
-  h.push(p_('Chiudi del tutto l\'app e riaprila: si aggiorna da sola. In Impostazioni in fondo trovi il numero di versione.'));
+  h.push(p_('Chiudi del tutto l\'app e riaprila: si aggiorna da sola.'));
   h.push(sec('BARRA “SERVER NOTIFICHE FERMO”'));
-  h.push(p_('Compare solo se il server non risponde da più di un minuto. L\'app continua a funzionare; possono mancare le notifiche ad app chiusa. Se resta per molti minuti avvisa chi gestisce l\'app.'));
+  h.push(p_('L\'app funziona, ma le notifiche ad app chiusa potrebbero non arrivare. Se resta a lungo avvisa chi gestisce l\'app.'));
   h.push(sec('UN DATO È SBAGLIATO'));
-  h.push(p_('I dati ufficiali (griglie, arrivi, finalisti) arrivano dalle classifiche ufficiali e si correggono da soli quando gli organizzatori pubblicano le correzioni: in quel caso arriva la notifica “Classifica corretta”. Le tue note e i lavori li modifichi tu.'));
+  h.push(p_('Griglie, arrivi e finalisti si correggono da soli quando gli organizzatori pubblicano le correzioni (arriva “Classifica corretta”). Note e lavori li modifichi tu.'));
   h.push('</div>');
 
   const tocH='<div class="gd-toc">'+toc.map(([n,t])=>n?'<a href="#" onclick="guideGo('+n+');return false">'+t+'</a>':'<div class="gd-toc-c">'+t+'</div>').join('')+'</div>';
@@ -3936,21 +3936,21 @@ function guideSearch(q){q=String(q||'').trim().toLowerCase();
 window.guideSearch=guideSearch;
 // 15/11/2026: dettagli delle notifiche per la guida (esempio, quando arriva, se arriva ad app chiusa)
 const NOTIF_GUIDE={
-  programma:{closed:true,ex:[['Griglia cambiata · OKN Prefinale A','3 tuoi piloti spostati · apri l\'app'],['Prefinali cambiate · OKN','2 tuoi piloti cambiano gruppo · apri l\'app'],['Programma ufficiale aggiornato','Controlla orari e turni nell\'app']],when:'Quando la griglia ufficiale cambia dopo la prima uscita (penalità, comunicati) e ci sono tuoi piloti spostati; quando un tuo pilota cambia gruppo di prefinale; quando esce una nuova versione del programma ufficiale.'},
-  top3:{closed:true,ex:[['P1 Prefinal A OKN: #404 ROSSI MARIO','PROVVISORIO da live timing, verifica reclami']],when:'Un tuo pilota finisce nei primi 3 di una manche o prefinale: subito a fine gara dal live (provvisorio), poi la conferma quando la classifica è ufficiale. Mai per warm up, prove e qualifiche.'},
-  qualifiche:{closed:true,ex:[['🏆 POLE qualifiche OKN: #404 ROSSI MARIO','Classifica combinata S1+S2 · PROVVISORIO, verifica reclami']],when:'Un tuo pilota fa la pole o entra nei primi 3 in qualifica. Con due serie arriva dopo ognuna e poi sulla classifica combinata.'},
-  finali:{closed:true,ex:[['🏁 FINALE P2 OKN Final: #404 ROSSI MARIO','PROVVISORIO da live timing, verifica reclami']],when:'Un tuo pilota chiude la finale nei primi 5: subito dal live, poi la conferma ufficiale (e l\'avviso se la classifica viene corretta).'},
-  eliminati:{closed:true,ex:[['⚠️ Rischio finale OK-NJ','2 a rischio, 1 fuori zona finale · apri l\'app']],when:'Dopo la classifica intermedia: tuoi piloti a rischio di non entrare in finale; e quando un tuo pilota risulta eliminato da una classifica ufficiale.'},
-  prefinali:{closed:true,ex:[['✅ Alle prefinali · OKN','3 tuoi piloti passano · apri l\'app'],['❌ Eliminati · OKN','#250 eliminato, non passa · apri l\'app'],['🏁 Finale OKN adesso disponibile','2 tuoi piloti in finale · apri l\'app']],when:'Quando escono le liste ufficiali di prefinale e finale: chi passa, chi è eliminato (se sono più di uno: “Ci sono tuoi piloti eliminati in OKN · apri l\'app per vederli”) e quando è disponibile la griglia della finale.'},
-  riepilogo:{closed:true,ex:[['🌙 Domani (domenica): 6 piloti in pista','Prima uscita 8.30 · orari nell\'app']],when:'La sera prima di ogni giorno di gara, con i tuoi piloti in pista il giorno dopo.'},
-  entrylist:{closed:true,ex:[['📋 Entry list OKN cambiata','#404 non più iscritto · apri l\'app']],when:'Quando cambia la lista iscritti e riguarda i tuoi piloti o i team che segui.'},
-  ritiri:{closed:true,ex:[['#404 ROSSI MARIO USCITO','OKN · Prefinal A']],when:'Un tuo pilota esce in gara (USCITO), rientra ai box (AI BOX) o si ferma in pista (FERMO IN PISTA) in prove e qualifiche. Arriva dal live.'},
+  programma:{closed:true,ex:[['Griglia cambiata · OKN Prefinale A','3 tuoi piloti spostati · apri l\'app'],['Prefinali cambiate · OKN','2 tuoi piloti cambiano gruppo · apri l\'app'],['Programma ufficiale aggiornato','Controlla orari e turni nell\'app']],when:'Cambia la griglia con tuoi piloti spostati, un tuo pilota cambia gruppo di prefinale, o esce un nuovo programma.'},
+  top3:{closed:true,ex:[['P1 Prefinal A OKN: #404 ROSSI MARIO','PROVVISORIO da live timing, verifica reclami']],when:'Un tuo pilota chiude nei primi 3 una manche o prefinale: subito a fine gara, poi la conferma ufficiale.'},
+  qualifiche:{closed:true,ex:[['🏆 POLE qualifiche OKN: #404 ROSSI MARIO','Classifica combinata S1+S2 · PROVVISORIO, verifica reclami']],when:'Un tuo pilota fa la pole o entra nei primi 3 in qualifica.'},
+  finali:{closed:true,ex:[['🏁 FINALE P2 OKN Final: #404 ROSSI MARIO','PROVVISORIO da live timing, verifica reclami']],when:'Un tuo pilota chiude la finale nei primi 5: subito a fine gara, poi la conferma ufficiale.'},
+  eliminati:{closed:true,ex:[['⚠️ Rischio finale OK-NJ','2 a rischio, 1 fuori zona finale · apri l\'app']],when:'Tuoi piloti a rischio di non entrare in finale, o risultati eliminati.'},
+  prefinali:{closed:true,ex:[['✅ Alle prefinali · OKN','3 tuoi piloti passano · apri l\'app'],['❌ Eliminati · OKN','#250 eliminato, non passa · apri l\'app'],['🏁 Finale OKN adesso disponibile','2 tuoi piloti in finale · apri l\'app']],when:'Escono le liste di prefinale e finale: chi passa, chi è eliminato, e quando la finale è disponibile.'},
+  riepilogo:{closed:true,ex:[['🌙 Domani (domenica): 6 piloti in pista','Prima uscita 8.30 · orari nell\'app']],when:'La sera prima di ogni giorno di gara.'},
+  entrylist:{closed:true,ex:[['📋 Entry list OKN cambiata','#404 non più iscritto · apri l\'app']],when:'Cambia la lista iscritti per i tuoi piloti o team.'},
+  ritiri:{closed:true,ex:[['#404 ROSSI MARIO USCITO','OKN · Prefinal A']],when:'Un tuo pilota esce in gara, rientra ai box o si ferma in pista.'},
   rossa:{closed:true,ex:[['BANDIERA ROSSA OKN','Prefinal A · in pista: #404 #212']],when:'Bandiera rossa durante una sessione con tuoi piloti in pista.'},
   partenza:{closed:true,ex:[['PARTITA OKN · Prefinal A','alle 11.20 · in pista: #404, #212']],when:'Parte una sessione con tuoi piloti in pista.'},
-  prossima:{closed:false,ex:[['Tra 10 min: OKN Prefinal A','ore 11.20 · #404 ROSSI MARIO']],when:'Un tuo pilota sta per entrare in pista tra circa 10 minuti.'},
-  ritardo:{closed:false,ex:[['Ritardo ora +15 min','prima +10 min']],when:'Il ritardo della giornata cambia di 5 minuti o più.'},
-  correzioni:{closed:true,ex:[['Classifica corretta: OKN Prefinal A','#404 P3→P5 · apri l\'app']],when:'Una classifica già pubblicata viene corretta (reclami, penalità) e cambia la posizione di un tuo pilota.'},
-  comunicati:{closed:true,ex:[['Nuovo documento ufficiale','Comunicato n. 12']],when:'Gli organizzatori pubblicano un nuovo comunicato o documento ufficiale.'},
+  prossima:{closed:false,ex:[['Tra 10 min: OKN Prefinal A','ore 11.20 · #404 ROSSI MARIO']],when:'Un tuo pilota entra in pista tra circa 10 minuti.'},
+  ritardo:{closed:false,ex:[['Ritardo ora +15 min','prima +10 min']],when:'Il ritardo della giornata cambia di almeno 5 minuti.'},
+  correzioni:{closed:true,ex:[['Classifica corretta: OKN Prefinal A','#404 P3→P5 · apri l\'app']],when:'Una classifica viene corretta e cambia la posizione di un tuo pilota.'},
+  comunicati:{closed:true,ex:[['Nuovo documento ufficiale','Comunicato n. 12']],when:'Esce un nuovo comunicato ufficiale.'},
   promozioni:{closed:true,ex:[['Podio Finale: #404 ROSSI MARIO P3 (OKN)','Era P4, dopo le verifiche è P3']],when:'Dopo le verifiche un tuo pilota sale in pole o sul podio della finale.'}
 };
 function renderSettings(){
