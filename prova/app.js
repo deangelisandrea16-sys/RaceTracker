@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1400';
+var RT_JS_BUILD='2026-11-15-1405';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3752,7 +3752,8 @@ function openLegend(){
   h.push(sec('A COSA SERVE L\'APP'));
   h.push(p_('Race Tracker ti dice <b>dove sono i tuoi piloti</b> durante il weekend di gara: quando girano, in che posizione partono, come arrivano, se passano o sono eliminati. I dati arrivano da soli dal programma ufficiale, dalle classifiche ufficiali e dal live timing: tu scegli solo <b>chi seguire</b>.'));
   h.push(sec('MENU IN BASSO','sempre visibile in fondo allo schermo'));
-  h.push(shot('<div style="display:flex;justify-content:space-around;font-size:10px;font-weight:800;color:var(--text3);text-align:center"><div><i class="ic ic-flag"></i><br>GARE</div>'+N(1)+'<div><i class="ic ic-user"></i><br>PILOTI</div>'+N(2)+'<div style="color:var(--accent)"><i class="ic ic-list"></i><br>PROGRAMMA</div>'+N(3)+'<div><i class="ic ic-list"></i><br>ENTRY</div>'+N(4)+'<div><i class="ic ic-trophy"></i><br>GARA</div>'+N(5)+'<div><i class="ic ic-flag"></i><br>LIVE</div>'+N(6)+'</div>'));
+  // 15/11 (Andrea): icone prese dal menu vero, cosi' coincidono sempre con l'app
+  h.push(shot('<div style="display:flex;justify-content:space-around;font-size:10px;font-weight:800;color:var(--text3);text-align:center">'+[...document.querySelectorAll('#tabbar .tabbar-btn')].map((b,i)=>{const ic=b.querySelector('.ic');return '<div>'+(ic?ic.outerHTML:'')+'<br>'+(b.textContent||'').trim().toUpperCase()+N(i+1)+'</div>';}).join('')+'</div>'));
   h.push(ex([
     '<b>GARE</b>: scegli il weekend di gara su cui lavori.',
     '<b>PILOTI</b>: i piloti che segui, con lavori, note, filtri e foto/video/priorità.',
