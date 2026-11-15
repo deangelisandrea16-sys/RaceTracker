@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1000';
+var RT_JS_BUILD='2026-11-15-1005';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3697,7 +3697,7 @@ function openLegend(){
   const pencil='<span style="display:inline-flex;align-items:center;color:var(--text3);font-size:18px"><i class="ic ic-note"></i></span>';
   const tasks=(st)=>'<div class="tasks">'+TASKS.map((t,i)=>'<button class="task-btn '+(st[i]||'red')+'" style="padding:4px 8px;font-size:10px;pointer-events:none">'+t+'</button>').join('')+'</div>';
   const h=[];
-  h.push('<style>.lg-shot{pointer-events:none;border:1px dashed var(--border2);border-radius:12px;padding:10px;margin:8px 0;background:var(--bg)}.lg-shot .card{margin-bottom:0}'
+  h.push('<style>.lg-shot{pointer-events:none;border:1px dashed var(--border2);border-radius:12px;padding:10px;margin:8px 0;background:var(--bg);overflow:hidden}.lg-shot .slot-header{flex-wrap:wrap;row-gap:6px}.lg-shot .slot-type{white-space:nowrap}.lg-shot .tasks{flex-wrap:wrap}.lg-row{flex-wrap:wrap}.lg-shot .card{margin-bottom:0}'
     +'.lg-n{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 3px;border-radius:9px;background:var(--accent);color:#000;font-size:10px;font-weight:900;font-style:normal;vertical-align:middle;margin:0 2px;font-family:Arial,sans-serif;line-height:1}'
     +'.lg-list{margin:4px 0 6px 18px;padding:0;font-size:13px;color:var(--text2);line-height:1.4}.lg-list li{margin:4px 0}.lg-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--border);font-size:13px;color:var(--text2)}.lg-row>div:first-child{min-width:96px;display:flex;justify-content:center;gap:4px;flex-wrap:wrap}</style>');
   h.push('<div style="font-size:12px;color:var(--text3)">Le schermate qui sotto sono esempi: i numeri <b class="lg-n">1</b> indicano a cosa si riferisce ogni spiegazione.</div>');
@@ -3783,7 +3783,7 @@ function openLegend(){
   h.push(sec('COLORI DELLE CATEGORIE'));
   h.push('<div class="lg-row" style="flex-wrap:wrap;gap:14px;font-weight:900">'+[['KZ2','KZ2'],['OKN','OKN'],['OK-NJ','OK-NJ'],['MINI GR3','MINI GR3'],['MINI U10','MINI U10']].map(c=>'<span class="'+catClass(c[0])+'">'+c[1]+'</span>').join('')+'</div>');
 
-  openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Legenda</div><div style="max-height:72vh;overflow:auto;padding-right:2px">'+h.join('')+'</div>');
+  openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Legenda</div><div style="max-height:72vh;overflow-y:auto;overflow-x:hidden;padding-right:2px">'+h.join('')+'</div>');
 }
 window.openLegend=openLegend;
 function renderSettings(){
