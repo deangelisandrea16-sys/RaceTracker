@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1735';
+var RT_JS_BUILD='2026-11-15-1740';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5207,7 +5207,7 @@ function spotsLayout(anim){
     const vb=String(v.map.vb).split(/\s+/).map(Number),a=vb[2]/vb[3],Wf=W-16,Hf=H-16;
     const rot=((Math.round(_spView.r/90)*90)%180+180)%180===90;
     let Sw=rot?Math.min(Hf,Wf*a):Math.min(Wf,Hf*a);let Sh=Sw/a;if(!rot&&Sh>Hf){Sh=Hf;Sw=Sh*a;}if(rot&&Sh>Wf){Sh=Wf;Sw=Sh*a;}
-    if(_spView.t){const k=1.3;Sw*=k;Sh*=k;}
+    if(_spView.t){const k=1.02;Sw*=k;Sh*=k;}
     _spSize={W,H,Sw,Sh};
   }
   const Sw=_spSize.Sw,Sh=_spSize.Sh;
