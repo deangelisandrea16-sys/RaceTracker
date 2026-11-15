@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1450';
+var RT_JS_BUILD='2026-11-15-1455';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3869,7 +3869,7 @@ function openLegend(){
     'Foto <b>e</b> video: barra doppia azzurra e magenta.'
   ]));
   h.push(sec('PILOTI, TEAM, ENTRY LIST','<b>PILOTI</b> e <b>ENTRY</b>; i team si seguono in Impostazioni → <b>TEAM NEL PROGRAMMA</b>'));
-  h.push('<div class="lg-row"><div><span class="tchip" style="--tc:#38bdf8">TEAM</span></div><div>Pilota di un <b>team che segui</b>: bordo del colore del team</div></div>');
+  h.push('<div class="lg-row"><div><span class="tchip" style="--tc:#38bdf8">TEAM</span></div><div>Piloti di un <b>team che segui</b>: riquadro del colore del team con il suo nome, in cima al turno</div></div>');
   h.push('<div class="lg-row"><div><span style="font-size:9px;font-weight:800;color:#facc15;border:1px dashed #facc15;border-radius:4px;padding:0 5px">DA CONFERMARE</span></div><div>Dati non ancora ufficiali: si aggiornano da soli</div></div>');
   h.push('<div class="lg-row"><div><span style="color:#ef4444;font-size:10px;font-weight:800">ELIMINATO</span></div><div>Pilota fuori dalla gara: lo trovi in fondo al Programma</div></div>');
 
