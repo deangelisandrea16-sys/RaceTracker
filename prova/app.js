@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1715';
+var RT_JS_BUILD='2026-11-15-1730';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5163,7 +5163,7 @@ function raceVenue(){
 function venueMap(){if(_venues===null){loadVenues();return null;}const v=raceVenue();return v&&v.map&&v.map.d?v:null;}
 let _spView={r:0,z:1,x:0,y:0,t:0};
 function spViewKey(){const v=venueMap();return'rt_spview_'+(v?v.key:'');}
-function openSpots(num){window._rtDeferRender=true;_spSize=null;_spNum=String(num);_spTrash=false;try{_spView=Object.assign({r:0,z:1,x:0,y:0,t:0},JSON.parse(localStorage.getItem(spViewKey())||'{}'),{z:1,x:0,y:0});}catch(_){_spView={r:0,z:1,x:0,y:0,t:0};}renderSpots();}
+function openSpots(num){window._rtDeferRender=true;_spSize=null;_spNum=String(num);_spTrash=false;try{_spView=Object.assign({r:0},JSON.parse(localStorage.getItem(spViewKey())||'{}'),{z:1,x:0,y:0,t:52});}catch(_){_spView={r:0,z:1,x:0,y:0,t:52};}renderSpots();}
 window.openSpots=openSpots;
 function spotNo(id){const sp=trackSpots[id]||{};if(sp.k)return sp.k;return spotIds().indexOf(id)+1;}
 function renderSpots(){
@@ -5186,7 +5186,7 @@ function renderSpots(){
   ids.forEach(id=>{const on=!!d[id],n=spotNo(id);
     h.push('<button class="sp-dot'+(on?' on':'')+'" data-id="'+id+'" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'✓':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>');});
   h.push('</div></div>');
-  h.push('<div class="sp-tools"><button class="sp-btn" onclick="spotsRotate(-90)" aria-label="Ruota a sinistra">⟲</button><button class="sp-btn" onclick="spotsRotate(90)" aria-label="Ruota a destra">⟳</button><button class="sp-btn" onclick="spotsZoom(1.4)" aria-label="Ingrandisci">＋</button><button class="sp-btn" onclick="spotsZoom(1/1.4)" aria-label="Riduci">－</button><button class="sp-btn" onclick="spotsResetView()" aria-label="Centra">⤢</button><button class="sp-btn'+(_spView.t?' on':'')+'" onclick="spotsToggle3D()" aria-label="Vista 3D" aria-pressed="'+(!!_spView.t)+'">3D</button>'+(currentUserId===SERVER_OWNER?'<button class="sp-btn'+(_spMarkMode?' on':'')+'" onclick="spotsToggleMark()" aria-label="Aggiungi riferimento del circuito">📍</button>':'')+'</div>');
+  h.push('<div class="sp-tools"><button class="sp-btn" onclick="spotsRotate(-30)" aria-label="Ruota a sinistra">⟲</button><button class="sp-btn" onclick="spotsRotate(30)" aria-label="Ruota a destra">⟳</button><button class="sp-btn" onclick="spotsZoom(1.4)" aria-label="Ingrandisci">＋</button><button class="sp-btn" onclick="spotsZoom(1/1.4)" aria-label="Riduci">－</button><button class="sp-btn" onclick="spotsResetView()" aria-label="Centra">⤢</button>'+(currentUserId===SERVER_OWNER?'<button class="sp-btn'+(_spMarkMode?' on':'')+'" onclick="spotsToggleMark()" aria-label="Aggiungi riferimento del circuito">📍</button>':'')+'</div>');
   if(t&&!_spTrash)h.push('<div class="sp-hint">I numeri sono punti da spuntare. Con due dita ingrandisci e ruoti, con un dito sposti.</div>');
   openModal(h.join(''));
   spotsLayout(false);spotsBindGestures();
@@ -5211,18 +5211,18 @@ function spotsLayout(anim){
   }
   const Sw=_spSize.Sw,Sh=_spSize.Sh;
   st.style.width=Sw+'px';st.style.height=Sh+'px';
-  const tr=anim?'transform .28s cubic-bezier(.2,.8,.2,1)':'none';st.style.transition=tr;
+  const tr=anim?'transform .55s cubic-bezier(.25,.8,.25,1)':'none';st.style.transition=tr;
   const m=spotsMatrix(Sw,Sh,W,H);_spM={m,Sw,Sh};
   st.style.transform=m.toString();
   const mk=(v.marks)||{};document.querySelectorAll('#sp-marks .sp-mark').forEach(b=>{const sp=mk[b.getAttribute('data-mid')];if(!sp)return;
-    const q=m.transformPoint(new DOMPoint(sp.x/100*Sw,sp.y/100*Sh,0,1));b.style.transition=anim?'left .28s,top .28s':'none';b.style.left=(q.x/q.w)+'px';b.style.top=(q.y/q.w)+'px';});
+    const q=m.transformPoint(new DOMPoint(sp.x/100*Sw,sp.y/100*Sh,0,1));b.style.transition=anim?'left .55s cubic-bezier(.25,.8,.25,1),top .55s cubic-bezier(.25,.8,.25,1)':'none';b.style.left=(q.x/q.w)+'px';b.style.top=(q.y/q.w)+'px';});
   document.querySelectorAll('#sp-dots .sp-dot').forEach(b=>{const sp=trackSpots[b.getAttribute('data-id')];if(!sp)return;
-    const q=m.transformPoint(new DOMPoint(sp.x/100*Sw,sp.y/100*Sh,0,1));b.style.transition=anim?'left .28s cubic-bezier(.2,.8,.2,1),top .28s cubic-bezier(.2,.8,.2,1)':'none';b.style.left=(q.x/q.w)+'px';b.style.top=(q.y/q.w)+'px';});
+    const q=m.transformPoint(new DOMPoint(sp.x/100*Sw,sp.y/100*Sh,0,1));b.style.transition=anim?'left .55s cubic-bezier(.25,.8,.25,1),top .55s cubic-bezier(.25,.8,.25,1)':'none';b.style.left=(q.x/q.w)+'px';b.style.top=(q.y/q.w)+'px';});
   try{localStorage.setItem(spViewKey(),JSON.stringify({r:_spView.r,t:_spView.t}));}catch(_){}
 }
 function spotsToggle3D(){_spView.t=_spView.t?0:52;const vp=document.getElementById('sp-vp');if(vp)vp.classList.toggle('td',!!_spView.t);document.querySelectorAll('.sp-tools .sp-btn').forEach(b=>{if(b.textContent==='3D')b.classList.toggle('on',!!_spView.t);});spotsLayout(true);}
 window.spotsToggle3D=spotsToggle3D;
-function spotsRotate(dg){_spView.r+=dg;spotsLayout(true);}
+function spotsRotate(dg){const a=dg*Math.PI/180,c=Math.cos(a),s=Math.sin(a),x=_spView.x,y=_spView.y;_spView.x=x*c-y*s;_spView.y=x*s+y*c;_spView.r+=dg;spotsLayout(true);}
 function spotsZoom(k){_spView.z=Math.max(.6,Math.min(8,_spView.z*k));spotsLayout(true);}
 function spotsResetView(){_spView.z=1;_spView.x=0;_spView.y=0;_spView.r=Math.round(_spView.r/90)*90;spotsLayout(true);}
 window.spotsRotate=spotsRotate;window.spotsZoom=spotsZoom;window.spotsResetView=spotsResetView;

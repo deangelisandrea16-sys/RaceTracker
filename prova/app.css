@@ -755,14 +755,18 @@ body.light .sp-track{stroke:#5b6170}body.light .sp-track-edge{stroke:#c9ccd3}
 .sp-kerb{fill:none;stroke:transparent;stroke-linejoin:round}
 .sp-track-line{fill:none;stroke:transparent}
 /* vista 3D: erba, pista in asfalto con spessore, cordoli bianchi/rossi, linea centrale */
-.sp-vp.td{background:radial-gradient(ellipse at 50% 20%,#2f5a34,#17311b 75%)}
+.sp-vp.td{background:repeating-linear-gradient(135deg,rgba(255,255,255,.018) 0 2px,transparent 2px 16px),radial-gradient(ellipse 70% 60% at 50% 45%,#2a2f37 0%,#181b20 55%,#0b0d10 100%)}
+.sp-vp.td::after{content:'';position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 60px rgba(0,0,0,.65)}
+body.light .sp-vp.td{background:repeating-linear-gradient(135deg,rgba(0,0,0,.025) 0 2px,transparent 2px 16px),radial-gradient(ellipse 70% 60% at 50% 45%,#f4f5f7 0%,#e3e6ea 60%,#cfd3d9 100%)}
+body.light .sp-vp.td::after{box-shadow:inset 0 0 50px rgba(0,0,0,.18)}
 .sp-vp.td .sp-track-shadow{stroke:rgba(0,0,0,.55);transform:translate(0,2.2px)}
 .sp-vp.td .sp-track-edge{stroke:#e9e9e9}
 .sp-vp.td .sp-kerb{stroke:#d32f2f;stroke-dasharray:3 3}
-.sp-vp.td .sp-track{stroke:#41454d}
+.sp-vp.td .sp-track{stroke:#4b5058}
 .sp-vp.td .sp-track-line{stroke:rgba(255,255,255,.25);stroke-dasharray:4 5}
 body.light .sp-vp.td .sp-track{stroke:#4a4e57}
 
 .sp-marks{position:absolute;inset:0;pointer-events:none}
 .sp-mark{position:absolute;transform:translate(-50%,-100%);display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;color:#fff;background:rgba(14,90,128,.92);border:1px solid #38bdf8;border-radius:6px;padding:2px 6px;white-space:nowrap;pointer-events:auto}
 .sp-mark i{font-style:normal;font-size:11px}
+.sp-vp.td::after{z-index:1}.sp-marks,.sp-dots{z-index:2}
