@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1455';
+var RT_JS_BUILD='2026-11-15-1505';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3894,9 +3894,9 @@ function openLegend(){
     +[[18,30,1],[52,22,0],[80,55,1],[40,75,0]].map((d,i)=>'<span class="sp-dot'+(d[2]?' on':'')+'" style="left:'+d[0]+'%;top:'+d[1]+'%"><span>'+(d[2]?'✓':(i+1))+'</span></span>').join('')+'</div>'+N(2)));
   h.push(ex([
     'Quanti punti hai fatto con quel pilota sul totale dei tuoi punti (2 su 4). Tocca per aprire la pista.',
-    'Tocca la pista dove hai scattato: compare la spunta <b style="color:#4fd69c">✓</b>. I punti grigi sono quelli che hai usato con altri piloti: toccali se li hai fatti anche con questo. Tocca una spunta per toglierla.'
+    'Tocca la pista dove hai scattato: nasce un punto già spuntato <b style="color:#4fd69c">✓</b> per questo pilota; negli altri piloti compare col suo numero, da spuntare. Tocca un punto per spuntarlo o togliere la spunta.'
   ]));
-  h.push(p_('I punti sono <b>tuoi</b>: ognuno ha i suoi, dove scatta davvero.'));
+  h.push(p_('Per eliminare un punto: tasto <b><i class="ic ic-trash"></i> cestino</b> in alto, tocca i punti da togliere (spariscono da tutti i piloti), poi ritocca il cestino. I punti sono <b>tuoi</b>: ognuno ha i suoi.'));
 
   // NOTIFICHE
   h.push(chap('NOTIFICHE'));
@@ -5117,53 +5117,58 @@ function spotPill(num){
   const[f,t]=spotCount(num),cls=!t?'none':f===t?'green':f?'orange':'red';
   return'<button class="task-btn spot-pill '+cls+'" aria-label="Punti di scatto in pista" onclick="event.stopPropagation();openSpots(\''+num+'\')"><i class="ic ic-camera"></i>'+(t?'<span>'+f+'/'+t+'</span>':'')+'</button>';
 }
-let _spNum=null,_spMap=null,_spMapRace=null;
-/* 15/11 (Andrea): niente modalita' modifica e niente caricamento piantina (le piantine le mettiamo noi, trackMaps/<gara>).
-   Tocco sulla piantina = spunta in quel punto per il pilota. Tocco su un punto = fatto / da fare.
-   Un punto che non e' piu' fatto per nessun pilota sparisce da solo. */
+let _spNum=null,_spMap=null,_spMapRace=null,_spTrash=false;
+/* 15/11 (Andrea): tocco sulla pista = nuovo punto, gia' spuntato per questo pilota e da spuntare per gli altri.
+   Tocco su un punto = spunta / togli spunta. I punti si eliminano SOLO con la modalita' cestino (tasto in alto a destra).
+   Ogni punto ha un numero fisso, che non cambia quando se ne eliminano altri. */
 function spotsLoadMap(){
   if(_spMapRace===activeRaceId&&_spMap!==null)return Promise.resolve(_spMap);
   return ref(db,'trackMaps/'+activeRaceId).once('value').then(sn=>{const v=sn.val();_spMap=(v&&v.img)||'';_spMapRace=activeRaceId;return _spMap;}).catch(()=>{_spMap='';return'';});
 }
-function openSpots(num){_spNum=String(num);renderSpots();spotsLoadMap().then(()=>{if(_spNum===String(num))renderSpots();});}
+function openSpots(num){_spNum=String(num);_spTrash=false;renderSpots();spotsLoadMap().then(()=>{if(_spNum===String(num))renderSpots();});}
 window.openSpots=openSpots;
+function spotNo(id){const sp=trackSpots[id]||{};if(sp.k)return sp.k;return spotIds().indexOf(id)+1;}
 function renderSpots(){
   const p=pilots.find(x=>String(x.num)===_spNum);if(!p){closeModal();return;}
   const d=(spotDone[_spNum])||{},ids=spotIds(),[f,t]=spotCount(_spNum);
   const h=[];
   h.push('<button class="modal-close" onclick="closeModal()">✕</button>');
+  h.push('<button class="sp-trash'+(_spTrash?' on':'')+'" onclick="spotsToggleTrash()" aria-label="Modalità cestino: elimina punti" aria-pressed="'+_spTrash+'"><i class="ic ic-trash"></i></button>');
   h.push('<div class="modal-title">#'+p.num+' '+escapeHtmlSp(p.name||'')+'</div>');
-  h.push('<div class="sp-sub">'+(t?'Fatti <b>'+f+'/'+t+'</b> · ':'')+'tocca la pista dove hai scattato</div>');
-  h.push('<div class="sp-map'+(_spMap?'':' noimg')+'" id="sp-map" onclick="spotsMapTap(event)">');
+  h.push('<div class="sp-sub">'+(_spTrash?'<b style="color:#ef4444">CESTINO</b> · tocca un punto per eliminarlo per tutti i piloti':(t?'Fatti <b>'+f+'/'+t+'</b> · ':'')+'tocca la pista dove hai scattato')+'</div>');
+  h.push('<div class="sp-map'+(_spMap?'':' noimg')+(_spTrash?' trash':'')+'" id="sp-map" onclick="spotsMapTap(event)">');
   if(_spMap)h.push('<img src="'+_spMap+'" alt="Piantina della pista" draggable="false">');
-  ids.forEach((id,i)=>{const sp=trackSpots[id],on=!!d[id];
-    h.push('<button class="sp-dot'+(on?' on':'')+'" style="left:'+sp.x+'%;top:'+sp.y+'%" onclick="event.stopPropagation();spotsTap(\''+id+'\')" aria-label="Punto '+(i+1)+(on?' fatto':' da fare')+'"><span>'+(on?'✓':(i+1))+'</span></button>');});
+  ids.forEach(id=>{const sp=trackSpots[id],on=!!d[id],n=spotNo(id);
+    h.push('<button class="sp-dot'+(on?' on':'')+'" style="left:'+sp.x+'%;top:'+sp.y+'%" onclick="event.stopPropagation();spotsTap(\''+id+'\')" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'✓':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>');});
   h.push('</div>');
-  if(t)h.push('<div class="sp-hint">I punti grigi li hai usati con altri piloti: toccali se li hai fatti anche con questo.</div>');
+  if(t&&!_spTrash)h.push('<div class="sp-hint">I numeri sono i punti da spuntare: toccali se li hai fatti anche con questo pilota.</div>');
   openModal(h.join(''));
 }
 function escapeHtmlSp(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
-function spotsCleanup(){const used={};Object.values(spotDone||{}).forEach(m=>Object.keys(m||{}).forEach(k=>{if(m[k])used[k]=1;}));
-  let ch=false;Object.keys(trackSpots).forEach(k=>{if(!used[k]){delete trackSpots[k];ch=true;}});return ch;}
+function spotsToggleTrash(){_spTrash=!_spTrash;renderSpots();}
+window.spotsToggleTrash=spotsToggleTrash;
 function spotsMapTap(e){
+  if(_spTrash)return;
   const m=document.getElementById('sp-map');if(!m)return;const r=m.getBoundingClientRect();
   const x=Math.max(3,Math.min(97,(e.clientX-r.left)/r.width*100)),y=Math.max(4,Math.min(96,(e.clientY-r.top)/r.height*100));
-  // vicino a un punto esistente (stessa zona): usa quello invece di crearne un altro
-  const near=spotIds().find(k=>{const sp=trackSpots[k],dx=(sp.x-x)*r.width/100,dy=(sp.y-y)*r.height/100;return dx*dx+dy*dy<26*26;});
-  if(near){spotsTap(near);return;}
   const id='s'+Date.now().toString(36);
-  trackSpots[id]={x:Math.round(x*10)/10,y:Math.round(y*10)/10,o:Date.now()};
+  const k=spotIds().reduce((mx,i)=>Math.max(mx,spotNo(i)),0)+1;
+  trackSpots[id]={x:Math.round(x*10)/10,y:Math.round(y*10)/10,o:Date.now(),k:k};
   if(!spotDone[_spNum])spotDone[_spNum]={};spotDone[_spNum][id]=1;
   try{if(navigator.vibrate)navigator.vibrate(12);}catch(_){}
   saveUserField('trackSpots',trackSpots);saveUserField('spotDone',spotDone);renderSpots();try{renderAll();}catch(_){}
 }
 window.spotsMapTap=spotsMapTap;
 function spotsTap(id){
-  if(!spotDone[_spNum])spotDone[_spNum]={};
-  if(spotDone[_spNum][id])delete spotDone[_spNum][id];else spotDone[_spNum][id]=1;
-  try{if(navigator.vibrate)navigator.vibrate(12);}catch(_){}
-  if(spotsCleanup())saveUserField('trackSpots',trackSpots);
-  saveUserField('spotDone',spotDone);renderSpots();try{renderAll();}catch(_){}
+  if(_spTrash){
+    delete trackSpots[id];Object.keys(spotDone).forEach(n=>{if(spotDone[n])delete spotDone[n][id];});
+    try{if(navigator.vibrate)navigator.vibrate([20,40,20]);}catch(_){}
+  }else{
+    if(!spotDone[_spNum])spotDone[_spNum]={};
+    if(spotDone[_spNum][id])delete spotDone[_spNum][id];else spotDone[_spNum][id]=1;
+    try{if(navigator.vibrate)navigator.vibrate(12);}catch(_){}
+  }
+  saveUserField('trackSpots',trackSpots);saveUserField('spotDone',spotDone);renderSpots();try{renderAll();}catch(_){}
 }
 window.spotsTap=spotsTap;
 
