@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1545';
+var RT_JS_BUILD='2026-11-15-1555';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -976,7 +976,8 @@ function listenRaceData(raceId){
     if(!activeDay||!currentDays.includes(activeDay)) activeDay=currentDays[0]||'';
     setSyncStatus('ok');
     initialized=true;
-    renderAll();
+    // 15/11: con la mappa dei punti aperta non ridisegna tutta l'app a ogni tocco (lentezza): lo fa alla chiusura
+    if(window._rtDeferRender){window._rtRenderDirty=true;}else renderAll();
   }
 
   const unsub1=onValue(sharedRef,snap=>{
@@ -4995,7 +4996,7 @@ window.editSectionInline=editSectionInline;
 // MODAL + ADD/EDIT PILOT
 // ══════════════════════════════════════
 function openModal(html){document.getElementById('modal-inner').innerHTML=html;document.getElementById('modal').style.display='flex';}
-function closeModal(){document.getElementById('modal').style.display='none';}
+function closeModal(){document.getElementById('modal').style.display='none';if(window._rtDeferRender){window._rtDeferRender=false;if(window._rtRenderDirty){window._rtRenderDirty=false;try{renderAll();}catch(e){}}}}
 function closeModalOutside(e){if(e.target===document.getElementById('modal'))closeModal();}
 window.closeModal=closeModal;window.closeModalOutside=closeModalOutside;
 
@@ -5139,7 +5140,7 @@ function raceVenue(){
 function venueMap(){if(_venues===null){loadVenues();return null;}const v=raceVenue();return v&&v.map&&v.map.d?v:null;}
 let _spView={r:0,z:1,x:0,y:0};
 function spViewKey(){const v=venueMap();return'rt_spview_'+(v?v.key:'');}
-function openSpots(num){_spNum=String(num);_spTrash=false;try{_spView=Object.assign({r:0,z:1,x:0,y:0},JSON.parse(localStorage.getItem(spViewKey())||'{}'),{z:1,x:0,y:0});}catch(_){_spView={r:0,z:1,x:0,y:0};}renderSpots();}
+function openSpots(num){window._rtDeferRender=true;_spNum=String(num);_spTrash=false;try{_spView=Object.assign({r:0,z:1,x:0,y:0},JSON.parse(localStorage.getItem(spViewKey())||'{}'),{z:1,x:0,y:0});}catch(_){_spView={r:0,z:1,x:0,y:0};}renderSpots();}
 window.openSpots=openSpots;
 function spotNo(id){const sp=trackSpots[id]||{};if(sp.k)return sp.k;return spotIds().indexOf(id)+1;}
 function renderSpots(){
@@ -5209,7 +5210,7 @@ function spotsAddAt(cx,cy){
   trackSpots[id]={x:Math.round(q.x*10)/10,y:Math.round(q.y*10)/10,o:Date.now(),k:k};
   if(!spotDone[_spNum])spotDone[_spNum]={};spotDone[_spNum][id]=1;
   try{if(navigator.vibrate)navigator.vibrate(12);}catch(_){}
-  spotsSave();renderSpots();try{renderAll();}catch(_){}
+  spotsSave();window._rtRenderDirty=true;renderSpots();
 }
 window.spotsAddAt=spotsAddAt;
 function spotsTap(id){
@@ -5221,7 +5222,7 @@ function spotsTap(id){
     if(spotDone[_spNum][id])delete spotDone[_spNum][id];else spotDone[_spNum][id]=1;
     try{if(navigator.vibrate)navigator.vibrate(12);}catch(_){}
   }
-  spotsSave();renderSpots();try{renderAll();}catch(_){}
+  spotsSave();window._rtRenderDirty=true;renderSpots();
 }
 window.spotsTap=spotsTap;
 
