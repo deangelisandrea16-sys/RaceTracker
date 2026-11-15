@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1625';
+var RT_JS_BUILD='2026-11-15-1635';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5131,7 +5131,7 @@ function spotPill(num){
   const[f,t]=spotCount(num),cls=!t?'none':f===t?'green':f?'orange':'red';
   return'<button class="task-btn spot-pill '+cls+'" aria-label="Punti di scatto in pista" onclick="event.stopPropagation();openSpots(\''+num+'\')"><i class="ic ic-camera"></i>'+(t?'<span>'+f+'/'+t+'</span>':'')+'</button>';
 }
-let _spNum=null,_spTrash=false;
+let _spNum=null,_spTrash=false,_spMarkMode=false;
 /* 15/11 (Andrea): la mappa e' legata al LUOGO (sede), non a campionato o organizzazione.
    venues/<chiave> = {name, aliases[], map:{vb,d,w}}: la sede si riconosce dal circuito della gara.
    Senza mappa per la sede la pillola dei punti di scatto non compare. */
@@ -5156,7 +5156,7 @@ function renderSpots(){
   h.push('<button class="modal-close" onclick="closeModal()">✕</button>');
   h.push('<button class="sp-trash'+(_spTrash?' on':'')+'" onclick="spotsToggleTrash()" aria-label="Modalità cestino: elimina punti" aria-pressed="'+_spTrash+'"><i class="ic ic-trash"></i></button>');
   h.push('<div class="modal-title">#'+p.num+' '+escapeHtmlSp(p.name||'')+'</div>');
-  h.push('<div class="sp-sub">'+(_spTrash?'<b style="color:#ef4444">CESTINO</b> · tocca un punto per eliminarlo per tutti i piloti':(t?'Fatti <b>'+f+'/'+t+'</b> · ':'')+'tocca la pista dove hai scattato')+'</div>');
+  h.push('<div class="sp-sub">'+(_spMarkMode?'<b style="color:#38bdf8">RIFERIMENTO</b> · tocca il punto del circuito (es. ingresso pregriglia) e dagli un nome':_spTrash?'<b style="color:#ef4444">CESTINO</b> · tocca un punto per eliminarlo per tutti i piloti':(t?'Fatti <b>'+f+'/'+t+'</b> · ':'')+'tocca la pista dove hai scattato')+'</div>');
   const w=v.map.w||10,dd=v.map.d;
   h.push('<div class="sp-vp'+(_spTrash?' trash':'')+(_spView.t?' td':'')+'" id="sp-vp"><div class="sp-stage" id="sp-stage">');
   h.push('<svg viewBox="'+v.map.vb+'" preserveAspectRatio="none" class="sp-svg">'
@@ -5165,11 +5165,11 @@ function renderSpots(){
     +'<path d="'+dd+'" class="sp-kerb" style="stroke-width:'+(w+4)+'"/>'
     +'<path d="'+dd+'" class="sp-track" style="stroke-width:'+w+'"/>'
     +'<path d="'+dd+'" class="sp-track-line" style="stroke-width:'+Math.max(.6,w/14)+'"/></svg>');
-  h.push('</div><div class="sp-dots" id="sp-dots">');
+  h.push('</div><div class="sp-marks" id="sp-marks">'+spotsMarksHtml(v)+'</div><div class="sp-dots" id="sp-dots">');
   ids.forEach(id=>{const on=!!d[id],n=spotNo(id);
     h.push('<button class="sp-dot'+(on?' on':'')+'" data-id="'+id+'" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'✓':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>');});
   h.push('</div></div>');
-  h.push('<div class="sp-tools"><button class="sp-btn" onclick="spotsRotate(-90)" aria-label="Ruota a sinistra">⟲</button><button class="sp-btn" onclick="spotsRotate(90)" aria-label="Ruota a destra">⟳</button><button class="sp-btn" onclick="spotsZoom(1.4)" aria-label="Ingrandisci">＋</button><button class="sp-btn" onclick="spotsZoom(1/1.4)" aria-label="Riduci">－</button><button class="sp-btn" onclick="spotsResetView()" aria-label="Centra">⤢</button><button class="sp-btn'+(_spView.t?' on':'')+'" onclick="spotsToggle3D()" aria-label="Vista 3D" aria-pressed="'+(!!_spView.t)+'">3D</button></div>');
+  h.push('<div class="sp-tools"><button class="sp-btn" onclick="spotsRotate(-90)" aria-label="Ruota a sinistra">⟲</button><button class="sp-btn" onclick="spotsRotate(90)" aria-label="Ruota a destra">⟳</button><button class="sp-btn" onclick="spotsZoom(1.4)" aria-label="Ingrandisci">＋</button><button class="sp-btn" onclick="spotsZoom(1/1.4)" aria-label="Riduci">－</button><button class="sp-btn" onclick="spotsResetView()" aria-label="Centra">⤢</button><button class="sp-btn'+(_spView.t?' on':'')+'" onclick="spotsToggle3D()" aria-label="Vista 3D" aria-pressed="'+(!!_spView.t)+'">3D</button>'+(currentUserId===SERVER_OWNER?'<button class="sp-btn'+(_spMarkMode?' on':'')+'" onclick="spotsToggleMark()" aria-label="Aggiungi riferimento del circuito">📍</button>':'')+'</div>');
   if(t&&!_spTrash)h.push('<div class="sp-hint">I numeri sono punti da spuntare. Con due dita ingrandisci e ruoti, con un dito sposti.</div>');
   openModal(h.join(''));
   spotsLayout(false);spotsBindGestures();
@@ -5197,6 +5197,8 @@ function spotsLayout(anim){
   const tr=anim?'transform .28s cubic-bezier(.2,.8,.2,1)':'none';st.style.transition=tr;
   const m=spotsMatrix(Sw,Sh,W,H);_spM={m,Sw,Sh};
   st.style.transform=m.toString();
+  const mk=(v.marks)||{};document.querySelectorAll('#sp-marks .sp-mark').forEach(b=>{const sp=mk[b.getAttribute('data-mid')];if(!sp)return;
+    const q=m.transformPoint(new DOMPoint(sp.x/100*Sw,sp.y/100*Sh,0,1));b.style.transition=anim?'left .28s,top .28s':'none';b.style.left=(q.x/q.w)+'px';b.style.top=(q.y/q.w)+'px';});
   document.querySelectorAll('#sp-dots .sp-dot').forEach(b=>{const sp=trackSpots[b.getAttribute('data-id')];if(!sp)return;
     const q=m.transformPoint(new DOMPoint(sp.x/100*Sw,sp.y/100*Sh,0,1));b.style.transition=anim?'left .28s cubic-bezier(.2,.8,.2,1),top .28s cubic-bezier(.2,.8,.2,1)':'none';b.style.left=(q.x/q.w)+'px';b.style.top=(q.y/q.w)+'px';});
   try{localStorage.setItem(spViewKey(),JSON.stringify({r:_spView.r,t:_spView.t}));}catch(_){}
@@ -5224,7 +5226,7 @@ function spotsBindGestures(){
     if(pts.size===2&&g&&g.d){const[a,b]=[...pts.values()];_spView.z=Math.max(.6,Math.min(8,g.z*Math.hypot(b.x-a.x,b.y-a.y)/g.d));_spView.r=g.r+(Math.atan2(b.y-a.y,b.x-a.x)-g.an)*180/Math.PI;_spView.x=g.px+((a.x+b.x)/2-g.mx);_spView.y=g.py+((a.y+b.y)/2-g.my);spotsLayoutSoon();}
     else if(pts.size===1&&g&&g.vx!==undefined){const dx=e.clientX-g.x,dy=e.clientY-g.y;if(Math.abs(dx)+Math.abs(dy)>8)moved=true;if(moved){_spView.x=g.vx+dx;_spView.y=g.vy+dy;spotsLayoutSoon();}}};
   const up=e=>{const wasTap=pts.size===1&&!moved;pts.delete(e.pointerId);
-    if(wasTap){if(downT)spotsTap(downT.getAttribute('data-id'));else spotsAddAt(e.clientX,e.clientY);}
+    if(wasTap){const mt=e.target.closest&&e.target.closest('.sp-mark');if(mt&&_spTrash){spotsDelMark(mt.getAttribute('data-mid'));}else if(_spMarkMode){spotsAddMark(e.clientX,e.clientY);}else if(downT)spotsTap(downT.getAttribute('data-id'));else spotsAddAt(e.clientX,e.clientY);}
     if(!pts.size){g=null;}else if(pts.size===1){const q=[...pts.values()][0];g={x:q.x,y:q.y,vx:_spView.x,vy:_spView.y};}};
   vp.onwheel=e=>{e.preventDefault();_spView.z=Math.max(.6,Math.min(8,_spView.z*(e.deltaY<0?1.12:1/1.12)));spotsLayoutSoon();};
   vp.onpointerup=up;vp.onpointercancel=e=>{pts.delete(e.pointerId);if(!pts.size)g=null;};
@@ -5241,6 +5243,14 @@ function spotsRefresh(){
   dl.innerHTML=spotIds().map(id=>{const on=!!d[id],n=spotNo(id);return'<button class="sp-dot'+(on?' on':'')+'" data-id="'+id+'" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'✓':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>';}).join('');
   spotsLayout(false);
 }
+function spotsMarksHtml(v){const mk=(v&&v.marks)||{};return Object.keys(mk).map(k=>'<span class="sp-mark" data-mid="'+k+'"><i>📍</i>'+escapeHtmlSp(mk[k].n||'')+'</span>').join('');}
+function spotsToggleMark(){_spMarkMode=!_spMarkMode;renderSpots();}
+window.spotsToggleMark=spotsToggleMark;
+function spotsAddMark(cx,cy){const v=venueMap();if(!v)return;const q=spotsToMap(cx,cy);const n=prompt('Nome del riferimento (es. Ingresso pregriglia). Vuoto = annulla');
+  if(!n||!n.trim())return;const id='m'+Date.now().toString(36);const val={x:Math.round(q.x*10)/10,y:Math.round(q.y*10)/10,n:n.trim().slice(0,30)};
+  ref(db,'venues/'+v.key+'/marks/'+id).set(val).then(()=>{_venues[v.key].marks=Object.assign({},_venues[v.key].marks||{},{[id]:val});_spMarkMode=false;renderSpots();});}
+function spotsDelMark(mid){const v=venueMap();if(!v||currentUserId!==SERVER_OWNER)return;if(!confirm('Eliminare il riferimento?'))return;
+  ref(db,'venues/'+v.key+'/marks/'+mid).remove().then(()=>{delete _venues[v.key].marks[mid];renderSpots();});}
 function spotsToggleTrash(){_spTrash=!_spTrash;const vp=document.getElementById('sp-vp'),b=document.querySelector('.sp-trash');if(vp)vp.classList.toggle('trash',_spTrash);if(b)b.classList.toggle('on',_spTrash);spotsRefresh();}
 window.spotsToggleTrash=spotsToggleTrash;
 function spotsAddAt(cx,cy){
