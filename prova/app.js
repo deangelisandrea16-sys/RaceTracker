@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1505';
+var RT_JS_BUILD='2026-11-15-1510';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5145,6 +5145,10 @@ function renderSpots(){
   openModal(h.join(''));
 }
 function escapeHtmlSp(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
+/* un'unica scrittura per punti e spunte: con due scritture separate l'aggiornamento locale della prima
+   ricaricava le spunte vecchie prima di salvare la seconda (punti che sparivano o si rinumeravano) */
+function spotsSave(){if(!activeRaceId||!currentUserId)return;const u={};
+  rtDiff(userPath()+'/trackSpots',_rtBaseUser.trackSpots,trackSpots,u);rtDiff(userPath()+'/spotDone',_rtBaseUser.spotDone,spotDone,u);rtWrite(u,'punti di scatto');}
 function spotsToggleTrash(){_spTrash=!_spTrash;renderSpots();}
 window.spotsToggleTrash=spotsToggleTrash;
 function spotsMapTap(e){
@@ -5156,7 +5160,7 @@ function spotsMapTap(e){
   trackSpots[id]={x:Math.round(x*10)/10,y:Math.round(y*10)/10,o:Date.now(),k:k};
   if(!spotDone[_spNum])spotDone[_spNum]={};spotDone[_spNum][id]=1;
   try{if(navigator.vibrate)navigator.vibrate(12);}catch(_){}
-  saveUserField('trackSpots',trackSpots);saveUserField('spotDone',spotDone);renderSpots();try{renderAll();}catch(_){}
+  spotsSave();renderSpots();try{renderAll();}catch(_){}
 }
 window.spotsMapTap=spotsMapTap;
 function spotsTap(id){
@@ -5168,7 +5172,7 @@ function spotsTap(id){
     if(spotDone[_spNum][id])delete spotDone[_spNum][id];else spotDone[_spNum][id]=1;
     try{if(navigator.vibrate)navigator.vibrate(12);}catch(_){}
   }
-  saveUserField('trackSpots',trackSpots);saveUserField('spotDone',spotDone);renderSpots();try{renderAll();}catch(_){}
+  spotsSave();renderSpots();try{renderAll();}catch(_){}
 }
 window.spotsTap=spotsTap;
 
