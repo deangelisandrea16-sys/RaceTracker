@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-0920';
+var RT_JS_BUILD='2026-11-15-0930';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3039,7 +3039,7 @@ function renderPilots(){
     +'<span class="pilot-index">'+(i+1)+'.</span><div>'
     +'<div class="pilot-cat '+catClass(p.cat)+'">'+p.cat+(isElim?' <span style="color:#ef4444;font-size:9px">ELIMINATO</span>':'')+'</div>'
     +'<div style="display:flex;align-items:center;gap:8px;margin-top:3px">'
-    +'<span class="pilot-num">#'+p.num+'</span>'
+    +'<span class="pilot-num">#'+p.num+'</span>'+riskTri(p.num)
     +'<span class="pilot-name">'+p.name+'</span></div>'
     +'<div class="pilot-team">'+p.team+'</div></div></div>'
     +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">'
@@ -3156,24 +3156,24 @@ function awardsStrip(day){
 /* 15/11/2026 (Andrea): il riquadro ORA esiste solo nella giornata di oggi e solo finche' la giornata e' in corso.
    Giornata futura: niente ORA, nessun turno "fatto", il tasto porta in cima. Giornata passata o finita: niente ORA.
    Ricompare la mattina dopo, nella giornata nuova. Fine giornata = ultimo turno (o ultima finale) + 30 min + ritardo. */
-/* 15/11/2026 (Andrea): nel Programma, piloti a rischio di non entrare in finale segnati con un triangolo discreto
-   (arancione 50-74%, rosso 75%+), solo su manche e prefinali, solo finche' la lista ufficiale della Finale non e' uscita.
-   Stessa stima della scheda FINALE (riskPct), calcolata al massimo ogni 30 s. */
+/* 15/11/2026 (Andrea): triangolo di rischio finale ovunque compaia un mio pilota (Programma, Live, Piloti, Pista).
+   Colori come l'anello della scheda FINALE: verde <25%, giallo 25-49, arancione 50-74, rosso 75+.
+   Solo finche' la lista ufficiale della Finale della categoria non e' uscita; mai per eliminati o gia' in finale.
+   Stima (riskPct), calcolata al massimo ogni 30 s. */
 let _rmCache={at:0,map:null};
 function riskMarkMap(){
   if(_rmCache.map&&Date.now()-_rmCache.at<30000)return _rmCache.map;
   const m={};
   try{
     const decided=new Set(pilots.filter(p=>p.inFinal).map(p=>canonCat(p.cat)));
-    riskData().forEach(x=>{if(x.none||decided.has(canonCat(x.cat)))return;const v=riskPct(x);if(v>=50)m[String(x.num)]=v;});
+    riskData().forEach(x=>{if(x.none||!x.cut||decided.has(canonCat(x.cat)))return;m[String(x.num)]=riskPct(x);});
   }catch(e){}
   _rmCache={at:Date.now(),map:m};return m;
 }
-function riskMark(p,slot,map){
-  if(!slot||(slot.type!=='group'&&slot.type!=='prefinal')||p.eliminated||p.inFinal)return'';
-  const v=map[String(p.num)];if(!v)return'';
-  const c=v>=75?'#ef4444':'#f97316';
-  return'<span title="Rischio di non entrare in finale: '+v+'% (stima)" style="color:'+c+';font-size:11px;line-height:1;flex-shrink:0">\u25B2</span>';
+function riskTri(num){
+  const n=String(num),p=pilots.find(q=>String(q.num)===n);if(!p||p.eliminated||p.inFinal)return'';
+  const v=riskMarkMap()[n];if(v===undefined)return'';
+  return'<span class="risk-tri" title="Rischio di non entrare in finale: '+v+'% (stima)" style="color:'+riskColor(v)+';font-size:11px;line-height:1;flex-shrink:0;display:inline-block">\u25B2</span>';
 }
 function progDayState(day,slotsArr){
   const plain=s=>String(s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -3250,7 +3250,6 @@ function renderSchedule(){
     return['Gara ',before?'?':String(k),'/',unk?'?':String(tot)].join('');};
   const runChip=(num,i)=>{const t=runLabel(num,i);if(!t)return'';
     return['<span class="run-chip',(i<currentIdx?' done':''),'" title="Gare di oggi">',t,'</span>'].join('');};
-  const _rmap=riskMarkMap();
   slotsArr.forEach((slot,idx)=>{
     const ps=pilotsForSlot(slot);const isNow=idx===currentIdx;
     const awaiting=pilotsAwaitingData(slot);
@@ -3298,7 +3297,7 @@ function renderSchedule(){
       var _ft=_hl?followedTeamOf(p.num,p.team):null;
       html+='<div class="card-inner'+(shCls?' '+shCls:'')+(_ft?' tglow':'')+'"'+(_ft?' style="--tc:'+teamColor(_ft.key)+'"':'')+'><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
         +(sh.length?sh.map(function(h){return'<span class="hl-badge hl-'+h+'" style="padding:1px 5px;font-size:8px">'+(shIco[h]||'')+'</span>';}).join(''):'')
-        +'<span class="inner-num">#'+p.num+'</span>'+riskMark(p,slot,_rmap)+gridBadge(p.num,slot)+'<span class="inner-name">'+p.name+'</span>'+runChip(p.num,idx)
+        +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,slot)+'<span class="inner-name">'+p.name+'</span>'+runChip(p.num,idx)
         +(p.group?'<span class="inner-group">GRP '+p.group+'</span>':'')
         +'<span class="inner-team-big">'+p.team+'</span>'
         +noteBtn(p.num)+'</div>'
@@ -3323,7 +3322,7 @@ function renderSchedule(){
       if(!ps.length)html+='<div style="font-size:12px;color:var(--text4);padding:8px 2px 2px">Nessun tuo pilota in questa finale</div>';
       ps.forEach(p=>{
         html+='<div class="card-inner" style="margin-top:8px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
-          +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,{type:'final'})+'<span class="inner-name">'+p.name+'</span>'+(p.eliminated?'':runChip(p.num,1e6))
+          +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,{type:'final'})+'<span class="inner-name">'+p.name+'</span>'+(p.eliminated?'':runChip(p.num,1e6))
           +'<span class="inner-team-big">'+p.team+'</span>'+noteBtn(p.num)+'</div>'
           +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+'</div>'
           +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>';
@@ -3681,6 +3680,44 @@ function followedTeamOf(num,team){const e=(currentEntryList||{})[num]||{};const 
 function setUserSetting(path,val){if(!currentUserId)return;const u={};u['settings/'+currentUserId+'/'+path]=val;update(ref(db),u);}
 function setTeamView(v){userSettings.teamView=v;setUserSetting('teamView',v);renderSettings();try{renderAll();}catch(e){}}
 function setTeamColor(k,c){userSettings.teamColors=userSettings.teamColors||{};userSettings.teamColors[k]=c;setUserSetting('teamColors/'+k,c);renderSettings();try{renderAll();}catch(e){}}
+/* 15/11/2026 (Andrea): legenda del linguaggio visivo dell'app (Impostazioni → LEGENDA). Gli esempi usano gli stessi stili dell'app. */
+function openLegend(){
+  const tri=c=>'<span style="color:'+c+';font-size:13px">▲</span>';
+  const row=(sample,txt)=>'<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--border)"><div style="min-width:92px;display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap">'+sample+'</div><div style="flex:1;font-size:13px;color:var(--text2);line-height:1.35">'+txt+'</div></div>';
+  const sec=t=>'<div class="set-sec" style="margin-top:14px">'+t+'</div>';
+  const h=[
+    sec('RISCHIO FINALE (STIMA)'),
+    row(tri('#22c55e'),'<b>Verde</b>: non a rischio (sotto 25%)'),
+    row(tri('#facc15'),'<b>Giallo</b>: rischio basso (25–49%)'),
+    row(tri('#f97316'),'<b>Arancione</b>: rischio medio (50–74%)'),
+    row(tri('#ef4444'),'<b>Rosso</b>: molto a rischio (75% e oltre)'),
+    row('<span style="font-size:11px;color:var(--text4)">nessuno</span>','Il triangolo sparisce quando esce la lista ufficiale della Finale: il pilota è in finale o tra gli eliminati. Tieni il dito sopra per la %.'),
+    sec('PROGRAMMA'),
+    row('<div class="card slot-now" style="margin:0;padding:6px 10px;font-size:11px;font-weight:800"><span class="now-badge">ORA</span></div>','Cornice verde + <b>ORA</b>: il turno in corso (solo nella giornata di oggi, finché è in corso)'),
+    row('<span class="run-chip">Gara 1/3</span>','Quante volte corre oggi il pilota e quale è questa. <b>?</b> = dipende da dati non ancora ufficiali'),
+    row('<span style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:900;color:#fff;background:#dc2626;border-radius:5px;padding:1px 7px">✕12</span>','Uscito/ritirato nel turno (posizione in classifica)'),
+    row('<span style="font-size:9px;color:#fbbf24;font-weight:700"><i class="ic ic-wait"></i> ATTESA</span>','Turno che dipende da un\'assegnazione non ancora uscita (gruppo, serie, prefinale)'),
+    row('<span style="font-size:11px;font-weight:700;color:var(--text4)">— NESSUNO —</span>','Turno senza tuoi piloti (il programma resta sempre completo)'),
+    sec('PILOTI E TEAM'),
+    row('<span class="hl-badge hl-foto"><i class="ic ic-camera"></i> FOTO</span>','Pilota da seguire per le foto'),
+    row('<span class="hl-badge hl-video"><i class="ic ic-video"></i> VIDEO</span>','Pilota da seguire per il video'),
+    row('<span class="hl-badge hl-priority"><i class="ic ic-star"></i> PRIORITÀ</span>','Pilota prioritario'),
+    row('<span class="tchip" style="--tc:#38bdf8">TEAM</span>','Pilota di un team che segui (bordo luminoso del colore del team)'),
+    row('<span class="note-txt"><i class="ic ic-note"></i> nota</span>','La tua nota sul pilota. La matita accanto al nome la scrive o la modifica'),
+    sec('LAVORI'),
+    row('<button class="task-btn red" style="padding:4px 8px;font-size:10px;pointer-events:none">PISTA</button>','Da fare'),
+    row('<button class="task-btn green" style="padding:4px 8px;font-size:10px;pointer-events:none">PISTA</button>','Fatto (secondo tocco)'),
+    row('<button class="task-btn orange" style="padding:4px 8px;font-size:10px;pointer-events:none">PISTA</button>','Parziale / da completare (terzo tocco; il quarto torna rosso)'),
+    sec('LIVE'),
+    row('<span style="font-family:\'Chakra Petch\',sans-serif;font-size:11px;font-weight:700;padding:0 5px;border-radius:4px;background:#14301f;color:#4fd69c">▲3</span> <span style="font-family:\'Chakra Petch\',sans-serif;font-size:11px;font-weight:700;padding:0 5px;border-radius:4px;background:#2a171b;color:#ef6a7a">▼2</span>','Posizioni guadagnate / perse (con il numero, nella casella della posizione). Diverso dal triangolo di rischio, che non ha numero e sta accanto al #'),
+    row('<span class="lt-ret box">AI BOX</span>','Pilota rientrato ai box'),
+    sec('ELIMINAZIONI'),
+    row('<span style="display:inline-block;width:4px;height:22px;background:#22c55e;border-radius:2px"></span> <span style="display:inline-block;width:4px;height:22px;background:#ef4444;border-radius:2px"></span>','Barra a sinistra: verde = ammesso (ufficiale), rosso = fuori (ufficiale)'),
+    row('<span style="font-size:9px;font-weight:800;color:#facc15;border:1px dashed #facc15;border-radius:4px;padding:0 5px">DA CONFERMARE</span>','Pilota letto da un PDF scansionato: verrà sostituito dai dati ufficiali Apex')
+  ];
+  openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Legenda</div><div style="max-height:70vh;overflow:auto">'+h.join('')+'</div>');
+}
+window.openLegend=openLegend;
 function renderSettings(){
   const b=document.getElementById('settings-body');if(!b)return;
   const v=teamViewMode();
@@ -3702,6 +3739,7 @@ function renderSettings(){
     +'<div class="set-opt'+(v==='both'?' on':'')+'" onclick="setTeamView(\'both\')"><input type="radio" '+(v==='both'?'checked':'')+' style="width:20px;height:20px"> Entrambi: scheda del team e piloti evidenziati</div>'
     +(teams.length?'<div class="set-sec">COLORI DEI TEAM</div>'+teams.map(t=>'<div style="margin-bottom:10px"><div style="font-size:13px;font-weight:800;margin-bottom:6px"><span class="tchip" style="--tc:'+teamColor(t.key)+'">'+String(t.name).replace(/</g,'&lt;')+'</span></div><div class="sw-row">'
       +TEAM_PALETTE.map(c=>'<span class="sw-dot'+(teamColor(t.key)===c?' on':'')+'" style="background:'+c+'" onclick="setTeamColor(\''+escAttr(t.key)+'\',\''+c+'\')"></span>').join('')+'</div></div>').join(''):'<div style="font-size:12px;color:var(--text4)">Nessun team aggiunto in questa gara.</div>')
+    +'<div class="set-sec">LEGENDA</div><div class="set-opt" onclick="openLegend()"><i class="ic ic-note"></i> Cosa significano colori, cornici e simboli</div>'
     +'<div class="set-sec">LE MIE NOTIFICHE</div><div id="notif-prefs-body"></div>'
     +'<div style="margin-top:10px;font-size:11px;color:var(--text4)">Impostazioni del profilo '+currentUserId+'.</div>';
   renderNotifPrefs();try{renderPushDevice();}catch(e){}
@@ -4210,7 +4248,7 @@ function renderLtLast(){
       const nt=String((notes&&notes[x.no])||'').trim();
       return'<div class="ltbig" data-no="'+esc(x.no)+'" onclick="openPilotDetail(\''+esc(x.no)+'\')">'
         +'<div class="pos">'+(x.ret?ltXSpan(x.ret):(x.pos<999?x.pos:'–'))+'</div>'
-        +'<div style="flex:1;min-width:0"><div><span class="num">#'+esc(x.no)+'</span> <span class="nm">'+esc(pl.name||x.dr)+'</span>'+ltRetBadge(x.ret)+'</div>'
+        +'<div style="flex:1;min-width:0"><div><span class="num">#'+esc(x.no)+'</span>'+riskTri(x.no)+' <span class="nm">'+esc(pl.name||x.dr)+'</span>'+ltRetBadge(x.ret)+'</div>'
         +'<div class="tm">'+esc(pl.team||ent.team||'')+(x.gap?' · '+esc(x.gap):'')+(x.blp?' · best '+esc(x.blp):'')+'</div>'
         +(nt?'<div class="note-txt" style="margin-top:2px"><i class="ic ic-note"></i> '+esc(nt)+'</div>':'')
         +'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+TASKS.map(t=>taskBtn(x.no,t,true)).join('')+noteBtn(x.no)+'</div></div></div>';
@@ -4381,7 +4419,7 @@ function renderLtMyTable(){
       const rt=ltRetOf(no);
       return'<div class="ltbig'+(tm?' team':'')+(rt?' ret':'')+(mv>0?' up':mv<0?' down':'')+'" data-no="'+no+'"'+(tm?'':' onclick="openPilotDetail(\''+no+'\')"')+'>'
         +'<div class="pos">'+(rt?ltXSpan(rt):(txt(r,C('rk','3'))||'–'))+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>'
-        +'<div style="flex:1;min-width:0"><div><span class="num">#'+no+'</span> <span class="nm">'+nm+'</span>'+ltRetBadge(rt)+'</div>'
+        +'<div style="flex:1;min-width:0"><div><span class="num">#'+no+'</span>'+(tm?'':riskTri(no))+' <span class="nm">'+nm+'</span>'+ltRetBadge(rt)+'</div>'
         +'<div class="tm">'+team+'</div>'
 
         +(nt?'<div class="note-txt" style="margin-top:2px"><i class="ic ic-note"></i> '+nt.replace(/</g,'&lt;')+'</div>':'')
@@ -4395,7 +4433,7 @@ function renderLtMyTable(){
       const no=txt(r,C('no','4'));const mine=myNums.has(no);const tm=!mine&&teamNums.has(no);
       const llc=cls(r,C('llp','10'));
       return'<tr data-no="'+no+'" class="'+(mine?'mine':tm?'team':'')+'"'+(mine?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
-        +'<td>'+(ltRetOf(no)?ltXSpan(ltRetOf(no)):txt(r,C('rk','3')))+'</td><td class="n">'+no+'</td><td class="d">'+txt(r,C('dr','5'))+ltRetBadge(ltRetOf(no))+'</td><td class="d" style="color:var(--text3)">'+(((pilots.find(x=>String(x.num)===no)||{}).team)||((currentEntryList&&currentEntryList[no])||{}).team||'')+'</td></tr>'
+        +'<td>'+(ltRetOf(no)?ltXSpan(ltRetOf(no)):txt(r,C('rk','3')))+'</td><td class="n">'+no+(mine?riskTri(no):'')+'</td><td class="d">'+txt(r,C('dr','5'))+ltRetBadge(ltRetOf(no))+'</td><td class="d" style="color:var(--text3)">'+(((pilots.find(x=>String(x.num)===no)||{}).team)||((currentEntryList&&currentEntryList[no])||{}).team||'')+'</td></tr>'
         +(mine&&String((notes&&notes[no])||'').trim()?'<tr class="mine"><td></td><td colspan="6" class="note-txt" style="white-space:normal"><i class="ic ic-note"></i> '+String(notes[no]).replace(/</g,'&lt;')+'</td></tr>':'');
     }).join('')+'</table>'
     +'<div style="font-size:11px;color:var(--text4);margin-top:6px">Evidenziati i tuoi piloti · tocca un tuo pilota per la scheda</div>';
@@ -4639,7 +4677,7 @@ function renderPista(){
   if(pistaView==='pilota'){
     el.innerHTML=pilots.map(p=>'<div class="card">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
-      +'<span class="pilot-num">#'+p.num+'</span><span class="pilot-name">'+p.name+'</span>'
+      +'<span class="pilot-num">#'+p.num+'</span>'+riskTri(p.num)+'<span class="pilot-name">'+p.name+'</span>'
       +'<span class="pilot-cat '+catClass(p.cat)+'" style="margin-left:auto">'+p.cat+'</span>'+noteBtn(p.num)+'</div>'
       +noteLine(p.num)
       +'<div class="track-grid">'+trackSections.map(s=>{
