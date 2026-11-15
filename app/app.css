@@ -32,7 +32,8 @@ body.light{
   --shadow-pop:0 26px 60px -24px rgba(20,30,60,.45);
 }
 html{background:var(--bg);overflow-x:hidden;overflow-y:auto;height:100%;}
-html,body{overscroll-behavior-x:none;}
+html,body{overscroll-behavior-x:none;overscroll-behavior-y:none;} /* 15/11 (Andrea): niente ricarica trascinando in basso (rompeva chiusura schede e menu) */
+.modal,.modal-bg,.modal-content,[class*="sheet"],[class*="drawer"]{overscroll-behavior:contain;}
 body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;padding-bottom:calc(var(--tab-h) + var(--safe-b) + 12px);transition:background .25s,color .25s;-webkit-text-size-adjust:100%;overflow-x:hidden;overflow-y:auto;letter-spacing:-.01em;}
 .pilot-num,.inner-num,.sr-num,.entry-num,.slot-time,.final-time,.race-name{font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;letter-spacing:-.02em;}
 /* HEADER (frosted) */
