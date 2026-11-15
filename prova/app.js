@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1330';
+var RT_JS_BUILD='2026-11-15-1335';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3054,7 +3054,7 @@ function renderPilots(){
     +(hl.length?'<div class="hl-badges">'+hl.map(function(h){return'<span class="hl-badge hl-'+h+'">'+(hlLabels[h]||h)+'</span>';}).join('')+'</div>':'')
     +'<span class="parity-badge">'+p.parity+'</span>'
     +'<span class="group-badge '+(pilotHasGroupData(p)?'set':'')+'">'
-    +(p.heats&&p.heats.length?p.heats.join(' '):(p.group?'GRP '+p.group:'GRP ?'))
+    +(p.heats&&p.heats.length?heatsLabel(p.heats):(p.group?'GRP '+p.group:'GRP ?'))
     +'</span>'
     +'<button class="pilot-edit-btn" onclick="openEditPilot(\''+p.num+'\')"><i class="ic ic-note"></i> modifica</button>'
     +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="deletePilot(\''+p.num+'\')">✕ rimuovi</button>'
@@ -4962,6 +4962,12 @@ function toggleHL(btn,num){const on=btn.classList.toggle('active');btn.setAttrib
   p.highlight=h;saveAll();
   const lb=document.getElementById('ef-hl-saved');if(lb){lb.textContent='Salvato';lb.style.opacity=1;clearTimeout(lb._t);lb._t=setTimeout(()=>{lb.style.opacity=0;},1500);}
   try{renderAll();}catch(e){}}
+/* 15/11/2026 (Andrea): le manche A-B, B-D, B-C hanno in comune solo la B = il pilota e' del gruppo B */
+function heatsGroup(heats){if(!Array.isArray(heats)||!heats.length)return'';let common=null;
+  heats.forEach(h=>{const l=new Set(String(h).toUpperCase().split(/[^A-Z]+/).filter(Boolean));common=common?new Set([...common].filter(x=>l.has(x))):l;});
+  return common&&common.size===1?[...common][0]:'';}
+function heatsLabel(heats){const g=heatsGroup(heats);return g?'GRP '+g:heats.join(' ');}
+window.heatsGroup=heatsGroup;
 /* 15/11/2026 (Andrea): classe di evidenziazione del pilota (foto/video/entrambi) + priorita' */
 function hlOfNum(no){const p=pilots.find(q=>String(q.num)===String(no));return p?hlClassOf(p.highlight):'';}
 function hlClassOf(hl){hl=Array.isArray(hl)?hl:[];const f=hl.indexOf('foto')>=0,v=hl.indexOf('video')>=0;return(f&&v?'hl-both':f?'hl-foto':v?'hl-video':'')+(hl.indexOf('priority')>=0?' hl-prio':'');}
