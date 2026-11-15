@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1645';
+var RT_JS_BUILD='2026-11-15-1650';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -859,10 +859,15 @@ function showOfflineBanner(on){
 function watchConnection(){
   try{onValue(ref(db,'.info/connected'),snap=>{
     clearTimeout(_rtOfflineTimer);
-    if(snap.val()===true){showOfflineBanner(false);if(initialized)setSyncStatus('ok');}
+    if(snap.val()===true){_rtOfflineTimer=null;showOfflineBanner(false);if(initialized)setSyncStatus('ok');}
     // 15/11 (Andrea): la barra compare solo se la connessione manca da 30 secondi (all'apertura la connessione impiega qualche secondo)
     else _rtOfflineTimer=setTimeout(()=>{showOfflineBanner(true);setSyncStatus('err');},30000);
   });}catch(e){}
+  // 15/11 (Andrea): dopo un periodo in background o ad app chiusa i 30 secondi ripartono da zero al rientro (niente barra mentre si riconnette)
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;
+    if(typeof _srvBadSince!=='undefined')_srvBadSince=0;
+    if(document.getElementById('rt-offline')||_rtOfflineTimer){clearTimeout(_rtOfflineTimer);showOfflineBanner(false);
+      _rtOfflineTimer=setTimeout(()=>{ref(db,'.info/connected').once('value').then(sn=>{if(sn.val()!==true){showOfflineBanner(true);setSyncStatus('err');}});},30000);}});
   window.addEventListener('offline',()=>{clearTimeout(_rtOfflineTimer);_rtOfflineTimer=setTimeout(()=>{if(!navigator.onLine){showOfflineBanner(true);setSyncStatus('err');}},30000);});
 }
 
@@ -4067,7 +4072,7 @@ function renderServerBanner(){
   let b=document.getElementById('srv-banner');
   const stale=currentUserId===SERVER_OWNER&&serverStat!==null&&(!serverStat||!serverStat.at||Date.now()-serverStat.at>5*60000||serverStat.watcher===false);
   /* 15/11 (Andrea): l'avviso compare solo se il problema dura piu' di 1 minuto (all'apertura il dato puo' essere vecchio di qualche secondo) */
-  if(!stale){_srvBadSince=0;if(b)b.remove();return;}
+  if(!stale||document.visibilityState!=='visible'){_srvBadSince=0;if(b&&!stale)b.remove();return;}
   if(!_srvBadSince)_srvBadSince=Date.now();
   if(Date.now()-_srvBadSince<30000){if(b)b.remove();return;}
   if(!b){b=document.createElement('div');b.id='srv-banner';b.style.cssText='position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:9999;background:#b3261e;color:#fff;border-radius:10px;padding:10px 12px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.4)';document.body.appendChild(b);}
