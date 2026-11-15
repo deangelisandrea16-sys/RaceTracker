@@ -507,7 +507,7 @@ button,input,textarea,select{font-family:inherit}
 .slot-now .slot-time{color:#22c55e}
 .task-btn{transition:background-color .25s,color .25s,transform .12s}
 /* team evidenziati nel programma: bordo e alone del colore del team attorno al singolo pilota */
-.card-inner.tglow{outline:2px solid var(--tc);outline-offset:-2px;box-shadow:0 0 16px -4px var(--tc)}
+.card-inner.tglow{outline:2px solid var(--tc);outline-offset:-2px;box-shadow:0 0 16px -4px var(--tc);border-radius:12px}
 .tchip{font-size:10px;font-weight:900;letter-spacing:.5px;padding:2px 7px;border-radius:999px;color:#000;background:var(--tc);white-space:nowrap}
 .set-sec{margin:14px 0 6px;font-size:11px;font-weight:900;letter-spacing:1px;color:var(--text3)}
 .set-opt{display:flex;align-items:center;gap:10px;min-height:48px;padding:8px 10px;border:1px solid var(--border2);border-radius:10px;margin-bottom:6px;cursor:pointer;font-size:14px}

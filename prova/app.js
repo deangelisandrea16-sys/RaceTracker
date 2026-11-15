@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1440';
+var RT_JS_BUILD='2026-11-15-1450';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -59,7 +59,8 @@ function _fixArrays(obj){
 }
 
 // ── CONSTANTS ──
-const TASKS=["PADDOK","PREGRIGLIA","BILANCIA","PISTA","REPORTAGE"];
+// 15/11/2026 (Andrea): PISTA per ultima, accanto alla pillola dei punti di scatto
+const TASKS=["PADDOK","PREGRIGLIA","BILANCIA","REPORTAGE","PISTA"];
 const STATUS_CYCLE=["red","green","orange"];
 const ALL_TABS=['gare','piloti','programma','entrylist','gara','livetiming','debug'];
 
@@ -3887,17 +3888,15 @@ function openLegend(){
   h.push('<div class="lg-row"><div><span class="group-badge set">GRP B</span></div><div>Gruppo del pilota nelle manche. <b>GRP ?</b> = non ancora noto.</div></div>');
 
   // PUNTI DI SCATTO
-  h.push(sec('PUNTI DI SCATTO IN PISTA','la pillola <i class="ic ic-camera"></i> accanto ai lavori del pilota, in <b>PROGRAMMA</b>, <b>LIVE</b> e <b>PILOTI</b>'));
-  h.push(shot('<div class="tasks" style="max-width:340px">'+['PADDOK','PISTA'].map(t=>'<button class="task-btn green" style="pointer-events:none">'+t+'</button>').join('')+'<button class="task-btn spot-pill orange" style="pointer-events:none"><i class="ic ic-camera"></i><span>2/4</span></button></div>'+N(1)
+  h.push(sec('PUNTI DI SCATTO IN PISTA','la pillola <i class="ic ic-camera"></i> dopo PISTA, sotto ogni pilota in <b>PROGRAMMA</b>, <b>LIVE</b> e <b>PILOTI</b>'));
+  h.push(shot('<div class="tasks" style="max-width:340px">'+['REPORTAGE','PISTA'].map(t=>'<button class="task-btn green" style="pointer-events:none">'+t+'</button>').join('')+'<button class="task-btn spot-pill orange" style="pointer-events:none"><i class="ic ic-camera"></i><span>2/4</span></button></div>'+N(1)
     +'<div class="sp-map noimg" style="margin-top:10px">'
-    +[[18,30,1,'CURVA 1'],[52,22,0,'TRIBUNA'],[80,55,1,''],[40,75,0,'']].map((d,i)=>'<span class="sp-dot'+(d[2]?' on':'')+'" style="left:'+d[0]+'%;top:'+d[1]+'%"><span>'+(d[2]?'✓':(i+1))+'</span>'+(d[3]?'<em>'+d[3]+'</em>':'')+'</span>').join('')+'</div>'+N(2)
-    +'<div class="sp-actions"><span class="sp-btn">MODIFICA PUNTI</span><span class="sp-btn"><i class="ic ic-upload"></i> PIANTINA</span></div>'+N(3)));
+    +[[18,30,1],[52,22,0],[80,55,1],[40,75,0]].map((d,i)=>'<span class="sp-dot'+(d[2]?' on':'')+'" style="left:'+d[0]+'%;top:'+d[1]+'%"><span>'+(d[2]?'✓':(i+1))+'</span></span>').join('')+'</div>'+N(2)));
   h.push(ex([
-    'Quanti punti hai già fatto per quel pilota (2 su 4). Tocca per aprire la piantina.',
-    'I tuoi punti sulla pista: tocca un punto per segnarlo <b style="color:#4fd69c">fatto ✓</b> o di nuovo da fare.',
-    '<b>MODIFICA PUNTI</b>: tocca la piantina dove ti metti a scattare per aggiungere un punto, trascinalo per spostarlo, toccalo per dargli un nome o eliminarlo. <b>PIANTINA</b>: carica una foto o uno screenshot del tracciato.'
+    'Quanti punti hai fatto con quel pilota sul totale dei tuoi punti (2 su 4). Tocca per aprire la pista.',
+    'Tocca la pista dove hai scattato: compare la spunta <b style="color:#4fd69c">✓</b>. I punti grigi sono quelli che hai usato con altri piloti: toccali se li hai fatti anche con questo. Tocca una spunta per toglierla.'
   ]));
-  h.push(p_('I punti sono <b>tuoi</b> e valgono per tutti i tuoi piloti della gara: ognuno mette i suoi, dove scatta davvero.'));
+  h.push(p_('I punti sono <b>tuoi</b>: ognuno ha i suoi, dove scatta davvero.'));
 
   // NOTIFICHE
   h.push(chap('NOTIFICHE'));
@@ -4034,11 +4033,12 @@ function teamsWaitingHtml(slot){
 function groupSlotItems(items){
   const byNum=(a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0);
   const cnt={};items.forEach(x=>{if(x.key)cnt[x.key]=(cnt[x.key]||0)+1;});
-  const gk=teams.map(t=>t.key).filter(k=>cnt[k]>=2);
+  // 15/11/2026 (Andrea): stile unico per tutti i piloti dei team seguiti: riquadro arrotondato con nome team, anche se e' uno solo
+  const gk=teams.map(t=>t.key).filter(k=>cnt[k]>=1);
   const out=[];
   gk.forEach(k=>{const g=items.filter(x=>x.key===k).sort(byNum);const t=teams.find(x=>x.key===k)||{name:k};const c=teamColor(k);
-    out.push('<div class="tgroup" style="--tc:'+c+'"><div class="tgroup-head"><span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span><span>'+g.length+' piloti</span></div>'+g.map(x=>x.html.replace(' tglow','')).join('')+'</div>');});
-  items.filter(x=>!x.key||cnt[x.key]<2).sort(byNum).forEach(x=>out.push(x.html));
+    out.push('<div class="tgroup" style="--tc:'+c+'"><div class="tgroup-head"><span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span><span>'+g.length+(g.length===1?' pilota':' piloti')+'</span></div>'+g.map(x=>x.html.replace(' tglow','').replace(/<span class="tchip"[^>]*>[^<]*<\/span>/,'')).join('')+'</div>');});
+  items.filter(x=>!x.key||!cnt[x.key]||!gk.includes(x.key)).sort(byNum).forEach(x=>out.push(x.html));
   return out.join('');
 }
 function teamsHighlightHtml(slot,ps){
@@ -5109,8 +5109,7 @@ function toggleHL(btn,num){const on=btn.classList.toggle('active');btn.setAttrib
   try{renderAll();}catch(e){}}
 
 /* ══ PUNTI DI SCATTO IN PISTA (15/11/2026, Andrea) ══
-   Ogni operatore posiziona i SUOI punti sulla piantina (non solo curve, dove si mette lui).
-   Per ogni pilota: tocco sul punto = fatto / da fare. Piantina condivisa per gara (trackMaps/<gara>). */
+   Ogni operatore ha i SUOI punti (dove si mette lui, non solo curve). Piantina per gara in trackMaps/<gara>. */
 function spotIds(){return Object.keys(trackSpots||{}).sort((a,b)=>(trackSpots[a].o||0)-(trackSpots[b].o||0));}
 function spotCount(num){const ids=spotIds(),d=(spotDone&&spotDone[num])||{};return[ids.filter(i=>d[i]).length,ids.length];}
 function spotPill(num){
@@ -5118,86 +5117,55 @@ function spotPill(num){
   const[f,t]=spotCount(num),cls=!t?'none':f===t?'green':f?'orange':'red';
   return'<button class="task-btn spot-pill '+cls+'" aria-label="Punti di scatto in pista" onclick="event.stopPropagation();openSpots(\''+num+'\')"><i class="ic ic-camera"></i>'+(t?'<span>'+f+'/'+t+'</span>':'')+'</button>';
 }
-let _spNum=null,_spEdit=false,_spSel=null,_spMap=null,_spMapRace=null;
+let _spNum=null,_spMap=null,_spMapRace=null;
+/* 15/11 (Andrea): niente modalita' modifica e niente caricamento piantina (le piantine le mettiamo noi, trackMaps/<gara>).
+   Tocco sulla piantina = spunta in quel punto per il pilota. Tocco su un punto = fatto / da fare.
+   Un punto che non e' piu' fatto per nessun pilota sparisce da solo. */
 function spotsLoadMap(){
   if(_spMapRace===activeRaceId&&_spMap!==null)return Promise.resolve(_spMap);
   return ref(db,'trackMaps/'+activeRaceId).once('value').then(sn=>{const v=sn.val();_spMap=(v&&v.img)||'';_spMapRace=activeRaceId;return _spMap;}).catch(()=>{_spMap='';return'';});
 }
-function openSpots(num){_spNum=String(num);_spEdit=false;_spSel=null;renderSpots();spotsLoadMap().then(()=>{if(_spNum===String(num))renderSpots();});}
+function openSpots(num){_spNum=String(num);renderSpots();spotsLoadMap().then(()=>{if(_spNum===String(num))renderSpots();});}
 window.openSpots=openSpots;
 function renderSpots(){
   const p=pilots.find(x=>String(x.num)===_spNum);if(!p){closeModal();return;}
   const d=(spotDone[_spNum])||{},ids=spotIds(),[f,t]=spotCount(_spNum);
   const h=[];
   h.push('<button class="modal-close" onclick="closeModal()">✕</button>');
-  h.push('<div class="modal-title">#'+p.num+' '+(p.name||'')+'</div>');
-  h.push('<div class="sp-sub">'+(_spEdit?'<b>MODIFICA PUNTI</b> · tocca la piantina per aggiungere un punto, trascinalo per spostarlo, toccalo per rinominarlo':(t?'Punti fatti <b>'+f+'/'+t+'</b> · tocca un punto per segnarlo fatto o da fare':'Nessun punto: premi <b>MODIFICA PUNTI</b> e tocca la piantina dove scatti'))+'</div>');
-  h.push('<div class="sp-map'+(_spEdit?' edit':'')+(_spMap?'':' noimg')+'" id="sp-map" onclick="spotsMapTap(event)">');
-  h.push(_spMap?'<img src="'+_spMap+'" alt="Piantina della pista" draggable="false">':'<div class="sp-empty">'+(_spMap===null?'Caricamento…':'Nessuna piantina: caricala con <b>PIANTINA</b> (foto o screenshot del tracciato)')+'</div>');
+  h.push('<div class="modal-title">#'+p.num+' '+escapeHtmlSp(p.name||'')+'</div>');
+  h.push('<div class="sp-sub">'+(t?'Fatti <b>'+f+'/'+t+'</b> · ':'')+'tocca la pista dove hai scattato</div>');
+  h.push('<div class="sp-map'+(_spMap?'':' noimg')+'" id="sp-map" onclick="spotsMapTap(event)">');
+  if(_spMap)h.push('<img src="'+_spMap+'" alt="Piantina della pista" draggable="false">');
   ids.forEach((id,i)=>{const sp=trackSpots[id],on=!!d[id];
-    h.push('<button class="sp-dot'+(on?' on':'')+(_spSel===id?' sel':'')+'" style="left:'+sp.x+'%;top:'+sp.y+'%" data-id="'+id+'" onpointerdown="spotsDown(event,\''+id+'\')" onclick="event.stopPropagation();spotsTap(\''+id+'\')"><span>'+(on?'✓':(i+1))+'</span><em>'+escapeHtmlSp(sp.n||('P'+(i+1)))+'</em></button>');});
+    h.push('<button class="sp-dot'+(on?' on':'')+'" style="left:'+sp.x+'%;top:'+sp.y+'%" onclick="event.stopPropagation();spotsTap(\''+id+'\')" aria-label="Punto '+(i+1)+(on?' fatto':' da fare')+'"><span>'+(on?'✓':(i+1))+'</span></button>');});
   h.push('</div>');
-  if(_spEdit&&_spSel&&trackSpots[_spSel]){
-    h.push('<div class="sp-edit-bar"><input id="sp-name" class="add-input" maxlength="24" value="'+escapeHtmlSp(trackSpots[_spSel].n||'')+'" placeholder="Nome del punto (es. curva 1, tribuna)" onchange="spotsRename(this.value)"><button class="sp-btn danger" onclick="spotsDelete()">Elimina</button></div>');
-  }
-  h.push('<div class="sp-actions"><button class="sp-btn'+(_spEdit?' on':'')+'" onclick="spotsToggleEdit()">'+(_spEdit?'FATTO':'MODIFICA PUNTI')+'</button>');
-  h.push('<label class="sp-btn"><i class="ic ic-upload"></i> PIANTINA<input type="file" accept="image/*" style="display:none" onchange="spotsUpload(this)"></label></div>');
-  if(!_spEdit&&t)h.push('<div class="sp-hint">I punti sono tuoi: valgono per tutti i tuoi piloti di questa gara.</div>');
+  if(t)h.push('<div class="sp-hint">I punti grigi li hai usati con altri piloti: toccali se li hai fatti anche con questo.</div>');
   openModal(h.join(''));
 }
 function escapeHtmlSp(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
-function spotsToggleEdit(){_spEdit=!_spEdit;_spSel=null;renderSpots();}
-window.spotsToggleEdit=spotsToggleEdit;
-function spotsSave(){saveUserField('trackSpots',trackSpots);}
+function spotsCleanup(){const used={};Object.values(spotDone||{}).forEach(m=>Object.keys(m||{}).forEach(k=>{if(m[k])used[k]=1;}));
+  let ch=false;Object.keys(trackSpots).forEach(k=>{if(!used[k]){delete trackSpots[k];ch=true;}});return ch;}
 function spotsMapTap(e){
-  if(!_spEdit)return;
   const m=document.getElementById('sp-map');if(!m)return;const r=m.getBoundingClientRect();
-  const x=Math.max(2,Math.min(98,(e.clientX-r.left)/r.width*100)),y=Math.max(3,Math.min(97,(e.clientY-r.top)/r.height*100));
-  const id='s'+Date.now().toString(36);const o=spotIds().length;
-  trackSpots[id]={x:Math.round(x*10)/10,y:Math.round(y*10)/10,n:'',o:o+1};_spSel=id;spotsSave();renderSpots();
+  const x=Math.max(3,Math.min(97,(e.clientX-r.left)/r.width*100)),y=Math.max(4,Math.min(96,(e.clientY-r.top)/r.height*100));
+  // vicino a un punto esistente (stessa zona): usa quello invece di crearne un altro
+  const near=spotIds().find(k=>{const sp=trackSpots[k],dx=(sp.x-x)*r.width/100,dy=(sp.y-y)*r.height/100;return dx*dx+dy*dy<26*26;});
+  if(near){spotsTap(near);return;}
+  const id='s'+Date.now().toString(36);
+  trackSpots[id]={x:Math.round(x*10)/10,y:Math.round(y*10)/10,o:Date.now()};
+  if(!spotDone[_spNum])spotDone[_spNum]={};spotDone[_spNum][id]=1;
   try{if(navigator.vibrate)navigator.vibrate(12);}catch(_){}
+  saveUserField('trackSpots',trackSpots);saveUserField('spotDone',spotDone);renderSpots();try{renderAll();}catch(_){}
 }
 window.spotsMapTap=spotsMapTap;
 function spotsTap(id){
-  if(_spJustMoved){_spJustMoved=false;return;}
-  if(_spEdit){_spSel=_spSel===id?null:id;renderSpots();return;}
   if(!spotDone[_spNum])spotDone[_spNum]={};
   if(spotDone[_spNum][id])delete spotDone[_spNum][id];else spotDone[_spNum][id]=1;
   try{if(navigator.vibrate)navigator.vibrate(12);}catch(_){}
+  if(spotsCleanup())saveUserField('trackSpots',trackSpots);
   saveUserField('spotDone',spotDone);renderSpots();try{renderAll();}catch(_){}
 }
 window.spotsTap=spotsTap;
-let _spDrag=null;
-function spotsDown(e,id){
-  if(!_spEdit)return;
-  const m=document.getElementById('sp-map'),el=e.currentTarget;if(!m||!el)return;
-  _spDrag={id,moved:false,sx:e.clientX,sy:e.clientY};
-  try{el.setPointerCapture(e.pointerId);}catch(_){}
-  el.onpointermove=function(ev){if(!_spDrag)return;if(Math.abs(ev.clientX-_spDrag.sx)+Math.abs(ev.clientY-_spDrag.sy)>6)_spDrag.moved=true;if(!_spDrag.moved)return;
-    const r=m.getBoundingClientRect();const x=Math.max(2,Math.min(98,(ev.clientX-r.left)/r.width*100)),y=Math.max(3,Math.min(97,(ev.clientY-r.top)/r.height*100));
-    el.style.left=x+'%';el.style.top=y+'%';trackSpots[id].x=Math.round(x*10)/10;trackSpots[id].y=Math.round(y*10)/10;};
-  el.onpointerup=function(){el.onpointermove=null;el.onpointerup=null;const mv=_spDrag&&_spDrag.moved;_spDrag=null;if(mv){_spJustMoved=true;_spSel=id;spotsSave();setTimeout(function(){_spJustMoved=false;renderSpots();},300);}};
-}
-let _spJustMoved=false;
-window.spotsDown=spotsDown;
-function spotsRename(v){if(!_spSel||!trackSpots[_spSel])return;trackSpots[_spSel].n=String(v||'').trim().slice(0,24);spotsSave();renderSpots();}
-window.spotsRename=spotsRename;
-function spotsDelete(){if(!_spSel)return;delete trackSpots[_spSel];_spSel=null;spotsSave();renderSpots();try{renderAll();}catch(_){}}
-window.spotsDelete=spotsDelete;
-function spotsUpload(inp){
-  const file=inp.files&&inp.files[0];if(!file)return;
-  const img=new Image(),url=URL.createObjectURL(file);
-  img.onload=function(){
-    const k=Math.min(1,1000/Math.max(img.width,img.height)),c=document.createElement('canvas');
-    c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-    URL.revokeObjectURL(url);
-    const data=c.toDataURL('image/jpeg',0.72);
-    ref(db,'trackMaps/'+activeRaceId).set({img:data,by:currentUserId,at:Date.now()}).then(()=>{_spMap=data;_spMapRace=activeRaceId;renderSpots();}).catch(e=>alert('Piantina non salvata, riprova'));
-  };
-  img.onerror=function(){URL.revokeObjectURL(url);alert('Immagine non valida');};
-  img.src=url;
-}
-window.spotsUpload=spotsUpload;
 
 /* 15/11/2026 (Andrea): le manche A-B, B-D, B-C hanno in comune solo la B = il pilota e' del gruppo B */
 function heatsGroup(heats){if(!Array.isArray(heats)||!heats.length)return'';let common=null;
