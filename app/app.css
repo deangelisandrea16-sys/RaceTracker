@@ -75,6 +75,13 @@ body.light .filter-chip.active{color:#fff;}
 .filter-chip.f-orange{border-color:#9a6411;color:#fbbf24;}
 .filter-chip.f-orange.active{background:#8a5a10;border-color:#8a5a10;color:#fff7e6;}
 .filter-chip.f-red{border-color:#9a2b27;color:#ff7a72;}
+.filter-chip.f-hl-foto{border-color:#1d6f96;color:#38bdf8;}
+.filter-chip.f-hl-foto.active{background:#0e5a80;border-color:#0e5a80;color:#eaf8ff;}
+.filter-chip.f-hl-video{border-color:#9d2a66;color:#ec4899;}
+.filter-chip.f-hl-video.active{background:#9d1d5e;border-color:#9d1d5e;color:#fff0f7;}
+.filter-chip.f-hl-priority{border-color:#8a6d12;color:var(--prio-frame,#ffcc33);}
+.filter-chip.f-hl-priority.active{background:#7a5c00;border-color:#ffcc33;color:#fff8e0;}
+.filter-chip .ic{vertical-align:-2px;}
 .filter-chip.f-red.active{background:#8a1f1c;border-color:#8a1f1c;color:#ffeceb;}
 body.light .filter-chip.f-green{color:#15803d;border-color:#86d6a6;}
 body.light .filter-chip.f-green.active{background:#15a64a;color:#fff;}
