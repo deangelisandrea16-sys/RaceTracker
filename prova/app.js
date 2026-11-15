@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1850';
+var RT_JS_BUILD='2026-11-15-1900';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1678,9 +1678,10 @@ function renderLtMyNums(){
   const all=slotsArr.map(sl=>({time:sl.time,label:sl.label||sl.cat||'',ps:pilotsForSlot(sl)}));
   if(activeDay===currentDays[currentDays.length-1])[].concat(currentFinals||[]).filter(Boolean).forEach(f=>{
     const ac=pilots.filter(p=>canonCat(p.cat)===canonCat(f.cat));const fin=ac.filter(p=>p.inFinal);
-    all.push({time:f.time,label:'FINALE '+(f.cat||''),ps:fin.length?fin:ac.filter(p=>!p.eliminated)});});
+    all.push({time:f.time,label:'FINALE '+(f.cat||''),fc:canonCat(f.cat),ps:fin.length?fin:ac.filter(p=>!p.eliminated)});});
   all.sort((a,b)=>toM(a.time)-toM(b.time));
   let ni=-1;all.forEach((it,i)=>{if(toM(it.time)<=nowM)ni=i;});
+  const _lf=liveFinalCat();if(_lf){const li=all.findIndex(it=>it.fc===_lf);if(li>=0)ni=li;}
   const items=[];
   all.forEach(function(it,i){
     if(i<ni)return;const isNow=i===ni;
@@ -3270,6 +3271,7 @@ function renderSchedule(){
     currentFinals.forEach(f=>{const m=_toM(f.time);if(m>=0&&m<=_nowM&&m>_best){_best=m;_finalNowKey=f.label+'|'+f.time;}}); // 14/11: tutte le finali, anche senza miei piloti
     const _slotM=_toM((slotsArr[currentIdx]||{}).time);
     if(_finalNowKey&&_best>=_slotM)currentIdx=-1; else _finalNowKey=null;
+    const _lf=liveFinalCat();if(_lf){const _f=currentFinals.find(x=>canonCat(x.cat)===_lf);if(_f){_finalNowKey=_f.label+'|'+_f.time;currentIdx=-1;}}
   }
   const _ds=progDayState(activeDay,slotsArr);
   if(_ds!=='today'){currentIdx=_ds==='future'?-1:slotsArr.length;_finalNowKey=null;}
@@ -3471,7 +3473,7 @@ function updateProgTicker(slotsArr,currentIdx){
   const cand=[];
   if(currentIdx<slotsArr.length)slotsArr.forEach((sl,i)=>{if(i>currentIdx&&toM(sl.time)>=nowM-1)cand.push({sl,mine:pilotsForSlot(sl)});});
   if(currentIdx<slotsArr.length&&activeDay===currentDays[currentDays.length-1])[].concat(currentFinals||[]).filter(Boolean).forEach(f=>{
-    if(toM(f.time)<nowM-1)return;const all=pilots.filter(p=>canonCat(p.cat)===canonCat(f.cat));const fin=all.filter(p=>p.inFinal);
+    if(toM(f.time)<nowM-1)return;const _lf=liveFinalCat();if(_lf){const lfF=currentFinals.find(x=>x&&canonCat(x.cat)===_lf);if(lfF&&toM(f.time)<=toM(lfF.time))return;}const all=pilots.filter(p=>canonCat(p.cat)===canonCat(f.cat));const fin=all.filter(p=>p.inFinal);
     cand.push({sl:{time:f.time,label:'FINALE '+(f.cat||''),cat:f.cat},mine:fin.length?fin:all.filter(p=>!p.eliminated)});});
   cand.sort((a,b)=>toM(a.sl.time)-toM(b.sl.time));
   for(const c of cand){if(items.length>=6)break;
@@ -4820,7 +4822,7 @@ function apexParse(txt){
         try{if(lastRed){const mine=[...ltGridNums(apexGrid)].filter(n=>ltMineNums().has(n));if(mine.length)rtAlert('rossa|'+activeRaceId+'|'+apexState.cat+'|'+apexState.sess+'|'+lastRed,'<i class="ic ic-redflag"></i> BANDIERA ROSSA '+apexState.cat,apexState.sess+' · in pista: '+mine.map(n=>'#'+n).join(' '));}}catch(e){}}
     }
   });
-  if(changed){apexState.at=Date.now();renderApexDelay();}
+  if(changed){apexState.at=Date.now();renderApexDelay();try{renderLtMyNums();if(activeTab==='programma')renderSchedule();}catch(e){}}
 }
 // Traduce categoria e sessione Apex nello slot del programma di oggi
 function apexCat(t){
@@ -4834,6 +4836,9 @@ function apexCat(t){
   if(/^OK\b/.test(s))return'OK';
   return normCat(s);
 }
+/* 15/11/2026 (Andrea): se il live dice che in pista c'e' la finale di una categoria, quella e' la finale "ORA"
+   (prima valeva solo l'orario: con il ritardo restava sulla finale precedente mentre l'altra era gia' al giro di ricognizione) */
+function liveFinalCat(){try{if(!apexWs||apexWs.readyState!==1)return null;const ss=String(apexState.sess||'').toUpperCase();if(!/FINAL/.test(ss)||/PRE/.test(ss))return null;const c=apexCat(apexState.cat);return c?canonCat(c):null;}catch(e){return null;}}
 function apexMatchSlot(){return apexMatchFor(apexState.cat,apexState.sess,apexState.start);}
 function apexMatchFor(catTxt,sessTxt,startTxt){
   const cat=apexCat(catTxt);const ss=String(sessTxt||'').toUpperCase();
