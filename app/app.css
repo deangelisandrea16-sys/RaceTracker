@@ -696,3 +696,10 @@ body.light{--hl-foto:#0284c7;--hl-video:#9333ea;--hl-prio:#ca8a04}
 /* 15/11/2026 (Andrea): finale prima della lista ufficiale */
 .final-poss{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#fbbf24;padding:8px 2px 0}
 .card-inner.final-maybe{opacity:.6}
+/* 15/11/2026 (Andrea): testi delle pillole dei lavori sempre dentro la pillola (si rimpiccioliscono con lo schermo) */
+.tasks .task-btn{font-size:clamp(8.5px,2.45vw,11.5px)!important;padding:7px 4px!important;gap:3px!important;letter-spacing:0!important}
+.tasks .task-btn::before{width:5px!important;height:5px!important}
+@media (max-width:400px){.tasks .task-btn::before{display:none}.tasks .task-btn{padding:7px 3px!important}}
+/* 15/11/2026 (Andrea): un po' di respiro tra la cornice (priorita'/foto/video) e il contenuto */
+.card-inner.hl-prio,.card-inner.hl-foto,.card-inner.hl-video,.card-inner.hl-both{padding-left:12px!important;padding-right:10px!important}
+.card-inner.hl-prio{padding-top:12px!important;padding-bottom:12px!important}
