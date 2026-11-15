@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-0945';
+var RT_JS_BUILD='2026-11-15-1000';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3173,7 +3173,7 @@ function riskMarkMap(){
 function riskTri(num){
   const n=String(num),p=pilots.find(q=>String(q.num)===n);if(!p||p.eliminated||p.inFinal)return'';
   const v=riskMarkMap()[n];if(v===undefined)return'';
-  return'<span class="risk-tri" title="Rischio di non entrare in finale: '+v+'% (stima)" style="color:'+riskColor(v)+';font-size:11px;line-height:1;flex-shrink:0;display:inline-block">\u25B2</span>';
+  return'<span class="risk-tri" style="color:'+riskColor(v)+';font-size:11px;line-height:1;flex-shrink:0;display:inline-block">\u25B2</span>';
 }
 function progDayState(day,slotsArr){
   const plain=s=>String(s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -3680,42 +3680,110 @@ function followedTeamOf(num,team){const e=(currentEntryList||{})[num]||{};const 
 function setUserSetting(path,val){if(!currentUserId)return;const u={};u['settings/'+currentUserId+'/'+path]=val;update(ref(db),u);}
 function setTeamView(v){userSettings.teamView=v;setUserSetting('teamView',v);renderSettings();try{renderAll();}catch(e){}}
 function setTeamColor(k,c){userSettings.teamColors=userSettings.teamColors||{};userSettings.teamColors[k]=c;setUserSetting('teamColors/'+k,c);renderSettings();try{renderAll();}catch(e){}}
-/* 15/11/2026 (Andrea): legenda del linguaggio visivo dell'app (Impostazioni → LEGENDA). Gli esempi usano gli stessi stili dell'app. */
+/* 15/11/2026 (Andrea): legenda del linguaggio visivo dell'app (Impostazioni → LEGENDA).
+   Le "schermate" sono ricostruite con gli stessi stili dell'app, quindi seguono il tema chiaro/scuro.
+   Ogni numero nella schermata corrisponde alla spiegazione sotto. */
 function openLegend(){
-  const tri=c=>'<span style="color:'+c+';font-size:13px">▲</span>';
-  const row=(sample,txt)=>'<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--border)"><div style="min-width:92px;display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap">'+sample+'</div><div style="flex:1;font-size:13px;color:var(--text2);line-height:1.35">'+txt+'</div></div>';
-  const sec=t=>'<div class="set-sec" style="margin-top:14px">'+t+'</div>';
-  const h=[
-    sec('RISCHIO FINALE (STIMA)'),
-    row(tri('#22c55e'),'<b>Verde</b>: non a rischio (sotto 25%)'),
-    row(tri('#facc15'),'<b>Giallo</b>: rischio basso (25–49%)'),
-    row(tri('#f97316'),'<b>Arancione</b>: rischio medio (50–74%)'),
-    row(tri('#ef4444'),'<b>Rosso</b>: molto a rischio (75% e oltre)'),
-    row('<span style="font-size:11px;color:var(--text4)">nessuno</span>','Il triangolo sparisce quando esce la lista ufficiale della Finale: il pilota è in finale o tra gli eliminati. Tieni il dito sopra per la %.'),
-    sec('PROGRAMMA'),
-    row('<div class="card slot-now" style="margin:0;padding:6px 10px;font-size:11px;font-weight:800"><span class="now-badge">ORA</span></div>','Cornice verde + <b>ORA</b>: il turno in corso (solo nella giornata di oggi, finché è in corso)'),
-    row('<span class="run-chip">Gara 1/3</span>','Quante volte corre oggi il pilota e quale è questa. <b>?</b> = dipende da dati non ancora ufficiali'),
-    row('<span style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:900;color:#fff;background:#dc2626;border-radius:5px;padding:1px 7px">✕12</span>','Uscito/ritirato nel turno (posizione in classifica)'),
-    row('<span style="font-size:9px;color:#fbbf24;font-weight:700"><i class="ic ic-wait"></i> ATTESA</span>','Turno che dipende da un\'assegnazione non ancora uscita (gruppo, serie, prefinale)'),
-    row('<span style="font-size:11px;font-weight:700;color:var(--text4)">— NESSUNO —</span>','Turno senza tuoi piloti (il programma resta sempre completo)'),
-    sec('PILOTI E TEAM'),
-    row('<span class="hl-badge hl-foto"><i class="ic ic-camera"></i> FOTO</span>','Pilota da seguire per le foto'),
-    row('<span class="hl-badge hl-video"><i class="ic ic-video"></i> VIDEO</span>','Pilota da seguire per il video'),
-    row('<span class="hl-badge hl-priority"><i class="ic ic-star"></i> PRIORITÀ</span>','Pilota prioritario'),
-    row('<span class="tchip" style="--tc:#38bdf8">TEAM</span>','Pilota di un team che segui (bordo luminoso del colore del team)'),
-    row('<span class="note-txt"><i class="ic ic-note"></i> nota</span>','La tua nota sul pilota. La matita accanto al nome la scrive o la modifica'),
-    sec('LAVORI'),
-    row('<button class="task-btn red" style="padding:4px 8px;font-size:10px;pointer-events:none">PISTA</button>','Da fare'),
-    row('<button class="task-btn green" style="padding:4px 8px;font-size:10px;pointer-events:none">PISTA</button>','Fatto (secondo tocco)'),
-    row('<button class="task-btn orange" style="padding:4px 8px;font-size:10px;pointer-events:none">PISTA</button>','Parziale / da completare (terzo tocco; il quarto torna rosso)'),
-    sec('LIVE'),
-    row('<span style="font-family:\'Chakra Petch\',sans-serif;font-size:11px;font-weight:700;padding:0 5px;border-radius:4px;background:#14301f;color:#4fd69c">▲3</span> <span style="font-family:\'Chakra Petch\',sans-serif;font-size:11px;font-weight:700;padding:0 5px;border-radius:4px;background:#2a171b;color:#ef6a7a">▼2</span>','Posizioni guadagnate / perse (con il numero, nella casella della posizione). Diverso dal triangolo di rischio, che non ha numero e sta accanto al #'),
-    row('<span class="lt-ret box">AI BOX</span>','Pilota rientrato ai box'),
-    sec('ELIMINAZIONI'),
-    row('<span style="display:inline-block;width:4px;height:22px;background:#22c55e;border-radius:2px"></span> <span style="display:inline-block;width:4px;height:22px;background:#ef4444;border-radius:2px"></span>','Barra a sinistra: verde = ammesso (ufficiale), rosso = fuori (ufficiale)'),
-    row('<span style="font-size:9px;font-weight:800;color:#facc15;border:1px dashed #facc15;border-radius:4px;padding:0 5px">DA CONFERMARE</span>','Pilota letto da un PDF scansionato: verrà sostituito dai dati ufficiali Apex')
-  ];
-  openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Legenda</div><div style="max-height:70vh;overflow:auto">'+h.join('')+'</div>');
+  const N=n=>'<b class="lg-n">'+n+'</b>';
+  const ex=(items)=>'<ol class="lg-list">'+items.map(t=>'<li>'+t+'</li>').join('')+'</ol>';
+  const sec=t=>'<div class="set-sec" style="margin-top:18px">'+t+'</div>';
+  const shot=html=>'<div class="lg-shot">'+html+'</div>';
+  const tri=c=>'<span style="color:'+c+';font-size:11px;line-height:1">▲</span>';
+  const badgeGrid='<span style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:700;color:#1a160e;background:#e9d5a8;border-radius:5px;padding:1px 7px">P5</span>';
+  const badgeUff='<span style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:700;color:#0d0d0f;background:#4fd69c;border:1px solid #4fd69c;border-radius:5px;padding:0 6px"><i class="ic ic-flag"></i> 3°</span>';
+  const badgeProv='<span style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:700;color:#4fd69c;border:1px dashed #4fd69c;border-radius:5px;padding:0 6px"><i class="ic ic-flag"></i> 3°</span>';
+  const badgeCorr='<span style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:700;color:#0d0d0f;background:#4fd69c;border:1px solid #4fd69c;border-radius:5px;padding:0 6px"><i class="ic ic-flag"></i> 3° <span style="color:#facc15">●</span></span>';
+  const badgeOut='<span style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:900;color:#fff;background:#dc2626;border-radius:5px;padding:1px 7px">✕ 12°</span>';
+  const pencil='<span style="display:inline-flex;align-items:center;color:var(--text3);font-size:18px"><i class="ic ic-note"></i></span>';
+  const tasks=(st)=>'<div class="tasks">'+TASKS.map((t,i)=>'<button class="task-btn '+(st[i]||'red')+'" style="padding:4px 8px;font-size:10px;pointer-events:none">'+t+'</button>').join('')+'</div>';
+  const h=[];
+  h.push('<style>.lg-shot{pointer-events:none;border:1px dashed var(--border2);border-radius:12px;padding:10px;margin:8px 0;background:var(--bg)}.lg-shot .card{margin-bottom:0}'
+    +'.lg-n{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 3px;border-radius:9px;background:var(--accent);color:#000;font-size:10px;font-weight:900;font-style:normal;vertical-align:middle;margin:0 2px;font-family:Arial,sans-serif;line-height:1}'
+    +'.lg-list{margin:4px 0 6px 18px;padding:0;font-size:13px;color:var(--text2);line-height:1.4}.lg-list li{margin:4px 0}.lg-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--border);font-size:13px;color:var(--text2)}.lg-row>div:first-child{min-width:96px;display:flex;justify-content:center;gap:4px;flex-wrap:wrap}</style>');
+  h.push('<div style="font-size:12px;color:var(--text3)">Le schermate qui sotto sono esempi: i numeri <b class="lg-n">1</b> indicano a cosa si riferisce ogni spiegazione.</div>');
+
+  // PROGRAMMA
+  h.push(sec('PROGRAMMA · un turno'));
+  h.push(shot('<div class="card slot-now"><div class="slot-header"><span class="slot-time">9.40</span>'+N(1)+'<span class="now-badge">ORA</span>'+N(2)+'<span class="slot-label cat-okn">OKN</span>'+N(3)+'<span class="slot-type">Manche A-B</span><span class="slot-dur">8\'</span>'+N(4)+'</div>'
+    +'<div style="margin-top:8px"><div class="card-inner"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap"><span class="inner-num">#404</span>'+N(5)+tri('#f97316')+N(6)+badgeGrid+'<span class="inner-name">ROSSI MARIO</span><span class="run-chip">Gara 2/3</span>'+N(7)+'<span class="inner-team-big">TEAM ESEMPIO</span>'+pencil+N(8)+'</div>'
+    +tasks(['green','orange','red','red','red'])+N(9)
+    +'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> tenda vicino alla torretta</div>'+N(10)+'</div></div></div>'));
+  h.push(ex([
+    'Cornice verde + <b>ORA</b>: il turno in corso. C\'è solo nella giornata di oggi e sparisce 30 minuti dopo l\'ultimo turno. Il tasto ORA in basso ci riporta.',
+    'Categoria: ogni categoria ha il suo colore (vedi sotto).',
+    'Tipo di turno (prove, manche con i gruppi, prefinale…).',
+    'Durata del turno; se il live dice un\'altra durata la vecchia è barrata.',
+    '<b>Triangolo</b>: rischio di non entrare in finale (stima): '+tri('#22c55e')+' verde sotto 25% · '+tri('#facc15')+' giallo 25–49% · '+tri('#f97316')+' arancione 50–74% · '+tri('#ef4444')+' rosso 75% e oltre. Sparisce quando esce la lista ufficiale della Finale.',
+    'Riquadro posizione: prima del turno la <b>griglia</b>, dopo il turno l\'<b>arrivo</b> (vedi “Posizioni”).',
+    '<b>Gara 2/3</b>: è la 2ª delle 3 uscite in pista di oggi del pilota (warm up compresi). <b>?</b> = dipende da dati non ancora ufficiali.',
+    'Matita: scrivi o modifica la nota del pilota.',
+    'Lavori da fare per il pilota (vedi “Lavori”).',
+    'La tua nota sul pilota.'
+  ]));
+  h.push(sec('PROGRAMMA · posizioni'));
+  h.push('<div class="lg-row"><div>'+badgeGrid+'</div><div>Posizione in <b>griglia</b> (lista ufficiale), prima del turno</div></div>');
+  h.push('<div class="lg-row"><div>'+badgeUff+'</div><div>Arrivo <b>ufficiale</b> (pieno)</div></div>');
+  h.push('<div class="lg-row"><div>'+badgeProv+'</div><div>Arrivo <b>provvisorio</b> (tratteggiato): dal live o classifica non ancora ufficiale</div></div>');
+  h.push('<div class="lg-row"><div>'+badgeCorr+'</div><div>Classifica <b>corretta</b> dopo la pubblicazione (penalità, verifiche)</div></div>');
+  h.push('<div class="lg-row"><div>'+badgeOut+'</div><div><b>Uscito</b> o ritirato nel turno, con la posizione in classifica</div></div>');
+  h.push(sec('PROGRAMMA · turni particolari'));
+  h.push(shot('<div class="card" style="opacity:.35;padding:10px 14px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:900;color:var(--text4)">11.20</span><span class="cat-kz2" style="font-size:10px;font-weight:800">KZ2</span><span style="font-size:9px;color:#fbbf24;font-weight:700;margin-left:auto;letter-spacing:1px"><i class="ic ic-wait"></i> ATTESA PREFINAL</span>'+N(1)+'</div></div>'
+    +'<div class="card" style="opacity:.45;margin-top:8px"><div class="slot-header"><span class="slot-time">12.00</span><span class="slot-label cat-u10">MINI U10</span></div><div style="font-size:11px;font-weight:700;color:var(--text4);padding:2px 0">— NESSUNO —</div>'+N(2)+'</div>'
+    +'<div class="final-card" style="margin-top:8px"><div class="final-title"><i class="ic ic-trophy"></i> FINALE KZ2</div><div class="final-row"><span>Partenza</span><span class="final-time">16.00</span></div><div style="font-size:12px;color:var(--text4);padding:8px 2px 2px">Nessun tuo pilota in questa finale</div>'+N(3)+'</div>'));
+  h.push(ex([
+    '<b>ATTESA</b>: il turno dipende da un\'assegnazione non ancora uscita (gruppo, serie, prefinale).',
+    '<b>NESSUNO</b>: turno senza tuoi piloti. Il programma resta sempre completo.',
+    '<b>Finale</b> (bordo giallo): prima della lista ufficiale mostra tutti i tuoi piloti della categoria, poi solo i finalisti.'
+  ]));
+
+  // BARRA IN ALTO
+  h.push(sec('BARRA IN ALTO'));
+  h.push(shot('<div style="display:flex;gap:14px;align-items:center;font-size:12px;font-weight:700;color:var(--text3)"><span>ORA <b style="color:var(--text)">09:31</b></span>'+N(1)+'<span>RITARDO <b style="color:#4fd69c">-2\'</b> AUTO</span>'+N(2)+'<span class="sync-status ok">● LIVE</span>'+N(3)+'</div>'
+    +'<div style="margin-top:8px;background:#b3261e;color:#fff;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:700">Server notifiche fermo da 14 min</div>'+N(4)));
+  h.push(ex([
+    'Ora attuale.',
+    'Ritardo (+) o anticipo (−) della giornata rispetto al programma. <b>AUTO</b> = calcolato dal live.',
+    'Collegamento ai dati: <b>LIVE</b> = aggiornato; se manca la rete compare una barra "Senza rete" e le modifiche partono quando torna.',
+    'Il server delle notifiche non dà segni di vita: le notifiche push potrebbero non arrivare. Riaprendo l\'app si aggiorna.'
+  ]));
+
+  // LIVE
+  h.push(sec('LIVE · un tuo pilota'));
+  h.push(shot('<div class="ltbig up" style="position:relative"><div class="pos" style="position:relative">4<span class="mv">▲3</span></div>'+N(1)
+    +'<div style="flex:1;min-width:0"><div><span class="num">#404</span>'+tri('#ef4444')+' <span class="nm">ROSSI MARIO</span> <span class="lt-ret box">AI BOX</span>'+N(2)+'</div>'
+    +'<div class="tm">TEAM ESEMPIO · +1.234 · best 48.512</div>'+N(3)
+    +tasks(['green','green','red','red','red'])+'</div></div>'
+    +'<div class="ltbig" style="margin-top:8px"><div class="pos"><span class="lt-x">✕</span></div>'+N(4)+'<div style="flex:1"><div><span class="num">#212</span> <span class="nm">BIANCHI LUCA</span></div></div></div>'));
+  h.push(ex([
+    'Posizione attuale; sotto, la pillola <b style="color:#4fd69c">▲3</b> / <b style="color:#ef6a7a">▼2</b> = posizioni guadagnate o perse (bordo verde/rosso). Ha sempre il numero: non è il triangolo di rischio.',
+    '<b>AI BOX</b> = rientrato ai box; <b>FERMO IN PISTA</b> = fermo sul tracciato (prove e qualifiche).',
+    'Team, distacco e giro migliore.',
+    '<b>✕ rossa</b> al posto della posizione: ritirato in gara.'
+  ]));
+
+  // LAVORI
+  h.push(sec('LAVORI'));
+  h.push('<div class="lg-row"><div><button class="task-btn red" style="padding:4px 8px;font-size:10px;pointer-events:none">PISTA</button></div><div>Da fare</div></div>');
+  h.push('<div class="lg-row"><div><button class="task-btn green" style="padding:4px 8px;font-size:10px;pointer-events:none">PISTA</button></div><div>Fatto (1 tocco)</div></div>');
+  h.push('<div class="lg-row"><div><button class="task-btn orange" style="padding:4px 8px;font-size:10px;pointer-events:none">PISTA</button></div><div>Parziale / da completare (2 tocchi; il 3° torna rosso)</div></div>');
+
+  // ELIMINAZIONI
+  h.push(sec('GARA → ELIMINAZIONI'));
+  h.push('<div class="lg-row"><div>'+riskRing(12)+riskRing(62)+riskRing(90)+'</div><div>Anello nella scheda <b>FINALE</b>: rischio stimato di non entrare in finale, con gli stessi colori del triangolo. 100% solo se è fuori anche vincendo.</div></div>');
+  h.push('<div class="lg-row"><div><span style="display:inline-block;width:5px;height:24px;background:#22c55e;border-radius:2px"></span><span style="display:inline-block;width:5px;height:24px;background:#6b7280;border-radius:2px"></span><span style="display:inline-block;width:5px;height:24px;background:#ef4444;border-radius:2px"></span></div><div>Barra a sinistra: <b>verde</b> ammesso (ufficiale) · <b>grigia</b> in attesa delle liste · <b>rossa</b> fuori (ufficiale)</div></div>');
+
+  // PILOTI / TEAM
+  h.push(sec('PILOTI, TEAM, ENTRY LIST'));
+  h.push('<div class="lg-row"><div><span class="hl-badge hl-foto"><i class="ic ic-camera"></i> FOTO</span><span class="hl-badge hl-video"><i class="ic ic-video"></i> VIDEO</span><span class="hl-badge hl-priority"><i class="ic ic-star"></i></span></div><div>Pilota da seguire per foto, video, o prioritario (si imposta nella scheda del pilota)</div></div>');
+  h.push('<div class="lg-row"><div><span class="tchip" style="--tc:#38bdf8">TEAM</span></div><div>Pilota di un <b>team che segui</b>: bordo luminoso del colore del team (colori in Impostazioni)</div></div>');
+  h.push('<div class="lg-row"><div><span style="font-size:9px;font-weight:800;color:#facc15;border:1px dashed #facc15;border-radius:4px;padding:0 5px">DA CONFERMARE</span></div><div>Pilota letto da un PDF scansionato: sarà sostituito dai dati ufficiali Apex</div></div>');
+  h.push('<div class="lg-row"><div><span style="color:#ef4444;font-size:10px;font-weight:800">ELIMINATO</span></div><div>Pilota fuori dalla gara: finisce in fondo al Programma, in "Ritirati / Eliminati"</div></div>');
+
+  // CATEGORIE
+  h.push(sec('COLORI DELLE CATEGORIE'));
+  h.push('<div class="lg-row" style="flex-wrap:wrap;gap:14px;font-weight:900">'+[['KZ2','KZ2'],['OKN','OKN'],['OK-NJ','OK-NJ'],['MINI GR3','MINI GR3'],['MINI U10','MINI U10']].map(c=>'<span class="'+catClass(c[0])+'">'+c[1]+'</span>').join('')+'</div>');
+
+  openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Legenda</div><div style="max-height:72vh;overflow:auto;padding-right:2px">'+h.join('')+'</div>');
 }
 window.openLegend=openLegend;
 function renderSettings(){
