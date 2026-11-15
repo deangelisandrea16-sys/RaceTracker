@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1650';
+var RT_JS_BUILD='2026-11-15-1700';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -924,6 +924,7 @@ var RT_USER_KEYS=['pilots','statuses','notes','trackStatus','teams','teamStatuse
 var _rtBaseShared={},_rtBaseUser={};
 function listenRaceData(raceId){
   if(raceDataUnsub) raceDataUnsub();
+  _rtUserLiveKey='';
   if(!currentUserId){initialized=true;renderAll();return;}
   
   _rtBaseShared={};_rtBaseUser={};
@@ -994,7 +995,7 @@ function listenRaceData(raceId){
   },err=>{setSyncStatus('err');dlog('❌ shared data: '+err.message,'err');});
 
   const unsub2=onValue(userRef,snap=>{
-    userData=snap.val()||{};saveSnap();rtSetBase(null,userData);
+    userData=snap.val()||{};saveSnap();rtSetBase(null,userData);_rtUserLiveKey=raceId+'|'+currentUserId;
     dlog('Dati utente ['+currentUserId+']: pilots='+Object.keys(userData.pilots||{}).length,'ok');
     userReady=true;
     mergeAndRender();
@@ -1075,9 +1076,16 @@ function rtWrite(u,what){
   setSyncStatus('saving');dlog('Salvataggio '+(what||'')+': '+n+' campi','info');
   return update(ref(db),u).then(()=>setSyncStatus('ok')).catch(e=>{setSyncStatus('err');console.error(e);dlog('❌ salvataggio: '+e.message,'err');});
 }
+/* 15/11/2026 (bug #637 di Andrea): un pilota rimosso tornava indietro. Un dispositivo con dati vecchi in memoria
+   (app riaperta dopo ore, cambio utente/gara prima che arrivino i dati nuovi) salvava di nuovo l'elenco vecchio.
+   Difese: 1) niente salvataggi finche' non sono arrivati i dati aggiornati dell'utente per QUESTA gara;
+   2) un pilota che non c'e' sul server viene ricreato solo se e' stato aggiunto in questa sessione. */
+var _rtNewPilots=new Set(),_rtUserLiveKey='';
 function saveAll(){
   if(!activeRaceId||!currentUserId)return;
-  const pilotsObj={};pilots.forEach(p=>pilotsObj[p.num]=p);
+  if(_rtUserLiveKey!==activeRaceId+'|'+currentUserId){dlog('Salvataggio rimandato: dati utente non ancora aggiornati','warn');setTimeout(saveAll,1500);return;}
+  const basePil=(_rtBaseUser&&_rtBaseUser.pilots)||{};
+  const pilotsObj={};pilots.forEach(p=>{const k=String(p.num);if(basePil[k]||_rtNewPilots.has(k))pilotsObj[p.num]=p;else dlog('Pilota #'+k+' non piu\' sul server: non lo ricreo','warn');});
   const teamsObj={};teams.forEach(t=>teamsObj[t.key]=t);
   const uData={pilots:pilotsObj,statuses,notes,trackStatus,teams:teamsObj,teamStatuses,teamNotes};
   const sData={entryList:currentEntryList,schedule:currentSchedule,days:currentDays,finals:currentFinals,trackSections};
@@ -2485,7 +2493,7 @@ function addPilotFromDetail(num){
   const serie=entry&&entry.serie?entry.serie.toString():'';
   const prefinal=entry&&entry.prefinal?entry.prefinal:'';
   const heats=entry&&entry.heats?entry.heats:[];
-  pilots.push({num:num.toString(),name,team,cat,parity:autoParity(num),group,prefinal,serie,heats,eliminated:false});
+  _rtNewPilots.add(String(num));pilots.push({num:num.toString(),name,team,cat,parity:autoParity(num),group,prefinal,serie,heats,eliminated:false});
   statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');
   trackStatus[num]={};notes[num]=note;
   // Update pilot count in race index
@@ -5066,7 +5074,7 @@ function confirmFromEntryList(){
   const group=_entryPreview.group||'';
   const serie=_entryPreview.serie?_entryPreview.serie.toString():'';
   const prefinal=_entryPreview.prefinal||'';
-  pilots.push({num,name:(_entryPreview.lastName||'')+' '+(_entryPreview.firstName||''),team:_entryPreview.team||'',cat:_entryPreview.cat||'OK',parity:_entryPreview.parity||autoParity(num),group,prefinal,serie,eliminated:false});
+  _rtNewPilots.add(String(num));pilots.push({num,name:(_entryPreview.lastName||'')+' '+(_entryPreview.firstName||''),team:_entryPreview.team||'',cat:_entryPreview.cat||'OK',parity:_entryPreview.parity||autoParity(num),group,prefinal,serie,eliminated:false});
   statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');trackStatus[num]={};notes[num]=note;
   const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;update(ref(db),u);
   saveAll();closeModal();
@@ -5081,7 +5089,7 @@ function savePilotManual(){
   const note=document.getElementById('f-note-m')?document.getElementById('f-note-m').value.trim():'';
   if(!num||!name||!team){alert('Compila tutti i campi');return;}
   if(pilots.find(p=>p.num===num)){alert('Numero già presente');return;}
-  pilots.push({num,name,team,cat,parity:autoParity(num),group:'',prefinal:'',serie:'',heats:[],eliminated:false});
+  _rtNewPilots.add(String(num));pilots.push({num,name,team,cat,parity:autoParity(num),group:'',prefinal:'',serie:'',heats:[],eliminated:false});
   statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');trackStatus[num]={};notes[num]=note;
   const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;update(ref(db),u);
   saveAll();closeModal();
