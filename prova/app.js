@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-0905';
+var RT_JS_BUILD='2026-11-15-0915';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3153,6 +3153,25 @@ function awardsStrip(day){
 /* 15/11/2026 (Andrea): il riquadro ORA esiste solo nella giornata di oggi e solo finche' la giornata e' in corso.
    Giornata futura: niente ORA, nessun turno "fatto", il tasto porta in cima. Giornata passata o finita: niente ORA.
    Ricompare la mattina dopo, nella giornata nuova. Fine giornata = ultimo turno (o ultima finale) + 30 min + ritardo. */
+/* 15/11/2026 (Andrea): nel Programma, piloti a rischio di non entrare in finale segnati con un triangolo discreto
+   (arancione 50-74%, rosso 75%+), solo su manche e prefinali, solo finche' la lista ufficiale della Finale non e' uscita.
+   Stessa stima della scheda FINALE (riskPct), calcolata al massimo ogni 30 s. */
+let _rmCache={at:0,map:null};
+function riskMarkMap(){
+  if(_rmCache.map&&Date.now()-_rmCache.at<30000)return _rmCache.map;
+  const m={};
+  try{
+    const decided=new Set(pilots.filter(p=>p.inFinal).map(p=>canonCat(p.cat)));
+    riskData().forEach(x=>{if(x.none||decided.has(canonCat(x.cat)))return;const v=riskPct(x);if(v>=50)m[String(x.num)]=v;});
+  }catch(e){}
+  _rmCache={at:Date.now(),map:m};return m;
+}
+function riskMark(p,slot,map){
+  if(!slot||(slot.type!=='group'&&slot.type!=='prefinal')||p.eliminated||p.inFinal)return'';
+  const v=map[String(p.num)];if(!v)return'';
+  const c=v>=75?'#ef4444':'#f97316';
+  return'<span title="Rischio di non entrare in finale: '+v+'% (stima)" style="color:'+c+';font-size:11px;line-height:1;flex-shrink:0">\u25B2</span>';
+}
 function progDayState(day,slotsArr){
   const plain=s=>String(s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   const N=['DOMENICA','LUNEDI','MARTEDI','MERCOLEDI','GIOVEDI','VENERDI','SABATO'];
@@ -3228,6 +3247,7 @@ function renderSchedule(){
     return['Gara ',before?'?':String(k),'/',unk?'?':String(tot)].join('');};
   const runChip=(num,i)=>{const t=runLabel(num,i);if(!t)return'';
     return['<span class="run-chip',(i<currentIdx?' done':''),'" title="Gare di oggi">',t,'</span>'].join('');};
+  const _rmap=riskMarkMap();
   slotsArr.forEach((slot,idx)=>{
     const ps=pilotsForSlot(slot);const isNow=idx===currentIdx;
     const awaiting=pilotsAwaitingData(slot);
@@ -3275,7 +3295,7 @@ function renderSchedule(){
       var _ft=_hl?followedTeamOf(p.num,p.team):null;
       html+='<div class="card-inner'+(shCls?' '+shCls:'')+(_ft?' tglow':'')+'"'+(_ft?' style="--tc:'+teamColor(_ft.key)+'"':'')+'><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
         +(sh.length?sh.map(function(h){return'<span class="hl-badge hl-'+h+'" style="padding:1px 5px;font-size:8px">'+(shIco[h]||'')+'</span>';}).join(''):'')
-        +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,slot)+'<span class="inner-name">'+p.name+'</span>'+runChip(p.num,idx)
+        +'<span class="inner-num">#'+p.num+'</span>'+riskMark(p,slot,_rmap)+gridBadge(p.num,slot)+'<span class="inner-name">'+p.name+'</span>'+runChip(p.num,idx)
         +(p.group?'<span class="inner-group">GRP '+p.group+'</span>':'')
         +'<span class="inner-team-big">'+p.team+'</span>'
         +'<button onclick="editPilotNote(\''+p.num+'\')" aria-label="Nota" style="margin:-12px -10px -12px 0;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0;flex-shrink:0;touch-action:manipulation;-webkit-tap-highlight-color:rgba(255,255,255,.15)"><i class="ic ic-note"></i></button></div>'
