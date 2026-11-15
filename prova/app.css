@@ -742,10 +742,23 @@ body.light{--hl-foto:#0284c7;--hl-video:#db2777;--hl-prio:#ca8a04}
 /* 15/11: mappa vettoriale della sede, ruotabile e zoomabile */
 .sp-vp{position:relative;width:100%;height:min(62vh,520px);border-radius:12px;overflow:hidden;background:var(--bg3);touch-action:none;user-select:none;-webkit-user-select:none}
 .sp-vp.trash{outline:2px dashed #ef4444;outline-offset:-2px}
-.sp-stage{position:absolute;left:50%;top:50%;transform-origin:50% 50%}
+.sp-stage{position:absolute;left:0;top:0;transform-origin:0 0}
+.sp-dots{position:absolute;inset:0;pointer-events:none}.sp-dots .sp-dot{pointer-events:auto;transform:translate(-50%,-50%)}
 .sp-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
 .sp-track{fill:none;stroke:#cfd3da;stroke-linejoin:round;stroke-linecap:round}
 .sp-track-edge{fill:none;stroke:#2b2f36;stroke-linejoin:round;stroke-linecap:round}
 body.light .sp-track{stroke:#5b6170}body.light .sp-track-edge{stroke:#c9ccd3}
-.sp-stage .sp-dot{width:40px;height:40px;font-size:14px}
+.sp-dots .sp-dot{width:40px;height:40px;font-size:14px}
 .sp-tools{display:flex;gap:6px;margin-top:8px}.sp-tools .sp-btn{min-height:44px;font-size:18px}
+
+.sp-track-shadow{fill:none;stroke:transparent;stroke-linejoin:round}
+.sp-kerb{fill:none;stroke:transparent;stroke-linejoin:round}
+.sp-track-line{fill:none;stroke:transparent}
+/* vista 3D: erba, pista in asfalto con spessore, cordoli bianchi/rossi, linea centrale */
+.sp-vp.td{background:radial-gradient(ellipse at 50% 20%,#2f5a34,#17311b 75%)}
+.sp-vp.td .sp-track-shadow{stroke:rgba(0,0,0,.55);transform:translate(0,2.2px)}
+.sp-vp.td .sp-track-edge{stroke:#e9e9e9}
+.sp-vp.td .sp-kerb{stroke:#d32f2f;stroke-dasharray:3 3}
+.sp-vp.td .sp-track{stroke:#41454d}
+.sp-vp.td .sp-track-line{stroke:rgba(255,255,255,.25);stroke-dasharray:4 5}
+body.light .sp-vp.td .sp-track{stroke:#4a4e57}

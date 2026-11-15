@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1555';
+var RT_JS_BUILD='2026-11-15-1610';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5138,9 +5138,9 @@ function raceVenue(){
   return null;
 }
 function venueMap(){if(_venues===null){loadVenues();return null;}const v=raceVenue();return v&&v.map&&v.map.d?v:null;}
-let _spView={r:0,z:1,x:0,y:0};
+let _spView={r:0,z:1,x:0,y:0,t:0};
 function spViewKey(){const v=venueMap();return'rt_spview_'+(v?v.key:'');}
-function openSpots(num){window._rtDeferRender=true;_spNum=String(num);_spTrash=false;try{_spView=Object.assign({r:0,z:1,x:0,y:0},JSON.parse(localStorage.getItem(spViewKey())||'{}'),{z:1,x:0,y:0});}catch(_){_spView={r:0,z:1,x:0,y:0};}renderSpots();}
+function openSpots(num){window._rtDeferRender=true;_spNum=String(num);_spTrash=false;try{_spView=Object.assign({r:0,z:1,x:0,y:0,t:0},JSON.parse(localStorage.getItem(spViewKey())||'{}'),{z:1,x:0,y:0});}catch(_){_spView={r:0,z:1,x:0,y:0,t:0};}renderSpots();}
 window.openSpots=openSpots;
 function spotNo(id){const sp=trackSpots[id]||{};if(sp.k)return sp.k;return spotIds().indexOf(id)+1;}
 function renderSpots(){
@@ -5151,36 +5151,56 @@ function renderSpots(){
   h.push('<button class="sp-trash'+(_spTrash?' on':'')+'" onclick="spotsToggleTrash()" aria-label="Modalità cestino: elimina punti" aria-pressed="'+_spTrash+'"><i class="ic ic-trash"></i></button>');
   h.push('<div class="modal-title">#'+p.num+' '+escapeHtmlSp(p.name||'')+'</div>');
   h.push('<div class="sp-sub">'+(_spTrash?'<b style="color:#ef4444">CESTINO</b> · tocca un punto per eliminarlo per tutti i piloti':(t?'Fatti <b>'+f+'/'+t+'</b> · ':'')+'tocca la pista dove hai scattato')+'</div>');
-  h.push('<div class="sp-vp'+(_spTrash?' trash':'')+'" id="sp-vp"><div class="sp-stage" id="sp-stage">');
-  h.push('<svg viewBox="'+v.map.vb+'" preserveAspectRatio="none" class="sp-svg"><path d="'+v.map.d+'" class="sp-track-edge" style="stroke-width:'+((v.map.w||10)+4)+'"/><path d="'+v.map.d+'" class="sp-track" style="stroke-width:'+(v.map.w||10)+'"/></svg>');
-  ids.forEach(id=>{const sp=trackSpots[id],on=!!d[id],n=spotNo(id);
-    h.push('<button class="sp-dot'+(on?' on':'')+'" data-id="'+id+'" style="left:'+sp.x+'%;top:'+sp.y+'%" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'✓':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>');});
+  const w=v.map.w||10,dd=v.map.d;
+  h.push('<div class="sp-vp'+(_spTrash?' trash':'')+(_spView.t?' td':'')+'" id="sp-vp"><div class="sp-stage" id="sp-stage">');
+  h.push('<svg viewBox="'+v.map.vb+'" preserveAspectRatio="none" class="sp-svg">'
+    +'<path d="'+dd+'" class="sp-track-shadow" style="stroke-width:'+(w+6)+'"/>'
+    +'<path d="'+dd+'" class="sp-track-edge" style="stroke-width:'+(w+4)+'"/>'
+    +'<path d="'+dd+'" class="sp-kerb" style="stroke-width:'+(w+4)+'"/>'
+    +'<path d="'+dd+'" class="sp-track" style="stroke-width:'+w+'"/>'
+    +'<path d="'+dd+'" class="sp-track-line" style="stroke-width:'+Math.max(.6,w/14)+'"/></svg>');
+  h.push('</div><div class="sp-dots" id="sp-dots">');
+  ids.forEach(id=>{const on=!!d[id],n=spotNo(id);
+    h.push('<button class="sp-dot'+(on?' on':'')+'" data-id="'+id+'" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'✓':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>');});
   h.push('</div></div>');
-  h.push('<div class="sp-tools"><button class="sp-btn" onclick="spotsRotate(-90)" aria-label="Ruota a sinistra">⟲</button><button class="sp-btn" onclick="spotsRotate(90)" aria-label="Ruota a destra">⟳</button><button class="sp-btn" onclick="spotsZoom(1.4)" aria-label="Ingrandisci">＋</button><button class="sp-btn" onclick="spotsZoom(1/1.4)" aria-label="Riduci">－</button><button class="sp-btn" onclick="spotsResetView()" aria-label="Centra">⤢</button></div>');
+  h.push('<div class="sp-tools"><button class="sp-btn" onclick="spotsRotate(-90)" aria-label="Ruota a sinistra">⟲</button><button class="sp-btn" onclick="spotsRotate(90)" aria-label="Ruota a destra">⟳</button><button class="sp-btn" onclick="spotsZoom(1.4)" aria-label="Ingrandisci">＋</button><button class="sp-btn" onclick="spotsZoom(1/1.4)" aria-label="Riduci">－</button><button class="sp-btn" onclick="spotsResetView()" aria-label="Centra">⤢</button><button class="sp-btn'+(_spView.t?' on':'')+'" onclick="spotsToggle3D()" aria-label="Vista 3D" aria-pressed="'+(!!_spView.t)+'">3D</button></div>');
   if(t&&!_spTrash)h.push('<div class="sp-hint">I numeri sono punti da spuntare. Con due dita ingrandisci e ruoti, con un dito sposti.</div>');
   openModal(h.join(''));
   spotsLayout();spotsBindGestures();
 }
+let _spM=null;
+function spotsMatrix(Sw,Sh,W,H){
+  const P=new DOMMatrix([1,0,0,0, 0,1,0,0, 0,0,1,-1/Math.max(W,H,300)/1.6, 0,0,0,1]);
+  const m=new DOMMatrix().translateSelf(W/2+_spView.x,H/2+_spView.y);m.multiplySelf(P);
+  if(_spView.t)m.rotateSelf(_spView.t,0,0);
+  m.rotateSelf(0,0,_spView.r);m.scaleSelf(_spView.z,_spView.z);m.translateSelf(-Sw/2,-Sh/2);return m;
+}
 function spotsLayout(){
   const vp=document.getElementById('sp-vp'),st=document.getElementById('sp-stage'),v=venueMap();if(!vp||!st||!v)return;
-  const vb=String(v.map.vb).split(/\s+/).map(Number),a=vb[2]/vb[3],W=vp.clientWidth-16,H=vp.clientHeight-16;
+  const vb=String(v.map.vb).split(/\s+/).map(Number),a=vb[2]/vb[3],W=vp.clientWidth,H=vp.clientHeight,Wf=W-16,Hf=H-16;
   const rot=((Math.round(_spView.r/90)*90)%180+180)%180===90;
-  let Sw=rot?Math.min(H,W*a):Math.min(W,H*a);let Sh=Sw/a;if(!rot&&Sh>H){Sh=H;Sw=Sh*a;}if(rot&&Sh>W){Sh=W;Sw=Sh*a;}
+  let Sw=rot?Math.min(Hf,Wf*a):Math.min(Wf,Hf*a);let Sh=Sw/a;if(!rot&&Sh>Hf){Sh=Hf;Sw=Sh*a;}if(rot&&Sh>Wf){Sh=Wf;Sw=Sh*a;}
+  if(_spView.t){Sw*=1.12;Sh*=1.12;}
   st.style.width=Sw+'px';st.style.height=Sh+'px';
-  st.style.transform='translate(-50%,-50%) translate('+_spView.x+'px,'+_spView.y+'px) rotate('+_spView.r+'deg) scale('+_spView.z+')';
-  st.querySelectorAll('.sp-dot').forEach(b=>{b.style.transform='translate(-50%,-50%) rotate('+(-_spView.r)+'deg) scale('+(1/_spView.z)+')';});
-  try{localStorage.setItem(spViewKey(),JSON.stringify({r:_spView.r}));}catch(_){}
+  const m=spotsMatrix(Sw,Sh,W,H);_spM={m,Sw,Sh};
+  st.style.transform=m.toString();
+  document.querySelectorAll('#sp-dots .sp-dot').forEach(b=>{const sp=trackSpots[b.getAttribute('data-id')];if(!sp)return;
+    const q=m.transformPoint(new DOMPoint(sp.x/100*Sw,sp.y/100*Sh,0,1));b.style.left=(q.x/q.w)+'px';b.style.top=(q.y/q.w)+'px';});
+  try{localStorage.setItem(spViewKey(),JSON.stringify({r:_spView.r,t:_spView.t}));}catch(_){}
 }
+function spotsToggle3D(){_spView.t=_spView.t?0:52;renderSpots();}
+window.spotsToggle3D=spotsToggle3D;
 function spotsRotate(dg){_spView.r+=dg;spotsLayout();}
 function spotsZoom(k){_spView.z=Math.max(1,Math.min(6,_spView.z*k));if(_spView.z===1){_spView.x=0;_spView.y=0;}spotsLayout();}
 function spotsResetView(){_spView.z=1;_spView.x=0;_spView.y=0;_spView.r=Math.round(_spView.r/90)*90;spotsLayout();}
 window.spotsRotate=spotsRotate;window.spotsZoom=spotsZoom;window.spotsResetView=spotsResetView;
 /* punto dello schermo -> posizione % sulla mappa (inverso di traslazione, rotazione, zoom) */
 function spotsToMap(cx,cy){
-  const vp=document.getElementById('sp-vp'),st=document.getElementById('sp-stage');const r=vp.getBoundingClientRect();
-  let dx=cx-(r.left+r.width/2)-_spView.x,dy=cy-(r.top+r.height/2)-_spView.y;
-  const a=-_spView.r*Math.PI/180,c=Math.cos(a),s=Math.sin(a);let ux=(dx*c-dy*s)/_spView.z,uy=(dx*s+dy*c)/_spView.z;
-  const Sw=st.offsetWidth,Sh=st.offsetHeight;return{x:(ux+Sw/2)/Sw*100,y:(uy+Sh/2)/Sh*100};
+  const vp=document.getElementById('sp-vp');if(!vp||!_spM)return{x:-1,y:-1};const r=vp.getBoundingClientRect(),m=_spM.m;
+  const X=cx-r.left,Y=cy-r.top;
+  const a1=m.m11-X*m.m14,b1=m.m21-X*m.m24,c1=X*m.m44-m.m41,a2=m.m12-Y*m.m14,b2=m.m22-Y*m.m24,c2=Y*m.m44-m.m42;
+  const det=a1*b2-a2*b1;if(Math.abs(det)<1e-9)return{x:-1,y:-1};
+  const lx=(c1*b2-c2*b1)/det,ly=(a1*c2-a2*c1)/det;return{x:lx/_spM.Sw*100,y:ly/_spM.Sh*100};
 }
 function spotsBindGestures(){
   const vp=document.getElementById('sp-vp');if(!vp)return;const pts=new Map();let g=null,moved=false,downT=null;
