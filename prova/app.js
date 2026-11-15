@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1345';
+var RT_JS_BUILD='2026-11-15-1350';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3721,7 +3721,7 @@ function openLegend(){
   const ex=(items)=>'<ol class="lg-list">'+items.map(t=>'<li>'+t+'</li>').join('')+'</ol>';
   const toc=[];let secN=0;
   // 15/11/2026 (Andrea): la legenda diventa una guida completa con indice cliccabile e ricerca
-  const sec=(t,w)=>{secN++;toc.push([secN,t]);return '</div><div class="gd-sec" id="gd-s'+secN+'"><div class="set-sec" style="margin-top:22px">'+t+'</div>'+(w?'<div class="lg-where"><i class="ic ic-eye"></i> <span>Dove: '+w+'</span></div>':'');};
+  const sec=(t,w)=>{secN++;toc.push([secN,t]);return (secN>1?'<a href="#" class="gd-top" onclick="document.getElementById(\'gd-body\').scrollTop=0;return false">↑ indice</a>':'')+'</div><div class="gd-sec" id="gd-s'+secN+'"><div class="set-sec" style="margin-top:22px">'+t+'</div>'+(w?'<div class="lg-where"><i class="ic ic-eye"></i> <span>Dove: '+w+'</span></div>':'');};
   const chap=t=>{toc.push([0,t]);return '</div><div class="gd-chap">'+t+'</div><div>';};
   const p_=t=>'<p class="gd-p">'+t+'</p>';
   const notif=(t,b)=>'<div class="gd-notif"><div class="gd-notif-app"><i class="ic ic-flag"></i> RACE TRACKER · ora</div><div class="gd-notif-t">'+t+'</div><div class="gd-notif-b">'+b+'</div></div>';
@@ -3922,7 +3922,7 @@ function openLegend(){
   openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Guida</div><div id="gd-body" style="max-height:78vh;overflow-y:auto;overflow-x:hidden;padding-right:2px">'+h.join('').replace('<div id="gd-toc-slot"></div>','<div id="gd-toc">'+tocH+'</div>')+'</div>');
 }
 window.openLegend=openLegend;
-function guideGo(n){const b=document.getElementById('gd-body'),e=document.getElementById('gd-s'+n);if(b&&e)b.scrollTo({top:e.offsetTop-b.offsetTop-6,behavior:'smooth'});}
+function guideGo(n){const b=document.getElementById('gd-body'),e=document.getElementById('gd-s'+n);if(!b||!e)return;b.scrollTop=b.scrollTop+e.getBoundingClientRect().top-b.getBoundingClientRect().top-6;}
 window.guideGo=guideGo;
 function guideSearch(q){q=String(q||'').trim().toLowerCase();
   document.querySelectorAll('#gd-body .gd-sec').forEach(s=>s.classList.toggle('gd-hide',!!q&&s.textContent.toLowerCase().indexOf(q)<0));
