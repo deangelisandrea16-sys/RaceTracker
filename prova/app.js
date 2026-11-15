@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1035';
+var RT_JS_BUILD='2026-11-15-1045';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3320,14 +3320,17 @@ function renderSchedule(){
     currentFinals.slice().sort((a,b)=>_toM(a.time)-_toM(b.time)).forEach(f=>{
       const allCat=pilots.filter(p=>canonCat(p.cat)===canonCat(f.cat));
       const finalists=allCat.filter(p=>p.inFinal);
-      const ps=finalists.length?finalists:allCat;
+      /* 15/11/2026 (Andrea): prima della lista ufficiale = "possibili finalisti", attenuati, dal piu' sicuro al piu' a rischio */
+      const _poss=!finalists.length;const _rm=_poss?riskMarkMap():{};
+      const ps=finalists.length?finalists:allCat.filter(p=>!p.eliminated).sort((a,b)=>((_rm[String(a.num)]??50)-(_rm[String(b.num)]??50))||((parseInt(a.num)||0)-(parseInt(b.num)||0)));
       const _fNow=_finalNowKey===(f.label+'|'+f.time);
       html+='<div class="final-card'+(_fNow?' slot-now':'')+'"'+(_fNow?' id="slot-now"':'')+'><div class="final-title"><i class="ic ic-trophy"></i> '+f.label+(_fNow?' <span class="now-badge">ORA</span>':'')+'</div>'
         +'<div class="final-row"><span>Partenza</span><span class="final-time">'+f.time+'</span></div>'
         +(slotDurText(f)?'<div class="final-row"><span>Durata</span><span class="final-time">'+slotDurText(f)+'</span></div>':'');
       if(!ps.length)html+='<div style="font-size:12px;color:var(--text4);padding:8px 2px 2px">Nessun tuo pilota in questa finale</div>';
+      else if(_poss)html+='<div class="final-poss"><i class="ic ic-wait"></i> Possibili finalisti · lista ufficiale non ancora uscita</div>';
       ps.forEach(p=>{
-        html+='<div class="card-inner" style="margin-top:8px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
+        html+='<div class="card-inner'+(_poss?' final-maybe':'')+'" style="margin-top:8px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
           +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,{type:'final'})+'<span class="inner-name">'+p.name+'</span>'+(p.eliminated?'':runChip(p.num,1e6))
           +'<span class="inner-team-big">'+p.team+'</span>'+noteBtn(p.num)+'</div>'
           +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+'</div>'
@@ -3739,7 +3742,7 @@ function openLegend(){
   h.push(ex([
     '<b>ATTESA</b>: il turno dipende da un\'assegnazione non ancora uscita (gruppo, serie, prefinale).',
     '<b>NESSUNO</b>: turno senza tuoi piloti. Il programma resta sempre completo.',
-    '<b>Finale</b> (bordo giallo): prima della lista ufficiale mostra tutti i tuoi piloti della categoria, poi solo i finalisti.'
+    '<b>Finale</b> (bordo giallo): prima della lista ufficiale compare “Possibili finalisti”: i tuoi piloti della categoria, attenuati, dal più sicuro al più a rischio. Quando esce la lista restano solo i finalisti, a colori pieni.'
   ]));
 
   // BARRA IN ALTO

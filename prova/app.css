@@ -688,3 +688,6 @@ body.light{--hl-foto:#0284c7;--hl-video:#9333ea;--hl-prio:#ca8a04}
 .tgroup-head{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:800;color:var(--text3);padding:4px 2px 2px}
 .tgroup>.card-inner{border:none!important;border-top:none!important;outline:none!important;margin:0!important;padding-left:6px}
 .tgroup>.card-inner:not(.hl-foto):not(.hl-video):not(.hl-both){box-shadow:none}
+/* 15/11/2026 (Andrea): finale prima della lista ufficiale */
+.final-poss{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#fbbf24;padding:8px 2px 0}
+.card-inner.final-maybe{opacity:.6}
