@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-15-1905';
+var RT_JS_BUILD='2026-11-16-1330';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2704,7 +2704,9 @@ function copyAllForEditor(){
   if(!pilots.length){alert('Nessun pilota da copiare');return;}
   const all=pilots.slice();
   const text=all.map(p=>{
-    const note=notes[p.num]?notes[p.num].trim():'';
+    // 16/11/2026 (Andrea): chi e' arrivato in finale ha la nota "Arrivato in finale" nella copia per l'editor
+    const e=currentEntryList[p.num]||{};const fin=p.inFinal===true||e.inFinal===true;
+    const note=[notes[p.num]?notes[p.num].trim():'',fin?'Arrivato in finale':''].filter(Boolean).join(' · ');
     return'#'+p.num+' '+p.name+(note?'\nNote: '+note:'');
   }).join('\n\n');
   navigator.clipboard.writeText(text)
@@ -4658,6 +4660,8 @@ function renderApexDyn(){
 /* 14/11/2026: riga PROSSIMA dal "Next" di Apex + controllo sul programma (se l'ordine e' diverso lo segnala) */
 function apexNextInfo(){
   if(!apexNext||!apexWsKey)return null;
+  // 15/11 (Andrea): dopo l'ultima gara il live annuncia documenti ("Results booklet", premiazioni): non sono sessioni, niente riquadro
+  if(/BOOKLET|RESULTS?\b|PREMIAZ|AWARD|PODIUM|CERIMON/i.test(String(apexNext.sess||'')))return null;
   const out={cat:apexNext.cat,sess:apexNext.sess,warn:'',mine:[]};
   try{
     const day=typeof autoDayName==='function'?autoDayName():'';let arr=(day&&currentSchedule[day])||[];arr=Array.isArray(arr)?arr:Object.values(arr);
