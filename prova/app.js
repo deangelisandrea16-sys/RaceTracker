@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-17-2200';
+var RT_JS_BUILD='2026-11-17-2300';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -976,6 +976,8 @@ function listenRaceData(raceId){
       {const _e=currentEntryList&&currentEntryList[p.num];if(_e&&_e.prefinal&&String(_e.prefinal).toUpperCase()!==String(p.prefinal).toUpperCase())p.prefinal=String(_e.prefinal).toUpperCase();}
       if(!p.heats)p.heats=[];
       if(!Array.isArray(p.heats))p.heats=typeof p.heats==='object'?Object.values(p.heats):[];
+      // 17/11/2026: manche ufficiali dall'entry list (il server le scrive per tutti, es. WSK) unite a quelle del pilota
+      {const _e=currentEntryList&&currentEntryList[p.num];const _h=_e&&_e.heats?(Array.isArray(_e.heats)?_e.heats:Object.values(_e.heats)):[];if(_h.length){const _u=new Set(p.heats.map(h=>String(h).trim().toUpperCase()));_h.forEach(h=>_u.add(String(h).trim().toUpperCase()));if(_u.size!==p.heats.length)p.heats=[..._u];}}
       if(!p.inFinal)p.inFinal=false;
       // Normalize highlight to array
       if(p.highlight&&typeof p.highlight==='string')p.highlight=[p.highlight];
