@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-17-2300';
+var RT_JS_BUILD='2026-11-18-2310';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1254,10 +1254,11 @@ function saveNote(num){
 window.saveNote=saveNote;
 
 function editPilotNote(num){
-  const p=pilots.find(x=>x.num===num);
+  const p=pilots.find(x=>x.num===num);const _e=(currentEntryList||{})[num]||{};
+  const _nm=p?p.name:String((_e.lastName||'')+' '+(_e.firstName||'')).trim();
   const cur=(notes[num]||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
   openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
-    +'<div class="modal-title">Nota #'+num+(p?' · '+p.name:'')+'</div>'
+    +'<div class="modal-title">Nota #'+num+(_nm?' · '+String(_nm).replace(/</g,'&lt;'):'')+'</div>'
     +'<div class="form-group"><textarea class="form-textarea" id="pn-text" style="min-height:120px" placeholder="Commento, appunti, cosa fare...">'+cur+'</textarea></div>'
     +'<button class="form-submit" onclick="savePilotNote(\''+num+'\')">SALVA</button>');
 }
@@ -2423,6 +2424,22 @@ function gridBadge(num,slot){
 /* 15/11/2026 (Andrea): matita delle note sempre visibile (non solo se c'e' gia' una nota), area di tocco 44px */
 function noteBtn(num){const n=String(num).replace(/[^0-9A-Za-z_-]/g,'');
   return'<button onclick="event.stopPropagation();editPilotNote(\''+n+'\')" aria-label="Nota" style="margin:-12px -10px -12px 0;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0;flex-shrink:0;touch-action:manipulation;-webkit-tap-highlight-color:rgba(255,255,255,.15)"><i class="ic ic-note"></i></button>';}
+/* 18/11/2026 (Andrea): pilota di un team seguito che compra anche il pacchetto personale -> diventa anche mio pilota
+   (pillole e note sue), resta nel riquadro del team con l'etichetta "+ PERS.". La nota gia' scritta sul pilota resta. */
+function persBtn(num){const n=String(num).replace(/[^0-9A-Za-z_-]/g,'');
+  return'<button onclick="event.stopPropagation();addTeamPilotPersonal(\''+n+'\')" aria-label="Anche personale" title="Anche personale" style="min-height:32px;padding:0 8px;border-radius:6px;border:1px solid var(--border2,#333);background:none;color:var(--text3);font-family:\'Chakra Petch\',sans-serif;font-size:10px;font-weight:800;cursor:pointer;flex-shrink:0;touch-action:manipulation">+ PERS.</button>';}
+function addTeamPilotPersonal(num){
+  num=String(num);if(pilots.find(p=>p.num===num))return;
+  const e=(currentEntryList||{})[num];if(!e){alert('Pilota non trovato nella entry list');return;}
+  const nm=String((e.lastName||'')+' '+(e.firstName||'')).trim();
+  if(!confirm('#'+num+' '+nm+' ha preso anche il pacchetto personale?\nLo aggiungo ai tuoi piloti (resta anche nel team).'))return;
+  _rtNewPilots.add(num);
+  pilots.push({num,name:nm,team:e.team||'',cat:e.cat||'OK',parity:e.parity||autoParity(num),group:e.group||'',prefinal:e.prefinal||'',serie:e.serie?String(e.serie):'',eliminated:false});
+  statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');trackStatus[num]={};if(notes[num]===undefined)notes[num]='';
+  const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;update(ref(db),u);
+  saveAll();renderAll();
+}
+window.addTeamPilotPersonal=addTeamPilotPersonal;
 function noteLine(num){
   const n=String((notes&&notes[num])||'').trim();if(!n)return'';
   const e=n.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -2721,9 +2738,18 @@ function copyAllForEditor(){
   };
   const byNum=(a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0);
   const tOf=p=>{try{return followedTeamOf(p.num,p.team||((currentEntryList[p.num]||{}).team)||'');}catch(e){return null;}};
-  const loose=all.filter(p=>!tOf(p)).sort(byNum).map(fmt);
+  // 18/11/2026 (Andrea): i miei piloti che sono anche in un team seguito (acquisto personale) stanno sia tra i personali sia nel team;
+  // nella sottolista del team anche i piloti del team (non miei) con una nota scritta
+  const loose=all.slice().sort(byNum).map(fmt);
   const parts=loose.length?[loose.join('\n\n')]:[];
-  teams.forEach(t=>{const g=all.filter(p=>{const x=tOf(p);return x&&x.key===t.key;}).sort(byNum);if(g.length)parts.push('#'+String(t.name||t.key).toUpperCase()+'\n\n'+g.map(fmt).join('\n\n'));});
+  const mineSet=new Set(all.map(p=>String(p.num)));
+  teams.forEach(t=>{
+    const g=all.filter(p=>{const x=tOf(p);return x&&x.key===t.key;}).map(p=>Object.assign({},p,{_pers:true}));
+    Object.keys(notes||{}).forEach(n=>{if(mineSet.has(String(n))||!String(notes[n]||'').trim())return;const e=(currentEntryList||{})[n];if(!e)return;
+      let x=null;try{x=followedTeamOf(n,e.team||'');}catch(err){}
+      if(x&&x.key===t.key)g.push({num:n,name:String((e.lastName||'')+' '+(e.firstName||'')).trim(),team:e.team||''});});
+    g.sort(byNum);
+    if(g.length)parts.push('#'+String(t.name||t.key).toUpperCase()+'\n\n'+g.map(p=>fmt(p).replace(/^(#\S+ [^\n]*)/,p._pers?'$1 (anche personale)':'$1')).join('\n\n'));});
   const text=parts.join('\n\n\n');
   navigator.clipboard.writeText(text)
     .then(()=>alert('✅ Copiato! '+all.length+' piloti negli appunti.'))
@@ -3365,6 +3391,7 @@ function renderSchedule(){
         +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,slot)+'<span class="inner-name">'+p.name+'</span>'+runChip(p.num,idx)
         +(p.group?'<span class="inner-group">GRP '+p.group+'</span>':'')
         +'<span class="inner-team-big">'+p.team+'</span>'
+        +(_ft?'<span title="Pilota del team con acquisto personale" style="font-family:\'Chakra Petch\',sans-serif;font-size:10px;font-weight:800;color:#0b0f0c;background:#4ade80;border-radius:5px;padding:1px 6px;flex-shrink:0">+ PERS.</span>':'')
         +noteBtn(p.num)+'</div>'
         +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+spotPill(p.num)+'</div>'
         +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>'});
@@ -4086,9 +4113,9 @@ function teamsHighlightItems(slot,ps){
   teamsForSlot(slot).forEach(({t,inSlot})=>{const c=teamColor(t.key);
     inSlot.filter(p=>!mine.has(String(p.num))).forEach(p=>out.push({num:p.num,key:t.key,html:'<div class="card-inner tglow" style="--tc:'+c+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">'
       +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,slot)+'<span class="inner-name">'+String(p.name).replace(/</g,'&lt;')+'</span>'
-      +'<span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span></div>'
+      +'<span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span>'+persBtn(p.num)+noteBtn(p.num)+'</div>'
       +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,true)).join('')+'</div>'
-      +(teamNotes[t.key]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+teamNotes[t.key]+'</div>':'')+'</div>'}));});
+      +(teamNotes[t.key]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+teamNotes[t.key]+'</div>':'')+noteLine(p.num)+'</div>'}));});
   return out;
 }
 function teamsWaitingHtml(slot){
@@ -4113,9 +4140,9 @@ function teamsHighlightHtml(slot,ps){
     const c=teamColor(t.key);
     return inSlot.filter(p=>!mine.has(String(p.num))).map(p=>'<div class="card-inner tglow" style="--tc:'+c+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">'
       +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,slot)+'<span class="inner-name">'+String(p.name).replace(/</g,'&lt;')+'</span>'
-      +'<span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span></div>'
+      +'<span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span>'+persBtn(p.num)+noteBtn(p.num)+'</div>'
       +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,true)).join('')+'</div>'
-      +(teamNotes[t.key]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+teamNotes[t.key]+'</div>':'')+'</div>').join('')
+      +(teamNotes[t.key]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+teamNotes[t.key]+'</div>':'')+noteLine(p.num)+'</div>').join('')
       +(waiting.length?'<div style="font-size:10px;font-weight:800;margin:4px 0 8px;color:'+c+'"><i class="ic ic-wait"></i> '+String(t.name).replace(/</g,'&lt;')+': '+waiting.length+' in attesa</div>':'');
   }).join('');
 }
