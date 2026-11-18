@@ -7,6 +7,7 @@
     },
     "WSK": {
       "label": "WSK",
+      "ownLive": true,
       "liveTiming": "https://www.apex-timing.com/live-timing/wsk/index.html"
     },
     "ROK": {
