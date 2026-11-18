@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0050';
+var RT_JS_BUILD='2026-11-19-0100';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2597,15 +2597,22 @@ function loadPilotHistory(name){
       el.innerHTML='<div class="form-label" style="margin-bottom:6px">Storico gare</div>'+entries.map(x=>x).sort((a,b)=>String(b[1].date||'').localeCompare(String(a[1].date||''))).map(([hk,r])=>{
         const res=r.result||{};const fmt=v=>/^\d+$/.test(String(v))?v+'°':esc(v);
         const ord=(orders&&orders[hk])||{};
-        const heats=Object.keys(res).filter(isHeat).sort((a,b)=>((ord[a]==null?1e9:ord[a])-(ord[b]==null?1e9:ord[b]))||a.localeCompare(b));
+        /* 19/11/2026 (Andrea): numero e nome della manche SOLO dal programma di quell'evento (ordine di gara, nome della sessione).
+           Se il programma non la riporta non si inventa un numero: resta il nome ufficiale dei gruppi (es. "Manche A-C"). */
+        const hk2=Object.keys(res).filter(isHeat);
+        const known=hk2.filter(k=>ord[k]!=null||/^(M|H)\d$/.test(k)).sort((a,b)=>(ord[a]?ord[a].i:parseInt(a.slice(1))*1e-3)-(ord[b]?ord[b].i:parseInt(b.slice(1))*1e-3));
+        const unknown=hk2.filter(k=>!known.includes(k)).sort();
         const parts=[];
-        Object.keys(res).filter(k=>/^Q/.test(k)).forEach(k=>parts.push('Qualifiche '+fmt(res[k])));
-        heats.forEach((k,i)=>parts.push('Manche '+(i+1)+' '+fmt(res[k])));
+        const qs=Object.keys(res).filter(k=>/^Q/.test(k)).sort();
+        qs.forEach((k,i)=>parts.push('Qualifiche'+(qs.length>1?' '+(i+1):'')+' '+fmt(res[k])));
+        known.forEach((k,i)=>{const nm=(ord[k]&&ord[k].name)||'Manche';const n=/^(M|H)\d$/.test(k)&&!ord[k]?k.slice(1):(i+1);parts.push(nm+(known.length>1||unknown.length||/^(M|H)\d$/.test(k)?' '+n:'')+' '+fmt(res[k]));});
+        unknown.forEach(k=>parts.push('Manche '+esc(k)+' '+fmt(res[k])));
         Object.keys(res).filter(k=>k.startsWith('PF')).sort().forEach(k=>parts.push('Prefinale'+(k.length>3?' '+esc(k.slice(3)):'')+' '+fmt(res[k])));
         if(res.FIN!=null)parts.push('Finale '+fmt(res.FIN));
         const d=r.date?r.date.split('-').reverse().join('/'):'';
         return'<div style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;font-size:12px">'
-          +'<div style="font-weight:800;color:var(--text)">'+esc(r.race)+(d?' · '+d:'')+' · '+esc(r.cat)+' #'+esc(r.num)+'</div>'
+          +'<div style="font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span>'+esc(r.race)+(d?' · '+d:'')+'</span>'
+          +'<span class="'+catClass(r.cat)+'" style="font-size:11px;padding:1px 7px;border-radius:6px;border:1px solid;font-weight:800">'+esc(r.cat)+'</span><span>#'+esc(r.num)+'</span></div>'
           +'<div style="color:var(--text3);margin-top:2px">'+(parts.length?parts.join(' · '):'nessun risultato ancora')+(r.inFinal&&res.FIN==null?' · in finale':'')+(r.eliminated&&!r.inFinal?' · eliminato':'')+'</div></div>';
       }).join('');
     };
@@ -2616,9 +2623,11 @@ function loadPilotHistory(name){
     if(need.length){const orders={};Promise.all(need.map(([hk,r])=>{const rid=(hk.match(/^(race_\d+|[^_]+(?:_[^_]+)*?)(?:_\d{1,3})?$/)||[])[1]||hk;
       return Promise.all([_fbDb.ref('races/'+rid+'/schedule').once('value'),_fbDb.ref('races/'+rid+'/days').once('value')]).then(([ss,ds])=>{
         const sc=ss.val()||{};let days=ds.val()||Object.keys(sc);if(!Array.isArray(days))days=Object.values(days);const o={};let i=0;
-        days.forEach(dn=>{let arr=sc[dn]||[];if(!Array.isArray(arr))arr=Object.values(arr);
-          arr.slice().sort((a,b)=>slotMins(a.time)-slotMins(b.time)).forEach(sl=>{i++;if(!sl||sl.type!=='group'||canonCat(sl.cat)!==canonCat(r.cat))return;
-            let f=sl.filter||[];if(!Array.isArray(f))f=Object.values(f);const k=f.join('-');if(o[k]==null)o[k]=i;const k2=f.slice().reverse().join('-');if(o[k2]==null)o[k2]=i;});});
+        const nice=t=>{t=String(t||'').trim();if(!t)return'Manche';t=t.charAt(0).toUpperCase()+t.slice(1).toLowerCase();return t.replace(/^Manches$/,'Manche').replace(/^Heats$/,'Heat');};
+        days.forEach(dn=>{let arr=sc[dn]||[];if(!Array.isArray(arr))arr=Object.values(arr);let ses='';
+          arr.slice().sort((a,b)=>slotMins(a.time)-slotMins(b.time)).forEach(sl=>{i++;if(!sl)return;if(sl.session)ses=sl.session;   // il nome della sessione sta sul primo turno del blocco
+            if(sl.type!=='group'||canonCat(sl.cat)!==canonCat(r.cat))return;
+            let f=sl.filter||[];if(!Array.isArray(f))f=Object.values(f);const v={i,name:nice(ses)};const k=f.join('-');if(o[k]==null)o[k]=v;const k2=f.slice().reverse().join('-');if(o[k2]==null)o[k2]=v;});});
         orders[hk]=o;}).catch(()=>{});})).then(()=>{if(document.getElementById('detail-hist'))draw(orders);});}
   });}catch(e){}
 }
