@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-16-1335';
+var RT_JS_BUILD='2026-11-17-2300';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -82,6 +82,8 @@ function renderDebugLogs(){
 }
 function renderDebug(){renderDebugLogs();}
 // SCHEDULE_AND_ENTRY_PLACEHOLDER
+/* 17/11/2026: data di oggi in ora locale (toISOString e' UTC: tra mezzanotte e l'una sbagliava giorno) */
+function rtToday(){const d=new Date(),z=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate());}
 
 // ── DEFAULT DATA (WSK Super Master Franciacorta — used as fallback) ──
 const DAYS=["MERCOLEDÌ","GIOVEDÌ","VENERDÌ","SABATO","DOMENICA"];
@@ -901,16 +903,18 @@ function listenRaces(){
     if(!activeRaceId||!races[activeRaceId]){
       /* FIX 16/10/2026: niente piu' "prima gara della lista" (era la piu' vecchia, es. ACI con live WSK).
          Si sceglie la gara in corso oggi (startDate<=oggi<=endDate), altrimenti la piu' recente per createdAt. */
-      const today=new Date().toISOString().slice(0,10);
+      const today=rtToday();
       const ids=Object.keys(races).sort((a,b)=>String((races[b]||{}).createdAt||'').localeCompare(String((races[a]||{}).createdAt||'')));
       const live=ids.find(id=>{const r=races[id]||{};return r.startDate&&r.endDate&&r.startDate<=today&&today<=r.endDate;});
       if(ids.length) switchRace(live||ids[0]);
       else{ initialized=true; renderAll(); }
     } else {
       /* FIX 17/10/2026: se la gara salvata e' gia' finita (endDate passata) e c'e' una gara in corso oggi, passa a quella */
-      const _t=new Date().toISOString().slice(0,10);
+      const _t=rtToday();
       const _cur=races[activeRaceId]||{};
-      const _live=Object.keys(races).find(id=>{const r=races[id]||{};return r.startDate&&r.endDate&&r.startDate<=_t&&_t<=r.endDate;});
+      const _isLive=id=>{const r=races[id]||{};return r.startDate&&r.endDate&&r.startDate<=_t&&_t<=r.endDate;};
+      /* 17/11/2026: con piu' gare in corso nello stesso giorno (campionati diversi) si resta sulla gara scelta se e' in corso */
+      const _live=_isLive(activeRaceId)?activeRaceId:Object.keys(races).find(_isLive);
       /* 17/10 v2 (idea di Andrea): all'apertura segue il badge IN CORSO (stessa regola: startDate<=oggi<=endDate). Solo al primo caricamento, cosi' una scelta manuale successiva resta. */
       if(_live&&_live!==activeRaceId&&!window._rtAutoPicked){ window._rtAutoPicked=true; switchRace(_live); }
       else { window._rtAutoPicked=true; updateRaceHeader(); if(activeTab==='gare') renderGare(); if(initialized) bootTab(); }
@@ -925,6 +929,8 @@ var _rtBaseShared={},_rtBaseUser={};
 function listenRaceData(raceId){
   if(raceDataUnsub) raceDataUnsub();
   _rtUserLiveKey='';
+  /* 17/11/2026: i piloti aggiunti valgono solo per la gara in cui sono stati aggiunti */
+  try{_rtNewPilots.clear();}catch(e){}
   if(!currentUserId){initialized=true;renderAll();return;}
   
   _rtBaseShared={};_rtBaseUser={};
@@ -970,6 +976,8 @@ function listenRaceData(raceId){
       {const _e=currentEntryList&&currentEntryList[p.num];if(_e&&_e.prefinal&&String(_e.prefinal).toUpperCase()!==String(p.prefinal).toUpperCase())p.prefinal=String(_e.prefinal).toUpperCase();}
       if(!p.heats)p.heats=[];
       if(!Array.isArray(p.heats))p.heats=typeof p.heats==='object'?Object.values(p.heats):[];
+      // 17/11/2026: manche ufficiali dall'entry list (il server le scrive per tutti, es. WSK) unite a quelle del pilota
+      {const _e=currentEntryList&&currentEntryList[p.num];const _h=_e&&_e.heats?(Array.isArray(_e.heats)?_e.heats:Object.values(_e.heats)):[];if(_h.length){const _u=new Set(p.heats.map(h=>String(h).trim().toUpperCase()));_h.forEach(h=>_u.add(String(h).trim().toUpperCase()));if(_u.size!==p.heats.length)p.heats=[..._u];}}
       if(!p.inFinal)p.inFinal=false;
       // Normalize highlight to array
       if(p.highlight&&typeof p.highlight==='string')p.highlight=[p.highlight];
@@ -1625,10 +1633,12 @@ function orgOptions(sel){
 function resolveLiveUrl(r){
   r=r||{};
   if(r.liveTiming&&String(r.liveTiming).trim())return String(r.liveTiming).trim();
+  const cfg=ORG_CONFIG[r.org]||null;
+  /* 17/11/2026: organizzatori con live proprio (es. WSK a Lonato usa il suo, non quello del circuito) */
+  if(cfg&&cfg.ownLive&&cfg.liveTiming)return cfg.liveTiming;
   const txt=(r.circuit||'')+' '+(r.name||'');
   const c=CIRCUIT_LIVE.find(x=>x.re.test(txt));
   if(c)return c.url;
-  const cfg=ORG_CONFIG[r.org]||null;
   return cfg&&cfg.liveTiming?cfg.liveTiming:'';
 }
 window.resolveLiveUrl=resolveLiveUrl;
@@ -1801,7 +1811,7 @@ function setCalOrg(o){calOrg=o;calSer='';renderCalendar();}
 function setCalSer(i){const l=window._calSerList||[];calSer=i<0?'':l[i];renderCalendar();}
 function renderCalendar(){
   const el=document.getElementById('cal-body');if(!el||!calData)return;
-  const today=new Date().toISOString().slice(0,10);
+  const today=rtToday();
   const base=calData.events.filter(e=>!(e.dateTo&&e.dateTo<today)&&(!calOrg||e.org===calOrg));
   const sers=calOrg?[...new Set(base.map(calSeriesOf))]:[];window._calSerList=sers;
   const q=String(calQ||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
@@ -1962,7 +1972,6 @@ function openRaceSettings(raceId){
     +'<div class="upload-zone-label" style="color:#a78bfa"><i class="ic ic-download"></i> INCOLLA HEATS DA WSK</div>'
     +'<div class="upload-zone-hint">Incolla il JSON generato dal bookmarklet WSK.<br>Aggiorna automaticamente le heat di tutti i piloti.</div>'
     +'</div>'
-    +'<button class="mgmt-btn" style="margin-top:8px;border-color:#60a5fa;color:#60a5fa" onclick="loadDefaultWSK(\''+raceId+'\')"><i class="ic ic-refresh"></i> CARICA DATI WSK PREDEFINITI</button>'
     +'<button class="mgmt-btn" style="margin-top:4px;border-color:#a78bfa;color:#a78bfa" onclick="closeModal();showWSKBookmarklet()"><i class="ic ic-bookmark"></i> MOSTRA BOOKMARKLET WSK</button>'
     +'</div>');
 }
@@ -3634,7 +3643,7 @@ function apexEvaluate(why){
   // Arrivo delle manche dal live: la pillola della griglia diventa subito verde con la posizione d'arrivo.
   // Provvisorio: il controllo dai risultati ufficiali Apex lo corregge se cambia (reclami/penalità).
   try{
-    const mh=ss.match(/HEATS?\s+([A-D])\s*-\s*([A-D])/);
+    const mh=ss.match(/HEATS?\s+([A-H])\s*-\s*([A-H])/);
     // solo a manche davvero conclusa: il primo deve aver fatto tutti i giri del programma (o almeno 3 se il programma non li dice).
     // Una partenza annullata o una bandiera rossa a inizio gara NON è un arrivo (14/11: la griglia era stata salvata come arrivo).
     let _done=false;try{const L=apexLapInfo();_done=L.led!==null&&(L.tot?(L.led>=L.tot||(L.fin&&L.led>=L.tot-1)):L.led>=3);}catch(e){}
@@ -4836,16 +4845,25 @@ function apexParse(txt){
   if(changed){apexState.at=Date.now();renderApexDelay();try{renderLtMyNums();if(activeTab==='programma')renderSchedule();}catch(e){}}
 }
 // Traduce categoria e sessione Apex nello slot del programma di oggi
+/* 17/11/2026: la categoria del live si cerca prima tra le categorie della gara (entry list), poi con le regole.
+   Prima "OK JUNIOR" diventava OK-NJ (la parola JUNIOR bastava): sbagliato quando in gara ci sono sia OKJ sia OK-N JUNIOR. */
 function apexCat(t){
   const s=String(t||'').toUpperCase().replace(/\s+/g,' ').trim();
-  if(/U10/.test(s))return'MINI U10';
-  if(/MINI/.test(s))return'MINI GR3';
-  if(/OK-?N\s*J|OKN\s*J|JUNIOR/.test(s)&&/OK/.test(s))return'OK-NJ';
-  if(/^OK-?N\b|^OKN$/.test(s))return'OKN';
-  if(/KZ2/.test(s))return'KZ2';
-  if(/^OKJ|OK JUNIOR/.test(s))return'OKJ';
-  if(/^OK\b/.test(s))return'OK';
-  return normCat(s);
+  let r;
+  if(/U10/.test(s))r='MINI U10';
+  else if(/OK-?N\s*-?\s*J/.test(s))r='OK-NJ';
+  else if(/^OK-?N\b/.test(s))r='OKN';
+  else if(/^OK\s*-?\s*J/.test(s))r='OKJ';
+  else if(/KZ2/.test(s))r='KZ2';
+  else if(/^OK\b/.test(s))r='OK';
+  else if(/MINI/.test(s))r='MINI GR3';
+  else r=normCat(s);
+  try{
+    const cats=[...new Set(Object.values(currentEntryList||{}).map(e=>e&&e.cat).filter(Boolean))];
+    const m=cats.find(c=>canonCat(c)===canonCat(s))||cats.find(c=>canonCat(c)===canonCat(r));
+    if(m)return m;
+  }catch(e){}
+  return r;
 }
 /* 15/11/2026 (Andrea): se il live dice che in pista c'e' la finale di una categoria, quella e' la finale "ORA"
    (prima valeva solo l'orario: con il ritardo restava sulla finale precedente mentre l'altra era gia' al giro di ricognizione) */
@@ -4863,7 +4881,7 @@ function apexMatchFor(catTxt,sessTxt,startTxt){
     if(/QUALIF/.test(ss)&&(m=ss.match(/S\s*(\d)/)))return x.type==='serie'&&f===m[1];
     if(/(FREE|PRACT|WARM)/.test(ss)&&/EVEN|PARI/.test(ss))return x.type==='parity'&&f==='EVEN'&&(/WARM/.test(ss)===/WARM/i.test((x.session||'')+(x.label||''))||true);
     if(/(FREE|PRACT|WARM)/.test(ss)&&/ODD|DISPARI/.test(ss))return x.type==='parity'&&f==='ODD';
-    if(/HEAT|MANCHE/.test(ss)&&(m=ss.match(/\b([A-D])\s*-\s*([A-D])\b/)))return x.type==='group'&&f.toUpperCase().replace(/\s/g,'')===(m[1]+'-'+m[2]);
+    if(/HEAT|MANCHE/.test(ss)&&(m=ss.match(/\b([A-H])\s*-\s*([A-H])\b/)))return x.type==='group'&&f.toUpperCase().replace(/\s/g,'')===(m[1]+'-'+m[2]);
     if(/PREFINAL/.test(ss)&&(m=ss.match(/PREFINAL[E]?\s+([AB])\b/)))return x.type==='prefinal'&&f.toUpperCase()===m[1];
     return false;
   };
@@ -5408,7 +5426,8 @@ function renderAll(){
 }
 
 // ── MIGRATION: if old data exists at /tracker, offer to migrate ──
-onValue(ref(db,'tracker'),snap=>{
+/* 17/11/2026: migrazione dalla v3 disattivata (leggeva tutto il vecchio nodo a ogni apertura) */
+if(false)onValue(ref(db,'tracker'),snap=>{
   const old=snap.val();
   if(old&&old.pilots&&!Object.keys(races).length&&currentUserId){
     const banner=document.createElement('div');
