@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-18-2310';
+var RT_JS_BUILD='2026-11-18-2320';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2817,10 +2817,22 @@ function renderPilotTeamList(){
   const q=(document.getElementById('p-team-input')?document.getElementById('p-team-input').value.toUpperCase():'');
   const teams=getMyTeams().filter(([t])=>t.toUpperCase().includes(q));
   const el=document.getElementById('p-team-list');if(!el)return;
-  if(!teams.length){el.innerHTML='<div style="padding:14px;font-size:12px;color:var(--text4);text-align:center">Nessun team</div>';return;}
-  el.innerHTML=teams.map(([t,cnt])=>'<div class="scuderia-item'+(pilotSearchTeam===t?' selected':'')+'" onclick="selectPilotTeam(\''+t.replace(/'/g,"\\'")+'\')">'
+  // 18/11/2026 (Andrea): cercando un team che non e' tra quelli dei miei piloti (es. "akm") compaiono i team della gara con "SEGUI TEAM"
+  const mineT=new Set(teams.map(([t])=>t));
+  const others=q.length>=2?getTeamsFromEntryList().filter(([t])=>t.toUpperCase().includes(q)&&!mineT.has(t)):[];
+  const esc=t=>t.replace(/'/g,"\\'");
+  const followed=t=>teams_isFollowed(t);
+  let html=teams.map(([t,cnt])=>'<div class="scuderia-item'+(pilotSearchTeam===t?' selected':'')+'" onclick="selectPilotTeam(\''+esc(t)+'\')">'
     +'<span style="flex:1">'+t+'</span><span style="font-size:10px;color:var(--text4);font-weight:700;margin-left:8px">'+cnt+'</span></div>').join('');
+  if(others.length)html+='<div style="padding:10px 4px 4px;font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--text4)">TEAM IN GARA</div>'
+    +others.map(([t,cnt])=>'<div class="scuderia-item" style="cursor:default"><span style="flex:1">'+t+'</span><span style="font-size:10px;color:var(--text4);font-weight:700;margin:0 8px">'+cnt+' piloti</span>'
+      +(followed(t)?'<button class="btn-add-team done" style="min-height:36px;width:auto;margin:0;padding:0 12px" onclick="setPilotsView(\'team\')">SEGUITO</button>'
+        :'<button class="btn-add-team" style="min-height:36px;width:auto;margin:0;padding:0 12px" onclick="followTeamFromSearch(\''+esc(t)+'\')">+ SEGUI TEAM</button>')+'</div>').join('');
+  el.innerHTML=html||'<div style="padding:14px;font-size:12px;color:var(--text4);text-align:center">Nessun team'+(q.length<2?'':' con questo nome nella gara')+'</div>';
 }
+function teams_isFollowed(name){try{const k=teamKey(name);return teams.some(t=>t.key===k);}catch(e){return false;}}
+function followTeamFromSearch(name){addTeam(name);setPilotsView('team');}
+window.followTeamFromSearch=followTeamFromSearch;
 window.renderPilotTeamList=renderPilotTeamList;
 
 function selectPilotTeam(team){
