@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0100';
+var RT_JS_BUILD='2026-11-19-0110';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5368,16 +5368,39 @@ function openEditPilot(num){
     +'<button type="button" class="hl-option hl-video'+(hl.indexOf("video")>=0?' active':'')+'" data-hl="video" aria-pressed="'+(hl.indexOf("video")>=0)+'" onclick="toggleHL(this,\''+p.num+'\')"><i class="ic ic-hl-video"></i><span>VIDEO</span></button>'
     +'<button type="button" class="hl-option hl-priority'+(hl.indexOf("priority")>=0?' active':'')+'" data-hl="priority" aria-pressed="'+(hl.indexOf("priority")>=0)+'" onclick="toggleHL(this,\''+p.num+'\')"><i class="ic ic-hl-prio"></i><span>PRIORITÀ</span></button>'
     +'</div></div>'
+    +'<div id="ef-extras">'+efExtrasHtml(p)+'</div>'
     +'<button class="form-submit" onclick="updatePilot(\''+num+'\')">SALVA</button>'
     +'<button class="form-delete" onclick="deletePilot(\''+num+'\')">Elimina pilota</button>');
 }
 window.openEditPilot=openEditPilot;
 
 /* 15/11/2026 (Andrea): FOTO/VIDEO/PRIORITA' si salvano subito al tocco, senza premere SALVA */
-function toggleHL(btn,num){const on=btn.classList.toggle('active');btn.setAttribute('aria-pressed',on);try{if(navigator.vibrate)navigator.vibrate(15);}catch(e){}
+/* 19/11/2026 (Andrea): in Modifica pilota tutto e' editabile: durata reel (se VIDEO), etichette foto (se FOTO, quando esisteranno),
+   personale/team. Si salva subito come le evidenziazioni. */
+function efExtrasHtml(p){
+  let h='';
+  if(hasVideo(p))h+='<div class="form-group"><label class="form-label">Durata reel</label><div style="display:flex;gap:8px">'
+    +REEL_OPTS.map(([v,l])=>{const on=String(p.reel||'30')===v;
+      return'<button type="button" onclick="setPilotReelEdit(\''+p.num+'\',\''+v+'\')" style="flex:1;min-height:44px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
+        +(on?'background:#e9d5a8;color:#1a160e;border:1px solid #e9d5a8':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>';}).join('')+'</div></div>';
+  if(FOTO_OPTS.length&&hasFoto(p))h+='<div class="form-group"><label class="form-label">Foto</label><div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +FOTO_OPTS.map(([v,l])=>'<button type="button" onclick="toggleFotoTagEdit(\''+p.num+'\',\''+v+'\')" style="min-height:44px;padding:0 12px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
+      +(fotoTagsOf(p).includes(v)?'background:#7dd3fc;color:#0b1220;border:1px solid #7dd3fc':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>').join('')+'</div></div>';
+  return h+persToggleHtml(p.num);
+}
+function efRefresh(p){const el=document.getElementById('ef-extras');if(el)el.innerHTML=efExtrasHtml(p);try{renderAll();}catch(e){}}
+function setPilotReelEdit(num,v){const p=pilots.find(x=>x.num===String(num));if(!p)return;p.reel=v;saveAll();efRefresh(p);}
+function toggleFotoTagEdit(num,v){const p=pilots.find(x=>x.num===String(num));if(!p)return;const c=fotoTagsOf(p);p.fotoTags=c.includes(v)?c.filter(x=>x!==v):c.concat(v);saveAll();efRefresh(p);}
+window.setPilotReelEdit=setPilotReelEdit;window.toggleFotoTagEdit=toggleFotoTagEdit;
+function toggleHL(btn,num){
+  // FOTO/VIDEO non possono restare entrambi spenti
+  if(num!==undefined&&btn.classList.contains('active')&&/^(foto|video)$/.test(btn.getAttribute('data-hl')||'')){
+    const other=document.querySelector('#ef-hl-picker .hl-option.active[data-hl="'+(btn.getAttribute('data-hl')==='foto'?'video':'foto')+'"]');if(!other)return;}
+  const on=btn.classList.toggle('active');btn.setAttribute('aria-pressed',on);try{if(navigator.vibrate)navigator.vibrate(15);}catch(e){}
   if(num===undefined)return;const p=pilots.find(x=>String(x.num)===String(num));if(!p)return;
   const h=[];document.querySelectorAll('#ef-hl-picker .hl-option.active').forEach(b=>{const v=b.getAttribute('data-hl');if(v)h.push(v);});
   p.highlight=h;saveAll();
+  {const ex=document.getElementById('ef-extras');if(ex)ex.innerHTML=efExtrasHtml(p);}
   const lb=document.getElementById('ef-hl-saved');if(lb){lb.textContent='Salvato';lb.style.opacity=1;clearTimeout(lb._t);lb._t=setTimeout(()=>{lb.style.opacity=0;},1500);}
   try{renderAll();}catch(e){}}
 
