@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0010';
+var RT_JS_BUILD='2026-11-19-0020';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2454,6 +2454,19 @@ function reelPickerHtml(num){
       return'<button onclick="setPilotReel(\''+p.num+'\',\''+v+'\')" style="flex:1;min-height:44px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
         +(on?'background:#e9d5a8;color:#1a160e;border:1px solid #e9d5a8':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>';}).join('')+'</div>';
 }
+/* 19/11/2026 (Andrea): durata reel cambiabile direttamente dalla scheda nella lista Piloti */
+function reelRowHtml(p){
+  return'<div style="display:flex;align-items:center;gap:6px;margin:8px 0 2px"><span class="note-label" style="margin:0 4px 0 0">Reel</span>'
+    +REEL_OPTS.map(([v,l])=>{const on=String(p.reel||'30')===v;
+      return'<button onclick="setPilotReelQuick(\''+p.num+'\',\''+v+'\')" style="min-width:52px;min-height:36px;border-radius:7px;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;touch-action:manipulation;'
+        +(on?'background:#e9d5a8;color:#1a160e;border:1px solid #e9d5a8':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>';}).join('')+'</div>';
+}
+function setPilotReelQuick(num,v){
+  const p=pilots.find(x=>x.num===String(num));if(!p||String(p.reel||'30')===v)return;
+  const t=document.getElementById('note-'+p.num);if(t)notes[p.num]=t.value;   // non perdere una nota in scrittura
+  p.reel=v;saveAll();try{renderPilots();}catch(e){}
+}
+window.setPilotReelQuick=setPilotReelQuick;
 function setPilotReel(num,v){
   const p=pilots.find(x=>x.num===String(num));if(!p)return;
   const t=document.getElementById('pn-text');if(t){notes[p.num]=t.value;}
@@ -3210,6 +3223,7 @@ function renderPilots(){
     +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="deletePilot(\''+p.num+'\')">✕ rimuovi</button>'
     +'</div></div>'
     +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,false,isElim)).join('')+spotPill(p.num)+'</div>'
+    +reelRowHtml(p)
     +'<div class="note-wrap"><span class="note-label">Note</span>'
     +'<textarea class="note-area" id="note-'+p.num+'" placeholder="Aggiungi una nota..." onblur="saveNote(\''+p.num+'\')">'+(notes[p.num]||'')+'</textarea></div></div>';
   }).join('')+missingDashHtml();
