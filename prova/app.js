@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-18-2320';
+var RT_JS_BUILD='2026-11-18-2330';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2560,12 +2560,21 @@ window.refreshPilotSearch=refreshPilotSearch;
 // TEAM
 // ══════════════════════════════════════
 function teamKey(name){return String(name||'').trim().toUpperCase().replace(/[.#$\[\]\/]/g,'_')||'_';}
+/* 18/11/2026 (Andrea): "AKM MOTORSPORT" e "ASD AKM MOTORSPORT" sono lo stesso team. Per confrontare i team si ignorano
+   forme giuridiche (ASD, A.S.D., SSD, SRL, S.R.O., LTD, GMBH...), punteggiatura e accenti. La chiave salvata (teamKey) non cambia. */
+const TEAM_LEGAL=new Set(['ASD','SSD','SSDARL','SRL','SRLS','SNC','SAS','SPA','LTD','GMBH','BV','SL','SA','SRO','KFT','OY','AB','INC','LLC','SARL','SAS','EV','UG','AS','DOO']);
+function teamNorm(name){
+  return String(name||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\./g,'').replace(/[^A-Z0-9]+/g,' ')
+    .trim().split(' ').filter(w=>w&&!TEAM_LEGAL.has(w)).join(' ');
+}
+function sameTeam(a,b){const x=teamNorm(a),y=teamNorm(b);return!!x&&x===y;}
+function teamOfKey(t){return t&&(t.name||t.key);}
 function escAttr(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');}
 // Piloti dell'entry list che appartengono al team, come oggetti simili ai piloti
 function teamEntrants(t){
   const out=[];
   Object.entries(currentEntryList).forEach(([num,e])=>{
-    if(!e||teamKey(e.team)!==t.key)return;
+    if(!e||!(teamKey(e.team)===t.key||sameTeam(e.team,teamOfKey(t))))return;
     let h=e.heats||[];if(!Array.isArray(h))h=typeof h==='object'?Object.values(h):[];
     out.push({num,cat:e.cat||'',parity:e.parity||autoParity(num),serie:e.serie||'',group:e.group||'',prefinal:e.prefinal||'',heats:h,name:(e.lastName||'')+' '+(e.firstName||'')});
   });
@@ -2612,7 +2621,7 @@ function teamsSlotHtml(slot){
 }
 function addTeam(name){
   const key=teamKey(name);
-  if(teams.some(t=>t.key===key)){setPilotsView('team');return;}
+  if(teams.some(t=>t.key===key||sameTeam(name,teamOfKey(t)))){setPilotsView('team');return;}
   teams.push({key,name:String(name).trim().toUpperCase()});
   teamStatuses[key]={};TASKS.forEach(k=>teamStatuses[key][k]='red');
   teamNotes[key]='';
@@ -2763,20 +2772,19 @@ window.copyAllForEditor=copyAllForEditor;
 const CATS=['KZ2','OK','OKN','OKJ','MINI GR3','MINI U10','OK-NJ'];
 
 function getMyTeams(){
-  const t={};pilots.forEach(p=>{const tm=p.team||((currentEntryList[p.num]||{}).team)||'';if(tm)t[tm]=(t[tm]||0)+1;});
-  return Object.entries(t).sort((a,b)=>a[0].localeCompare(b[0]));
+  return groupTeamNames(pilots.map(p=>p.team||((currentEntryList[p.num]||{}).team)||''));
 }
 function myPilotMatches(p,mode,team,cat){
-  if(mode==='team')return!!team&&((p.team||((currentEntryList[p.num]||{}).team)||'')===team);
+  if(mode==='team')return!!team&&sameTeam(p.team||((currentEntryList[p.num]||{}).team)||'',team);
   if(mode==='cat')return!!cat&&canonCat(p.cat)===canonCat(cat);
   return true;
 }
+function groupTeamNames(names){
+  const g={};names.forEach(n=>{if(!n)return;const k=teamNorm(n)||n;g[k]=g[k]||{c:0,v:{}};g[k].c++;g[k].v[n]=(g[k].v[n]||0)+1;});
+  return Object.values(g).map(x=>[Object.entries(x.v).sort((a,b)=>b[1]-a[1]||a[0].length-b[0].length)[0][0],x.c]).sort((a,b)=>a[0].localeCompare(b[0]));
+}
 function getTeamsFromEntryList(){
-  const teams={};
-  Object.values(currentEntryList).forEach(e=>{
-    if(e.team)teams[e.team]=(teams[e.team]||0)+1;
-  });
-  return Object.entries(teams).sort((a,b)=>a[0].localeCompare(b[0]));
+  return groupTeamNames(Object.values(currentEntryList).map(e=>e&&e.team));
 }
 
 function buildCatGrid(containerId,onClickFn,activeCat){
@@ -2818,8 +2826,8 @@ function renderPilotTeamList(){
   const teams=getMyTeams().filter(([t])=>t.toUpperCase().includes(q));
   const el=document.getElementById('p-team-list');if(!el)return;
   // 18/11/2026 (Andrea): cercando un team che non e' tra quelli dei miei piloti (es. "akm") compaiono i team della gara con "SEGUI TEAM"
-  const mineT=new Set(teams.map(([t])=>t));
-  const others=q.length>=2?getTeamsFromEntryList().filter(([t])=>t.toUpperCase().includes(q)&&!mineT.has(t)):[];
+  const mineT=new Set(teams.map(([t])=>teamNorm(t)));
+  const others=q.length>=2?getTeamsFromEntryList().filter(([t])=>t.toUpperCase().includes(q)&&!mineT.has(teamNorm(t))):[];
   const esc=t=>t.replace(/'/g,"\\'");
   const followed=t=>teams_isFollowed(t);
   let html=teams.map(([t,cnt])=>'<div class="scuderia-item'+(pilotSearchTeam===t?' selected':'')+'" onclick="selectPilotTeam(\''+esc(t)+'\')">'
@@ -2830,7 +2838,7 @@ function renderPilotTeamList(){
         :'<button class="btn-add-team" style="min-height:36px;width:auto;margin:0;padding:0 12px" onclick="followTeamFromSearch(\''+esc(t)+'\')">+ SEGUI TEAM</button>')+'</div>').join('');
   el.innerHTML=html||'<div style="padding:14px;font-size:12px;color:var(--text4);text-align:center">Nessun team'+(q.length<2?'':' con questo nome nella gara')+'</div>';
 }
-function teams_isFollowed(name){try{const k=teamKey(name);return teams.some(t=>t.key===k);}catch(e){return false;}}
+function teams_isFollowed(name){try{const k=teamKey(name);return teams.some(t=>t.key===k||sameTeam(name,teamOfKey(t)));}catch(e){return false;}}
 function followTeamFromSearch(name){addTeam(name);setPilotsView('team');}
 window.followTeamFromSearch=followTeamFromSearch;
 window.renderPilotTeamList=renderPilotTeamList;
@@ -2855,7 +2863,7 @@ function renderPilotSearchResults(){
   let matches=[];
   if(pilotSearchMode==='team'&&pilotSearchTeam){
     Object.entries(currentEntryList).forEach(([num,e])=>{
-      if((e.team||'')=== pilotSearchTeam)
+      if(sameTeam(e.team||'',pilotSearchTeam))
         matches.push({num,name:(e.lastName||'')+' '+(e.firstName||''),team:e.team||'',cat:e.cat||'',isMyPilot:!!pilots.find(p=>p.num===num)});
     });
   } else if(pilotSearchMode==='cat'&&pilotSearchCat){
@@ -2873,7 +2881,7 @@ function renderPilotSearchResults(){
   const others=[];matches=myP;
   let html='<div style="font-size:12px;color:var(--text4);font-weight:700;letter-spacing:1px;margin-bottom:8px">'+myP.length+' TUOI PILOTI</div>';
   if(pilotSearchMode==='team'&&pilotSearchTeam){
-    const tk=teamKey(pilotSearchTeam);const has=teams.some(t=>t.key===tk);
+    const has=teams_isFollowed(pilotSearchTeam);
     html=(has?'<button class="btn-add-team done" onclick="setPilotsView(\'team\')"><i class="ic ic-star"></i> TEAM GIÀ SEGUITO — APRI TEAM</button>'
       :'<button class="btn-add-team" onclick="addTeam(\''+pilotSearchTeam.replace(/'/g,"\\'")+'\')"><i class="ic ic-plus"></i> AGGIUNGI TEAM</button>')+html;
   }
@@ -3058,7 +3066,7 @@ function renderEntryList(){
       return num.startsWith(q)||nameStr.includes(q)||(e.team||'').toUpperCase().includes(q);
     });}
   } else if(elSearchMode==='team'){
-    if(elSearchTeam)filtered=filtered.filter(([,e])=>e.team===elSearchTeam);
+    if(elSearchTeam)filtered=filtered.filter(([,e])=>sameTeam(e.team,elSearchTeam));
     else {
       el.innerHTML='<div style="font-size:11px;color:var(--text4);padding:10px 0;text-align:center">Seleziona un team dalla lista</div>';
       return;
@@ -3820,7 +3828,7 @@ function teamNorm(k){return String(k||'').toUpperCase().replace(/[._\-,'’()]/g
 function teamColorSimilar(key){const tc=userSettings.teamColors||{};const n=teamNorm(key);if(n.length<3)return'';
   for(const [k,c] of Object.entries(tc)){const m=teamNorm(k);if(!m)continue;if(m===n||(Math.min(m.length,n.length)>=5&&(m.startsWith(n)||n.startsWith(m))))return c;}return'';}
 function teamColor(key){const c=(userSettings.teamColors||{})[key]||teamColorSimilar(key);if(c)return c;const i=teams.findIndex(t=>t.key===key);return TEAM_PALETTE[(i<0?0:i)%TEAM_PALETTE.length];}
-function followedTeamOf(num,team){const e=(currentEntryList||{})[num]||{};const k=teamKey(team||e.team||'');return teams.find(t=>t.key===k)||null;}
+function followedTeamOf(num,team){const e=(currentEntryList||{})[num]||{};const tm=team||e.team||'';const k=teamKey(tm);return teams.find(t=>t.key===k||sameTeam(tm,teamOfKey(t)))||null;}
 function setUserSetting(path,val){if(!currentUserId)return;const u={};u['settings/'+currentUserId+'/'+path]=val;update(ref(db),u);}
 function setTeamView(v){userSettings.teamView=v;setUserSetting('teamView',v);renderSettings();try{renderAll();}catch(e){}}
 function setTeamColor(k,c){userSettings.teamColors=userSettings.teamColors||{};userSettings.teamColors[k]=c;setUserSetting('teamColors/'+k,c);renderSettings();try{renderAll();}catch(e){}}
