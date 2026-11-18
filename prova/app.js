@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0000';
+var RT_JS_BUILD='2026-11-19-0010';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -729,7 +729,13 @@ function getUserId(){
 }
 let currentUserId=getUserId();
 
+let _upHl='foto';
+function upHlHtml(){return[['foto','<i class="ic ic-hl-foto"></i><span>FOTO</span>'],['video','<i class="ic ic-hl-video"></i><span>VIDEO</span>']]
+  .map(([k,h])=>'<div class="hl-option hl-'+k+(_upHl===k?' active':'')+'" onclick="setUpHl(\''+k+'\')">'+h+'</div>').join('');}
+function setUpHl(k){_upHl=k;const el=document.getElementById('up-hl');if(el)el.innerHTML=upHlHtml();}
+window.setUpHl=setUpHl;
 function showUserPicker(){
+  _upHl='foto';
   // Get saved users from all races
   let savedUsers=JSON.parse(localStorage.getItem('rt_users')||'[]');
   // Also check current user
@@ -750,6 +756,7 @@ function showUserPicker(){
     +usersHtml
     +'<div class="form-group"><label class="form-label">'+(savedUsers.length?'Oppure aggiungi nuovo':'Il tuo nome')+'</label>'
     +'<input class="form-input" id="up-name" placeholder="es. Ricky" style="font-size:20px;font-weight:900;text-transform:lowercase" autocomplete="off"></div>'
+    +'<div class="form-group"><label class="form-label">Lavori di più in</label><div class="hl-picker" id="up-hl">'+upHlHtml()+'</div></div>'
     +'<button class="form-submit" onclick="setUser()">ENTRA</button>'
     +(savedUsers.length?'</div>':''));
 }
@@ -775,6 +782,8 @@ function setUser(){
   let savedUsers=JSON.parse(localStorage.getItem('rt_users')||'[]');
   if(!savedUsers.includes(name))savedUsers.push(name);
   localStorage.setItem('rt_users',JSON.stringify(savedUsers));
+  // 19/11/2026: lavoro predefinito scelto alla creazione dell'account (non sovrascrive quello di un account gia' esistente)
+  try{const hl=_upHl;onValue(ref(db,'settings/'+name+'/defaultHl'),s=>{if(s.val()==null){const u2={};u2['settings/'+name+'/defaultHl']=hl;update(ref(db),u2);}},{onlyOnce:true});}catch(e){}
   // Also save to Firebase for cross-device
   if(activeRaceId){
     const u={};u['races_index/'+activeRaceId+'/knownUsers/'+name]=true;
@@ -2431,7 +2440,7 @@ function noteBtn(num){const n=String(num).replace(/[^0-9A-Za-z_-]/g,'');
 /* 18/11/2026 (Andrea): durata del reel acquistato per pilota (30", 45", 1') — per tutti i miei piloti.
    Si sceglie nella finestra della matita; l'etichetta compare solo se impostata; nella copia per editor "Reel 30"". */
 const REEL_OPTS=[['30','30"'],['45','45"'],['60',"1'"]];
-function reelLabel(v){const o=REEL_OPTS.find(x=>x[0]===String(v||''));return o?o[1]:'';}
+function reelLabel(v){const o=REEL_OPTS.find(x=>x[0]===String(v||'30'));return o?o[1]:'30"';}
 /* 18/11/2026 (Andrea): un mio pilota che fa parte di un team seguito = acquisto personale oltre al team -> "PERS" ovunque compare
    (programma, lista piloti, finali, ricerca), sia se segnato dalla matita sia se aggiunto a mano. */
 function persChip(p){let ft=null;try{ft=p&&pilots.some(x=>x.num===String(p.num))?followedTeamOf(p.num,p.team||''):null;}catch(e){}
@@ -2441,14 +2450,14 @@ function reelChip(p){const l=reelLabel(p&&p.reel);
 function reelPickerHtml(num){
   const p=pilots.find(x=>x.num===String(num));if(!p)return'';
   return'<div style="margin-top:12px;font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--text4)">REEL</div><div style="display:flex;gap:8px;margin-top:6px">'
-    +REEL_OPTS.map(([v,l])=>{const on=String(p.reel||'')===v;
+    +REEL_OPTS.map(([v,l])=>{const on=String(p.reel||'30')===v;
       return'<button onclick="setPilotReel(\''+p.num+'\',\''+v+'\')" style="flex:1;min-height:44px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
         +(on?'background:#e9d5a8;color:#1a160e;border:1px solid #e9d5a8':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>';}).join('')+'</div>';
 }
 function setPilotReel(num,v){
   const p=pilots.find(x=>x.num===String(num));if(!p)return;
   const t=document.getElementById('pn-text');if(t){notes[p.num]=t.value;}
-  p.reel=String(p.reel||'')===v?'':v;   // tocco sulla scelta attiva = toglie
+  p.reel=v;   // 19/11: il reel non puo' restare vuoto
   saveAll();editPilotNote(p.num);try{renderAll();}catch(e){}
 }
 window.setPilotReel=setPilotReel;
@@ -2477,7 +2486,7 @@ function addTeamPilotPersonal(num,noAsk){
   const nm=String((e.lastName||'')+' '+(e.firstName||'')).trim();
   if(!noAsk&&!confirm('#'+num+' '+nm+' ha preso anche il pacchetto personale?\nLo aggiungo ai tuoi piloti (resta anche nel team).'))return;
   _rtNewPilots.add(num);
-  pilots.push({num,name:nm,team:e.team||'',cat:e.cat||'OK',parity:e.parity||autoParity(num),group:e.group||'',prefinal:e.prefinal||'',serie:e.serie?String(e.serie):'',eliminated:false});
+  pilots.push({num,name:nm,team:e.team||'',cat:e.cat||'OK',parity:e.parity||autoParity(num),group:e.group||'',prefinal:e.prefinal||'',serie:e.serie?String(e.serie):'',eliminated:false,highlight:[defaultHl()],reel:'30'});
   statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');trackStatus[num]={};if(notes[num]===undefined)notes[num]='';
   saveAll();closeModal();renderAll();
 }
@@ -5171,20 +5180,29 @@ function closeModalOutside(e){if(e.target===document.getElementById('modal'))clo
 window.closeModal=closeModal;window.closeModalOutside=closeModalOutside;
 
 let _entryPreview=null;
-let _addHl=[];
+/* 19/11/2026 (Andrea): ogni account ha un lavoro predefinito (FOTO o VIDEO) scelto alla creazione dell'account;
+   andrea = VIDEO, gli altri senza scelta = FOTO. Reel predefinito 30". Foto/video e reel non possono restare vuoti. */
+function defaultHl(){const v=(typeof userSettings!=='undefined'&&userSettings&&userSettings.defaultHl)||'';return v==='video'||v==='foto'?v:(currentUserId==='andrea'?'video':'foto');}
+let _addHl=[],_addReel='30';
 function addHlHtml(){return[['foto','<i class="ic ic-hl-foto"></i><span>FOTO</span>'],['video','<i class="ic ic-hl-video"></i><span>VIDEO</span>']]
   .map(([k,h])=>'<div class="hl-option hl-'+k+(_addHl.includes(k)?' active':'')+'" onclick="toggleAddHl(\''+k+'\')">'+h+'</div>').join('');}
-function toggleAddHl(k){_addHl=_addHl.includes(k)?_addHl.filter(x=>x!==k):_addHl.concat(k);const el=document.getElementById('f-hl');if(el)el.innerHTML=addHlHtml();}
+function toggleAddHl(k){if(_addHl.includes(k)){if(_addHl.length===1)return;_addHl=_addHl.filter(x=>x!==k);}else _addHl=_addHl.concat(k);   // mai vuoto
+  const el=document.getElementById('f-hl');if(el)el.innerHTML=addHlHtml();}
+function addReelHtml(){return REEL_OPTS.map(([v,l])=>'<button type="button" onclick="setAddReel(\''+v+'\')" style="flex:1;min-height:44px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
+  +(_addReel===v?'background:#e9d5a8;color:#1a160e;border:1px solid #e9d5a8':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>').join('');}
+function setAddReel(v){_addReel=v;const el=document.getElementById('f-reel');if(el)el.innerHTML=addReelHtml();}
+window.setAddReel=setAddReel;
 window.toggleAddHl=toggleAddHl;
 function openAddPilot(){
   if(!activeRaceId){alert('Seleziona prima una gara dalla tab GARE');return;}
-  _addHl=[];
+  _addHl=[defaultHl()];_addReel='30';
   openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
     +'<div class="modal-title">Aggiungi Pilota</div>'
     +'<div class="form-group"><label class="form-label">Numero Kart</label>'
     +'<input class="form-input" id="f-num" placeholder="es. 342" type="number" oninput="previewFromNum(this.value)" autocomplete="off" style="font-size:22px;font-weight:900"></div>'
     // 18/11/2026 (Andrea): foto / video scelti gia' quando si aggiunge il pilota (stesse evidenziazioni del pilota)
     +'<div class="form-group"><label class="form-label">Lavoro</label><div class="hl-picker" id="f-hl">'+addHlHtml()+'</div></div>'
+    +'<div class="form-group"><label class="form-label">Reel</label><div id="f-reel" style="display:flex;gap:8px">'+addReelHtml()+'</div></div>'
     +'<div id="f-preview" style="display:none;background:var(--bg3);border:2px solid #22c55e;border-radius:10px;padding:12px;margin-bottom:12px">'
     +'<div style="font-size:10px;color:#22c55e;letter-spacing:2px;font-weight:700;margin-bottom:8px">✓ TROVATO IN ENTRY LIST</div>'
     +'<div id="f-preview-content"></div>'
@@ -5232,7 +5250,7 @@ function confirmFromEntryList(){
   const group=_entryPreview.group||'';
   const serie=_entryPreview.serie?_entryPreview.serie.toString():'';
   const prefinal=_entryPreview.prefinal||'';
-  _rtNewPilots.add(String(num));pilots.push({num,name:(_entryPreview.lastName||'')+' '+(_entryPreview.firstName||''),team:_entryPreview.team||'',cat:_entryPreview.cat||'OK',parity:_entryPreview.parity||autoParity(num),group,prefinal,serie,eliminated:false,highlight:_addHl.slice()});
+  _rtNewPilots.add(String(num));pilots.push({num,name:(_entryPreview.lastName||'')+' '+(_entryPreview.firstName||''),team:_entryPreview.team||'',cat:_entryPreview.cat||'OK',parity:_entryPreview.parity||autoParity(num),group,prefinal,serie,eliminated:false,highlight:_addHl.slice(),reel:_addReel});
   statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');trackStatus[num]={};notes[num]=note;
   const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;update(ref(db),u);
   saveAll();closeModal();
@@ -5247,7 +5265,7 @@ function savePilotManual(){
   const note=document.getElementById('f-note-m')?document.getElementById('f-note-m').value.trim():'';
   if(!num||!name||!team){alert('Compila tutti i campi');return;}
   if(pilots.find(p=>p.num===num)){alert('Numero già presente');return;}
-  _rtNewPilots.add(String(num));pilots.push({num,name,team,cat,parity:autoParity(num),group:'',prefinal:'',serie:'',heats:[],eliminated:false,highlight:_addHl.slice()});
+  _rtNewPilots.add(String(num));pilots.push({num,name,team,cat,parity:autoParity(num),group:'',prefinal:'',serie:'',heats:[],eliminated:false,highlight:_addHl.slice(),reel:_addReel});
   statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');trackStatus[num]={};notes[num]=note;
   const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;update(ref(db),u);
   saveAll();closeModal();
