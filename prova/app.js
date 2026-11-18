@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0110';
+var RT_JS_BUILD='2026-11-19-0120';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2467,7 +2467,7 @@ function togglePilotFotoTag(num,v,quick){
 window.togglePilotFotoTag=togglePilotFotoTag;
 function hasVideo(p){let h=p&&p.highlight;if(typeof h==='string')h=[h];if(h&&!Array.isArray(h))h=Object.values(h);return!!(h&&h.includes('video'));}
 function reelChip(p){if(!hasVideo(p))return'';const l=reelLabel(p&&p.reel);
-  return l?'<span title="Durata reel" style="font-family:\'Chakra Petch\',sans-serif;font-size:9px;font-weight:700;color:#e9d5a8;border:1px solid rgba(233,213,168,.45);border-radius:4px;padding:0 4px;flex-shrink:0;line-height:14px"><i class="ic ic-hl-video"></i> '+l+'</span>':'';}
+  return l?'<span title="Durata reel" style="font-family:\'Chakra Petch\',sans-serif;font-size:13px;font-weight:800;color:#1a160e;background:#e9d5a8;border-radius:6px;padding:2px 8px;flex-shrink:0;line-height:16px;white-space:nowrap"><i class="ic ic-hl-video"></i> '+l+'</span>':'';}
 function reelPickerHtml(num){
   const p=pilots.find(x=>x.num===String(num));if(!p||!hasVideo(p))return'';
   return'<div style="margin-top:12px;font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--text4)">REEL</div><div style="display:flex;gap:8px;margin-top:6px">'
