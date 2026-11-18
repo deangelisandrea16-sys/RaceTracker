@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-18-2350';
+var RT_JS_BUILD='2026-11-19-0000';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2432,6 +2432,10 @@ function noteBtn(num){const n=String(num).replace(/[^0-9A-Za-z_-]/g,'');
    Si sceglie nella finestra della matita; l'etichetta compare solo se impostata; nella copia per editor "Reel 30"". */
 const REEL_OPTS=[['30','30"'],['45','45"'],['60',"1'"]];
 function reelLabel(v){const o=REEL_OPTS.find(x=>x[0]===String(v||''));return o?o[1]:'';}
+/* 18/11/2026 (Andrea): un mio pilota che fa parte di un team seguito = acquisto personale oltre al team -> "PERS" ovunque compare
+   (programma, lista piloti, finali, ricerca), sia se segnato dalla matita sia se aggiunto a mano. */
+function persChip(p){let ft=null;try{ft=p&&pilots.some(x=>x.num===String(p.num))?followedTeamOf(p.num,p.team||''):null;}catch(e){}
+  return ft?'<span title="Pilota del team con acquisto personale" style="font-family:\'Chakra Petch\',sans-serif;font-size:9px;font-weight:700;letter-spacing:.06em;color:#4ade80;border:1px solid rgba(74,222,128,.45);border-radius:4px;padding:0 4px;flex-shrink:0;line-height:14px">PERS</span>':'';}
 function reelChip(p){const l=reelLabel(p&&p.reel);
   return l?'<span title="Durata reel" style="font-family:\'Chakra Petch\',sans-serif;font-size:9px;font-weight:700;color:#e9d5a8;border:1px solid rgba(233,213,168,.45);border-radius:4px;padding:0 4px;flex-shrink:0;line-height:14px"><i class="ic ic-hl-video"></i> '+l+'</span>':'';}
 function reelPickerHtml(num){
@@ -3185,7 +3189,7 @@ function renderPilots(){
     +'<div class="pilot-cat '+catClass(p.cat)+'">'+p.cat+(isElim?' <span style="color:#ef4444;font-size:9px">ELIMINATO</span>':'')+'</div>'
     +'<div style="display:flex;align-items:center;gap:8px;margin-top:3px">'
     +'<span class="pilot-num">#'+p.num+'</span>'+riskTri(p.num)
-    +'<span class="pilot-name">'+p.name+'</span>'+reelChip(p)+'</div>'
+    +'<span class="pilot-name">'+p.name+'</span>'+reelChip(p)+persChip(p)+'</div>'
     +'<div class="pilot-team">'+p.team+'</div></div></div>'
     +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">'
     +(hl.length?'<div class="hl-badges">'+hl.map(function(h){return'<span class="hl-badge hl-'+h+'">'+(hlLabels[h]||h)+'</span>';}).join('')+'</div>':'')
@@ -3447,10 +3451,9 @@ function renderSchedule(){
       var _ft=_hl?followedTeamOf(p.num,p.team):null;
       _items.push({num:p.num,key:_ft?_ft.key:null,html:'<div class="card-inner'+(shCls?' '+shCls:'')+(_ft?' tglow':'')+'"'+(_ft?' style="--tc:'+teamColor(_ft.key)+'"':'')+'><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
         +(sh.length?sh.map(function(h){return'<span class="hl-badge hl-'+h+' hl-mini">'+(shIco[h]||'')+'</span>';}).join(''):'')
-        +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,slot)+'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+runChip(p.num,idx)
+        +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,slot)+'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+persChip(p)+runChip(p.num,idx)
         +(p.group?'<span class="inner-group">GRP '+p.group+'</span>':'')
         +'<span class="inner-team-big">'+p.team+'</span>'
-        +(_ft?'<span title="Pilota del team con acquisto personale" style="font-family:\'Chakra Petch\',sans-serif;font-size:9px;font-weight:700;letter-spacing:.06em;color:#4ade80;border:1px solid rgba(74,222,128,.45);border-radius:4px;padding:0 4px;flex-shrink:0;line-height:14px">PERS</span>':'')
         +noteBtn(p.num)+'</div>'
         +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+spotPill(p.num)+'</div>'
         +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>'});
@@ -3481,7 +3484,7 @@ function renderSchedule(){
         const _ft=_fhl?followedTeamOf(p.num,p.team):null;const _sc=hlClassOf(p.highlight||[]);
         let html='';
         html+='<div class="card-inner'+(_poss?' final-maybe':'')+(_sc?' '+_sc:'')+(_ft?' tglow':'')+'" style="margin-top:8px'+(_ft?';--tc:'+teamColor(_ft.key):'')+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
-          +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,{type:'final'})+'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+(p.eliminated?'':runChip(p.num,1e6))
+          +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,{type:'final'})+'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+persChip(p)+(p.eliminated?'':runChip(p.num,1e6))
           +'<span class="inner-team-big">'+p.team+'</span>'+noteBtn(p.num)+'</div>'
           +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+spotPill(p.num)+'</div>'
           +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>';
@@ -3501,7 +3504,7 @@ function renderSchedule(){
       _elim.slice().sort((a,b)=>parseInt(a.num)-parseInt(b.num)).forEach(p=>{
         html+='<div class="card-inner" style="opacity:.55;border-style:dashed;cursor:pointer;margin-top:6px" onclick="openEditPilot(\''+p.num+'\')"><div style="display:flex;align-items:center;gap:8px">'
           +'<span class="inner-num" style="color:var(--text4)">#'+p.num+'</span>'
-          +'<span class="inner-name">'+p.name+'</span>'+reelChip(p)
+          +'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+persChip(p)
           +'<span class="'+catClass(p.cat)+'" style="font-size:9px;font-weight:800;margin-left:auto">'+p.cat+'</span>'
           +'</div>'+noteLine(p.num)+'</div>';
       });
@@ -5133,7 +5136,7 @@ function renderPista(){
   if(pistaView==='pilota'){
     el.innerHTML=pilots.map(p=>'<div class="card '+hlClassOf(p.highlight)+'">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
-      +'<span class="pilot-num">#'+p.num+'</span>'+riskTri(p.num)+'<span class="pilot-name">'+p.name+'</span>'+reelChip(p)
+      +'<span class="pilot-num">#'+p.num+'</span>'+riskTri(p.num)+'<span class="pilot-name">'+p.name+'</span>'+reelChip(p)+persChip(p)
       +'<span class="pilot-cat '+catClass(p.cat)+'" style="margin-left:auto">'+p.cat+'</span>'+noteBtn(p.num)+'</div>'
       +noteLine(p.num)
       +'<div class="track-grid">'+trackSections.map(s=>{
