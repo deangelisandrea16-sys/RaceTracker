@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-18-2330';
+var RT_JS_BUILD='2026-11-18-2340';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1260,7 +1260,8 @@ function editPilotNote(num){
   openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
     +'<div class="modal-title">Nota #'+num+(_nm?' · '+String(_nm).replace(/</g,'&lt;'):'')+'</div>'
     +'<div class="form-group"><textarea class="form-textarea" id="pn-text" style="min-height:120px" placeholder="Commento, appunti, cosa fare...">'+cur+'</textarea></div>'
-    +'<button class="form-submit" onclick="savePilotNote(\''+num+'\')">SALVA</button>');
+    +'<button class="form-submit" onclick="savePilotNote(\''+num+'\')">SALVA</button>'
+    +reelPickerHtml(num)+persToggleHtml(num));
 }
 window.editPilotNote=editPilotNote;
 function savePilotNote(num){
@@ -2425,19 +2426,56 @@ function gridBadge(num,slot){
 function noteBtn(num){const n=String(num).replace(/[^0-9A-Za-z_-]/g,'');
   return'<button onclick="event.stopPropagation();editPilotNote(\''+n+'\')" aria-label="Nota" style="margin:-12px -10px -12px 0;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0;flex-shrink:0;touch-action:manipulation;-webkit-tap-highlight-color:rgba(255,255,255,.15)"><i class="ic ic-note"></i></button>';}
 /* 18/11/2026 (Andrea): pilota di un team seguito che compra anche il pacchetto personale -> diventa anche mio pilota
-   (pillole e note sue), resta nel riquadro del team con l'etichetta "+ PERS.". La nota gia' scritta sul pilota resta. */
+   (pillole e note sue), resta nel riquadro del team con l'etichetta "PERS". La nota gia' scritta sul pilota resta.
+   Si segna e si toglie dalla finestra della nota (matita), solo per i piloti dei team seguiti. */
+/* 18/11/2026 (Andrea): durata del reel acquistato per pilota (30", 45", 1') — per tutti i miei piloti.
+   Si sceglie nella finestra della matita; l'etichetta compare solo se impostata; nella copia per editor "Reel 30"". */
+const REEL_OPTS=[['30','30"'],['45','45"'],['60',"1'"]];
+function reelLabel(v){const o=REEL_OPTS.find(x=>x[0]===String(v||''));return o?o[1]:'';}
+function reelChip(p){const l=reelLabel(p&&p.reel);
+  return l?'<span title="Durata reel" style="font-family:\'Chakra Petch\',sans-serif;font-size:9px;font-weight:700;color:#e9d5a8;border:1px solid rgba(233,213,168,.45);border-radius:4px;padding:0 4px;flex-shrink:0;line-height:14px"><i class="ic ic-hl-video"></i> '+l+'</span>':'';}
+function reelPickerHtml(num){
+  const p=pilots.find(x=>x.num===String(num));if(!p)return'';
+  return'<div style="margin-top:12px;font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--text4)">REEL</div><div style="display:flex;gap:8px;margin-top:6px">'
+    +REEL_OPTS.map(([v,l])=>{const on=String(p.reel||'')===v;
+      return'<button onclick="setPilotReel(\''+p.num+'\',\''+v+'\')" style="flex:1;min-height:44px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
+        +(on?'background:#e9d5a8;color:#1a160e;border:1px solid #e9d5a8':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>';}).join('')+'</div>';
+}
+function setPilotReel(num,v){
+  const p=pilots.find(x=>x.num===String(num));if(!p)return;
+  const t=document.getElementById('pn-text');if(t){notes[p.num]=t.value;}
+  p.reel=String(p.reel||'')===v?'':v;   // tocco sulla scelta attiva = toglie
+  saveAll();editPilotNote(p.num);try{renderAll();}catch(e){}
+}
+window.setPilotReel=setPilotReel;
+function persToggleHtml(num){
+  num=String(num);const e=(currentEntryList||{})[num]||{};const mine=pilots.find(p=>p.num===num);
+  let ft=null;try{ft=followedTeamOf(num,(mine&&mine.team)||e.team||'');}catch(err){}
+  if(!ft)return'';
+  const st='width:100%;margin-top:10px;min-height:44px;border-radius:8px;background:none;font-family:inherit;font-weight:800;font-size:12px;letter-spacing:.05em;cursor:pointer;';
+  return mine
+    ?'<button style="'+st+'border:1px solid var(--border2,#444);color:var(--text3)" onclick="removeTeamPilotPersonal(\''+num+'\')">TOGLI DAL PERSONALE (resta nel team)</button>'
+    :'<button style="'+st+'border:1px solid rgba(74,222,128,.5);color:#4ade80" onclick="savePilotNote(\''+num+'\');addTeamPilotPersonal(\''+num+'\',true)">SEGNA ANCHE PERSONALE</button>';
+}
+function removeTeamPilotPersonal(num){
+  num=String(num);const p=pilots.find(x=>x.num===num);if(!p)return;
+  if(!confirm('Togliere #'+num+' dal personale?\nResta nel team, la nota resta.'))return;
+  const t=document.getElementById('pn-text');if(t)notes[num]=t.value;
+  pilots=pilots.filter(x=>x.num!==num);delete statuses[num];delete trackStatus[num];
+  saveAll();closeModal();renderAll();
+}
+window.removeTeamPilotPersonal=removeTeamPilotPersonal;
 function persBtn(num){const n=String(num).replace(/[^0-9A-Za-z_-]/g,'');
   return'<button onclick="event.stopPropagation();addTeamPilotPersonal(\''+n+'\')" aria-label="Anche personale" title="Anche personale" style="min-height:32px;padding:0 8px;border-radius:6px;border:1px solid var(--border2,#333);background:none;color:var(--text3);font-family:\'Chakra Petch\',sans-serif;font-size:10px;font-weight:800;cursor:pointer;flex-shrink:0;touch-action:manipulation">+ PERS.</button>';}
-function addTeamPilotPersonal(num){
+function addTeamPilotPersonal(num,noAsk){
   num=String(num);if(pilots.find(p=>p.num===num))return;
   const e=(currentEntryList||{})[num];if(!e){alert('Pilota non trovato nella entry list');return;}
   const nm=String((e.lastName||'')+' '+(e.firstName||'')).trim();
-  if(!confirm('#'+num+' '+nm+' ha preso anche il pacchetto personale?\nLo aggiungo ai tuoi piloti (resta anche nel team).'))return;
+  if(!noAsk&&!confirm('#'+num+' '+nm+' ha preso anche il pacchetto personale?\nLo aggiungo ai tuoi piloti (resta anche nel team).'))return;
   _rtNewPilots.add(num);
   pilots.push({num,name:nm,team:e.team||'',cat:e.cat||'OK',parity:e.parity||autoParity(num),group:e.group||'',prefinal:e.prefinal||'',serie:e.serie?String(e.serie):'',eliminated:false});
   statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');trackStatus[num]={};if(notes[num]===undefined)notes[num]='';
-  const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;update(ref(db),u);
-  saveAll();renderAll();
+  saveAll();closeModal();renderAll();
 }
 window.addTeamPilotPersonal=addTeamPilotPersonal;
 function noteLine(num){
@@ -2743,7 +2781,8 @@ function copyAllForEditor(){
     // 16/11/2026 (Andrea): chi e' arrivato in finale ha la nota "Arrivato in finale" nella copia per l'editor
     const e=currentEntryList[p.num]||{};const fin=p.inFinal===true||e.inFinal===true;
     const note=[notes[p.num]?notes[p.num].trim():'',fin?'Arrivato in finale':''].filter(Boolean).join(' · ');
-    return'#'+p.num+' '+p.name+(note?'\nNote: '+note:'');
+    const rl=reelLabel(p.reel);
+    return'#'+p.num+' '+p.name+(rl?' · Reel '+rl:'')+(note?'\nNote: '+note:'');
   };
   const byNum=(a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0);
   const tOf=p=>{try{return followedTeamOf(p.num,p.team||((currentEntryList[p.num]||{}).team)||'');}catch(e){return null;}};
@@ -3146,7 +3185,7 @@ function renderPilots(){
     +'<div class="pilot-cat '+catClass(p.cat)+'">'+p.cat+(isElim?' <span style="color:#ef4444;font-size:9px">ELIMINATO</span>':'')+'</div>'
     +'<div style="display:flex;align-items:center;gap:8px;margin-top:3px">'
     +'<span class="pilot-num">#'+p.num+'</span>'+riskTri(p.num)
-    +'<span class="pilot-name">'+p.name+'</span></div>'
+    +'<span class="pilot-name">'+p.name+'</span>'+reelChip(p)+'</div>'
     +'<div class="pilot-team">'+p.team+'</div></div></div>'
     +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">'
     +(hl.length?'<div class="hl-badges">'+hl.map(function(h){return'<span class="hl-badge hl-'+h+'">'+(hlLabels[h]||h)+'</span>';}).join('')+'</div>':'')
@@ -3408,10 +3447,10 @@ function renderSchedule(){
       var _ft=_hl?followedTeamOf(p.num,p.team):null;
       _items.push({num:p.num,key:_ft?_ft.key:null,html:'<div class="card-inner'+(shCls?' '+shCls:'')+(_ft?' tglow':'')+'"'+(_ft?' style="--tc:'+teamColor(_ft.key)+'"':'')+'><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
         +(sh.length?sh.map(function(h){return'<span class="hl-badge hl-'+h+' hl-mini">'+(shIco[h]||'')+'</span>';}).join(''):'')
-        +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,slot)+'<span class="inner-name">'+p.name+'</span>'+runChip(p.num,idx)
+        +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,slot)+'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+runChip(p.num,idx)
         +(p.group?'<span class="inner-group">GRP '+p.group+'</span>':'')
         +'<span class="inner-team-big">'+p.team+'</span>'
-        +(_ft?'<span title="Pilota del team con acquisto personale" style="font-family:\'Chakra Petch\',sans-serif;font-size:10px;font-weight:800;color:#0b0f0c;background:#4ade80;border-radius:5px;padding:1px 6px;flex-shrink:0">+ PERS.</span>':'')
+        +(_ft?'<span title="Pilota del team con acquisto personale" style="font-family:\'Chakra Petch\',sans-serif;font-size:9px;font-weight:700;letter-spacing:.06em;color:#4ade80;border:1px solid rgba(74,222,128,.45);border-radius:4px;padding:0 4px;flex-shrink:0;line-height:14px">PERS</span>':'')
         +noteBtn(p.num)+'</div>'
         +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+spotPill(p.num)+'</div>'
         +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>'});
@@ -3442,7 +3481,7 @@ function renderSchedule(){
         const _ft=_fhl?followedTeamOf(p.num,p.team):null;const _sc=hlClassOf(p.highlight||[]);
         let html='';
         html+='<div class="card-inner'+(_poss?' final-maybe':'')+(_sc?' '+_sc:'')+(_ft?' tglow':'')+'" style="margin-top:8px'+(_ft?';--tc:'+teamColor(_ft.key):'')+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
-          +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,{type:'final'})+'<span class="inner-name">'+p.name+'</span>'+(p.eliminated?'':runChip(p.num,1e6))
+          +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,{type:'final'})+'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+(p.eliminated?'':runChip(p.num,1e6))
           +'<span class="inner-team-big">'+p.team+'</span>'+noteBtn(p.num)+'</div>'
           +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+spotPill(p.num)+'</div>'
           +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>';
@@ -3462,7 +3501,7 @@ function renderSchedule(){
       _elim.slice().sort((a,b)=>parseInt(a.num)-parseInt(b.num)).forEach(p=>{
         html+='<div class="card-inner" style="opacity:.55;border-style:dashed;cursor:pointer;margin-top:6px" onclick="openEditPilot(\''+p.num+'\')"><div style="display:flex;align-items:center;gap:8px">'
           +'<span class="inner-num" style="color:var(--text4)">#'+p.num+'</span>'
-          +'<span class="inner-name">'+p.name+'</span>'
+          +'<span class="inner-name">'+p.name+'</span>'+reelChip(p)
           +'<span class="'+catClass(p.cat)+'" style="font-size:9px;font-weight:800;margin-left:auto">'+p.cat+'</span>'
           +'</div>'+noteLine(p.num)+'</div>';
       });
@@ -4133,7 +4172,7 @@ function teamsHighlightItems(slot,ps){
   teamsForSlot(slot).forEach(({t,inSlot})=>{const c=teamColor(t.key);
     inSlot.filter(p=>!mine.has(String(p.num))).forEach(p=>out.push({num:p.num,key:t.key,html:'<div class="card-inner tglow" style="--tc:'+c+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">'
       +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,slot)+'<span class="inner-name">'+String(p.name).replace(/</g,'&lt;')+'</span>'
-      +'<span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span>'+persBtn(p.num)+noteBtn(p.num)+'</div>'
+      +'<span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span>'+noteBtn(p.num)+'</div>'
       +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,true)).join('')+'</div>'
       +(teamNotes[t.key]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+teamNotes[t.key]+'</div>':'')+noteLine(p.num)+'</div>'}));});
   return out;
@@ -4160,7 +4199,7 @@ function teamsHighlightHtml(slot,ps){
     const c=teamColor(t.key);
     return inSlot.filter(p=>!mine.has(String(p.num))).map(p=>'<div class="card-inner tglow" style="--tc:'+c+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">'
       +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,slot)+'<span class="inner-name">'+String(p.name).replace(/</g,'&lt;')+'</span>'
-      +'<span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span>'+persBtn(p.num)+noteBtn(p.num)+'</div>'
+      +'<span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span>'+noteBtn(p.num)+'</div>'
       +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,true)).join('')+'</div>'
       +(teamNotes[t.key]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+teamNotes[t.key]+'</div>':'')+noteLine(p.num)+'</div>').join('')
       +(waiting.length?'<div style="font-size:10px;font-weight:800;margin:4px 0 8px;color:'+c+'"><i class="ic ic-wait"></i> '+String(t.name).replace(/</g,'&lt;')+': '+waiting.length+' in attesa</div>':'');
@@ -5094,7 +5133,7 @@ function renderPista(){
   if(pistaView==='pilota'){
     el.innerHTML=pilots.map(p=>'<div class="card '+hlClassOf(p.highlight)+'">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
-      +'<span class="pilot-num">#'+p.num+'</span>'+riskTri(p.num)+'<span class="pilot-name">'+p.name+'</span>'
+      +'<span class="pilot-num">#'+p.num+'</span>'+riskTri(p.num)+'<span class="pilot-name">'+p.name+'</span>'+reelChip(p)
       +'<span class="pilot-cat '+catClass(p.cat)+'" style="margin-left:auto">'+p.cat+'</span>'+noteBtn(p.num)+'</div>'
       +noteLine(p.num)
       +'<div class="track-grid">'+trackSections.map(s=>{
