@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0030';
+var RT_JS_BUILD='2026-11-19-0040';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1270,7 +1270,7 @@ function editPilotNote(num){
     +'<div class="modal-title">Nota #'+num+(_nm?' · '+String(_nm).replace(/</g,'&lt;'):'')+'</div>'
     +'<div class="form-group"><textarea class="form-textarea" id="pn-text" style="min-height:120px" placeholder="Commento, appunti, cosa fare...">'+cur+'</textarea></div>'
     +'<button class="form-submit" onclick="savePilotNote(\''+num+'\')">SALVA</button>'
-    +reelPickerHtml(num)+persToggleHtml(num));
+    +reelPickerHtml(num)+(function(){const _p=pilots.find(x=>x.num===String(num));return _p?fotoRowHtml(_p,false):'';})()+persToggleHtml(num));
 }
 window.editPilotNote=editPilotNote;
 function savePilotNote(num){
@@ -2446,6 +2446,25 @@ function reelLabel(v){const o=REEL_OPTS.find(x=>x[0]===String(v||'30'));return o
 function persChip(p){let ft=null;try{ft=p&&pilots.some(x=>x.num===String(p.num))?followedTeamOf(p.num,p.team||''):null;}catch(e){}
   return ft?'<span title="Pilota del team con acquisto personale" style="font-family:\'Chakra Petch\',sans-serif;font-size:9px;font-weight:700;letter-spacing:.06em;color:#4ade80;border:1px solid rgba(74,222,128,.45);border-radius:4px;padding:0 4px;flex-shrink:0;line-height:14px">PERS</span>':'';}
 /* 19/11/2026 (Andrea): la durata del reel vale solo per chi ha il VIDEO; con solo FOTO non compare da nessuna parte */
+/* 19/11/2026 (Andrea): PREDISPOSTO — etichette opzionali per chi ha FOTO (es. 'in posa'). Oggi l'elenco e' vuoto:
+   finche' FOTO_OPTS resta vuoto non compare nulla (ne' scelte ne' etichette). Per attivarle basta aggiungere voci qui:
+   FOTO_OPTS=[['posa','IN POSA'],...]. Scelta multipla, salvata sul pilota in fotoTags; compare solo se il pilota ha FOTO. */
+const FOTO_OPTS=[];
+function hasFoto(p){let h=p&&p.highlight;if(typeof h==='string')h=[h];if(h&&!Array.isArray(h))h=Object.values(h);return!!(h&&h.includes('foto'));}
+function fotoTagsOf(p){let t=p&&p.fotoTags;if(t&&!Array.isArray(t))t=Object.values(t);return(t||[]).filter(v=>FOTO_OPTS.some(o=>o[0]===v));}
+function fotoChips(p){if(!FOTO_OPTS.length||!hasFoto(p))return'';
+  return fotoTagsOf(p).map(v=>'<span title="Foto" style="font-family:\'Chakra Petch\',sans-serif;font-size:9px;font-weight:700;color:#7dd3fc;border:1px solid rgba(125,211,252,.45);border-radius:4px;padding:0 4px;flex-shrink:0;line-height:14px"><i class="ic ic-hl-foto"></i> '+FOTO_OPTS.find(o=>o[0]===v)[1]+'</span>').join('');}
+function fotoRowHtml(p,quick){if(!FOTO_OPTS.length||!hasFoto(p))return'';const on=fotoTagsOf(p);
+  return'<div style="display:flex;align-items:center;gap:6px;margin:8px 0 2px;flex-wrap:wrap"><span class="note-label" style="margin:0 4px 0 0">Foto</span>'
+    +FOTO_OPTS.map(([v,l])=>'<button onclick="togglePilotFotoTag(\''+p.num+'\',\''+v+'\','+(quick?1:0)+')" style="min-height:36px;padding:0 10px;border-radius:7px;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;touch-action:manipulation;'
+      +(on.includes(v)?'background:#7dd3fc;color:#0b1220;border:1px solid #7dd3fc':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>').join('')+'</div>';}
+function togglePilotFotoTag(num,v,quick){
+  const p=pilots.find(x=>x.num===String(num));if(!p)return;
+  const t=document.getElementById(quick?'note-'+p.num:'pn-text');if(t)notes[p.num]=t.value;
+  const cur=fotoTagsOf(p);p.fotoTags=cur.includes(v)?cur.filter(x=>x!==v):cur.concat(v);
+  saveAll();if(quick){try{renderPilots();}catch(e){}}else{editPilotNote(p.num);try{renderAll();}catch(e){}}
+}
+window.togglePilotFotoTag=togglePilotFotoTag;
 function hasVideo(p){let h=p&&p.highlight;if(typeof h==='string')h=[h];if(h&&!Array.isArray(h))h=Object.values(h);return!!(h&&h.includes('video'));}
 function reelChip(p){if(!hasVideo(p))return'';const l=reelLabel(p&&p.reel);
   return l?'<span title="Durata reel" style="font-family:\'Chakra Petch\',sans-serif;font-size:9px;font-weight:700;color:#e9d5a8;border:1px solid rgba(233,213,168,.45);border-radius:4px;padding:0 4px;flex-shrink:0;line-height:14px"><i class="ic ic-hl-video"></i> '+l+'</span>':'';}
@@ -2811,7 +2830,8 @@ function copyAllForEditor(){
     const e=currentEntryList[p.num]||{};const fin=p.inFinal===true||e.inFinal===true;
     const note=[notes[p.num]?notes[p.num].trim():'',fin?'Arrivato in finale':''].filter(Boolean).join(' · ');
     const rl=hasVideo(p)?reelLabel(p.reel):'';
-    return'#'+p.num+' '+p.name+(rl?' · Reel '+rl:'')+(note?'\nNote: '+note:'');
+    const ft=hasFoto(p)?fotoTagsOf(p).map(v=>FOTO_OPTS.find(o=>o[0]===v)[1]).join(', '):'';
+    return'#'+p.num+' '+p.name+(rl?' · Reel '+rl:'')+(ft?' · Foto '+ft:'')+(note?'\nNote: '+note:'');
   };
   const byNum=(a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0);
   const tOf=p=>{try{return followedTeamOf(p.num,p.team||((currentEntryList[p.num]||{}).team)||'');}catch(e){return null;}};
@@ -3214,7 +3234,7 @@ function renderPilots(){
     +'<div class="pilot-cat '+catClass(p.cat)+'">'+p.cat+(isElim?' <span style="color:#ef4444;font-size:9px">ELIMINATO</span>':'')+'</div>'
     +'<div style="display:flex;align-items:center;gap:8px;margin-top:3px">'
     +'<span class="pilot-num">#'+p.num+'</span>'+riskTri(p.num)
-    +'<span class="pilot-name">'+p.name+'</span>'+reelChip(p)+persChip(p)+'</div>'
+    +'<span class="pilot-name">'+p.name+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)+'</div>'
     +'<div class="pilot-team">'+p.team+'</div></div></div>'
     +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">'
     +(hl.length?'<div class="hl-badges">'+hl.map(function(h){return'<span class="hl-badge hl-'+h+'">'+(hlLabels[h]||h)+'</span>';}).join('')+'</div>':'')
@@ -3226,7 +3246,7 @@ function renderPilots(){
     +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="deletePilot(\''+p.num+'\')">✕ rimuovi</button>'
     +'</div></div>'
     +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,false,isElim)).join('')+spotPill(p.num)+'</div>'
-    +reelRowHtml(p)
+    +reelRowHtml(p)+fotoRowHtml(p,true)
     +'<div class="note-wrap"><span class="note-label">Note</span>'
     +'<textarea class="note-area" id="note-'+p.num+'" placeholder="Aggiungi una nota..." onblur="saveNote(\''+p.num+'\')">'+(notes[p.num]||'')+'</textarea></div></div>';
   }).join('')+missingDashHtml();
@@ -3477,7 +3497,7 @@ function renderSchedule(){
       var _ft=_hl?followedTeamOf(p.num,p.team):null;
       _items.push({num:p.num,key:_ft?_ft.key:null,html:'<div class="card-inner'+(shCls?' '+shCls:'')+(_ft?' tglow':'')+'"'+(_ft?' style="--tc:'+teamColor(_ft.key)+'"':'')+'><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
         +(sh.length?sh.map(function(h){return'<span class="hl-badge hl-'+h+' hl-mini">'+(shIco[h]||'')+'</span>';}).join(''):'')
-        +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,slot)+'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+persChip(p)+runChip(p.num,idx)
+        +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,slot)+'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)+runChip(p.num,idx)
         +(p.group?'<span class="inner-group">GRP '+p.group+'</span>':'')
         +'<span class="inner-team-big">'+p.team+'</span>'
         +noteBtn(p.num)+'</div>'
@@ -3510,7 +3530,7 @@ function renderSchedule(){
         const _ft=_fhl?followedTeamOf(p.num,p.team):null;const _sc=hlClassOf(p.highlight||[]);
         let html='';
         html+='<div class="card-inner'+(_poss?' final-maybe':'')+(_sc?' '+_sc:'')+(_ft?' tglow':'')+'" style="margin-top:8px'+(_ft?';--tc:'+teamColor(_ft.key):'')+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
-          +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,{type:'final'})+'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+persChip(p)+(p.eliminated?'':runChip(p.num,1e6))
+          +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,{type:'final'})+'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)+(p.eliminated?'':runChip(p.num,1e6))
           +'<span class="inner-team-big">'+p.team+'</span>'+noteBtn(p.num)+'</div>'
           +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+spotPill(p.num)+'</div>'
           +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>';
@@ -3530,7 +3550,7 @@ function renderSchedule(){
       _elim.slice().sort((a,b)=>parseInt(a.num)-parseInt(b.num)).forEach(p=>{
         html+='<div class="card-inner" style="opacity:.55;border-style:dashed;cursor:pointer;margin-top:6px" onclick="openEditPilot(\''+p.num+'\')"><div style="display:flex;align-items:center;gap:8px">'
           +'<span class="inner-num" style="color:var(--text4)">#'+p.num+'</span>'
-          +'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+persChip(p)
+          +'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)
           +'<span class="'+catClass(p.cat)+'" style="font-size:9px;font-weight:800;margin-left:auto">'+p.cat+'</span>'
           +'</div>'+noteLine(p.num)+'</div>';
       });
@@ -5162,7 +5182,7 @@ function renderPista(){
   if(pistaView==='pilota'){
     el.innerHTML=pilots.map(p=>'<div class="card '+hlClassOf(p.highlight)+'">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
-      +'<span class="pilot-num">#'+p.num+'</span>'+riskTri(p.num)+'<span class="pilot-name">'+p.name+'</span>'+reelChip(p)+persChip(p)
+      +'<span class="pilot-num">#'+p.num+'</span>'+riskTri(p.num)+'<span class="pilot-name">'+p.name+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)
       +'<span class="pilot-cat '+catClass(p.cat)+'" style="margin-left:auto">'+p.cat+'</span>'+noteBtn(p.num)+'</div>'
       +noteLine(p.num)
       +'<div class="track-grid">'+trackSections.map(s=>{
