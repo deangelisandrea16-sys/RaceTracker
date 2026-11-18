@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0040';
+var RT_JS_BUILD='2026-11-19-0050';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2555,6 +2555,7 @@ function openPilotDetail(num){
   const parity=autoParity(num);
   const catCls=catClass(cat);
   const existingNote=notes[num]||'';
+  _addHl=[defaultHl()];_addReel='30';   // 19/11/2026: stessi predefiniti di "Aggiungi pilota"
 
   openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
     +'<div class="detail-sheet">'
@@ -2570,6 +2571,8 @@ function openPilotDetail(num){
     +'<div id="detail-hist" style="margin-bottom:14px"></div>'
     +'<div class="form-group"><label class="form-label">Note su questo pilota</label>'
     +'<textarea class="form-textarea" id="detail-note" placeholder="Appunti, info, osservazioni...">'+existingNote+'</textarea></div>'
+    +(isMine?'':'<div class="form-group"><label class="form-label">Lavoro</label><div class="hl-picker" id="f-hl">'+addHlHtml()+'</div></div>'
+      +'<div class="form-group" id="f-reel-wrap"'+(_addHl.includes('video')?'':' style="display:none"')+'><label class="form-label">Reel</label><div id="f-reel" style="display:flex;gap:8px">'+addReelHtml()+'</div></div>')
     +'<div class="detail-actions">'
     +'<button class="btn-note-pilot" onclick="saveDetailNote(\''+num+'\')"><i class="ic ic-save"></i> SALVA NOTE</button>'
     +(isMine?'':'<button class="btn-add-pilot" onclick="addPilotFromDetail(\''+num+'\')">+ AGGIUNGI AI MIEI</button>')
@@ -2586,17 +2589,37 @@ function loadPilotHistory(name){
   try{_fbDb.ref('history/'+k).once('value').then(s=>{
     const el=document.getElementById('detail-hist');if(!el)return;
     const h=s.val();if(!h)return;
-    const rows=Object.values(h).filter(Boolean).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+    /* 19/11/2026 (Andrea): risultati in gergo di gara — Qualifiche, Manche 1/2/3 (in ordine di programma), Prefinale, Finale.
+       Niente coppie di gruppi (A-C...) e niente prove libere / warm up. */
+    const entries=Object.entries(h).filter(x=>x[1]);
+    const isHeat=k=>/^[A-H]-[A-H]$/.test(k)||/^(M|H)\d$/.test(k);
+    const draw=orders=>{
+      el.innerHTML='<div class="form-label" style="margin-bottom:6px">Storico gare</div>'+entries.map(x=>x).sort((a,b)=>String(b[1].date||'').localeCompare(String(a[1].date||''))).map(([hk,r])=>{
+        const res=r.result||{};const fmt=v=>/^\d+$/.test(String(v))?v+'°':esc(v);
+        const ord=(orders&&orders[hk])||{};
+        const heats=Object.keys(res).filter(isHeat).sort((a,b)=>((ord[a]==null?1e9:ord[a])-(ord[b]==null?1e9:ord[b]))||a.localeCompare(b));
+        const parts=[];
+        Object.keys(res).filter(k=>/^Q/.test(k)).forEach(k=>parts.push('Qualifiche '+fmt(res[k])));
+        heats.forEach((k,i)=>parts.push('Manche '+(i+1)+' '+fmt(res[k])));
+        Object.keys(res).filter(k=>k.startsWith('PF')).sort().forEach(k=>parts.push('Prefinale'+(k.length>3?' '+esc(k.slice(3)):'')+' '+fmt(res[k])));
+        if(res.FIN!=null)parts.push('Finale '+fmt(res.FIN));
+        const d=r.date?r.date.split('-').reverse().join('/'):'';
+        return'<div style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;font-size:12px">'
+          +'<div style="font-weight:800;color:var(--text)">'+esc(r.race)+(d?' · '+d:'')+' · '+esc(r.cat)+' #'+esc(r.num)+'</div>'
+          +'<div style="color:var(--text3);margin-top:2px">'+(parts.length?parts.join(' · '):'nessun risultato ancora')+(r.inFinal&&res.FIN==null?' · in finale':'')+(r.eliminated&&!r.inFinal?' · eliminato':'')+'</div></div>';
+      }).join('');
+    };
     const esc=t=>String(t==null?'':t).replace(/[<>&"]/g,'');
-    el.innerHTML='<div class="form-label" style="margin-bottom:6px">Storico gare</div>'+rows.map(r=>{
-      const res=r.result||{};const keys=Object.keys(res).sort((a,b)=>(a.length-b.length)||a.localeCompare(b));
-      const fmt=v=>/^\d+$/.test(String(v))?v+'°':esc(v);
-      const parts=keys.map(x=>(x==='FIN'?'Finale':x.startsWith('PF-')?'Pref. '+x.slice(3):x)+' '+fmt(res[x]));
-      const d=r.date?r.date.split('-').reverse().join('/'):'';
-      return'<div style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;font-size:12px">'
-        +'<div style="font-weight:800;color:var(--text)">'+esc(r.race)+(d?' · '+d:'')+' · '+esc(r.cat)+' #'+esc(r.num)+'</div>'
-        +'<div style="color:var(--text3);margin-top:2px">'+(parts.length?parts.join(' · '):'nessun risultato ancora')+(r.inFinal?' · in finale':'')+(r.eliminated&&!r.inFinal?' · eliminato':'')+'</div></div>';
-    }).join('');
+    draw(null);
+    // ordine vero delle manche dal programma di quella gara (letto solo se servono, una volta)
+    const need=entries.filter(([hk,r])=>Object.keys(r.result||{}).filter(isHeat).length>1);
+    if(need.length){const orders={};Promise.all(need.map(([hk,r])=>{const rid=(hk.match(/^(race_\d+|[^_]+(?:_[^_]+)*?)(?:_\d{1,3})?$/)||[])[1]||hk;
+      return Promise.all([_fbDb.ref('races/'+rid+'/schedule').once('value'),_fbDb.ref('races/'+rid+'/days').once('value')]).then(([ss,ds])=>{
+        const sc=ss.val()||{};let days=ds.val()||Object.keys(sc);if(!Array.isArray(days))days=Object.values(days);const o={};let i=0;
+        days.forEach(dn=>{let arr=sc[dn]||[];if(!Array.isArray(arr))arr=Object.values(arr);
+          arr.slice().sort((a,b)=>slotMins(a.time)-slotMins(b.time)).forEach(sl=>{i++;if(!sl||sl.type!=='group'||canonCat(sl.cat)!==canonCat(r.cat))return;
+            let f=sl.filter||[];if(!Array.isArray(f))f=Object.values(f);const k=f.join('-');if(o[k]==null)o[k]=i;const k2=f.slice().reverse().join('-');if(o[k2]==null)o[k2]=i;});});
+        orders[hk]=o;}).catch(()=>{});})).then(()=>{if(document.getElementById('detail-hist'))draw(orders);});}
   });}catch(e){}
 }
 
@@ -2618,7 +2641,7 @@ function addPilotFromDetail(num){
   const serie=entry&&entry.serie?entry.serie.toString():'';
   const prefinal=entry&&entry.prefinal?entry.prefinal:'';
   const heats=entry&&entry.heats?entry.heats:[];
-  _rtNewPilots.add(String(num));pilots.push({num:num.toString(),name,team,cat,parity:autoParity(num),group,prefinal,serie,heats,eliminated:false});
+  _rtNewPilots.add(String(num));pilots.push({num:num.toString(),name,team,cat,parity:autoParity(num),group,prefinal,serie,heats,eliminated:false,highlight:_addHl.slice(),reel:_addHl.includes('video')?_addReel:''});
   statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');
   trackStatus[num]={};notes[num]=note;
   // Update pilot count in race index
