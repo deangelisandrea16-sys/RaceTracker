@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0020';
+var RT_JS_BUILD='2026-11-19-0030';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2445,10 +2445,12 @@ function reelLabel(v){const o=REEL_OPTS.find(x=>x[0]===String(v||'30'));return o
    (programma, lista piloti, finali, ricerca), sia se segnato dalla matita sia se aggiunto a mano. */
 function persChip(p){let ft=null;try{ft=p&&pilots.some(x=>x.num===String(p.num))?followedTeamOf(p.num,p.team||''):null;}catch(e){}
   return ft?'<span title="Pilota del team con acquisto personale" style="font-family:\'Chakra Petch\',sans-serif;font-size:9px;font-weight:700;letter-spacing:.06em;color:#4ade80;border:1px solid rgba(74,222,128,.45);border-radius:4px;padding:0 4px;flex-shrink:0;line-height:14px">PERS</span>':'';}
-function reelChip(p){const l=reelLabel(p&&p.reel);
+/* 19/11/2026 (Andrea): la durata del reel vale solo per chi ha il VIDEO; con solo FOTO non compare da nessuna parte */
+function hasVideo(p){let h=p&&p.highlight;if(typeof h==='string')h=[h];if(h&&!Array.isArray(h))h=Object.values(h);return!!(h&&h.includes('video'));}
+function reelChip(p){if(!hasVideo(p))return'';const l=reelLabel(p&&p.reel);
   return l?'<span title="Durata reel" style="font-family:\'Chakra Petch\',sans-serif;font-size:9px;font-weight:700;color:#e9d5a8;border:1px solid rgba(233,213,168,.45);border-radius:4px;padding:0 4px;flex-shrink:0;line-height:14px"><i class="ic ic-hl-video"></i> '+l+'</span>':'';}
 function reelPickerHtml(num){
-  const p=pilots.find(x=>x.num===String(num));if(!p)return'';
+  const p=pilots.find(x=>x.num===String(num));if(!p||!hasVideo(p))return'';
   return'<div style="margin-top:12px;font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--text4)">REEL</div><div style="display:flex;gap:8px;margin-top:6px">'
     +REEL_OPTS.map(([v,l])=>{const on=String(p.reel||'30')===v;
       return'<button onclick="setPilotReel(\''+p.num+'\',\''+v+'\')" style="flex:1;min-height:44px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
@@ -2456,6 +2458,7 @@ function reelPickerHtml(num){
 }
 /* 19/11/2026 (Andrea): durata reel cambiabile direttamente dalla scheda nella lista Piloti */
 function reelRowHtml(p){
+  if(!hasVideo(p))return'';
   return'<div style="display:flex;align-items:center;gap:6px;margin:8px 0 2px"><span class="note-label" style="margin:0 4px 0 0">Reel</span>'
     +REEL_OPTS.map(([v,l])=>{const on=String(p.reel||'30')===v;
       return'<button onclick="setPilotReelQuick(\''+p.num+'\',\''+v+'\')" style="min-width:52px;min-height:36px;border-radius:7px;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;touch-action:manipulation;'
@@ -2499,7 +2502,7 @@ function addTeamPilotPersonal(num,noAsk){
   const nm=String((e.lastName||'')+' '+(e.firstName||'')).trim();
   if(!noAsk&&!confirm('#'+num+' '+nm+' ha preso anche il pacchetto personale?\nLo aggiungo ai tuoi piloti (resta anche nel team).'))return;
   _rtNewPilots.add(num);
-  pilots.push({num,name:nm,team:e.team||'',cat:e.cat||'OK',parity:e.parity||autoParity(num),group:e.group||'',prefinal:e.prefinal||'',serie:e.serie?String(e.serie):'',eliminated:false,highlight:[defaultHl()],reel:'30'});
+  pilots.push({num,name:nm,team:e.team||'',cat:e.cat||'OK',parity:e.parity||autoParity(num),group:e.group||'',prefinal:e.prefinal||'',serie:e.serie?String(e.serie):'',eliminated:false,highlight:[defaultHl()],reel:defaultHl()==='video'?'30':''});
   statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');trackStatus[num]={};if(notes[num]===undefined)notes[num]='';
   saveAll();closeModal();renderAll();
 }
@@ -2807,7 +2810,7 @@ function copyAllForEditor(){
     // 16/11/2026 (Andrea): chi e' arrivato in finale ha la nota "Arrivato in finale" nella copia per l'editor
     const e=currentEntryList[p.num]||{};const fin=p.inFinal===true||e.inFinal===true;
     const note=[notes[p.num]?notes[p.num].trim():'',fin?'Arrivato in finale':''].filter(Boolean).join(' · ');
-    const rl=reelLabel(p.reel);
+    const rl=hasVideo(p)?reelLabel(p.reel):'';
     return'#'+p.num+' '+p.name+(rl?' · Reel '+rl:'')+(note?'\nNote: '+note:'');
   };
   const byNum=(a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0);
@@ -5201,7 +5204,8 @@ let _addHl=[],_addReel='30';
 function addHlHtml(){return[['foto','<i class="ic ic-hl-foto"></i><span>FOTO</span>'],['video','<i class="ic ic-hl-video"></i><span>VIDEO</span>']]
   .map(([k,h])=>'<div class="hl-option hl-'+k+(_addHl.includes(k)?' active':'')+'" onclick="toggleAddHl(\''+k+'\')">'+h+'</div>').join('');}
 function toggleAddHl(k){if(_addHl.includes(k)){if(_addHl.length===1)return;_addHl=_addHl.filter(x=>x!==k);}else _addHl=_addHl.concat(k);   // mai vuoto
-  const el=document.getElementById('f-hl');if(el)el.innerHTML=addHlHtml();}
+  const el=document.getElementById('f-hl');if(el)el.innerHTML=addHlHtml();
+  const w=document.getElementById('f-reel-wrap');if(w)w.style.display=_addHl.includes('video')?'':'none';}
 function addReelHtml(){return REEL_OPTS.map(([v,l])=>'<button type="button" onclick="setAddReel(\''+v+'\')" style="flex:1;min-height:44px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
   +(_addReel===v?'background:#e9d5a8;color:#1a160e;border:1px solid #e9d5a8':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>').join('');}
 function setAddReel(v){_addReel=v;const el=document.getElementById('f-reel');if(el)el.innerHTML=addReelHtml();}
@@ -5216,7 +5220,7 @@ function openAddPilot(){
     +'<input class="form-input" id="f-num" placeholder="es. 342" type="number" oninput="previewFromNum(this.value)" autocomplete="off" style="font-size:22px;font-weight:900"></div>'
     // 18/11/2026 (Andrea): foto / video scelti gia' quando si aggiunge il pilota (stesse evidenziazioni del pilota)
     +'<div class="form-group"><label class="form-label">Lavoro</label><div class="hl-picker" id="f-hl">'+addHlHtml()+'</div></div>'
-    +'<div class="form-group"><label class="form-label">Reel</label><div id="f-reel" style="display:flex;gap:8px">'+addReelHtml()+'</div></div>'
+    +'<div class="form-group" id="f-reel-wrap"'+(_addHl.includes('video')?'':' style="display:none"')+'><label class="form-label">Reel</label><div id="f-reel" style="display:flex;gap:8px">'+addReelHtml()+'</div></div>'
     +'<div id="f-preview" style="display:none;background:var(--bg3);border:2px solid #22c55e;border-radius:10px;padding:12px;margin-bottom:12px">'
     +'<div style="font-size:10px;color:#22c55e;letter-spacing:2px;font-weight:700;margin-bottom:8px">✓ TROVATO IN ENTRY LIST</div>'
     +'<div id="f-preview-content"></div>'
@@ -5264,7 +5268,7 @@ function confirmFromEntryList(){
   const group=_entryPreview.group||'';
   const serie=_entryPreview.serie?_entryPreview.serie.toString():'';
   const prefinal=_entryPreview.prefinal||'';
-  _rtNewPilots.add(String(num));pilots.push({num,name:(_entryPreview.lastName||'')+' '+(_entryPreview.firstName||''),team:_entryPreview.team||'',cat:_entryPreview.cat||'OK',parity:_entryPreview.parity||autoParity(num),group,prefinal,serie,eliminated:false,highlight:_addHl.slice(),reel:_addReel});
+  _rtNewPilots.add(String(num));pilots.push({num,name:(_entryPreview.lastName||'')+' '+(_entryPreview.firstName||''),team:_entryPreview.team||'',cat:_entryPreview.cat||'OK',parity:_entryPreview.parity||autoParity(num),group,prefinal,serie,eliminated:false,highlight:_addHl.slice(),reel:_addHl.includes('video')?_addReel:''});
   statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');trackStatus[num]={};notes[num]=note;
   const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;update(ref(db),u);
   saveAll();closeModal();
@@ -5279,7 +5283,7 @@ function savePilotManual(){
   const note=document.getElementById('f-note-m')?document.getElementById('f-note-m').value.trim():'';
   if(!num||!name||!team){alert('Compila tutti i campi');return;}
   if(pilots.find(p=>p.num===num)){alert('Numero già presente');return;}
-  _rtNewPilots.add(String(num));pilots.push({num,name,team,cat,parity:autoParity(num),group:'',prefinal:'',serie:'',heats:[],eliminated:false,highlight:_addHl.slice(),reel:_addReel});
+  _rtNewPilots.add(String(num));pilots.push({num,name,team,cat,parity:autoParity(num),group:'',prefinal:'',serie:'',heats:[],eliminated:false,highlight:_addHl.slice(),reel:_addHl.includes('video')?_addReel:''});
   statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');trackStatus[num]={};notes[num]=note;
   const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;update(ref(db),u);
   saveAll();closeModal();
