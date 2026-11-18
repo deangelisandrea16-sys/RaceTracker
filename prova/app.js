@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-18-2340';
+var RT_JS_BUILD='2026-11-18-2350';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5168,12 +5168,20 @@ function closeModalOutside(e){if(e.target===document.getElementById('modal'))clo
 window.closeModal=closeModal;window.closeModalOutside=closeModalOutside;
 
 let _entryPreview=null;
+let _addHl=[];
+function addHlHtml(){return[['foto','<i class="ic ic-hl-foto"></i><span>FOTO</span>'],['video','<i class="ic ic-hl-video"></i><span>VIDEO</span>']]
+  .map(([k,h])=>'<div class="hl-option hl-'+k+(_addHl.includes(k)?' active':'')+'" onclick="toggleAddHl(\''+k+'\')">'+h+'</div>').join('');}
+function toggleAddHl(k){_addHl=_addHl.includes(k)?_addHl.filter(x=>x!==k):_addHl.concat(k);const el=document.getElementById('f-hl');if(el)el.innerHTML=addHlHtml();}
+window.toggleAddHl=toggleAddHl;
 function openAddPilot(){
   if(!activeRaceId){alert('Seleziona prima una gara dalla tab GARE');return;}
+  _addHl=[];
   openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
     +'<div class="modal-title">Aggiungi Pilota</div>'
     +'<div class="form-group"><label class="form-label">Numero Kart</label>'
     +'<input class="form-input" id="f-num" placeholder="es. 342" type="number" oninput="previewFromNum(this.value)" autocomplete="off" style="font-size:22px;font-weight:900"></div>'
+    // 18/11/2026 (Andrea): foto / video scelti gia' quando si aggiunge il pilota (stesse evidenziazioni del pilota)
+    +'<div class="form-group"><label class="form-label">Lavoro</label><div class="hl-picker" id="f-hl">'+addHlHtml()+'</div></div>'
     +'<div id="f-preview" style="display:none;background:var(--bg3);border:2px solid #22c55e;border-radius:10px;padding:12px;margin-bottom:12px">'
     +'<div style="font-size:10px;color:#22c55e;letter-spacing:2px;font-weight:700;margin-bottom:8px">✓ TROVATO IN ENTRY LIST</div>'
     +'<div id="f-preview-content"></div>'
@@ -5221,7 +5229,7 @@ function confirmFromEntryList(){
   const group=_entryPreview.group||'';
   const serie=_entryPreview.serie?_entryPreview.serie.toString():'';
   const prefinal=_entryPreview.prefinal||'';
-  _rtNewPilots.add(String(num));pilots.push({num,name:(_entryPreview.lastName||'')+' '+(_entryPreview.firstName||''),team:_entryPreview.team||'',cat:_entryPreview.cat||'OK',parity:_entryPreview.parity||autoParity(num),group,prefinal,serie,eliminated:false});
+  _rtNewPilots.add(String(num));pilots.push({num,name:(_entryPreview.lastName||'')+' '+(_entryPreview.firstName||''),team:_entryPreview.team||'',cat:_entryPreview.cat||'OK',parity:_entryPreview.parity||autoParity(num),group,prefinal,serie,eliminated:false,highlight:_addHl.slice()});
   statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');trackStatus[num]={};notes[num]=note;
   const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;update(ref(db),u);
   saveAll();closeModal();
@@ -5236,7 +5244,7 @@ function savePilotManual(){
   const note=document.getElementById('f-note-m')?document.getElementById('f-note-m').value.trim():'';
   if(!num||!name||!team){alert('Compila tutti i campi');return;}
   if(pilots.find(p=>p.num===num)){alert('Numero già presente');return;}
-  _rtNewPilots.add(String(num));pilots.push({num,name,team,cat,parity:autoParity(num),group:'',prefinal:'',serie:'',heats:[],eliminated:false});
+  _rtNewPilots.add(String(num));pilots.push({num,name,team,cat,parity:autoParity(num),group:'',prefinal:'',serie:'',heats:[],eliminated:false,highlight:_addHl.slice()});
   statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');trackStatus[num]={};notes[num]=note;
   const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;update(ref(db),u);
   saveAll();closeModal();
