@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1500';
+var RT_JS_BUILD='2026-11-19-1540';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -737,6 +737,8 @@ window.setUpHl=setUpHl;
 function showUserPicker(){
   // 19/11/2026: con il login l'utente e' quello dell'accesso; solo l'admin puo' passare all'utente di prova per i test
   if(rtAuthGateOn()&&_rtAuthUser!=='andrea'){openModal(rtAccountHtml());return;}
+  // 19/11/2026 (Andrea): con il login niente passaggio agli altri account: solo il proprio utente e l'utente di prova
+  if(_fbAuth){openModal(rtSwitchHtml());return;}
   _upHl='foto';
   // Get saved users from all races
   let savedUsers=JSON.parse(localStorage.getItem('rt_users')||'[]');
@@ -763,7 +765,19 @@ function showUserPicker(){
     +(savedUsers.length?'</div>':''));
 }
 
+function rtSwitchHtml(){
+  const prova=!rtAuthGateOn(),me=_rtAuthUser||'';
+  const b=(lbl,on,act)=>['<button class="form-submit" style="margin-bottom:10px;background:',on?'#22c55e':'none',';border:1.5px solid ',on?'#22c55e':'var(--border2,#444)',';color:',on?'#000':'var(--text)','" onclick="',act,'">',lbl,'</button>'].join('');
+  const h=['<div class="modal-title">Account</div>'];
+  if(prova){h.push('<div style="font-size:13px;margin-bottom:14px">Sei nell\'<b>UTENTE PROVA</b> (dati di test).</div>');
+    h.push(b('TORNA AL MIO ACCOUNT',false,"location.href=location.pathname"));return h.join('');}
+  h.push(b([String(me).toUpperCase(),' ✓'].join(''),true,'closeModal()'));
+  if(me==='andrea')h.push(b('UTENTE PROVA (test)',false,"location.href=location.pathname+'?user=utente%20prova'"));
+  h.push(rtAccountHtml().replace('<div class="modal-title">Account</div>',''));
+  return h.join('');
+}
 function selectSavedUser(name){
+  if(_fbAuth)return;   // con il login l'utente lo decide l'accesso
   currentUserId=name;
   localStorage.setItem('rt_user',name);
   const url=new URL(window.location);
@@ -776,6 +790,7 @@ function selectSavedUser(name){
 window.selectSavedUser=selectSavedUser;
 
 function setUser(){
+  if(_fbAuth)return;   // con il login l'utente lo decide l'accesso
   const name=document.getElementById('up-name').value.trim().toLowerCase();
   if(!name){alert('Inserisci il tuo nome');return;}
   currentUserId=name;
