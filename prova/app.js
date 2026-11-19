@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0340';
+var RT_JS_BUILD='2026-11-19-0350';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2917,8 +2917,12 @@ function exportPilotsPdf(){
   const w=f.contentWindow;w.document.open();w.document.write(html);w.document.close();
   // alcuni browser prendono il nome del file dal titolo della pagina principale: lo si cambia solo durante la stampa
   const oldTitle=document.title;const back=()=>{document.title=oldTitle;};
-  document.title=fname;try{w.addEventListener('afterprint',back);window.addEventListener('afterprint',back,{once:true});}catch(x){}
-  setTimeout(back,60000);
+  // Su Android "afterprint" scatta subito, prima che il telefono legga il nome: il titolo si rimette solo quando si torna
+  // nell'app dopo la stampa (pagina di nuovo visibile, passati almeno 4 s) o comunque dopo 5 minuti.
+  document.title=fname;const t0=Date.now();
+  const onBack=()=>{if(document.visibilityState==='visible'&&Date.now()-t0>4000){back();document.removeEventListener('visibilitychange',onBack);window.removeEventListener('focus',onBack);}};
+  document.addEventListener('visibilitychange',onBack);window.addEventListener('focus',onBack);
+  setTimeout(()=>{back();document.removeEventListener('visibilitychange',onBack);window.removeEventListener('focus',onBack);},300000);
   setTimeout(()=>{try{w.focus();w.print();}catch(x){back();alert('Stampa non disponibile su questo dispositivo');}},300);
 }
 window.exportPilotsPdf=exportPilotsPdf;
