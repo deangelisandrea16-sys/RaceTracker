@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0940';
+var RT_JS_BUILD='2026-11-19-0950';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2487,7 +2487,8 @@ function reelRowHtml(p){
         +(on?'background:#e9d5a8;color:#1a160e;border:1px solid #e9d5a8':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>';}).join('')+'</div>';
 }
 function setPilotReelQuick(num,v){
-  const p=pilots.find(x=>x.num===String(num));if(!p||String(p.reel||'30')===v)return;
+  /* 19/11/2026 (Andrea): quello che vedo e' quello che sta nel DB: si confronta con il valore salvato, non con il predefinito mostrato */
+  const p=pilots.find(x=>x.num===String(num));if(!p||String(p.reel||'')===v)return;
   const t=document.getElementById('note-'+p.num);if(t)notes[p.num]=t.value;   // non perdere una nota in scrittura
   p.reel=v;saveAll();try{renderPilots();}catch(e){}
 }
@@ -2767,7 +2768,8 @@ function _teamKeepNotes(){teams.forEach(t=>{const el=document.getElementById('tn
 function toggleTeamHl(key,k){const t=_teamByKey(key);if(!t)return;let h=teamHl(t);
   if(h.includes(k)){if(h.length===1)return;h=h.filter(x=>x!==k);}else h=h.concat(k);
   _teamKeepNotes();t.highlight=h;t.reel=h.includes('video')?String(t.reel||'30'):'';saveAll();try{renderPilots();}catch(e){}}
-function setTeamReel(key,v){const t=_teamByKey(key);if(!t)return;_teamKeepNotes();t.reel=v;saveAll();try{renderPilots();}catch(e){}}
+function setTeamReel(key,v){const t=_teamByKey(key);if(!t)return;_teamKeepNotes();t.highlight=teamHl(t);t.reel=v;saveAll();   // 19/11/2026: si salva anche il lavoro mostrato (predefinito)
+ try{renderPilots();}catch(e){}}
 window.toggleTeamHl=toggleTeamHl;window.setTeamReel=setTeamReel;
 function removeTeam(key){
   if(!confirm('Rimuovere il team?'))return;
@@ -5646,7 +5648,9 @@ function toggleHL(btn,num){
   const on=btn.classList.toggle('active');btn.setAttribute('aria-pressed',on);try{if(navigator.vibrate)navigator.vibrate(15);}catch(e){}
   if(num===undefined)return;const p=pilots.find(x=>String(x.num)===String(num));if(!p)return;
   const h=[];document.querySelectorAll('#ef-hl-picker .hl-option.active').forEach(b=>{const v=b.getAttribute('data-hl');if(v)h.push(v);});
-  p.highlight=h;saveAll();
+  p.highlight=h;
+  if(h.includes('video')&&!String(p.reel||''))p.reel='30';   // 19/11/2026: il reel mostrato (30") si salva davvero
+  saveAll();
   {const ex=document.getElementById('ef-extras');if(ex)ex.innerHTML=efExtrasHtml(p);}
   const lb=document.getElementById('ef-hl-saved');if(lb){lb.textContent='Salvato';lb.style.opacity=1;clearTimeout(lb._t);lb._t=setTimeout(()=>{lb.style.opacity=0;},1500);}
   try{renderAll();}catch(e){}}
