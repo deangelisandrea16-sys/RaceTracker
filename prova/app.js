@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0320';
+var RT_JS_BUILD='2026-11-19-0330';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2893,11 +2893,11 @@ function exportPilotsPdf(){
   const byNum=(a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0);
   const rows=pilots.slice().sort((a,b)=>String(a.cat).localeCompare(String(b.cat))||byNum(a,b)).map(p=>{
     let ft=null;try{ft=followedTeamOf(p.num,p.team||'');}catch(x){}
-    return'<tr><td class="n">#'+e(p.num)+'</td><td><b>'+e(p.name)+'</b><br><span class="s">'+e(p.team)+(ft?' · anche personale':'')+'</span></td><td>'+e(p.cat)+'</td><td>'+e(work(p))+'</td><td>'+tasks(statuses[p.num])+'</td><td>'+e(notes[p.num]||'')+'</td></tr>';}).join('');
+    return'<tr><td class="n">#'+e(p.num)+'</td><td><b>'+e(p.name)+'</b><br><span class="s">'+e(p.team)+(ft?' · anche personale':'')+'</span></td><td>'+e(p.cat)+'</td><td>'+e(work(p))+'</td><td>'+e(notes[p.num]||'')+'</td></tr>';}).join('');
   const trows=teams.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(t=>{const w=teamWork(t);const ents=teamEntrants(t).sort(byNum);
     return'<tr><td colspan="2"><b>'+e(t.name)+'</b><br><span class="s">'+ents.map(p=>'#'+e(p.num)+' '+e(p.name)+(notes[p.num]?' — '+e(notes[p.num]):'')).join('<br>')+'</span></td><td>'+e([...new Set(ents.map(p=>p.cat))].join(', '))+'</td><td>'
-      +e(w.highlight.map(x=>x==='foto'?'Foto':'Video').join(', ')+(w.reel?' · Reel '+reelLabel(w.reel):''))+'</td><td>'+tasks(teamStatuses[t.key])+'</td><td>'+e(teamNotes[t.key]||'')+'</td></tr>';}).join('');
-  const head='<tr><th colspan="2">Pilota</th><th>Cat.</th><th>Lavoro</th><th>Stato</th><th>Note</th></tr>';
+      +e(w.highlight.map(x=>x==='foto'?'Foto':'Video').join(', ')+(w.reel?' · Reel '+reelLabel(w.reel):''))+'</td><td>'+e(teamNotes[t.key]||'')+'</td></tr>';}).join('');
+  const head='<tr><th colspan="2">Pilota</th><th>Cat.</th><th>Lavoro</th><th>Note</th></tr>';
   const d=new Date();const when=d.toLocaleDateString('it-IT')+' '+d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
   const html='<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Piloti - '+e(r.name||'')+'</title><style>'
     +'body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#111;margin:16px}h1{font-size:18px;margin:0}h2{font-size:13px;margin:18px 0 6px}.sub{color:#555;margin:2px 0 12px}'
@@ -2907,7 +2907,7 @@ function exportPilotsPdf(){
     +'<h1>'+e(r.name||'Gara')+'</h1><div class="sub">'+e(r.circuit||'')+(r.startDate?' · '+e(r.startDate.split('-').reverse().join('/')):'')+' · utente '+e(currentUserId)+' · esportato '+e(when)+'</div>'
     +(rows?'<h2>Piloti ('+pilots.length+')</h2><table>'+head+rows+'</table>':'')
     +(trows?'<h2>Team ('+teams.length+')</h2><table>'+head.replace('Pilota','Team e piloti')+trows+'</table>':'')
-    +'<div class="sub" style="margin-top:10px">Stato: rosso = da fare · arancione = in corso · verde = fatto</div></body></html>';
+    +'</body></html>';
   // stampa da un riquadro nascosto: nella finestra di stampa si sceglie "Salva come PDF"
   let f=document.getElementById('rt-print');if(f)f.remove();
   f=document.createElement('iframe');f.id='rt-print';f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
