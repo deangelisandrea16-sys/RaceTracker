@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0120';
+var RT_JS_BUILD='2026-11-19-0310';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2740,12 +2740,32 @@ function teamsSlotHtml(slot){
 function addTeam(name){
   const key=teamKey(name);
   if(teams.some(t=>t.key===key||sameTeam(name,teamOfKey(t)))){setPilotsView('team');return;}
-  teams.push({key,name:String(name).trim().toUpperCase()});
+  teams.push({key,name:String(name).trim().toUpperCase(),highlight:[defaultHl()],reel:defaultHl()==='video'?'30':''});
   teamStatuses[key]={};TASKS.forEach(k=>teamStatuses[key][k]='red');
   teamNotes[key]='';
   saveAll();renderPilotSearchResults();
 }
 window.addTeam=addTeam;
+/* 19/11/2026 (Andrea): anche il TEAM ha il suo lavoro (FOTO / VIDEO, mai vuoto) e, se VIDEO, la durata del reel di team.
+   Si imposta sulla scheda del team (Piloti > Team); alla creazione parte dal predefinito dell'account. */
+function teamHl(t){let h=t&&t.highlight;if(typeof h==='string')h=[h];if(h&&!Array.isArray(h))h=Object.values(h);h=(h||[]).filter(x=>x==='foto'||x==='video');return h.length?h:[defaultHl()];}
+function teamWork(t){const h=teamHl(t);return{highlight:h,reel:h.includes('video')?String(t.reel||'30'):''};}
+function teamWorkChips(t){const w=teamWork(t);
+  return w.highlight.map(k=>'<span class="hl-badge hl-'+k+'" style="flex-shrink:0">'+(k==='foto'?'<i class="ic ic-hl-foto"></i> FOTO':'<i class="ic ic-hl-video"></i> VIDEO')+'</span>').join('')+reelChip(w);}
+function teamWorkRowHtml(t){const w=teamWork(t);const k=escAttr(t.key);
+  const b=(on,lab,click,col)=>'<button onclick="'+click+'" style="min-width:60px;min-height:40px;padding:0 10px;border-radius:8px;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;touch-action:manipulation;'
+    +(on?'background:'+col+';color:#12100c;border:1px solid '+col:'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+lab+'</button>';
+  return'<div style="display:flex;align-items:center;gap:6px;margin:10px 0 2px;flex-wrap:wrap"><span class="note-label" style="margin:0 4px 0 0">Lavoro</span>'
+    +b(w.highlight.includes('foto'),'<i class="ic ic-hl-foto"></i> FOTO',"toggleTeamHl('"+k+"','foto')",'#38bdf8')
+    +b(w.highlight.includes('video'),'<i class="ic ic-hl-video"></i> VIDEO',"toggleTeamHl('"+k+"','video')",'#ec4899')
+    +(w.reel?'<span class="note-label" style="margin:0 4px 0 10px">Reel</span>'+REEL_OPTS.map(([v,l])=>b(w.reel===v,l,"setTeamReel('"+k+"','"+v+"')",'#e9d5a8')).join(''):'')+'</div>';}
+function _teamByKey(key){return teams.find(t=>t.key===key);}
+function _teamKeepNotes(){teams.forEach(t=>{const el=document.getElementById('tnote-'+t.key);if(el)teamNotes[t.key]=el.value;});}
+function toggleTeamHl(key,k){const t=_teamByKey(key);if(!t)return;let h=teamHl(t);
+  if(h.includes(k)){if(h.length===1)return;h=h.filter(x=>x!==k);}else h=h.concat(k);
+  _teamKeepNotes();t.highlight=h;t.reel=h.includes('video')?String(t.reel||'30'):'';saveAll();try{renderPilots();}catch(e){}}
+function setTeamReel(key,v){const t=_teamByKey(key);if(!t)return;_teamKeepNotes();t.reel=v;saveAll();try{renderPilots();}catch(e){}}
+window.toggleTeamHl=toggleTeamHl;window.setTeamReel=setTeamReel;
 function removeTeam(key){
   if(!confirm('Rimuovere il team?'))return;
   teams=teams.filter(t=>t.key!==key);
@@ -2794,6 +2814,7 @@ function renderTeams(){
       +'</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">'
       +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="removeTeam(\''+escAttr(t.key)+'\')">✕ rimuovi</button></div></div>'
       +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,false)).join('')+'</div>'
+      +teamWorkRowHtml(t)
       +'<div class="note-wrap"><span class="note-label">Note</span>'
       +'<textarea class="note-area" id="tnote-'+t.key+'" placeholder="Es. tenda dietro box 12..." onblur="saveTeamNote(\''+escAttr(t.key)+'\')">'+(teamNotes[t.key]||'')+'</textarea></div></div>';
   }).join('');
@@ -2878,7 +2899,7 @@ function copyAllForEditor(){
       let x=null;try{x=followedTeamOf(n,e.team||'');}catch(err){}
       if(x&&x.key===t.key)g.push({num:n,name:String((e.lastName||'')+' '+(e.firstName||'')).trim(),team:e.team||''});});
     g.sort(byNum);
-    if(g.length)parts.push('#'+String(t.name||t.key).toUpperCase()+'\n\n'+g.map(p=>fmt(p).replace(/^(#\S+ [^\n]*)/,p._pers?'$1 (anche personale)':'$1')).join('\n\n'));});
+    if(g.length)parts.push('#'+String(t.name||t.key).toUpperCase()+(function(){const w=teamWork(t);return' · '+w.highlight.map(x=>x==='foto'?'Foto':'Video').join(' + ')+(w.reel?' · Reel '+reelLabel(w.reel):'');})()+'\n\n'+g.map(p=>fmt(p).replace(/^(#\S+ [^\n]*)/,p._pers?'$1 (anche personale)':'$1')).join('\n\n'));});
   const text=parts.join('\n\n\n');
   navigator.clipboard.writeText(text)
     .then(()=>alert('✅ Copiato! '+all.length+' piloti negli appunti.'))
@@ -4270,7 +4291,7 @@ function groupSlotItems(items,keepOrder){
   const gk=teams.map(t=>t.key).filter(k=>cnt[k]>=1);
   const out=[];
   gk.forEach(k=>{const g=items.filter(x=>x.key===k).sort(byNum);const t=teams.find(x=>x.key===k)||{name:k};const c=teamColor(k);
-    out.push('<div class="tgroup" style="--tc:'+c+'"><div class="tgroup-head"><span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span><span>'+g.length+(g.length===1?' pilota':' piloti')+'</span></div>'+g.map(x=>x.html.replace(' tglow','').replace(/<span class="tchip"[^>]*>[^<]*<\/span>/,'')).join('')+'</div>');});
+    out.push('<div class="tgroup" style="--tc:'+c+'"><div class="tgroup-head"><span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span>'+teamWorkChips(t)+'<span>'+g.length+(g.length===1?' pilota':' piloti')+'</span></div>'+g.map(x=>x.html.replace(' tglow','').replace(/<span class="tchip"[^>]*>[^<]*<\/span>/,'')).join('')+'</div>');});
   items.filter(x=>!x.key||!cnt[x.key]||!gk.includes(x.key)).sort(byNum).forEach(x=>out.push(x.html));
   return out.join('');
 }
