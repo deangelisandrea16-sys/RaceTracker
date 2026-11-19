@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1730';
+var RT_JS_BUILD='2026-11-19-1840';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2671,7 +2671,7 @@ function gridPos(num,slot){
 }
 // Dopo la manche: posizione d'arrivo dai risultati Apex (entryList/{num}/result = {"A-B":"3"}), badge verde
 // Chiavi: manche "A-B"; prefinali "PF-A"/"PF-B"; finale "FIN" (scritte dal server dai documenti ufficiali Apex)
-function slotKeyOf(slot){if(!slot)return'';if(slot.type==='prefinal'){const x=String(slot.filter||'').trim().toUpperCase();return x?'PF-'+x:'';}if(slot.type==='final')return'FIN';if(slot.type==='serie'){const q=String(slot.filter||'').trim().toUpperCase();return q?'Q-S'+q.replace(/^S/,''):'';}if(slot.type==='parity'){const p=String(slot.filter||'').trim().toUpperCase();return p&&activeDay?'PAR-'+String(activeDay).toUpperCase()+'-'+p:'';}if(slot.type!=='group')return'';const f=Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{});return f.map(x=>String(x).trim().toUpperCase()).sort().join('-');}
+function slotKeyOf(slot){if(!slot)return'';if(slot.type==='prefinal'){const x=String(slot.filter||'').trim().toUpperCase();return x?'PF-'+x:'';}if(slot.type==='final')return'FIN';if(slot.type==='serie'){const q=String(slot.filter||'').trim().toUpperCase();return q?'Q-S'+q.replace(/^S/,''):'';}if(slot.type==='parity'||slot.type==='all'||slot.type==='list'){return activeDay&&slot.time?['PR-',String(activeDay).toUpperCase(),'-',String(slot.time)].join(''):'';}if(slot.type!=='group')return'';const f=Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{});return f.map(x=>String(x).trim().toUpperCase()).sort().join('-');}
 // la sessione è già finita? (giorno visualizzato vs oggi, orario + ritardo). Prima della partenza si mostra sempre la griglia.
 function slotHasRun(slot){
   try{
@@ -2690,7 +2690,13 @@ var resultStatus={};
 function resStatusOf(cat,k){try{const c=resultStatus[String(cat||'').replace(/[.#$\[\]\/]/g,'_')]||{};return c[String(k).replace(/[.#$\[\]\/]/g,'_')]||null;}catch(e){return null;}}
 function gridBadge(num,slot){
   const k=slotKeyOf(slot);if(!k)return'';
-  const e=currentEntryList[num]||{};const r=e.result&&e.result[k];
+  const e=currentEntryList[num]||{};let r=e.result&&e.result[k];
+  // 19/11/2026: prima l'arrivo delle prove era uno solo al giorno per pari/dispari (PAR-<giorno>-<ODD|EVEN>), scritto
+  // dall'ultimo turno: si mostra solo sull'ultimo turno di quel tipo della giornata
+  if((r===undefined||r===null||r==='')&&slot.type==='parity'&&e.result){try{const f=String(slot.filter||'').trim().toUpperCase();
+    const old=e.result[['PAR-',String(activeDay).toUpperCase(),'-',f].join('')];
+    if(old){const same=((currentSchedule||{})[activeDay]||[]).filter(x=>x&&x.type==='parity'&&x.cat===slot.cat&&String(x.filter||'').trim().toUpperCase()===f);
+      const last=same.sort((a,b)=>slotMins(b.time)-slotMins(a.time))[0];if(last&&last.time===slot.time)r=old;}}catch(x){}}
   const _out=(e.out&&e.out[k])||/^(X|DNF|DNS|RIT|AB|NC|RET|DSQ|SQ)/i.test(String(r||''));
   if(r!==undefined&&r!==null&&r!==''&&slotHasRun(slot)&&_out)
     return'<span title="Uscito: posizione in classifica" style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:900;color:#fff;background:#dc2626;border-radius:5px;padding:1px 7px;flex-shrink:0">✕'+(/^\d+$/.test(String(r))?' '+r+'°':/DSQ|SQ/i.test(String(r))?' SQ':'')+'</span>';
@@ -4400,10 +4406,16 @@ function apexEvaluate(why){
     // Prove pari/dispari (warm-up, libere): a fine sessione la posizione del live (ordine per miglior giro)
     const mp=ss.match(/\b(EVEN|ODD)\b/);
     let _pfin=why==='finish';try{if(!_pfin)_pfin=apexLapInfo().fin;}catch(e){}
-    if(!mh&&mp&&/WARM|FREE|PRACT/.test(ss)&&!/QUALIF/.test(ss)&&activeRaceId&&_pfin){
-      const day=typeof autoDayName==='function'?autoDayName():activeDay;const pk='PAR-'+String(day).toUpperCase()+'-'+mp[1];const u={};
-      snap.forEach(x=>{
-        if(!x.pos||x.pos>=999)return;const e=currentEntryList[x.num];if(!e||apexCat(e.cat)!==cat)return;
+    // 19/11/2026 (Andrea): arrivo delle prove PER TURNO (PR-<giorno>-<orario del turno>), anche per i turni "All" (KZ2, OKN)
+    // e per le liste di numeri. Il turno e' quello abbinato dal live (il piu' vicino all'orario, con il ritardo).
+    if(!mh&&/WARM|FREE|PRACT/.test(ss)&&!/QUALIF/.test(ss)&&activeRaceId&&_pfin){
+      const day=typeof autoDayName==='function'?autoDayName():activeDay;let pk='',inSlot=null;
+      try{const ms=apexMatchSlot();const sl=ms&&ms.slot;if(sl&&['parity','all','list'].includes(sl.type)&&sl.time){pk=['PR-',String(day).toUpperCase(),'-',String(sl.time)].join('');
+        if(sl.type==='list'){const f=Array.isArray(sl.filter)?sl.filter:String(sl.filter||'').split(',');inSlot=new Set(f.map(v=>String(v).trim()));}}}catch(e){}
+      if(!pk&&mp)pk=['PAR-',String(day).toUpperCase(),'-',mp[1]].join('');
+      const u={};
+      if(pk)snap.forEach(x=>{
+        if(!x.pos||x.pos>=999)return;const e=currentEntryList[x.num];if(!e||apexCat(e.cat)!==cat)return;if(inSlot&&!inSlot.has(String(x.num)))return;
         e.result=e.result||{};
         if(!e.result[pk]){e.result[pk]=String(x.pos);u['races/'+activeRaceId+'/entryList/'+x.num+'/result/'+pk]=String(x.pos);}
       });
@@ -5642,6 +5654,8 @@ function apexMatchFor(catTxt,sessTxt,startTxt){
     if(/QUALIF/.test(ss)&&(m=ss.match(/S\s*(\d)/)))return x.type==='serie'&&f===m[1];
     if(/(FREE|PRACT|WARM)/.test(ss)&&/EVEN|PARI/.test(ss))return x.type==='parity'&&f==='EVEN'&&(/WARM/.test(ss)===/WARM/i.test((x.session||'')+(x.label||''))||true);
     if(/(FREE|PRACT|WARM)/.test(ss)&&/ODD|DISPARI/.test(ss))return x.type==='parity'&&f==='ODD';
+    // 19/11/2026: prove senza pari/dispari (KZ2, OKN "All", liste di numeri)
+    if(/(FREE|PRACT|WARM)/.test(ss)&&!/QUALIF/.test(ss))return x.type==='all'||x.type==='list';
     if(/HEAT|MANCHE/.test(ss)&&(m=ss.match(/\b([A-H])\s*-\s*([A-H])\b/)))return x.type==='group'&&f.toUpperCase().replace(/\s/g,'')===(m[1]+'-'+m[2]);
     if(/PREFINAL/.test(ss)&&(m=ss.match(/PREFINAL[E]?\s+([AB])\b/)))return x.type==='prefinal'&&f.toUpperCase()===m[1];
     return false;
