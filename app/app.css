@@ -818,3 +818,44 @@ body.light .sp-vp.td .sp-track{stroke:#4a4e57}
 .pb-cat{font-size:13px;font-weight:900;white-space:nowrap}.pb-sub{font-size:11px;font-weight:700;color:var(--text3);white-space:nowrap}.pb-mine{font-size:11px;font-weight:800;color:#4ade80;white-space:nowrap}
 .pb-ok{display:flex;align-items:center;gap:6px;width:100%;min-height:44px;margin-bottom:8px;padding:0 10px;border-radius:10px;border:1.5px solid #22c55e;background:rgba(34,197,94,.16);color:#4ade80;font-family:inherit;font-weight:900;font-size:12px;cursor:pointer}
 .pb-ok span{margin-left:auto;font-weight:700;font-size:10px;color:var(--text3)}
+/* 19/11/2026: schermata di accesso (Google o link via email) */
+#rt-auth{position:fixed;inset:0;z-index:99999;background:var(--bg,#0d0d0f);display:flex;align-items:center;justify-content:center;padding:20px}
+.ra-box{width:100%;max-width:380px;display:flex;flex-direction:column;gap:12px}
+.ra-title{font-family:'Saira Condensed','Arial Narrow',Arial,sans-serif;font-weight:900;font-style:italic;font-size:30px;color:var(--text)}
+.ra-sub{font-size:13px;color:var(--text3);margin-bottom:6px}
+.ra-btn{min-height:50px;border-radius:12px;border:1.5px solid var(--border2,#444);background:var(--bg3,#1a1a1d);color:var(--text);font-family:inherit;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}
+.ra-google{background:#fff;color:#1f1f1f;border-color:#fff}
+.ra-g{font-weight:900;color:#4285f4;font-size:18px}
+.ra-or{text-align:center;font-size:11px;color:var(--text4);letter-spacing:2px;text-transform:uppercase}
+.ra-msg{font-size:13px;color:#fbbf24;line-height:1.4}
+
+/* 19/11/2026 (Andrea): pannello Utenti dei super admin */
+.adm{display:flex;flex-direction:column;gap:10px}
+.adm-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.adm-title{font-size:22px;font-weight:900;letter-spacing:2px}
+.adm-me{font-size:10px;font-weight:800;letter-spacing:1px;color:var(--accent,#22c55e)}
+.adm-tabs{display:flex;gap:6px;background:var(--bg3);padding:4px;border-radius:12px}
+.adm-tab{flex:1;min-height:44px;border:0;border-radius:9px;background:none;color:var(--text3);font-family:inherit;font-size:13px;font-weight:800;letter-spacing:.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.adm-tab.on{background:var(--bg);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.adm-cnt{min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--red,#ef4444);color:#fff;font-size:11px;display:inline-flex;align-items:center;justify-content:center}
+.adm-card{background:var(--bg3);border:1px solid var(--border2);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.adm-card.me{border-color:var(--accent,#22c55e)}
+.adm-req{border-color:var(--amber,#f59e0b)}
+.adm-row{display:flex;align-items:center;gap:10px;min-width:0}
+.adm-av{width:40px;height:40px;flex:0 0 40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;color:#000}
+.adm-who{flex:1;min-width:0}
+.adm-name{font-size:15px;font-weight:900;letter-spacing:1px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.adm-mail{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.adm-sub{font-size:11px;color:var(--text4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.adm-role{font-size:9px;font-weight:800;letter-spacing:1px;padding:2px 6px;border-radius:4px;border:1px solid var(--border2);color:var(--text3)}
+.adm-role.sa{border-color:var(--accent,#22c55e);color:var(--accent,#22c55e)}
+.adm-now{font-size:10px;font-weight:800;letter-spacing:1px;color:var(--accent,#22c55e);padding:0 4px}
+.adm-lbl{font-size:10px;font-weight:800;letter-spacing:1px;color:var(--text4)}
+.adm-in{margin:0}
+.adm-btns{display:flex;gap:8px}
+.adm-btn{flex:1;min-height:48px;border-radius:10px;border:1.5px solid var(--border2);background:none;color:var(--text);font-family:inherit;font-size:14px;font-weight:900;letter-spacing:1px;cursor:pointer}
+.adm-btn.ok{background:#22c55e;border-color:#22c55e;color:#000}
+.adm-btn.no{border-color:#ef4444;color:#ef4444}
+.adm-btn.sm{flex:0 0 auto;min-height:44px;padding:0 12px;font-size:12px}
+.adm-btn.ghost{flex:0 0 auto;color:var(--text3)}
+.adm-empty{text-align:center;padding:28px 10px;color:var(--text4);font-size:13px;border:1px dashed var(--border2);border-radius:14px}

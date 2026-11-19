@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1250';
+var RT_JS_BUILD='2026-11-19-1630';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -735,6 +735,11 @@ function upHlHtml(){return[['foto','<i class="ic ic-hl-foto"></i><span>FOTO</spa
 function setUpHl(k){_upHl=k;const el=document.getElementById('up-hl');if(el)el.innerHTML=upHlHtml();}
 window.setUpHl=setUpHl;
 function showUserPicker(){
+  // 19/11/2026: con il login l'utente e' quello dell'accesso; solo l'admin puo' passare all'utente di prova per i test
+  if(rtAuthGateOn()&&!RT_ADMINS.includes(_rtAuthUser)){openModal(rtAccountHtml());return;}
+  // 19/11/2026 (Andrea): con il login niente passaggio agli altri account: solo il proprio utente e l'utente di prova
+  if(rtIsAdmin()){rtAdminPanel();return;}
+  if(_fbAuth){openModal(rtSwitchHtml());return;}
   _upHl='foto';
   // Get saved users from all races
   let savedUsers=JSON.parse(localStorage.getItem('rt_users')||'[]');
@@ -761,7 +766,18 @@ function showUserPicker(){
     +(savedUsers.length?'</div>':''));
 }
 
+function rtSwitchHtml(){
+  const prova=!rtAuthGateOn(),me=_rtAuthUser||'';
+  const b=(lbl,on,act)=>['<button class="form-submit" style="margin-bottom:10px;background:',on?'#22c55e':'none',';border:1.5px solid ',on?'#22c55e':'var(--border2,#444)',';color:',on?'#000':'var(--text)','" onclick="',act,'">',lbl,'</button>'].join('');
+  const h=['<div class="modal-title">Account</div>'];
+  if(prova){h.push('<div style="font-size:13px;margin-bottom:14px">Sei nell\'<b>UTENTE PROVA</b> (dati di test).</div>');
+    h.push(b('TORNA AL MIO ACCOUNT',false,"location.href=location.pathname"));return h.join('');}
+  h.push(b([String(me).toUpperCase(),' ✓'].join(''),true,'closeModal()'));
+  h.push(rtAccountHtml().replace('<div class="modal-title">Account</div>',''));
+  return h.join('');
+}
 function selectSavedUser(name){
+  if(_fbAuth)return;   // con il login l'utente lo decide l'accesso
   currentUserId=name;
   localStorage.setItem('rt_user',name);
   const url=new URL(window.location);
@@ -774,6 +790,7 @@ function selectSavedUser(name){
 window.selectSavedUser=selectSavedUser;
 
 function setUser(){
+  if(_fbAuth)return;   // con il login l'utente lo decide l'accesso
   const name=document.getElementById('up-name').value.trim().toLowerCase();
   if(!name){alert('Inserisci il tuo nome');return;}
   currentUserId=name;
@@ -799,6 +816,201 @@ function setUser(){
 window.setUser=setUser;
 window.showUserPicker=showUserPicker;
 
+/* ══ ACCESSO (19/11/2026, Andrea) — fase 1, senza chiudere il database ══
+   Accesso una volta per telefono: Google oppure link via email. Sessione lunga (resta dentro finche' non esci).
+   L'account e' collegato all'utente dell'app tramite authEmails/<email> (deciso dall'admin) -> authMap/<uid>.
+   ?user=utente+prova resta valido per i test (il database e' ancora aperto: la chiusura e' la fase 3). */
+var _fbAuth=null;try{_fbAuth=firebase.auth();}catch(e){_fbAuth=null;}
+let _rtAuthUser='';   // utente dell'app ricavato dall'accesso
+function rtAuthGateOn(){
+  if(!_fbAuth)return false;
+  const q=new URLSearchParams(location.search).get('user');
+  if(q&&q.toLowerCase().trim()==='utente prova')return false;   // utente di prova per i test
+  return true;
+}
+function rtEmailKey(e){return String(e||'').trim().toLowerCase().replace(/[.#$\[\]\/]/g,',');}
+function rtAuthOverlay(html){
+  let o=document.getElementById('rt-auth');
+  if(!html){if(o)o.remove();return;}
+  if(!o){o=document.createElement('div');o.id='rt-auth';document.body.appendChild(o);}
+  o.innerHTML=html;try{window.hideLoader&&window.hideLoader();}catch(e){}
+}
+function rtLoginHtml(msg){
+  return ['<div class="ra-box"><div class="ra-title">RACE TRACKER</div><div class="ra-sub">Accedi una volta su questo telefono: poi resti dentro.</div>',
+    '<button class="ra-btn ra-google" onclick="rtLoginGoogle()"><span class="ra-g">G</span> Accedi con Google</button>',
+    '<div class="ra-or">oppure</div>',
+    '<input class="form-input" id="ra-email" type="email" inputmode="email" autocomplete="email" placeholder="la-tua@email.it">',
+    '<button class="ra-btn" onclick="rtLoginEmail()">Mandami il link di accesso</button>',
+    (msg?['<div class="ra-msg">',msg,'</div>'].join(''):''),'</div>'].join('');
+}
+function rtAccountHtml(){
+  const u=_fbAuth&&_fbAuth.currentUser;
+  return ['<div class="modal-title">Account</div><div style="font-size:13px;margin-bottom:6px">Utente: <b>',String(currentUserId||'').toUpperCase(),'</b></div>',
+    '<div style="font-size:12px;color:var(--text3);margin-bottom:16px">',(u?String(u.email||''):''),'</div>',
+    '<button class="form-submit" style="background:none;border:1.5px solid var(--border2,#444);color:var(--text)" onclick="rtLogout()">ESCI DA QUESTO TELEFONO</button>'].join('');
+}
+async function rtLoginGoogle(){
+  const pr=new firebase.auth.GoogleAuthProvider();pr.setCustomParameters({prompt:'select_account'});
+  try{await _fbAuth.signInWithPopup(pr);}
+  catch(e){
+    if(/popup|operation-not-supported|cancelled/.test(String(e&&e.code))){try{await _fbAuth.signInWithRedirect(pr);return;}catch(e2){e=e2;}}
+    rtAuthOverlay(rtLoginHtml('Accesso con Google non riuscito ('+String(e&&e.code||'errore')+'). Prova con il link via email.'));
+  }
+}
+async function rtLoginEmail(){
+  const el=document.getElementById('ra-email');const em=String(el&&el.value||'').trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){rtAuthOverlay(rtLoginHtml('Scrivi un indirizzo email valido.'));return;}
+  try{
+    await _fbAuth.sendSignInLinkToEmail(em,{url:location.origin+location.pathname,handleCodeInApp:true});
+    try{localStorage.setItem('rt_login_email',em);}catch(e){}
+    rtAuthOverlay(rtLoginHtml('Ti ho mandato il link a <b>'+em.replace(/</g,'&lt;')+'</b>. Aprilo da questo telefono (guarda anche nello spam).'));
+  }catch(e){rtAuthOverlay(rtLoginHtml('Invio non riuscito ('+String(e&&e.code||'errore')+'). Riprova tra poco.'));}
+}
+async function rtLogout(){try{await _fbAuth.signOut();}catch(e){}try{localStorage.removeItem('rt_user');}catch(e){}location.href=location.pathname;}
+window.rtLoginGoogle=rtLoginGoogle;window.rtLoginEmail=rtLoginEmail;window.rtLogout=rtLogout;
+// account -> utente dell'app: authMap/<uid>, altrimenti authEmails/<email> (deciso dall'admin) e si registra authMap
+function rtResolveUser(u){
+  return new Promise(res=>{
+    onValue(ref(db,'authMap/'+u.uid),s=>{const v=s.val();if(v&&v.user)return res(String(v.user));
+      onValue(ref(db,'authEmails/'+rtEmailKey(u.email)),s2=>{const w=s2.val();if(!w)return res('');
+        const up={};up['authMap/'+u.uid]={user:String(w),email:String(u.email||''),at:Date.now()};
+        update(ref(db),up).then(()=>res(String(w))).catch(()=>res(String(w)));},{onlyOnce:true});},{onlyOnce:true});
+  });
+}
+function rtAuthStart(){
+  if(!_fbAuth)return;
+  // ritorno dal link via email
+  try{if(_fbAuth.isSignInWithEmailLink(location.href)){
+    let em='';try{em=localStorage.getItem('rt_login_email')||'';}catch(e){}
+    if(!em)em=prompt('Conferma la tua email per completare l\'accesso')||'';
+    _fbAuth.signInWithEmailLink(em,location.href).then(()=>{try{localStorage.removeItem('rt_login_email');}catch(e){}history.replaceState({},'',location.pathname);})
+      .catch(e=>rtAuthOverlay(rtLoginHtml('Link non valido o scaduto ('+String(e&&e.code||'errore')+'). Chiedine un altro.')));
+  }}catch(e){}
+  try{_fbAuth.getRedirectResult().catch(e=>{if(rtAuthGateOn())rtAuthOverlay(rtLoginHtml('Accesso con Google non riuscito ('+String(e&&e.code||'errore')+').'));});}catch(e){}
+  _fbAuth.onAuthStateChanged(async u=>{
+    if(!rtAuthGateOn()){rtAuthOverlay('');return;}
+    if(!u){rtAuthOverlay(rtLoginHtml(''));return;}
+    const name=await rtResolveUser(u);
+    if(!name){rtRequestScreen(u);return;}
+    _rtAuthUser=name;rtAuthOverlay('');try{rtWatchRequests();}catch(e){}
+    try{const up={};up['authMap/'+u.uid+'/last']=Date.now();update(ref(db),up);}catch(e){}   // ultimo accesso, per il pannello Utenti
+    if(currentUserId!==name){
+      currentUserId=name;try{localStorage.setItem('rt_user',name);}catch(e){}
+      const url=new URL(location);url.searchParams.delete('user');history.replaceState({},'',url);
+      updateUserHeader();if(activeRaceId)listenRaceData(activeRaceId);
+    }
+  });
+}
+/* ══ RICHIESTE DI ACCESSO e PANNELLO UTENTI (19/11/2026, Andrea) ══
+   Mail non abilitata -> l'utente scrive il suo nome -> authRequests/<emailKey>. Solo l'admin (andrea) vede le richieste,
+   approva (authEmails + authMap), rifiuta, abilita mail in anticipo, scollega. L'admin vede tutti gli utenti, gli altri solo se stessi.
+   NB: finche' il database e' aperto e' un blocco dell'app, non del database (fase 3). */
+const RT_ADMINS=['andrea','print'];   // 19/11/2026 (Andrea): super admin, per ora Andrea e Print
+const RT_ADMIN='andrea';
+let _rtReqOff=null;
+function rtEsc(x){return String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function rtCleanName(x){return String(x||'').trim().toLowerCase().replace(/[.#$\[\]\/]/g,'').slice(0,30);}
+function rtRequestScreen(u,msg){
+  const k=rtEmailKey(u.email);
+  onValue(ref(db,'authRequests/'+k),s=>{const r=s.val();
+    const h=['<div class="ra-box"><div class="ra-title">RICHIESTA DI ACCESSO</div><div class="ra-sub">',rtEsc(u.email),'</div>'];
+    if(r){h.push('<div class="ra-sub">Richiesta inviata come <b>',rtEsc(String(r.name).toUpperCase()),'</b>. Appena l\'amministratore approva entri da solo.</div>');}
+    else{h.push('<input class="form-input" id="ra-name" placeholder="Il tuo nome (es. Ricky)" autocomplete="off">',
+      '<button class="ra-btn" onclick="rtSendRequest()">Chiedi l\'accesso</button>');}
+    if(msg)h.push('<div class="ra-msg">',msg,'</div>');
+    h.push('<button class="ra-btn" style="background:none" onclick="rtLogout()">Esci</button></div>');
+    rtAuthOverlay(h.join(''));},{onlyOnce:true});
+  // quando l'admin approva, si entra senza ricaricare
+  if(_rtReqOff)_rtReqOff();
+  _rtReqOff=onValue(ref(db,'authMap/'+u.uid),s=>{const v=s.val();if(v&&v.user){if(_rtReqOff){_rtReqOff();_rtReqOff=null;}location.reload();}});
+}
+function rtSendRequest(){
+  const u=_fbAuth&&_fbAuth.currentUser;if(!u)return;
+  const el=document.getElementById('ra-name');const n=rtCleanName(el&&el.value);
+  if(!n){rtRequestScreen(u,'Scrivi il tuo nome.');return;}
+  const up={};up['authRequests/'+rtEmailKey(u.email)]={email:String(u.email||''),uid:u.uid,name:n,at:Date.now()};
+  update(ref(db),up).then(()=>rtRequestScreen(u)).catch(()=>rtRequestScreen(u,'Invio non riuscito, riprova.'));
+}
+window.rtSendRequest=rtSendRequest;
+function rtIsAdmin(){return !!_fbAuth&&rtAuthGateOn()&&RT_ADMINS.includes(_rtAuthUser);}
+// pannello admin: utenti, richieste, mail abilitate
+let _rtAdmTab='req';
+function rtAdmTab(t){_rtAdmTab=t;rtAdminPanel();}
+window.rtAdmTab=rtAdmTab;
+function rtAgo(t){if(!t)return'mai';const m=Math.round((Date.now()-t)/60000);if(m<2)return'adesso';if(m<60)return[m,' min fa'].join('');
+  const h=Math.round(m/60);if(h<24)return[h,' h fa'].join('');const d=Math.round(h/24);return d===1?'ieri':[d,' giorni fa'].join('');}
+function rtAvatar(n){const c=['#22c55e','#f59e0b','#3b82f6','#ef4444','#a855f7','#14b8a6','#ec4899'];let x=0;String(n).split('').forEach(ch=>x+=ch.charCodeAt(0));
+  return['<div class="adm-av" style="background:',c[x%c.length],'">',rtEsc(String(n).charAt(0).toUpperCase()),'</div>'].join('');}
+// pannello admin: richieste, utenti, mail
+function rtAdminPanel(){
+  if(!rtIsAdmin())return;
+  Promise.all(['settings','authRequests','authEmails','authMap'].map(k=>new Promise(res=>onValue(ref(db,k),s=>res(s.val()||{}),{onlyOnce:true}))))
+  .then(([st,rq,em,mp])=>{
+    const users=new Set(Object.keys(st));Object.values(em).forEach(v=>users.add(String(v)));users.delete('utente prova');
+    const rqk=Object.keys(rq),emk=Object.keys(em).sort();
+    // ultimo accesso e mail per utente
+    const info={};Object.keys(mp).forEach(uid=>{const v=mp[uid];if(!v||!v.user)return;const i=info[v.user]||(info[v.user]={last:0,mails:[]});
+      i.last=Math.max(i.last,v.last||v.at||0);if(v.email&&!i.mails.includes(v.email))i.mails.push(v.email);});
+    const tab=(k,l,n)=>['<button class="adm-tab',_rtAdmTab===k?' on':'','" onclick="rtAdmTab(\'',k,'\')">',l,n?['<span class="adm-cnt">',n,'</span>'].join(''):'','</button>'].join('');
+    const h=['<div class="adm"><div class="adm-head"><div class="adm-title">UTENTI</div><div class="adm-me">',rtEsc(String(_rtAuthUser).toUpperCase()),' · SUPER ADMIN</div></div>',
+      '<div class="adm-tabs">',tab('req','Richieste',rqk.length),tab('usr','Utenti',0),tab('mail','Mail',0),'</div>'];
+    if(_rtAdmTab==='req'){
+      if(!rqk.length)h.push('<div class="adm-empty">Nessuna richiesta in attesa</div>');
+      rqk.forEach(k=>{const r=rq[k];h.push('<div class="adm-card adm-req"><div class="adm-row">',rtAvatar(r.name),'<div class="adm-who"><div class="adm-mail">',rtEsc(r.email),'</div><div class="adm-sub">',rtAgo(r.at),'</div></div></div>',
+        '<label class="adm-lbl">Entra come</label><input class="form-input adm-in" id="rq-',rtEsc(k),'" value="',rtEsc(r.name),'" autocomplete="off">',
+        '<div class="adm-btns"><button class="adm-btn ok" onclick="rtApprove(\'',rtEsc(k),'\')">APPROVA</button><button class="adm-btn no" onclick="rtReject(\'',rtEsc(k),'\')">RIFIUTA</button></div></div>');});
+    }else if(_rtAdmTab==='usr'){
+      [...users].sort().forEach(n=>{const i=info[n]||{last:0,mails:[]},adm=RT_ADMINS.includes(n),me=n===currentUserId;
+        h.push('<div class="adm-card',me?' me':'','"><div class="adm-row">',rtAvatar(n),'<div class="adm-who"><div class="adm-name">',rtEsc(n.toUpperCase()),
+          '<span class="adm-role',adm?' sa':'','">',adm?'SUPER ADMIN':'UTENTE','</span></div><div class="adm-sub">',i.mails.length?rtEsc(i.mails.join(', ')):'nessuna mail collegata',' · ',rtAgo(i.last),'</div></div>',
+          me?'<span class="adm-now">IN USO</span>':['<button class="adm-btn sm" onclick="rtViewAs(\'',rtEsc(n),'\')">GUARDA</button>'].join(''),'</div></div>');});
+      h.push('<button class="adm-btn ghost" onclick="location.href=location.pathname+\'?user=utente%20prova\'">UTENTE PROVA (test)</button>');
+    }else{
+      h.push('<div class="adm-card"><label class="adm-lbl">Abilita una mail</label><input class="form-input adm-in" id="ad-email" type="email" inputmode="email" placeholder="mail@esempio.it" autocomplete="off">',
+        '<input class="form-input adm-in" id="ad-name" placeholder="nome utente (es. ricky)" autocomplete="off"><button class="adm-btn ok" onclick="rtAdminAdd()">ABILITA</button></div>');
+      emk.forEach(k=>{const n=String(em[k]),used=Object.values(mp).some(v=>v&&rtEmailKey(v.email)===k),lock=RT_ADMINS.includes(n)||rtEmailKey((_fbAuth.currentUser||{}).email)===k;
+        h.push('<div class="adm-card"><div class="adm-row">',rtAvatar(n),'<div class="adm-who"><div class="adm-mail">',rtEsc(k.replace(/,/g,'.')),'</div><div class="adm-sub">→ <b>',rtEsc(n.toUpperCase()),'</b>',used?'':' · mai entrato','</div></div>',
+          lock?'<span class="adm-now">🔒</span>':['<button class="adm-btn sm no" onclick="rtUnlink(\'',rtEsc(k),'\')">SCOLLEGA</button>'].join(''),'</div></div>');});
+    }
+    h.push('<button class="adm-btn ghost" onclick="rtLogout()">ESCI DA QUESTO TELEFONO</button></div>');
+    openModal(h.join(''));
+  });
+}
+function rtApprove(k){
+  if(!rtIsAdmin())return;
+  onValue(ref(db,'authRequests/'+k),s=>{const r=s.val();if(!r)return rtAdminPanel();
+    const el=document.getElementById('rq-'+k);const n=rtCleanName(el&&el.value)||rtCleanName(r.name);if(!n)return;
+    const up={};up['authEmails/'+k]=n;up['authMap/'+r.uid]={user:n,email:String(r.email||''),at:Date.now(),by:_rtAuthUser};up['authRequests/'+k]=null;
+    update(ref(db),up).then(()=>{if(!Object.keys(up).length)return;rtAdminPanel();});},{onlyOnce:true});
+}
+function rtReject(k){if(!rtIsAdmin())return;const up={};up['authRequests/'+k]=null;update(ref(db),up).then(rtAdminPanel);}
+function rtAdminAdd(){
+  if(!rtIsAdmin())return;
+  const e=String((document.getElementById('ad-email')||{}).value||'').trim(),n=rtCleanName((document.getElementById('ad-name')||{}).value);
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)||!n){alert('Serve una mail valida e un nome utente');return;}
+  const up={};up['authEmails/'+rtEmailKey(e)]=n;update(ref(db),up).then(rtAdminPanel);
+}
+function rtUnlink(k){
+  if(!rtIsAdmin())return;
+  if(!confirm('Scollegare '+k.replace(/,/g,'.')+'? I suoi dati restano, solo non potra\' piu\' entrare.'))return;
+  onValue(ref(db,'authMap'),s=>{const mp=s.val()||{};const up={};up['authEmails/'+k]=null;
+    Object.keys(mp).forEach(uid=>{if(mp[uid]&&rtEmailKey(mp[uid].email)===k)up['authMap/'+uid]=null;});
+    update(ref(db),up).then(rtAdminPanel);},{onlyOnce:true});
+}
+function rtViewAs(n){
+  if(!rtIsAdmin())return;
+  currentUserId=n;try{localStorage.setItem('rt_user',n);}catch(e){}
+  closeModal();updateUserHeader();if(activeRaceId)listenRaceData(activeRaceId);
+}
+window.rtApprove=rtApprove;window.rtReject=rtReject;window.rtAdminAdd=rtAdminAdd;window.rtUnlink=rtUnlink;window.rtViewAs=rtViewAs;window.rtAdminPanel=rtAdminPanel;
+// pallino rosso sul nome se ci sono richieste (solo admin)
+let _rtReqWatch=false;
+function rtWatchRequests(){
+  if(_rtReqWatch||!rtIsAdmin())return;_rtReqWatch=true;
+  onValue(ref(db,'authRequests'),s=>{const n=Object.keys(s.val()||{}).length;const el=document.getElementById('user-badge');
+    if(el){el.style.boxShadow=n?'0 0 0 2px #ef4444':'';el.title=n?n+' richieste di accesso':'';}
+    if(n&&!sessionStorage.getItem('rt_req_seen_'+n)){sessionStorage.setItem('rt_req_seen_'+n,'1');try{showToast&&showToast(n+' richiesta di accesso: tocca il tuo nome');}catch(e){}}});
+}
 function updateUserHeader(){
   const el=document.getElementById('user-badge');
   if(el)el.textContent=currentUserId?currentUserId.toUpperCase():'?';
@@ -1061,10 +1273,11 @@ listenRaces();
 watchConnection();
 if(activeRaceId&&currentUserId) listenRaceData(activeRaceId);
 updateUserHeader();
-// If no user set, show picker after a short delay
-if(!currentUserId){
+// If no user set, show picker after a short delay (senza login; con il login l'utente arriva dall'accesso)
+if(!currentUserId&&!rtAuthGateOn()){
   setTimeout(()=>{try{window.hideLoader&&window.hideLoader();}catch(e){}showUserPicker();},500);
 }
+rtAuthStart();
 
 // ── SAVE HELPERS ──
 function racePath(){return 'races/'+activeRaceId;}
