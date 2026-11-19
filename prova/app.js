@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1215';
+var RT_JS_BUILD='2026-11-19-1220';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3439,12 +3439,13 @@ let apexLastMsgAt=0;
 function liveAlive(){return !!apexWsKey&&apexLastMsgAt>0&&Date.now()-apexLastMsgAt<600000;}
 function delayManualOn(){return isDelayAdmin()&&!liveAlive();}
 setInterval(()=>{try{const was=window._rtManPrev;const now=delayManualOn();if(was!==now){window._rtManPrev=now;applyDelayPerms();if(activeTab==='programma')renderSchedule();}}catch(e){}},60000);
-/* 19/11/2026 (Andrea): tasto PARTITO ADESSO, solo quando gli automatismi sono saltati (live muto) e solo per chi gestisce il ritardo.
+/* 19/11/2026 (Andrea): tasto PARTITO ADESSO, solo quando gli automatismi sono saltati (live muto), per tutti gli account.
    Sui due turni dopo quello in corso, senza conferma (fa perdere tempo). Dopo il tocco il turno mostra in verde
    "PARTITO 11.59 · +23 min" (si capisce che ha preso il comando); toccandolo di nuovo si annulla (torna il ritardo di prima). */
 let _partito=null;   // {time, prev, v, at} dell'ultimo tocco
 function partitoBtn(slot,idx,curIdx,ds){
-  if(ds!=='today'||!delayManualOn())return'';
+  // 19/11/2026 (Andrea): disponibile a TUTTI gli account (il ritardo della gara e' condiviso); i comandi -5/+5/modifica restano del titolare
+  if(ds!=='today'||liveAlive())return'';
   const t=String(slot.time);
   if(_partito&&_partito.time===t&&Date.now()-_partito.at<30*60000){
     const hm=new Date(_partito.at).toTimeString().slice(0,5).replace(':','.');
@@ -3455,16 +3456,16 @@ function partitoBtn(slot,idx,curIdx,ds){
   return['<button class="partito-btn" onclick="partitoAdesso(\'',t,'\')"><i class="ic ic-flag"></i> PARTITO ADESSO</button>'].join('');
 }
 function partitoAdesso(t){
-  if(!delayManualOn())return;
+  if(liveAlive())return;
   const d=new Date();const v=d.getHours()*60+d.getMinutes()-slotMins(t);
   _partito={time:String(t),prev:scheduleDelay||0,v,at:Date.now()};
   try{if(navigator.vibrate)navigator.vibrate(25);}catch(e){}
-  setDelay(v);
+  setDelay(v,true);
 }
 function partitoAnnulla(){
   if(!_partito)return;const prev=_partito.prev;_partito=null;
   try{if(navigator.vibrate)navigator.vibrate([15,40,15]);}catch(e){}
-  setDelay(prev);
+  setDelay(prev,true);
 }
 window.partitoAdesso=partitoAdesso;window.partitoAnnulla=partitoAnnulla;
 function applyDelayPerms(){
