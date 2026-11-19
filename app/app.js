@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0950';
+var RT_JS_BUILD='2026-11-19-1005';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -824,6 +824,7 @@ let currentEntryList={};
 let currentSchedule={};
 let currentDays=[];
 let currentFinals=[];     // finals for current race
+let currentBreaks=null;   // 19/11/2026: pause ufficiali per giorno {from,to} se la gara ha breaksSrc (letto dal Timetable)
 // Durata della sessione dal programma ufficiale (campo "dur" della sessione, es. "12 giri" / "8'").
 // Se il live timing riporta un numero di giri diverso (es. giri tolti per ritardo) il server scrive "durLive".
 function slotDurText(s){
@@ -959,6 +960,7 @@ function listenRaceData(raceId){
     currentDays=sharedData.days||Object.keys(currentSchedule);
     if(!Array.isArray(currentDays))currentDays=typeof currentDays==='object'?Object.values(currentDays):[];
     currentFinals=sharedData.finals||[];
+    currentBreaks=sharedData.breaksSrc?(sharedData.breaks||{}):null;
     riskCutCfg=sharedData.riskCut||{};
     resultStatus=sharedData.resultStatus||{};
     if(!Array.isArray(currentFinals))currentFinals=typeof currentFinals==='object'?Object.values(currentFinals):[];
@@ -3634,6 +3636,15 @@ function blkLabel(b,cnt){return [b.ses,(cnt[b.ses]>1?[' · TURNO ',b.num].join('
    Si ricava dal programma ufficiale: tra un turno e il successivo nessuna sessione per almeno 20 minuti
    (40 se il turno precedente non ha la durata; tarato sul BREAK del timetable WSK FC R2: ven 12.16-12.40, sab 11.50-12.40), con il centro del buco tra le 11.30 e le 14.30. */
 function lunchOf(slotsArr){
+  // 19/11/2026 (Andrea): se il server ha letto le pause dal Timetable ufficiale, vale solo quello (anche "nessuna pausa")
+  if(currentBreaks){
+    const ob=currentBreaks[activeDay];if(!ob||!ob.to)return null;
+    const mm=t=>{const x=String(t||'').match(/(\d{1,2})[.:](\d{2})/);return x?(+x[1])*60+(+x[2]):-1;};
+    const toM=mm(ob.to);const idx=slotsArr.findIndex(x=>mm(x&&x.time)>=toM);if(idx<1)return null;
+    const fromM=ob.from?mm(ob.from):mm(slotsArr[idx-1].time);
+    return {idx,hasDur:!!ob.from,fromM,toM,from:ob.from||'',to:ob.to,official:true};
+  }
+  // senza dato ufficiale: si ricava dal programma (buco tra i turni)
   // al massimo una pausa al giorno: il buco piu' lungo con il centro tra le 11.30 e le 14.30
   const m=t=>{const x=String(t||'').match(/(\d{1,2})[.:](\d{2})/);return x?(+x[1])*60+(+x[2]):-1;};
   let best=null;
