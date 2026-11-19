@@ -785,3 +785,5 @@ body.light .sp-vp.td .sp-track{stroke:#4a4e57}
 .ph-chips>*{flex-shrink:0}
 .ph-chips .inner-group{margin-left:0}
 .tgroup>.card-inner .ph-2{padding-left:52px}
+.ph-0{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;min-height:22px;margin-bottom:2px;overflow:hidden}
+.ph-0>*{flex-shrink:0}

@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0720';
+var RT_JS_BUILD='2026-11-19-0735';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3728,7 +3728,8 @@ function renderSchedule(){
       var _ft=_hl?followedTeamOf(p.num,p.team):null;
       _items.push({num:p.num,key:_ft?_ft.key:null,html:'<div class="card-inner'+(shCls?' '+shCls:'')+(_ft?' tglow':'')+'"'+(_ft?' style="--tc:'+teamColor(_ft.key)+'"':'')+'>'
         +progHead({num:p.num,name:p.name,team:p.team,note:noteBtn(p.num),badges:[riskTri(p.num),gridBadge(p.num,slot)].join(''),
-          chips:[sh.map(function(h){return['<span class="hl-badge hl-',h,' hl-mini">',(shIco[h]||''),'</span>'].join('');}).join(''),reelChip(p),fotoChips(p),persChip(p),(p.group?['<span class="inner-group">GRP ',p.group,'</span>'].join(''):''),runChip(p.num,idx)].join('')})
+          top:[sh.map(function(h){return['<span class="hl-badge hl-',h,' hl-mini">',(shIco[h]||''),'</span>'].join('');}).join(''),reelChip(p),fotoChips(p)].join(''),
+          chips:[persChip(p),(p.group?['<span class="inner-group">GRP ',p.group,'</span>'].join(''):''),runChip(p.num,idx)].join('')})
         +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+spotPill(p.num)+'</div>'
         +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>'});
     });
@@ -3759,7 +3760,8 @@ function renderSchedule(){
         let html='';
         html+='<div class="card-inner'+(_poss?' final-maybe':'')+(_sc?' '+_sc:'')+(_ft?' tglow':'')+'" style="margin-top:8px'+(_ft?';--tc:'+teamColor(_ft.key):'')+'">'
           +progHead({num:p.num,name:p.name,team:p.team,note:noteBtn(p.num),badges:[riskTri(p.num),gridBadge(p.num,{type:'final'})].join(''),
-            chips:[(p.highlight||[]).map(function(h){return['<span class="hl-badge hl-',h,' hl-mini"><i class="ic ic-hl-',(h==='priority'?'prio':h),'"></i></span>'].join('');}).join(''),reelChip(p),fotoChips(p),persChip(p),(p.eliminated?'':runChip(p.num,1e6))].join('')})
+            top:[(p.highlight||[]).map(function(h){return['<span class="hl-badge hl-',h,' hl-mini"><i class="ic ic-hl-',(h==='priority'?'prio':h),'"></i></span>'].join('');}).join(''),reelChip(p),fotoChips(p)].join(''),
+            chips:[persChip(p),(p.eliminated?'':runChip(p.num,1e6))].join('')})
           +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+spotPill(p.num)+'</div>'
           +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>';
         _fItems.push({num:p.num,key:_ft?_ft.key:null,html});
@@ -4449,7 +4451,7 @@ let _progRunChip=null;
 /* 19/11/2026 (Andrea): riga pilota del Programma con layout unico e fisso, uguale per miei piloti, piloti dei team e finali.
    Riga 1: numero, rischio, posizione, nome (una riga, tagliato se lungo), matita. Riga 2: team a sinistra, etichette a destra sempre nello stesso ordine. */
 function progHead(o){
-  return ['<div class="ph"><div class="ph-1"><span class="inner-num">#',o.num,'</span>',o.badges||'','<span class="inner-name">',o.name,'</span>',o.note||'','</div>',
+  return ['<div class="ph">',(o.top?['<div class="ph-0">',o.top,'</div>'].join(''):''),'<div class="ph-1"><span class="inner-num">#',o.num,'</span>',o.badges||'','<span class="inner-name">',o.name,'</span>',o.note||'','</div>',
     '<div class="ph-2"><span class="ph-team">',o.team||'','</span><span class="ph-chips">',o.chips||'','</span></div></div>'].join('');
 }
 function teamsHighlightItems(slot,ps,idx){
