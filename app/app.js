@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1110';
+var RT_JS_BUILD='2026-11-19-1120';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -4574,7 +4574,7 @@ function groupSlotItems(items,keepOrder){
   const gk=teams.map(t=>t.key).filter(k=>cnt[k]>=1);
   const out=[];
   gk.forEach(k=>{const g=items.filter(x=>x.key===k).sort(byNum);const t=teams.find(x=>x.key===k)||{name:k};const c=teamColor(k);
-    out.push('<div class="tgroup" style="--tc:'+c+'"><div class="tgroup-head"><span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span>'+teamWorkChips(t)+'<span>'+g.length+(g.length===1?' pilota':' piloti')+'</span></div>'+g.map(x=>x.html.replace(' tglow','').replace(/<span class="tchip"[^>]*>[^<]*<\/span>/,'')).join('')+'</div>');});
+    out.push('<div class="tgroup" style="--tc:'+c+'"><div class="tgroup-head"><span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span>'+teamWorkChips(t)+'</div>'+g.map(x=>x.html.replace(' tglow','').replace(/<span class="tchip"[^>]*>[^<]*<\/span>/,'')).join('')+'</div>');});
   items.filter(x=>!x.key||!cnt[x.key]||!gk.includes(x.key)).sort(byNum).forEach(x=>out.push(x.html));
   return out.join('');
 }
