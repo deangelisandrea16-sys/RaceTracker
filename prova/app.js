@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0735';
+var RT_JS_BUILD='2026-11-19-0915';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2843,7 +2843,8 @@ function renderOverviewBody(){
   const btn=document.getElementById('ov-all');if(btn)btn.textContent=ovShowAll?'NASCONDI SESSIONI SENZA MIEI':'MOSTRA TUTTE LE SESSIONI';
   let slots=currentSchedule[activeDay]||[];slots=Array.isArray(slots)?slots:Object.values(slots);
   slots.forEach(s=>{if(s.filter&&!Array.isArray(s.filter)&&typeof s.filter==='object')s.filter=Object.values(s.filter);});
-  const rows=slots.map(s=>({time:s.time,cat:s.cat,label:s.label||s.cat,sub:slotFilterLabel(s),ps:pilotsForSlot(s),aw:pilotsAwaitingData(s),ts:teamsForSlot(s)}));
+  const {blk:_ob,cnt:_oc}=progBlocks(slots);
+  const rows=slots.map((s,i)=>({si:i,time:s.time,cat:s.cat,label:s.label||s.cat,sub:slotFilterLabel(s),ps:pilotsForSlot(s),aw:pilotsAwaitingData(s),ts:teamsForSlot(s)}));
   if(activeDay===currentDays[currentDays.length-1]){
     currentFinals.forEach(f=>{
       const allCat=pilots.filter(p=>canonCat(p.cat)===canonCat(f.cat)&&!p.eliminated);const fin=allCat.filter(p=>p.inFinal);
@@ -2853,14 +2854,20 @@ function renderOverviewBody(){
   const isToday=autoDayName()===activeDay;
   const nowM=new Date().getHours()*60+new Date().getMinutes()-scheduleDelay;
   let nowIdx=-1;if(isToday)rows.forEach((r,i)=>{if(slotMins(r.time)<=nowM)nowIdx=i;});
+  let _ol='';let _ofin=false;
   const html=rows.map((r,i)=>{
     const empty=!r.ps.length&&!r.aw.length&&!r.ts.length;
-    if(empty&&!ovShowAll)return'';
+    // 19/11/2026 (Andrea): inizio di ogni sessione con il suo nome e pausa pranzo, anche qui
+    let pre='';
+    if(r.si!=null)pre+=lunchHtml(slots,r.si,true);
+    if(empty&&!ovShowAll)return pre;
+    if(r.si!=null){const b=_ob[r.si];if(b&&b.ses&&b.id!==_ol){pre+=['<div class="session-divider ov-div">',blkLabel(b,_oc),'</div>'].join('');_ol=b.id;}}
+    else if(!_ofin){pre+='<div class="session-divider ov-div">FINALI</div>';_ofin=true;}
     const cls=i===nowIdx?' now':(isToday&&i<nowIdx?' past':'');
     const nums=r.ps.map(p=>{const st=(statuses[p.num]||{}).PISTA||'red';return'<span class="ov-n '+st+'" onclick="ovOpenPilot(\''+p.num+'\')">'+p.num+'</span>';}).join('')
       +(r.aw.length?'<span class="ov-n" style="opacity:.5;border-style:dashed"><i class="ic ic-wait"></i>'+r.aw.length+'</span>':'')
       +r.ts.map(({t})=>{const st=(teamStatuses[t.key]||{}).PISTA||'red';return'<span class="ov-t '+st+'" onclick="toggleTeamTask(\''+escAttr(t.key)+'\',\'PISTA\')"><i class="ic ic-team"></i> '+t.name+'</span>';}).join('');
-    return'<div class="ov-row'+cls+'"><span class="ov-time">'+r.time+'</span><span class="ov-cat '+catClass(r.cat)+'">'+r.label+'<br><span style="color:var(--text4);font-size:9px">'+r.sub+'</span></span>'
+    return pre+'<div class="ov-row'+cls+'"><span class="ov-time">'+r.time+'</span><span class="ov-cat '+catClass(r.cat)+'">'+r.label+'<br><span style="color:var(--text4);font-size:9px">'+r.sub+'</span></span>'
       +'<div class="ov-nums">'+(nums||'<span style="font-size:10px;color:var(--text4)">—</span>')
       +r.ps.filter(p=>String(notes[p.num]||'').trim()).map(p=>'<div class="note-txt" style="width:100%">#'+p.num+' <i class="ic ic-note"></i> '+String(notes[p.num]).replace(/</g,'&lt;')+'</div>').join('')+'</div></div>';
   }).join('');
@@ -3601,6 +3608,51 @@ function wxRender(){
     +' <span style="color:var(--text4);font-weight:600;font-size:10px">'+(s.coarse?'(a fasce di 6 ore, indicativo)':'(indicativo)')+'</span></span></div>';
   el.style.display='';
 }
+/* 19/11/2026 (Andrea): blocchi di sessione calcolati in un solo punto, usati dal Programma e dalla Vista generale.
+   L'intestazione si ripete ogni volta che ricomincia il giro delle categorie (es. PROVE LIBERE · TURNO 2).
+   Il numero del turno viene dal programma ufficiale quando lo scrive, altrimenti dal ripetersi dello stesso turno. */
+function progBlocks(slotsArr){
+  const blk=[];const cnt={};
+  let ses='',n=0,turn='',seen={};
+  slotsArr.forEach(sl=>{
+    const tm=String(sl.wsk||'').match(/(\d+)\s*°\s*turn/i);
+    const k=[canonCat(sl.cat),sl.type,JSON.stringify(sl.filter||'')].join('|');
+    let nw=false;
+    if(sl.session&&sl.session!==ses){ses=sl.session;n=0;turn='';nw=true;}
+    else if(tm?(turn!==''&&tm[1]!==turn):!!seen[k])nw=true;
+    if(nw){n++;seen={};cnt[ses]=(cnt[ses]||0)+1;}
+    if(tm)turn=tm[1];
+    seen[k]=1;
+    blk.push({id:[ses,n].join('#'),ses:ses,num:tm?tm[1]:String(n)});
+  });
+  return {blk,cnt};
+}
+function blkLabel(b,cnt){return [b.ses,(cnt[b.ses]>1?[' · TURNO ',b.num].join(''):'')].join('');}
+/* 19/11/2026 (Andrea): pausa pranzo segnata nel Programma e nella Vista generale.
+   Si ricava dal programma ufficiale: tra un turno e il successivo nessuna sessione per almeno 30 minuti
+   (40 se il turno precedente non ha la durata), con il centro del buco tra le 11.30 e le 14.30. */
+function lunchOf(slotsArr){
+  // al massimo una pausa al giorno: il buco piu' lungo con il centro tra le 11.30 e le 14.30
+  const m=t=>{const x=String(t||'').match(/(\d{1,2})[.:](\d{2})/);return x?(+x[1])*60+(+x[2]):-1;};
+  let best=null;
+  for(let i=1;i<slotsArr.length;i++){
+    const prev=slotsArr[i-1],next=slotsArr[i];
+    const a=m(prev&&prev.time),b=m(next&&next.time);if(a<0||b<0||b<=a)continue;
+    const d=parseInt(String((prev&&prev.dur)||''),10);const end=a+(d>0?d:0);
+    if(b-end<(d>0?30:40))continue;
+    const mid=(end+b)/2;if(mid<11*60+30||mid>14*60+30)continue;
+    if(!best||b-end>best.toM-best.fromM)best={idx:i,hasDur:d>0,fromM:end,toM:b};
+  }
+  if(!best)return null;
+  const f=x=>[Math.floor(x/60),'.',String(x%60).padStart(2,'0')].join('');
+  best.from=best.hasDur?f(best.fromM):'';best.to=f(best.toM);return best;
+}
+function lunchHtml(slotsArr,idx,ov){
+  const l=lunchOf(slotsArr);if(!l||l.idx!==idx)return'';
+  let now=false;
+  if(autoDayName()===activeDay){const nm=new Date().getHours()*60+new Date().getMinutes()-(typeof scheduleDelay==='number'?scheduleDelay:0);now=nm>=l.fromM&&nm<l.toM;}
+  return ['<div class="lunch-break',(ov?' ov':''),(now?' now':''),'">PAUSA PRANZO<span>',(l.from?[l.from,' – ',l.to].join(''):['riprende alle ',l.to].join('')),'</span></div>'].join('');
+}
 function renderSchedule(){
   try{wxLoad();wxRender();}catch(e){}
   const dt=document.getElementById('day-tabs');
@@ -3634,19 +3686,7 @@ function renderSchedule(){
   let html='';let lastSession='';
   /* 19/11/2026 (Andrea): l'intestazione si ripete ogni volta che ricomincia il giro delle categorie, anche nella stessa sessione
      (es. PROVE LIBERE · TURNO 2). Il numero del turno viene dal programma ufficiale quando lo scrive, altrimenti dal ripetersi dello stesso turno. */
-  const _blk=[];const _blkCnt={};
-  {let ses='',n=0,turn='',seen={};
-    slotsArr.forEach(sl=>{
-      const tm=String(sl.wsk||'').match(/(\d+)\s*°\s*turn/i);
-      const k=[canonCat(sl.cat),sl.type,JSON.stringify(sl.filter||'')].join('|');
-      let nw=false;
-      if(sl.session&&sl.session!==ses){ses=sl.session;n=0;turn='';nw=true;}
-      else if(tm?(turn!==''&&tm[1]!==turn):!!seen[k])nw=true;
-      if(nw){n++;seen={};_blkCnt[ses]=(_blkCnt[ses]||0)+1;}
-      if(tm)turn=tm[1];
-      seen[k]=1;
-      _blk.push({id:[ses,n].join('#'),ses:ses,num:tm?tm[1]:String(n)});
-    });}
+  const {blk:_blk,cnt:_blkCnt}=progBlocks(slotsArr);
   let _lastBlk='';
   // Quante volte corre oggi ogni mio pilota e quale di queste è lo slot (es. Gara 2/3)
   // Se un turno dipende da dati non ancora ufficiali (prefinale non assegnata, finale non decisa) il totale è "?"
@@ -3686,9 +3726,10 @@ function renderSchedule(){
     try{watchUserSettings();}catch(e){}
     const _tv=teamViewMode(),_hl=_tv!=='cards';
     const tHtml=_pf?'':(_tv==='both'?teamsHighlightHtml(slot,ps)+teamsSlotHtml(slot):_hl?teamsHighlightHtml(slot,ps):teamsSlotHtml(slot));
+    html+=lunchHtml(slotsArr,idx);
     if(_pf&&!ps.length)return; // con il filtro attivo si vedono solo gli orari dei piloti filtrati
     const _b=_blk[idx];
-    if(_b&&_b.ses&&_b.id!==_lastBlk){html+=['<div class="session-divider">',_b.ses,(_blkCnt[_b.ses]>1?[' · TURNO ',_b.num].join(''):''),wxSlotIcon(activeDay,slot.time),'</div>'].join('');_lastBlk=_b.id;}
+    if(_b&&_b.ses&&_b.id!==_lastBlk){html+=['<div class="session-divider">',blkLabel(_b,_blkCnt),wxSlotIcon(activeDay,slot.time),'</div>'].join('');_lastBlk=_b.id;}
 
     // No pilots matched AND some are waiting for data assignment
     if(!ps.length&&awaiting.length&&!tHtml){
