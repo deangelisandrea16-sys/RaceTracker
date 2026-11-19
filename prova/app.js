@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1100';
+var RT_JS_BUILD='2026-11-19-1110';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2766,6 +2766,12 @@ function teamsForSlot(slot){
   });
   return res;
 }
+/* 19/11/2026 (Andrea): i piloti di un team seguito hanno pillole proprie e indipendenti (prima toccandone una cambiava tutto il team).
+   Stato salvato per numero in statuses/<num> come per i miei piloti; senza dato = rosso. */
+function teamPilotTaskBtn(num,task){
+  const s=(statuses[num]||{})[task]||'red';
+  return'<button class="task-btn '+s+'" style="padding:4px 8px;font-size:10px" onclick="toggleTask(\''+num+'\',\''+task+'\')">'+task+'</button>';
+}
 function teamTaskBtn(key,task,small){
   const s=(teamStatuses[key]||{})[task]||'red';
   const sz=small?'style="padding:4px 8px;font-size:10px"':'';
@@ -4552,7 +4558,7 @@ function teamsHighlightItems(slot,ps,idx){
     inSlot.filter(p=>!mine.has(String(p.num))).forEach(p=>out.push({num:p.num,key:t.key,html:'<div class="card-inner tglow" style="--tc:'+c+'">'
       +progHead({num:p.num,name:String(p.name).replace(/</g,'&lt;'),team:String(t.name).replace(/</g,'&lt;'),note:noteBtn(p.num),badges:gridBadge(p.num,slot),
         chips:[(p.group?['<span class="inner-group">GRP ',p.group,'</span>'].join(''):''),(_progRunChip&&idx!=null?_progRunChip(p.num,idx):'')].join('')})
-      +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,true)).join('')+'</div>'
+      +'<div class="tasks">'+TASKS.map(k=>teamPilotTaskBtn(p.num,k)).join('')+'</div>'
       +(teamNotes[t.key]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+teamNotes[t.key]+'</div>':'')+noteLine(p.num)+'</div>'}));});
   return out;
 }
@@ -4579,7 +4585,7 @@ function teamsHighlightHtml(slot,ps){
     return inSlot.filter(p=>!mine.has(String(p.num))).map(p=>'<div class="card-inner tglow" style="--tc:'+c+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">'
       +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,slot)+'<span class="inner-name">'+String(p.name).replace(/</g,'&lt;')+'</span>'
       +'<span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span>'+noteBtn(p.num)+'</div>'
-      +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,true)).join('')+'</div>'
+      +'<div class="tasks">'+TASKS.map(k=>teamPilotTaskBtn(p.num,k)).join('')+'</div>'
       +(teamNotes[t.key]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+teamNotes[t.key]+'</div>':'')+noteLine(p.num)+'</div>').join('')
       +(waiting.length?'<div style="font-size:10px;font-weight:800;margin:4px 0 8px;color:'+c+'"><i class="ic ic-wait"></i> '+String(t.name).replace(/</g,'&lt;')+': '+waiting.length+' in attesa</div>':'');
   }).join('');
