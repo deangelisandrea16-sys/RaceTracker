@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0330';
+var RT_JS_BUILD='2026-11-19-0340';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2899,7 +2899,9 @@ function exportPilotsPdf(){
       +e(w.highlight.map(x=>x==='foto'?'Foto':'Video').join(', ')+(w.reel?' · Reel '+reelLabel(w.reel):''))+'</td><td>'+e(teamNotes[t.key]||'')+'</td></tr>';}).join('');
   const head='<tr><th colspan="2">Pilota</th><th>Cat.</th><th>Lavoro</th><th>Note</th></tr>';
   const d=new Date();const when=d.toLocaleDateString('it-IT')+' '+d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-  const html='<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Piloti - '+e(r.name||'')+'</title><style>'
+  // 19/11/2026 (Andrea): nome del file = NOME EVENTO + NOME CIRCUITO + DATA (la data di inizio gara, gg-mm-aaaa)
+  const fname=[r.name||'Gara',r.circuit||'',r.startDate?r.startDate.split('-').reverse().join('-'):''].filter(Boolean).join(' ').replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+  const html='<!doctype html><html lang="it"><head><meta charset="utf-8"><title>'+e(fname)+'</title><style>'
     +'body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#111;margin:16px}h1{font-size:18px;margin:0}h2{font-size:13px;margin:18px 0 6px}.sub{color:#555;margin:2px 0 12px}'
     +'table{width:100%;border-collapse:collapse}th,td{border:1px solid #bbb;padding:4px 6px;text-align:left;vertical-align:top}th{background:#eee;font-size:10px}'
     +'.n{font-weight:bold;white-space:nowrap}.s{color:#555;font-size:10px}.t{font-size:8px;padding:1px 3px;border-radius:3px;border:1px solid #999;white-space:nowrap}.t.green{background:#c8f0d2}.t.orange{background:#ffe2a8}.t.red{background:#f7c9c9}'
@@ -2913,7 +2915,11 @@ function exportPilotsPdf(){
   f=document.createElement('iframe');f.id='rt-print';f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
   document.body.appendChild(f);
   const w=f.contentWindow;w.document.open();w.document.write(html);w.document.close();
-  setTimeout(()=>{try{w.focus();w.print();}catch(x){alert('Stampa non disponibile su questo dispositivo');}},300);
+  // alcuni browser prendono il nome del file dal titolo della pagina principale: lo si cambia solo durante la stampa
+  const oldTitle=document.title;const back=()=>{document.title=oldTitle;};
+  document.title=fname;try{w.addEventListener('afterprint',back);window.addEventListener('afterprint',back,{once:true});}catch(x){}
+  setTimeout(back,60000);
+  setTimeout(()=>{try{w.focus();w.print();}catch(x){back();alert('Stampa non disponibile su questo dispositivo');}},300);
 }
 window.exportPilotsPdf=exportPilotsPdf;
 function copyAllForEditor(){
