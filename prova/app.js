@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0620';
+var RT_JS_BUILD='2026-11-19-0630';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3542,24 +3542,57 @@ function wxSummary(day){
   // 19/11/2026 (Andrea): mattina (7-13) e pomeriggio (13-19) separati, ognuno con la sua icona, cosi' si capisce a colpo d'occhio
   const half=(a,b)=>{const hs=[...wet].filter(h=>h>=a&&h<b).sort((x,y)=>x-y),bands=[];hs.forEach(h=>{const l=bands[bands.length-1];if(l&&h===l[1])l[1]=h+1;else bands.push([h,h+1]);});
     const rr=rows.filter(x=>x.h<b&&x.h+(x.n||1)>a);if(!rr.length)return null;
-    if(bands.length)return{k:'rain',txt:'pioggia '+bands.map(v=>v[0]+'–'+v[1]).join(', ')};
-    const c={sun:0,part:0,cloud:0};rr.forEach(x=>{const y=x.s||'';if(/^(clearsky|fair)/.test(y))c.sun++;else if(/^partlycloudy/.test(y))c.part++;else c.cloud++;});
-    const k=c.cloud>=c.sun&&c.cloud>=c.part?'cloud':(c.part>=c.sun?'part':'sun');return{k,txt:k==='sun'?'sereno':k==='part'?'poco nuvoloso':'nuvoloso'};};
+    if(bands.length){const wr=rr.filter(x=>x.p!=null&&((x.n===1&&x.p>=0.2)||(x.n===6&&x.p>=1)));
+      const k=wxWorst(wr.map(wxClass));return{k,wet:true,txt:WX_TXT[k]+' '+bands.map(v=>v[0]+'–'+v[1]).join(', ')};}
+    // asciutto: nuvolosita' media della fascia (sereno 0 ... coperto 3); nebbia se prevale
+    const cl=rr.map(wxClass);if(cl.filter(x=>x==='fog').length*2>cl.length)return{k:'fog',txt:WX_TXT.fog};
+    const sc={sun:0,fair:1,part:2,cloud:3};const v=cl.map(x=>sc[x]!=null?sc[x]:3);const m=Math.round(v.reduce((p,q)=>p+q,0)/v.length);
+    const k=['sun','fair','part','cloud'][m];return{k,txt:WX_TXT[k]};};
   return{tmin:Math.round(Math.min.apply(null,T)),tmax:Math.round(Math.max.apply(null,T)),wind:W.length?Math.round(Math.max.apply(null,W)*3.6):null,am:half(7,13),pm:half(13,19),coarse:rows.some(x=>x.n===6)};
 }
-// icone proprie (niente emoji): sole, sole e nuvola, nuvola, pioggia
-function wxIcon(k){const c={sun:'#fbbf24',part:'#fbbf24',cloud:'#9ca3af',rain:'#60a5fa'}[k];
-  const cloud='<path d="M7 18h10a4 4 0 0 0 .6-7.96A5.5 5.5 0 0 0 7.1 8.6 4.7 4.7 0 0 0 7 18z" fill="'+(k==='part'?'#cbd5e1':k==='rain'?'#94a3b8':c)+'"/>';
+/* 19/11/2026 (Andrea): set di icone proprie (niente emoji) che segue il tempo previsto ora per ora:
+   sereno, quasi sereno, poco nuvoloso, nuvoloso, nebbia, pioviggine, pioggia, pioggia forte, rovesci, temporale, nevischio, neve. */
+const WX_TXT={sun:'sereno',fair:'quasi sereno',part:'poco nuvoloso',cloud:'nuvoloso',fog:'nebbia',drizzle:'pioviggine',rain:'pioggia',heavy:'pioggia forte',
+  showers:'rovesci',thunder:'temporale',sleet:'nevischio',snow:'neve'};
+const WX_RANK=['sun','fair','part','cloud','fog','drizzle','showers','rain','sleet','snow','heavy','thunder'];
+function wxWorst(list){let k='cloud',r=-1;list.forEach(x=>{const i=WX_RANK.indexOf(x);if(i>r){r=i;k=x;}});return k;}
+function wxClass(x){const y=String((x&&x.s)||'');const p=x&&x.p!=null?x.p/(x.n||1):0;
+  if(/thunder/.test(y))return'thunder';if(/snow/.test(y))return'snow';if(/sleet/.test(y))return'sleet';
+  if(/heavyrain/.test(y))return'heavy';if(/lightrain/.test(y))return/showers/.test(y)?'showers':'drizzle';
+  if(/rainshowers/.test(y))return'showers';if(/rain/.test(y))return'rain';
+  if(/^fog/.test(y))return'fog';if(/^clearsky/.test(y))return'sun';if(/^fair/.test(y))return'fair';if(/^partlycloudy/.test(y))return'part';if(/^cloudy/.test(y))return'cloud';
+  return p>=2.5?'heavy':p>=0.5?'rain':p>=0.2?'drizzle':'cloud';}   // copia vecchia senza codice: dalla quantita'
+function wxIcon(k,size){const z=size||22;
+  const cl=(f,dy)=>'<path transform="translate(0,'+(dy||0)+')" d="M7 18h10a4 4 0 0 0 .6-7.96A5.5 5.5 0 0 0 7.1 8.6 4.7 4.7 0 0 0 7 18z" fill="'+f+'"/>';
   const sun=(x,y,r)=>'<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="#fbbf24"/>';
   const rays='<g stroke="#fbbf24" stroke-width="2" stroke-linecap="round"><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M4.6 19.4l2.1-2.1M17.3 6.7l2.1-2.1"/></g>';
-  const body=k==='sun'?sun(12,12,5)+rays:k==='part'?sun(8,8,4.5)+cloud:k==='cloud'?cloud
-    :'<path d="M7 14h10a4 4 0 0 0 .6-7.96A5.5 5.5 0 0 0 7.1 4.6 4.7 4.7 0 0 0 7 14z" fill="#94a3b8"/><g stroke="#60a5fa" stroke-width="2.2" stroke-linecap="round"><path d="M8 17l-1.2 4M12.5 17l-1.2 4M17 17l-1.2 4"/></g>';
-  return'<svg viewBox="0 0 24 24" width="22" height="22" style="vertical-align:-5px;margin-right:4px;flex-shrink:0" aria-hidden="true">'+body+'</svg>';}
+  const drops=(n,w,col)=>'<g stroke="'+(col||'#60a5fa')+'" stroke-width="'+w+'" stroke-linecap="round">'+[[8,17],[12.5,17],[17,17]].slice(n===1?1:0,n===1?2:n===2?2:3).map(q=>'<path d="M'+q[0]+' '+q[1]+'l-1.2 4"/>').join('')+'</g>';
+  const B={
+    sun:sun(12,12,5)+rays,
+    fair:sun(11,10,5)+'<g stroke="#fbbf24" stroke-width="2" stroke-linecap="round"><path d="M11 1.5v2.5M2.5 10h2.5M4.8 3.8l1.8 1.8M17.2 3.8l-1.8 1.8"/></g><path d="M12 20h7a3 3 0 0 0 .4-5.97A4.1 4.1 0 0 0 12.1 13 3.5 3.5 0 0 0 12 20z" fill="#cbd5e1"/>',
+    part:sun(8,8,4.5)+cl('#cbd5e1'),
+    cloud:cl('#9ca3af'),
+    fog:cl('#9ca3af',-5)+'<g stroke="#9ca3af" stroke-width="2" stroke-linecap="round"><path d="M4 17h16M6 21h12"/></g>',
+    drizzle:cl('#94a3b8',-4)+drops(1,2),
+    rain:cl('#94a3b8',-4)+drops(2,2.2),
+    heavy:cl('#64748b',-4)+drops(3,2.6,'#3b82f6'),
+    showers:sun(8,6,4)+cl('#cbd5e1',-3)+drops(2,2.2),
+    thunder:cl('#64748b',-4)+'<path d="M13 14l-4 5h3l-1.5 4.5L15 18h-3l1-4z" fill="#fbbf24"/>',
+    sleet:cl('#94a3b8',-4)+drops(1,2.2)+'<g fill="#e5e7eb"><circle cx="8" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/></g>',
+    snow:cl('#94a3b8',-4)+'<g fill="#e5e7eb"><circle cx="8" cy="18" r="1.5"/><circle cx="12.5" cy="21" r="1.5"/><circle cx="17" cy="18" r="1.5"/></g>'};
+  return'<svg viewBox="0 0 24 24" width="'+z+'" height="'+z+'" style="vertical-align:-'+Math.round(z/4)+'px;margin-right:4px;flex-shrink:0" aria-hidden="true">'+(B[k]||B.cloud)+'</svg>';}
+// icona del tempo previsto all'ora di inizio di un blocco del programma (accanto a PROVE LIBERE, MANCHE...)
+function wxSlotIcon(day,time){
+  try{const date=wxDayDate(day);if(!date||!_wx.ts)return'';const z=n=>String(n).padStart(2,'0');const hh=parseInt(String(time).split('.')[0]);if(isNaN(hh))return'';
+    const x=_wx.ts.find(r=>{const d=new Date(r.t);return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())===date&&d.getHours()<=hh&&hh<d.getHours()+(r.n||1);});
+    if(!x||!x.n)return'';const k=wxClass(x);
+    return'<span title="'+WX_TXT[k]+'" style="margin-left:10px;display:inline-flex;align-items:center;font-style:normal">'+wxIcon(k,24)+'</span>';}catch(e){return'';}
+}
 function wxRender(){
   const el=document.getElementById('wx-bar');if(!el)return;
   const s=wxSummary(activeDay);if(!s||(!s.am&&!s.pm)){el.style.display='none';return;}
   const seg=(lab,h)=>h?'<span style="white-space:nowrap;margin-right:12px">'+wxIcon(h.k)+'<span style="color:var(--text4);font-size:10px;font-weight:800;letter-spacing:.06em;margin-right:4px">'+lab+'</span>'
-    +'<span style="font-weight:900;color:'+(h.k==='rain'?'#60a5fa':'var(--text)')+'">'+h.txt+'</span></span>':'';
+    +'<span style="font-weight:900;color:'+(h.wet?'#60a5fa':'var(--text)')+'">'+h.txt+'</span></span>':'';
   el.innerHTML='<div style="display:flex;flex-wrap:wrap;align-items:center;row-gap:4px">'+seg('MATTINA',s.am)+seg('POMERIGGIO',s.pm)
     +'<span style="white-space:nowrap;color:var(--text3)">'+s.tmin+'–'+s.tmax+'°'+(s.wind!=null?' · vento '+s.wind+' km/h':'')
     +' <span style="color:var(--text4);font-weight:600;font-size:10px">'+(s.coarse?'(a fasce di 6 ore, indicativo)':'(indicativo)')+'</span></span></div>';
@@ -3624,7 +3657,7 @@ function renderSchedule(){
     const _tv=teamViewMode(),_hl=_tv!=='cards';
     const tHtml=_pf?'':(_tv==='both'?teamsHighlightHtml(slot,ps)+teamsSlotHtml(slot):_hl?teamsHighlightHtml(slot,ps):teamsSlotHtml(slot));
     if(_pf&&!ps.length)return; // con il filtro attivo si vedono solo gli orari dei piloti filtrati
-    if(slot.session&&slot.session!==lastSession){html+='<div class="session-divider">'+slot.session+'</div>';lastSession=slot.session;}
+    if(slot.session&&slot.session!==lastSession){html+='<div class="session-divider">'+slot.session+wxSlotIcon(activeDay,slot.time)+'</div>';lastSession=slot.session;}
 
     // No pilots matched AND some are waiting for data assignment
     if(!ps.length&&awaiting.length&&!tHtml){
