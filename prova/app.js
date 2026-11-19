@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1230';
+var RT_JS_BUILD='2026-11-19-1240';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3442,7 +3442,7 @@ function liveAlive(){return !!apexWsKey&&apexLastMsgAt>0&&Date.now()-apexLastMsg
 function delayManualOn(){return isDelayAdmin()&&!liveAlive();}
 setInterval(()=>{try{const was=window._rtManPrev;const now=delayManualOn();if(was!==now){window._rtManPrev=now;applyDelayPerms();if(activeTab==='programma')renderSchedule();}}catch(e){}},60000);
 /* 19/11/2026 (Andrea): tasto PARTITO ADESSO, solo quando gli automatismi sono saltati (live muto), per tutti gli account.
-   Sui due turni dopo quello in corso, senza conferma (fa perdere tempo). Dopo il tocco il turno mostra in verde
+   Su 5 turni attorno a quello in corso (2 prima, ORA, 2 dopo), senza conferma (fa perdere tempo). Dopo il tocco il turno mostra in verde
    "PARTITO 11.59 · +23 min" (si capisce che ha preso il comando); toccandolo di nuovo si annulla (torna il ritardo di prima). */
 let _partito=null;   // {time, prev, v, at} dell'ultimo tocco
 function partitoBtn(slot,idx,curIdx,ds){
@@ -3457,7 +3457,10 @@ function partitoBtn(slot,idx,curIdx,ds){
   // 19/11/2026 (Andrea): anche sul PRIMO turno della giornata e sul PRIMO dopo la pausa (partenze in ritardo come stamattina),
   // finche' nessuno li ha confermati (races/<gara>/partito, condiviso) e fino a 2 ore dopo l'orario del programma
   let extra=false;
-  if(!(idx===curIdx+1||idx===curIdx+2)){
+  // 19/11/2026 (Andrea): "la stiamo costruendo piu' sugli anticipi che sui ritardi": finestra di 5 turni attorno a ORA
+  // (2 prima = pista piu' indietro dell'app, ORA, 2 dopo = pista piu' avanti)
+  const near=curIdx>=0&&idx>=curIdx-2&&idx<=curIdx+2;
+  if(!near){
     try{
       const arr=currentSchedule[activeDay];const sl=Array.isArray(arr)?arr:Object.values(arr||{});
       const lu=lunchOf(sl);const key=idx===0||(lu&&lu.idx===idx);
