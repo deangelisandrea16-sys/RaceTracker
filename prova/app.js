@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1220';
+var RT_JS_BUILD='2026-11-19-1230';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -824,6 +824,7 @@ let currentEntryList={};
 let currentSchedule={};
 let currentDays=[];
 let currentFinals=[];     // finals for current race
+let currentPartito=null;   // 19/11/2026: ultimo turno confermato con PARTITO ADESSO {day,time,at,by} (condiviso)
 let currentBreaks=null;   // 19/11/2026: pause ufficiali per giorno {from,to} se la gara ha breaksSrc (letto dal Timetable)
 // Durata della sessione dal programma ufficiale (campo "dur" della sessione, es. "12 giri" / "8'").
 // Se il live timing riporta un numero di giri diverso (es. giri tolti per ritardo) il server scrive "durLive".
@@ -933,7 +934,7 @@ function listenRaces(){
 }
 
 /* copia dell'ultimo stato ricevuto dal server, base per salvare solo i campi cambiati (vedi rtDiff) */
-var RT_SHARED_KEYS=['entryList','schedule','days','finals','trackSections','riskCut','schedDelay','apexAuto'];
+var RT_SHARED_KEYS=['entryList','schedule','days','finals','trackSections','riskCut','schedDelay','apexAuto','partito'];
 var RT_USER_KEYS=['pilots','statuses','notes','trackStatus','teams','teamStatuses','teamNotes','trackSpots','spotDone'];
 var _rtBaseShared={},_rtBaseUser={};
 function listenRaceData(raceId){
@@ -961,6 +962,7 @@ function listenRaceData(raceId){
     if(!Array.isArray(currentDays))currentDays=typeof currentDays==='object'?Object.values(currentDays):[];
     currentFinals=sharedData.finals||[];
     currentBreaks=sharedData.breaksSrc?(sharedData.breaks||{}):null;
+    currentPartito=sharedData.partito||null;
     riskCutCfg=sharedData.riskCut||{};
     resultStatus=sharedData.resultStatus||{};
     if(!Array.isArray(currentFinals))currentFinals=typeof currentFinals==='object'?Object.values(currentFinals):[];
@@ -3452,7 +3454,20 @@ function partitoBtn(slot,idx,curIdx,ds){
     const d=_partito.v===0?'in orario':(_partito.v>0?'+':'')+_partito.v+' min';
     return['<button class="partito-btn ok" onclick="partitoAnnulla()"><i class="ic ic-flag"></i> PARTITO ',hm,' · ',d,' <span>tocca per annullare</span></button>'].join('');
   }
-  if(!(idx===curIdx+1||idx===curIdx+2))return'';
+  // 19/11/2026 (Andrea): anche sul PRIMO turno della giornata e sul PRIMO dopo la pausa (partenze in ritardo come stamattina),
+  // finche' nessuno li ha confermati (races/<gara>/partito, condiviso) e fino a 2 ore dopo l'orario del programma
+  let extra=false;
+  if(!(idx===curIdx+1||idx===curIdx+2)){
+    try{
+      const arr=currentSchedule[activeDay];const sl=Array.isArray(arr)?arr:Object.values(arr||{});
+      const lu=lunchOf(sl);const key=idx===0||(lu&&lu.idx===idx);
+      const nowM=new Date().getHours()*60+new Date().getMinutes(),tm=slotMins(t);
+      const pc=currentPartito;
+      const done=pc&&pc.day===activeDay&&slotMins(pc.time)>=tm;
+      extra=key&&!done&&nowM>=tm-15&&nowM<=tm+120;
+    }catch(e){}
+    if(!extra)return'';
+  }
   return['<button class="partito-btn" onclick="partitoAdesso(\'',t,'\')"><i class="ic ic-flag"></i> PARTITO ADESSO</button>'].join('');
 }
 function partitoAdesso(t){
@@ -3460,6 +3475,8 @@ function partitoAdesso(t){
   const d=new Date();const v=d.getHours()*60+d.getMinutes()-slotMins(t);
   _partito={time:String(t),prev:scheduleDelay||0,v,at:Date.now()};
   try{if(navigator.vibrate)navigator.vibrate(25);}catch(e){}
+  currentPartito={day:activeDay,time:String(t),at:Date.now(),by:currentUserId||''};
+  try{if(activeRaceId)saveSharedField('partito',currentPartito);}catch(e){}
   setDelay(v,true);
 }
 function partitoAnnulla(){
