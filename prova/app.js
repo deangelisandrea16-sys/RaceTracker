@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0630';
+var RT_JS_BUILD='2026-11-19-0640';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3586,7 +3586,7 @@ function wxSlotIcon(day,time){
   try{const date=wxDayDate(day);if(!date||!_wx.ts)return'';const z=n=>String(n).padStart(2,'0');const hh=parseInt(String(time).split('.')[0]);if(isNaN(hh))return'';
     const x=_wx.ts.find(r=>{const d=new Date(r.t);return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())===date&&d.getHours()<=hh&&hh<d.getHours()+(r.n||1);});
     if(!x||!x.n)return'';const k=wxClass(x);
-    return'<span title="'+WX_TXT[k]+'" style="margin-left:10px;display:inline-flex;align-items:center;font-style:normal">'+wxIcon(k,24)+'</span>';}catch(e){return'';}
+    return'<span title="'+WX_TXT[k]+'" style="order:2;display:inline-flex;align-items:center;font-style:normal;flex-shrink:0">'+wxIcon(k,24).replace('margin-right:4px','margin-right:0')+'</span>';}catch(e){return'';}
 }
 function wxRender(){
   const el=document.getElementById('wx-bar');if(!el)return;
