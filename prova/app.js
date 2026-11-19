@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1615';
+var RT_JS_BUILD='2026-11-19-1620';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -736,7 +736,7 @@ function setUpHl(k){_upHl=k;const el=document.getElementById('up-hl');if(el)el.i
 window.setUpHl=setUpHl;
 function showUserPicker(){
   // 19/11/2026: con il login l'utente e' quello dell'accesso; solo l'admin puo' passare all'utente di prova per i test
-  if(rtAuthGateOn()&&_rtAuthUser!=='andrea'){openModal(rtAccountHtml());return;}
+  if(rtAuthGateOn()&&!RT_ADMINS.includes(_rtAuthUser)){openModal(rtAccountHtml());return;}
   // 19/11/2026 (Andrea): con il login niente passaggio agli altri account: solo il proprio utente e l'utente di prova
   if(rtIsAdmin()){rtAdminPanel();return;}
   if(_fbAuth){openModal(rtSwitchHtml());return;}
@@ -904,6 +904,7 @@ function rtAuthStart(){
    Mail non abilitata -> l'utente scrive il suo nome -> authRequests/<emailKey>. Solo l'admin (andrea) vede le richieste,
    approva (authEmails + authMap), rifiuta, abilita mail in anticipo, scollega. L'admin vede tutti gli utenti, gli altri solo se stessi.
    NB: finche' il database e' aperto e' un blocco dell'app, non del database (fase 3). */
+const RT_ADMINS=['andrea','print'];   // 19/11/2026 (Andrea): super admin, per ora Andrea e Print
 const RT_ADMIN='andrea';
 let _rtReqOff=null;
 function rtEsc(x){return String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -930,7 +931,7 @@ function rtSendRequest(){
   update(ref(db),up).then(()=>rtRequestScreen(u)).catch(()=>rtRequestScreen(u,'Invio non riuscito, riprova.'));
 }
 window.rtSendRequest=rtSendRequest;
-function rtIsAdmin(){return !!_fbAuth&&rtAuthGateOn()&&_rtAuthUser===RT_ADMIN;}
+function rtIsAdmin(){return !!_fbAuth&&rtAuthGateOn()&&RT_ADMINS.includes(_rtAuthUser);}
 // pannello admin: utenti, richieste, mail abilitate
 function rtAdminPanel(){
   if(!rtIsAdmin())return;
@@ -957,7 +958,7 @@ function rtAdminPanel(){
     Object.keys(em).sort().forEach(k=>{const used=Object.values(mp).some(v=>v&&rtEmailKey(v.email)===k);
       h.push('<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px"><div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">',
         rtEsc(k.replace(/,/g,'.')),' → <b>',rtEsc(String(em[k]).toUpperCase()),'</b>',used?'':' <span style="color:var(--text4)">(mai entrato)</span>','</div>',
-        String(em[k])===RT_ADMIN?'':['<button style="min-height:44px;padding:0 12px;background:none;border:1px solid var(--border2,#444);border-radius:8px;color:var(--text3);font-family:inherit" onclick="rtUnlink(\'',rtEsc(k),'\')">Scollega</button>'].join(''),'</div>');});
+        (RT_ADMINS.includes(String(em[k]))||rtEmailKey((_fbAuth.currentUser||{}).email)===k)?'':['<button style="min-height:44px;padding:0 12px;background:none;border:1px solid var(--border2,#444);border-radius:8px;color:var(--text3);font-family:inherit" onclick="rtUnlink(\'',rtEsc(k),'\')">Scollega</button>'].join(''),'</div>');});
     h.push(sec('GUARDA COME'));
     [...users].sort().forEach(n=>h.push(btn([rtEsc(n.toUpperCase()),n===currentUserId?' ✓':''].join(''),["rtViewAs('",rtEsc(n),"')"].join(''),n===currentUserId)));
     h.push(btn('UTENTE PROVA (test)',"location.href=location.pathname+'?user=utente%20prova'",false));
@@ -969,7 +970,7 @@ function rtApprove(k){
   if(!rtIsAdmin())return;
   onValue(ref(db,'authRequests/'+k),s=>{const r=s.val();if(!r)return rtAdminPanel();
     const el=document.getElementById('rq-'+k);const n=rtCleanName(el&&el.value)||rtCleanName(r.name);if(!n)return;
-    const up={};up['authEmails/'+k]=n;up['authMap/'+r.uid]={user:n,email:String(r.email||''),at:Date.now(),by:RT_ADMIN};up['authRequests/'+k]=null;
+    const up={};up['authEmails/'+k]=n;up['authMap/'+r.uid]={user:n,email:String(r.email||''),at:Date.now(),by:_rtAuthUser};up['authRequests/'+k]=null;
     update(ref(db),up).then(rtAdminPanel);},{onlyOnce:true});
 }
 function rtReject(k){if(!rtIsAdmin())return;const up={};up['authRequests/'+k]=null;update(ref(db),up).then(rtAdminPanel);}
