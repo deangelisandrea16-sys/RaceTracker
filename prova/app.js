@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0650';
+var RT_JS_BUILD='2026-11-19-0720';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3632,6 +3632,22 @@ function renderSchedule(){
   const _ds=progDayState(activeDay,slotsArr);
   if(_ds!=='today'){currentIdx=_ds==='future'?-1:slotsArr.length;_finalNowKey=null;}
   let html='';let lastSession='';
+  /* 19/11/2026 (Andrea): l'intestazione si ripete ogni volta che ricomincia il giro delle categorie, anche nella stessa sessione
+     (es. PROVE LIBERE · TURNO 2). Il numero del turno viene dal programma ufficiale quando lo scrive, altrimenti dal ripetersi dello stesso turno. */
+  const _blk=[];const _blkCnt={};
+  {let ses='',n=0,turn='',seen={};
+    slotsArr.forEach(sl=>{
+      const tm=String(sl.wsk||'').match(/(\d+)\s*°\s*turn/i);
+      const k=[canonCat(sl.cat),sl.type,JSON.stringify(sl.filter||'')].join('|');
+      let nw=false;
+      if(sl.session&&sl.session!==ses){ses=sl.session;n=0;turn='';nw=true;}
+      else if(tm?(turn!==''&&tm[1]!==turn):!!seen[k])nw=true;
+      if(nw){n++;seen={};_blkCnt[ses]=(_blkCnt[ses]||0)+1;}
+      if(tm)turn=tm[1];
+      seen[k]=1;
+      _blk.push({id:[ses,n].join('#'),ses:ses,num:tm?tm[1]:String(n)});
+    });}
+  let _lastBlk='';
   // Quante volte corre oggi ogni mio pilota e quale di queste è lo slot (es. Gara 2/3)
   // Se un turno dipende da dati non ancora ufficiali (prefinale non assegnata, finale non decisa) il totale è "?"
   const _runs={},_unc={},_finIn={};
@@ -3641,7 +3657,17 @@ function renderSchedule(){
     if(entrantInSlot(p,sl))(_runs[p.num]=_runs[p.num]||[]).push(i);
     else if(_awaits(p,sl)){const u=(_unc[p.num]=_unc[p.num]||{});const k=[_sess,sl.type].join('|');if(!(k in u))u[k]=i;}
   });});
+  /* 19/11/2026 (Andrea): stesso conteggio anche per i piloti dei team seguiti che non sono tra i miei */
+  const _mineSet=new Set(pilots.map(p=>String(p.num)));const _tCat={};
+  _sess='';
+  slotsArr.forEach((sl,i)=>{if(sl.session)_sess=sl.session;teamsForSlot(sl).forEach(x=>{
+    x.inSlot.forEach(p=>{const n=String(p.num);if(_mineSet.has(n))return;_tCat[n]=p.cat;const l=(_runs[n]=_runs[n]||[]);if(!l.includes(i))l.push(i);});
+    x.waiting.forEach(p=>{const n=String(p.num);if(_mineSet.has(n))return;_tCat[n]=p.cat;const u=(_unc[n]=_unc[n]||{});const k=[_sess,sl.type].join('|');if(!(k in u))u[k]=i;});
+  });});
   const _lastDay=activeDay===currentDays[currentDays.length-1]&&currentFinals.length;
+  if(_lastDay){Object.keys(_tCat).forEach(n=>{const e=(currentEntryList||{})[n]||{};if(e.eliminated)return;
+    if(!currentFinals.find(x=>canonCat(x.cat)===canonCat(_tCat[n])))return;
+    if(e.inFinal)_finIn[n]=1;else{const u=(_unc[n]=_unc[n]||{});u['FINALE']=1e6;}});}
   if(_lastDay){pilots.forEach(p=>{if(p.eliminated)return;const f=currentFinals.find(x=>canonCat(x.cat)===canonCat(p.cat));if(!f)return;
     const decided=pilots.some(q=>canonCat(q.cat)===canonCat(p.cat)&&q.inFinal);
     if(p.inFinal)_finIn[p.num]=1;else if(!decided){const u=(_unc[p.num]=_unc[p.num]||{});u['FINALE']=1e6;}});}
@@ -3652,6 +3678,7 @@ function renderSchedule(){
     return['Gara ',before?'?':String(k),'/',unk?'?':String(tot)].join('');};
   const runChip=(num,i)=>{const t=runLabel(num,i);if(!t)return'';
     return['<span class="run-chip',(i<currentIdx?' done':''),'" title="Gare di oggi">',t,'</span>'].join('');};
+  _progRunChip=runChip;
   slotsArr.forEach((slot,idx)=>{
     const ps=pilotsForSlot(slot);const isNow=idx===currentIdx;
     const awaiting=pilotsAwaitingData(slot);
@@ -3660,7 +3687,8 @@ function renderSchedule(){
     const _tv=teamViewMode(),_hl=_tv!=='cards';
     const tHtml=_pf?'':(_tv==='both'?teamsHighlightHtml(slot,ps)+teamsSlotHtml(slot):_hl?teamsHighlightHtml(slot,ps):teamsSlotHtml(slot));
     if(_pf&&!ps.length)return; // con il filtro attivo si vedono solo gli orari dei piloti filtrati
-    if(slot.session&&slot.session!==lastSession){html+='<div class="session-divider">'+slot.session+wxSlotIcon(activeDay,slot.time)+'</div>';lastSession=slot.session;}
+    const _b=_blk[idx];
+    if(_b&&_b.ses&&_b.id!==_lastBlk){html+=['<div class="session-divider">',_b.ses,(_blkCnt[_b.ses]>1?[' · TURNO ',_b.num].join(''):''),wxSlotIcon(activeDay,slot.time),'</div>'].join('');_lastBlk=_b.id;}
 
     // No pilots matched AND some are waiting for data assignment
     if(!ps.length&&awaiting.length&&!tHtml){
@@ -3698,16 +3726,13 @@ function renderSchedule(){
       var shCls=hlClassOf(sh);
       var shIco={foto:'<i class="ic ic-hl-foto"></i>',video:'<i class="ic ic-hl-video"></i>',priority:'<i class="ic ic-hl-prio"></i>'};
       var _ft=_hl?followedTeamOf(p.num,p.team):null;
-      _items.push({num:p.num,key:_ft?_ft.key:null,html:'<div class="card-inner'+(shCls?' '+shCls:'')+(_ft?' tglow':'')+'"'+(_ft?' style="--tc:'+teamColor(_ft.key)+'"':'')+'><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
-        +(sh.length?sh.map(function(h){return'<span class="hl-badge hl-'+h+' hl-mini">'+(shIco[h]||'')+'</span>';}).join(''):'')
-        +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,slot)+'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)+runChip(p.num,idx)
-        +(p.group?'<span class="inner-group">GRP '+p.group+'</span>':'')
-        +'<span class="inner-team-big">'+p.team+'</span>'
-        +noteBtn(p.num)+'</div>'
+      _items.push({num:p.num,key:_ft?_ft.key:null,html:'<div class="card-inner'+(shCls?' '+shCls:'')+(_ft?' tglow':'')+'"'+(_ft?' style="--tc:'+teamColor(_ft.key)+'"':'')+'>'
+        +progHead({num:p.num,name:p.name,team:p.team,note:noteBtn(p.num),badges:[riskTri(p.num),gridBadge(p.num,slot)].join(''),
+          chips:[sh.map(function(h){return['<span class="hl-badge hl-',h,' hl-mini">',(shIco[h]||''),'</span>'].join('');}).join(''),reelChip(p),fotoChips(p),persChip(p),(p.group?['<span class="inner-group">GRP ',p.group,'</span>'].join(''):''),runChip(p.num,idx)].join('')})
         +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+spotPill(p.num)+'</div>'
         +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>'});
     });
-    if(_hl&&!_pf){teamsHighlightItems(slot,ps).forEach(x=>_items.push(x));}
+    if(_hl&&!_pf){teamsHighlightItems(slot,ps,idx).forEach(x=>_items.push(x));}
     html+=groupSlotItems(_items)+(_hl&&!_pf?teamsWaitingHtml(slot)+(_tv==='both'?teamsSlotHtml(slot):''):tHtml)+'</div></div>';
   });
   updateProgTicker(slotsArr,_ds==='today'?currentIdx:slotsArr.length);
@@ -3732,9 +3757,9 @@ function renderSchedule(){
       ps.forEach(p=>{
         const _ft=_fhl?followedTeamOf(p.num,p.team):null;const _sc=hlClassOf(p.highlight||[]);
         let html='';
-        html+='<div class="card-inner'+(_poss?' final-maybe':'')+(_sc?' '+_sc:'')+(_ft?' tglow':'')+'" style="margin-top:8px'+(_ft?';--tc:'+teamColor(_ft.key):'')+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
-          +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,{type:'final'})+'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)+(p.eliminated?'':runChip(p.num,1e6))
-          +'<span class="inner-team-big">'+p.team+'</span>'+noteBtn(p.num)+'</div>'
+        html+='<div class="card-inner'+(_poss?' final-maybe':'')+(_sc?' '+_sc:'')+(_ft?' tglow':'')+'" style="margin-top:8px'+(_ft?';--tc:'+teamColor(_ft.key):'')+'">'
+          +progHead({num:p.num,name:p.name,team:p.team,note:noteBtn(p.num),badges:[riskTri(p.num),gridBadge(p.num,{type:'final'})].join(''),
+            chips:[(p.highlight||[]).map(function(h){return['<span class="hl-badge hl-',h,' hl-mini"><i class="ic ic-hl-',(h==='priority'?'prio':h),'"></i></span>'].join('');}).join(''),reelChip(p),fotoChips(p),persChip(p),(p.eliminated?'':runChip(p.num,1e6))].join('')})
           +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+spotPill(p.num)+'</div>'
           +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>';
         _fItems.push({num:p.num,key:_ft?_ft.key:null,html});
@@ -4420,12 +4445,19 @@ setInterval(()=>{try{
 setTimeout(watchUserSettings,3000);
 // Piloti dei team seguiti, uno per uno con il colore del team (modalità "evidenzia")
 /* 15/11/2026 (Andrea): piloti dei team seguiti (non miei) come elementi singoli, per raggrupparli con i miei */
-function teamsHighlightItems(slot,ps){
+let _progRunChip=null;
+/* 19/11/2026 (Andrea): riga pilota del Programma con layout unico e fisso, uguale per miei piloti, piloti dei team e finali.
+   Riga 1: numero, rischio, posizione, nome (una riga, tagliato se lungo), matita. Riga 2: team a sinistra, etichette a destra sempre nello stesso ordine. */
+function progHead(o){
+  return ['<div class="ph"><div class="ph-1"><span class="inner-num">#',o.num,'</span>',o.badges||'','<span class="inner-name">',o.name,'</span>',o.note||'','</div>',
+    '<div class="ph-2"><span class="ph-team">',o.team||'','</span><span class="ph-chips">',o.chips||'','</span></div></div>'].join('');
+}
+function teamsHighlightItems(slot,ps,idx){
   const mine=new Set(ps.map(p=>String(p.num)));const out=[];
   teamsForSlot(slot).forEach(({t,inSlot})=>{const c=teamColor(t.key);
-    inSlot.filter(p=>!mine.has(String(p.num))).forEach(p=>out.push({num:p.num,key:t.key,html:'<div class="card-inner tglow" style="--tc:'+c+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">'
-      +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,slot)+'<span class="inner-name">'+String(p.name).replace(/</g,'&lt;')+'</span>'
-      +'<span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span>'+noteBtn(p.num)+'</div>'
+    inSlot.filter(p=>!mine.has(String(p.num))).forEach(p=>out.push({num:p.num,key:t.key,html:'<div class="card-inner tglow" style="--tc:'+c+'">'
+      +progHead({num:p.num,name:String(p.name).replace(/</g,'&lt;'),team:String(t.name).replace(/</g,'&lt;'),note:noteBtn(p.num),badges:gridBadge(p.num,slot),
+        chips:[(p.group?['<span class="inner-group">GRP ',p.group,'</span>'].join(''):''),(_progRunChip&&idx!=null?_progRunChip(p.num,idx):'')].join('')})
       +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,true)).join('')+'</div>'
       +(teamNotes[t.key]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+teamNotes[t.key]+'</div>':'')+noteLine(p.num)+'</div>'}));});
   return out;
