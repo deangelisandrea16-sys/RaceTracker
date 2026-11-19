@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-18-2350';
+var RT_JS_BUILD='2026-11-19-0735';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -729,7 +729,13 @@ function getUserId(){
 }
 let currentUserId=getUserId();
 
+let _upHl='foto';
+function upHlHtml(){return[['foto','<i class="ic ic-hl-foto"></i><span>FOTO</span>'],['video','<i class="ic ic-hl-video"></i><span>VIDEO</span>']]
+  .map(([k,h])=>'<div class="hl-option hl-'+k+(_upHl===k?' active':'')+'" onclick="setUpHl(\''+k+'\')">'+h+'</div>').join('');}
+function setUpHl(k){_upHl=k;const el=document.getElementById('up-hl');if(el)el.innerHTML=upHlHtml();}
+window.setUpHl=setUpHl;
 function showUserPicker(){
+  _upHl='foto';
   // Get saved users from all races
   let savedUsers=JSON.parse(localStorage.getItem('rt_users')||'[]');
   // Also check current user
@@ -750,6 +756,7 @@ function showUserPicker(){
     +usersHtml
     +'<div class="form-group"><label class="form-label">'+(savedUsers.length?'Oppure aggiungi nuovo':'Il tuo nome')+'</label>'
     +'<input class="form-input" id="up-name" placeholder="es. Ricky" style="font-size:20px;font-weight:900;text-transform:lowercase" autocomplete="off"></div>'
+    +'<div class="form-group"><label class="form-label">Lavori di più in</label><div class="hl-picker" id="up-hl">'+upHlHtml()+'</div></div>'
     +'<button class="form-submit" onclick="setUser()">ENTRA</button>'
     +(savedUsers.length?'</div>':''));
 }
@@ -775,6 +782,8 @@ function setUser(){
   let savedUsers=JSON.parse(localStorage.getItem('rt_users')||'[]');
   if(!savedUsers.includes(name))savedUsers.push(name);
   localStorage.setItem('rt_users',JSON.stringify(savedUsers));
+  // 19/11/2026: lavoro predefinito scelto alla creazione dell'account (non sovrascrive quello di un account gia' esistente)
+  try{const hl=_upHl;onValue(ref(db,'settings/'+name+'/defaultHl'),s=>{if(s.val()==null){const u2={};u2['settings/'+name+'/defaultHl']=hl;update(ref(db),u2);}},{onlyOnce:true});}catch(e){}
   // Also save to Firebase for cross-device
   if(activeRaceId){
     const u={};u['races_index/'+activeRaceId+'/knownUsers/'+name]=true;
@@ -1213,7 +1222,10 @@ function slotFilterLabel(slot){
   if(slot.type==='serie')return'SERIE '+slot.filter;
   if(slot.type==='group')return'GRP '+slot.filter.join('+');
   if(slot.type==='prefinal')return'PREF '+slot.filter;
-  if(slot.type==='list')return'LIST '+(Array.isArray(slot.filter)?slot.filter.length:0);
+  if(slot.type==='list'){   // 19/11/2026 (Andrea): fascia di numeri del turno (es. 701–762) al posto di "LIST 62" (quanti numeri)
+    let f=slot.filter||[];if(!Array.isArray(f))f=Object.values(f);const n=f.map(x=>parseInt(x)).filter(x=>!isNaN(x)).sort((a,b)=>a-b);
+    if(!n.length)return'NUMERI';
+    return n.length>1&&n[n.length-1]-n[0]===n.length-1?'N° '+n[0]+'–'+n[n.length-1]:(n.length<=3?'N° '+n.join(', '):n.length+' NUMERI');}
   return'ALL';
 }
 function taskBtn(num,task,small,readonly){
@@ -1261,7 +1273,7 @@ function editPilotNote(num){
     +'<div class="modal-title">Nota #'+num+(_nm?' · '+String(_nm).replace(/</g,'&lt;'):'')+'</div>'
     +'<div class="form-group"><textarea class="form-textarea" id="pn-text" style="min-height:120px" placeholder="Commento, appunti, cosa fare...">'+cur+'</textarea></div>'
     +'<button class="form-submit" onclick="savePilotNote(\''+num+'\')">SALVA</button>'
-    +reelPickerHtml(num)+persToggleHtml(num));
+    +reelPickerHtml(num)+(function(){const _p=pilots.find(x=>x.num===String(num));return _p?fotoRowHtml(_p,false):'';})()+persToggleHtml(num));
 }
 window.editPilotNote=editPilotNote;
 function savePilotNote(num){
@@ -2431,20 +2443,59 @@ function noteBtn(num){const n=String(num).replace(/[^0-9A-Za-z_-]/g,'');
 /* 18/11/2026 (Andrea): durata del reel acquistato per pilota (30", 45", 1') — per tutti i miei piloti.
    Si sceglie nella finestra della matita; l'etichetta compare solo se impostata; nella copia per editor "Reel 30"". */
 const REEL_OPTS=[['30','30"'],['45','45"'],['60',"1'"]];
-function reelLabel(v){const o=REEL_OPTS.find(x=>x[0]===String(v||''));return o?o[1]:'';}
-function reelChip(p){const l=reelLabel(p&&p.reel);
-  return l?'<span title="Durata reel" style="font-family:\'Chakra Petch\',sans-serif;font-size:9px;font-weight:700;color:#e9d5a8;border:1px solid rgba(233,213,168,.45);border-radius:4px;padding:0 4px;flex-shrink:0;line-height:14px"><i class="ic ic-hl-video"></i> '+l+'</span>':'';}
+function reelLabel(v){const o=REEL_OPTS.find(x=>x[0]===String(v||'30'));return o?o[1]:'30"';}
+/* 18/11/2026 (Andrea): un mio pilota che fa parte di un team seguito = acquisto personale oltre al team -> "PERS" ovunque compare
+   (programma, lista piloti, finali, ricerca), sia se segnato dalla matita sia se aggiunto a mano. */
+function persChip(p){let ft=null;try{ft=p&&pilots.some(x=>x.num===String(p.num))?followedTeamOf(p.num,p.team||''):null;}catch(e){}
+  return ft?'<span title="Pilota del team con acquisto personale" style="font-family:\'Chakra Petch\',sans-serif;font-size:9px;font-weight:700;letter-spacing:.06em;color:#4ade80;border:1px solid rgba(74,222,128,.45);border-radius:4px;padding:0 4px;flex-shrink:0;line-height:14px">PERS</span>':'';}
+/* 19/11/2026 (Andrea): la durata del reel vale solo per chi ha il VIDEO; con solo FOTO non compare da nessuna parte */
+/* 19/11/2026 (Andrea): PREDISPOSTO — etichette opzionali per chi ha FOTO (es. 'in posa'). Oggi l'elenco e' vuoto:
+   finche' FOTO_OPTS resta vuoto non compare nulla (ne' scelte ne' etichette). Per attivarle basta aggiungere voci qui:
+   FOTO_OPTS=[['posa','IN POSA'],...]. Scelta multipla, salvata sul pilota in fotoTags; compare solo se il pilota ha FOTO. */
+const FOTO_OPTS=[];
+function hasFoto(p){let h=p&&p.highlight;if(typeof h==='string')h=[h];if(h&&!Array.isArray(h))h=Object.values(h);return!!(h&&h.includes('foto'));}
+function fotoTagsOf(p){let t=p&&p.fotoTags;if(t&&!Array.isArray(t))t=Object.values(t);return(t||[]).filter(v=>FOTO_OPTS.some(o=>o[0]===v));}
+function fotoChips(p){if(!FOTO_OPTS.length||!hasFoto(p))return'';
+  return fotoTagsOf(p).map(v=>'<span title="Foto" style="font-family:\'Chakra Petch\',sans-serif;font-size:9px;font-weight:700;color:#7dd3fc;border:1px solid rgba(125,211,252,.45);border-radius:4px;padding:0 4px;flex-shrink:0;line-height:14px"><i class="ic ic-hl-foto"></i> '+FOTO_OPTS.find(o=>o[0]===v)[1]+'</span>').join('');}
+function fotoRowHtml(p,quick){if(!FOTO_OPTS.length||!hasFoto(p))return'';const on=fotoTagsOf(p);
+  return'<div style="display:flex;align-items:center;gap:6px;margin:8px 0 2px;flex-wrap:wrap"><span class="note-label" style="margin:0 4px 0 0">Foto</span>'
+    +FOTO_OPTS.map(([v,l])=>'<button onclick="togglePilotFotoTag(\''+p.num+'\',\''+v+'\','+(quick?1:0)+')" style="min-height:36px;padding:0 10px;border-radius:7px;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;touch-action:manipulation;'
+      +(on.includes(v)?'background:#7dd3fc;color:#0b1220;border:1px solid #7dd3fc':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>').join('')+'</div>';}
+function togglePilotFotoTag(num,v,quick){
+  const p=pilots.find(x=>x.num===String(num));if(!p)return;
+  const t=document.getElementById(quick?'note-'+p.num:'pn-text');if(t)notes[p.num]=t.value;
+  const cur=fotoTagsOf(p);p.fotoTags=cur.includes(v)?cur.filter(x=>x!==v):cur.concat(v);
+  saveAll();if(quick){try{renderPilots();}catch(e){}}else{editPilotNote(p.num);try{renderAll();}catch(e){}}
+}
+window.togglePilotFotoTag=togglePilotFotoTag;
+function hasVideo(p){let h=p&&p.highlight;if(typeof h==='string')h=[h];if(h&&!Array.isArray(h))h=Object.values(h);return!!(h&&h.includes('video'));}
+function reelChip(p){if(!hasVideo(p))return'';const l=reelLabel(p&&p.reel);
+  return l?'<span title="Durata reel" style="font-family:\'Chakra Petch\',sans-serif;font-size:13px;font-weight:800;color:#1a160e;background:#e9d5a8;border-radius:6px;padding:2px 8px;flex-shrink:0;line-height:16px;white-space:nowrap"><i class="ic ic-hl-video"></i> '+l+'</span>':'';}
 function reelPickerHtml(num){
-  const p=pilots.find(x=>x.num===String(num));if(!p)return'';
+  const p=pilots.find(x=>x.num===String(num));if(!p||!hasVideo(p))return'';
   return'<div style="margin-top:12px;font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--text4)">REEL</div><div style="display:flex;gap:8px;margin-top:6px">'
-    +REEL_OPTS.map(([v,l])=>{const on=String(p.reel||'')===v;
+    +REEL_OPTS.map(([v,l])=>{const on=String(p.reel||'30')===v;
       return'<button onclick="setPilotReel(\''+p.num+'\',\''+v+'\')" style="flex:1;min-height:44px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
         +(on?'background:#e9d5a8;color:#1a160e;border:1px solid #e9d5a8':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>';}).join('')+'</div>';
 }
+/* 19/11/2026 (Andrea): durata reel cambiabile direttamente dalla scheda nella lista Piloti */
+function reelRowHtml(p){
+  if(!hasVideo(p))return'';
+  return'<div style="display:flex;align-items:center;gap:6px;margin:8px 0 2px"><span class="note-label" style="margin:0 4px 0 0">Reel</span>'
+    +REEL_OPTS.map(([v,l])=>{const on=String(p.reel||'30')===v;
+      return'<button onclick="setPilotReelQuick(\''+p.num+'\',\''+v+'\')" style="min-width:52px;min-height:36px;border-radius:7px;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;touch-action:manipulation;'
+        +(on?'background:#e9d5a8;color:#1a160e;border:1px solid #e9d5a8':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>';}).join('')+'</div>';
+}
+function setPilotReelQuick(num,v){
+  const p=pilots.find(x=>x.num===String(num));if(!p||String(p.reel||'30')===v)return;
+  const t=document.getElementById('note-'+p.num);if(t)notes[p.num]=t.value;   // non perdere una nota in scrittura
+  p.reel=v;saveAll();try{renderPilots();}catch(e){}
+}
+window.setPilotReelQuick=setPilotReelQuick;
 function setPilotReel(num,v){
   const p=pilots.find(x=>x.num===String(num));if(!p)return;
   const t=document.getElementById('pn-text');if(t){notes[p.num]=t.value;}
-  p.reel=String(p.reel||'')===v?'':v;   // tocco sulla scelta attiva = toglie
+  p.reel=v;   // 19/11: il reel non puo' restare vuoto
   saveAll();editPilotNote(p.num);try{renderAll();}catch(e){}
 }
 window.setPilotReel=setPilotReel;
@@ -2473,7 +2524,7 @@ function addTeamPilotPersonal(num,noAsk){
   const nm=String((e.lastName||'')+' '+(e.firstName||'')).trim();
   if(!noAsk&&!confirm('#'+num+' '+nm+' ha preso anche il pacchetto personale?\nLo aggiungo ai tuoi piloti (resta anche nel team).'))return;
   _rtNewPilots.add(num);
-  pilots.push({num,name:nm,team:e.team||'',cat:e.cat||'OK',parity:e.parity||autoParity(num),group:e.group||'',prefinal:e.prefinal||'',serie:e.serie?String(e.serie):'',eliminated:false});
+  pilots.push({num,name:nm,team:e.team||'',cat:e.cat||'OK',parity:e.parity||autoParity(num),group:e.group||'',prefinal:e.prefinal||'',serie:e.serie?String(e.serie):'',eliminated:false,highlight:[defaultHl()],reel:defaultHl()==='video'?'30':''});
   statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');trackStatus[num]={};if(notes[num]===undefined)notes[num]='';
   saveAll();closeModal();renderAll();
 }
@@ -2507,6 +2558,7 @@ function openPilotDetail(num){
   const parity=autoParity(num);
   const catCls=catClass(cat);
   const existingNote=notes[num]||'';
+  _addHl=[defaultHl()];_addReel='30';   // 19/11/2026: stessi predefiniti di "Aggiungi pilota"
 
   openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
     +'<div class="detail-sheet">'
@@ -2522,6 +2574,8 @@ function openPilotDetail(num){
     +'<div id="detail-hist" style="margin-bottom:14px"></div>'
     +'<div class="form-group"><label class="form-label">Note su questo pilota</label>'
     +'<textarea class="form-textarea" id="detail-note" placeholder="Appunti, info, osservazioni...">'+existingNote+'</textarea></div>'
+    +(isMine?'':'<div class="form-group"><label class="form-label">Lavoro</label><div class="hl-picker" id="f-hl">'+addHlHtml()+'</div></div>'
+      +'<div class="form-group" id="f-reel-wrap"'+(_addHl.includes('video')?'':' style="display:none"')+'><label class="form-label">Reel</label><div id="f-reel" style="display:flex;gap:8px">'+addReelHtml()+'</div></div>')
     +'<div class="detail-actions">'
     +'<button class="btn-note-pilot" onclick="saveDetailNote(\''+num+'\')"><i class="ic ic-save"></i> SALVA NOTE</button>'
     +(isMine?'':'<button class="btn-add-pilot" onclick="addPilotFromDetail(\''+num+'\')">+ AGGIUNGI AI MIEI</button>')
@@ -2538,17 +2592,46 @@ function loadPilotHistory(name){
   try{_fbDb.ref('history/'+k).once('value').then(s=>{
     const el=document.getElementById('detail-hist');if(!el)return;
     const h=s.val();if(!h)return;
-    const rows=Object.values(h).filter(Boolean).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+    /* 19/11/2026 (Andrea): risultati in gergo di gara — Qualifiche, Manche 1/2/3 (in ordine di programma), Prefinale, Finale.
+       Niente coppie di gruppi (A-C...) e niente prove libere / warm up. */
+    const entries=Object.entries(h).filter(x=>x[1]);
+    const isHeat=k=>/^[A-H]-[A-H]$/.test(k)||/^(M|H)\d$/.test(k);
+    const draw=orders=>{
+      el.innerHTML='<div class="form-label" style="margin-bottom:6px">Storico gare</div>'+entries.map(x=>x).sort((a,b)=>String(b[1].date||'').localeCompare(String(a[1].date||''))).map(([hk,r])=>{
+        const res=r.result||{};const fmt=v=>/^\d+$/.test(String(v))?v+'°':esc(v);
+        const ord=(orders&&orders[hk])||{};
+        /* 19/11/2026 (Andrea): numero e nome della manche SOLO dal programma di quell'evento (ordine di gara, nome della sessione).
+           Se il programma non la riporta non si inventa un numero: resta il nome ufficiale dei gruppi (es. "Manche A-C"). */
+        const hk2=Object.keys(res).filter(isHeat);
+        const known=hk2.filter(k=>ord[k]!=null||/^(M|H)\d$/.test(k)).sort((a,b)=>(ord[a]?ord[a].i:parseInt(a.slice(1))*1e-3)-(ord[b]?ord[b].i:parseInt(b.slice(1))*1e-3));
+        const unknown=hk2.filter(k=>!known.includes(k)).sort();
+        const parts=[];
+        const qs=Object.keys(res).filter(k=>/^Q/.test(k)).sort();
+        qs.forEach((k,i)=>parts.push('Qualifiche'+(qs.length>1?' '+(i+1):'')+' '+fmt(res[k])));
+        known.forEach((k,i)=>{const nm=(ord[k]&&ord[k].name)||'Manche';const n=/^(M|H)\d$/.test(k)&&!ord[k]?k.slice(1):(i+1);parts.push(nm+(known.length>1||unknown.length||/^(M|H)\d$/.test(k)?' '+n:'')+' '+fmt(res[k]));});
+        unknown.forEach(k=>parts.push('Manche '+esc(k)+' '+fmt(res[k])));
+        Object.keys(res).filter(k=>k.startsWith('PF')).sort().forEach(k=>parts.push('Prefinale'+(k.length>3?' '+esc(k.slice(3)):'')+' '+fmt(res[k])));
+        if(res.FIN!=null)parts.push('Finale '+fmt(res.FIN));
+        const d=r.date?r.date.split('-').reverse().join('/'):'';
+        return'<div style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;font-size:12px">'
+          +'<div style="font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span>'+esc(r.race)+(d?' · '+d:'')+'</span>'
+          +'<span class="'+catClass(r.cat)+'" style="font-size:11px;padding:1px 7px;border-radius:6px;border:1px solid;font-weight:800">'+esc(r.cat)+'</span><span>#'+esc(r.num)+'</span></div>'
+          +'<div style="color:var(--text3);margin-top:2px">'+(parts.length?parts.join(' · '):'nessun risultato ancora')+(r.inFinal&&res.FIN==null?' · in finale':'')+(r.eliminated&&!r.inFinal?' · eliminato':'')+'</div></div>';
+      }).join('');
+    };
     const esc=t=>String(t==null?'':t).replace(/[<>&"]/g,'');
-    el.innerHTML='<div class="form-label" style="margin-bottom:6px">Storico gare</div>'+rows.map(r=>{
-      const res=r.result||{};const keys=Object.keys(res).sort((a,b)=>(a.length-b.length)||a.localeCompare(b));
-      const fmt=v=>/^\d+$/.test(String(v))?v+'°':esc(v);
-      const parts=keys.map(x=>(x==='FIN'?'Finale':x.startsWith('PF-')?'Pref. '+x.slice(3):x)+' '+fmt(res[x]));
-      const d=r.date?r.date.split('-').reverse().join('/'):'';
-      return'<div style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;font-size:12px">'
-        +'<div style="font-weight:800;color:var(--text)">'+esc(r.race)+(d?' · '+d:'')+' · '+esc(r.cat)+' #'+esc(r.num)+'</div>'
-        +'<div style="color:var(--text3);margin-top:2px">'+(parts.length?parts.join(' · '):'nessun risultato ancora')+(r.inFinal?' · in finale':'')+(r.eliminated&&!r.inFinal?' · eliminato':'')+'</div></div>';
-    }).join('');
+    draw(null);
+    // ordine vero delle manche dal programma di quella gara (letto solo se servono, una volta)
+    const need=entries.filter(([hk,r])=>Object.keys(r.result||{}).filter(isHeat).length>1);
+    if(need.length){const orders={};Promise.all(need.map(([hk,r])=>{const rid=(hk.match(/^(race_\d+|[^_]+(?:_[^_]+)*?)(?:_\d{1,3})?$/)||[])[1]||hk;
+      return Promise.all([_fbDb.ref('races/'+rid+'/schedule').once('value'),_fbDb.ref('races/'+rid+'/days').once('value')]).then(([ss,ds])=>{
+        const sc=ss.val()||{};let days=ds.val()||Object.keys(sc);if(!Array.isArray(days))days=Object.values(days);const o={};let i=0;
+        const nice=t=>{t=String(t||'').trim();if(!t)return'Manche';t=t.charAt(0).toUpperCase()+t.slice(1).toLowerCase();return t.replace(/^Manches$/,'Manche').replace(/^Heats$/,'Heat');};
+        days.forEach(dn=>{let arr=sc[dn]||[];if(!Array.isArray(arr))arr=Object.values(arr);let ses='';
+          arr.slice().sort((a,b)=>slotMins(a.time)-slotMins(b.time)).forEach(sl=>{i++;if(!sl)return;if(sl.session)ses=sl.session;   // il nome della sessione sta sul primo turno del blocco
+            if(sl.type!=='group'||canonCat(sl.cat)!==canonCat(r.cat))return;
+            let f=sl.filter||[];if(!Array.isArray(f))f=Object.values(f);const v={i,name:nice(ses)};const k=f.join('-');if(o[k]==null)o[k]=v;const k2=f.slice().reverse().join('-');if(o[k2]==null)o[k2]=v;});});
+        orders[hk]=o;}).catch(()=>{});})).then(()=>{if(document.getElementById('detail-hist'))draw(orders);});}
   });}catch(e){}
 }
 
@@ -2570,7 +2653,7 @@ function addPilotFromDetail(num){
   const serie=entry&&entry.serie?entry.serie.toString():'';
   const prefinal=entry&&entry.prefinal?entry.prefinal:'';
   const heats=entry&&entry.heats?entry.heats:[];
-  _rtNewPilots.add(String(num));pilots.push({num:num.toString(),name,team,cat,parity:autoParity(num),group,prefinal,serie,heats,eliminated:false});
+  _rtNewPilots.add(String(num));pilots.push({num:num.toString(),name,team,cat,parity:autoParity(num),group,prefinal,serie,heats,eliminated:false,highlight:_addHl.slice(),reel:_addHl.includes('video')?_addReel:''});
   statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');
   trackStatus[num]={};notes[num]=note;
   // Update pilot count in race index
@@ -2660,12 +2743,32 @@ function teamsSlotHtml(slot){
 function addTeam(name){
   const key=teamKey(name);
   if(teams.some(t=>t.key===key||sameTeam(name,teamOfKey(t)))){setPilotsView('team');return;}
-  teams.push({key,name:String(name).trim().toUpperCase()});
+  teams.push({key,name:String(name).trim().toUpperCase(),highlight:[defaultHl()],reel:defaultHl()==='video'?'30':''});
   teamStatuses[key]={};TASKS.forEach(k=>teamStatuses[key][k]='red');
   teamNotes[key]='';
   saveAll();renderPilotSearchResults();
 }
 window.addTeam=addTeam;
+/* 19/11/2026 (Andrea): anche il TEAM ha il suo lavoro (FOTO / VIDEO, mai vuoto) e, se VIDEO, la durata del reel di team.
+   Si imposta sulla scheda del team (Piloti > Team); alla creazione parte dal predefinito dell'account. */
+function teamHl(t){let h=t&&t.highlight;if(typeof h==='string')h=[h];if(h&&!Array.isArray(h))h=Object.values(h);h=(h||[]).filter(x=>x==='foto'||x==='video');return h.length?h:[defaultHl()];}
+function teamWork(t){const h=teamHl(t);return{highlight:h,reel:h.includes('video')?String(t.reel||'30'):''};}
+function teamWorkChips(t){const w=teamWork(t);
+  return w.highlight.map(k=>'<span class="hl-badge hl-'+k+'" style="flex-shrink:0">'+(k==='foto'?'<i class="ic ic-hl-foto"></i> FOTO':'<i class="ic ic-hl-video"></i> VIDEO')+'</span>').join('')+reelChip(w);}
+function teamWorkRowHtml(t){const w=teamWork(t);const k=escAttr(t.key);
+  const b=(on,lab,click,col)=>'<button onclick="'+click+'" style="min-width:60px;min-height:40px;padding:0 10px;border-radius:8px;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;touch-action:manipulation;'
+    +(on?'background:'+col+';color:#12100c;border:1px solid '+col:'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+lab+'</button>';
+  return'<div style="display:flex;align-items:center;gap:6px;margin:10px 0 2px;flex-wrap:wrap"><span class="note-label" style="margin:0 4px 0 0">Lavoro</span>'
+    +b(w.highlight.includes('foto'),'<i class="ic ic-hl-foto"></i> FOTO',"toggleTeamHl('"+k+"','foto')",'#38bdf8')
+    +b(w.highlight.includes('video'),'<i class="ic ic-hl-video"></i> VIDEO',"toggleTeamHl('"+k+"','video')",'#ec4899')
+    +(w.reel?'<span class="note-label" style="margin:0 4px 0 10px">Reel</span>'+REEL_OPTS.map(([v,l])=>b(w.reel===v,l,"setTeamReel('"+k+"','"+v+"')",'#e9d5a8')).join(''):'')+'</div>';}
+function _teamByKey(key){return teams.find(t=>t.key===key);}
+function _teamKeepNotes(){teams.forEach(t=>{const el=document.getElementById('tnote-'+t.key);if(el)teamNotes[t.key]=el.value;});}
+function toggleTeamHl(key,k){const t=_teamByKey(key);if(!t)return;let h=teamHl(t);
+  if(h.includes(k)){if(h.length===1)return;h=h.filter(x=>x!==k);}else h=h.concat(k);
+  _teamKeepNotes();t.highlight=h;t.reel=h.includes('video')?String(t.reel||'30'):'';saveAll();try{renderPilots();}catch(e){}}
+function setTeamReel(key,v){const t=_teamByKey(key);if(!t)return;_teamKeepNotes();t.reel=v;saveAll();try{renderPilots();}catch(e){}}
+window.toggleTeamHl=toggleTeamHl;window.setTeamReel=setTeamReel;
 function removeTeam(key){
   if(!confirm('Rimuovere il team?'))return;
   teams=teams.filter(t=>t.key!==key);
@@ -2714,6 +2817,7 @@ function renderTeams(){
       +'</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">'
       +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="removeTeam(\''+escAttr(t.key)+'\')">✕ rimuovi</button></div></div>'
       +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,false)).join('')+'</div>'
+      +teamWorkRowHtml(t)
       +'<div class="note-wrap"><span class="note-label">Note</span>'
       +'<textarea class="note-area" id="tnote-'+t.key+'" placeholder="Es. tenda dietro box 12..." onblur="saveTeamNote(\''+escAttr(t.key)+'\')">'+(teamNotes[t.key]||'')+'</textarea></div></div>';
   }).join('');
@@ -2773,6 +2877,58 @@ function autoDayName(){
 }
 
 // ── COPIA TUTTI PER EDITOR ──
+/* 19/11/2026 (Andrea): un solo tasto ESPORTA PILOTI al posto di Esporta/Importa (backup JSON) e Copia per editor.
+   Chiede: copia negli appunti (testo per l'editor) oppure PDF con tutti i dati (stampa -> "Salva come PDF"). */
+function openExportPilots(){
+  if(!pilots.length&&!teams.length){alert('Nessun pilota da esportare');return;}
+  openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Esporta piloti</div>'
+    +'<button class="form-submit" style="margin-bottom:10px" onclick="closeModal();copyAllForEditor()"><i class="ic ic-list"></i> COPIA NEGLI APPUNTI</button>'
+    +'<button class="form-submit" style="background:none;border:1.5px solid var(--border2,#444);color:var(--text)" onclick="closeModal();exportPilotsPdf()"><i class="ic ic-download"></i> PDF CON TUTTI I DATI</button>');
+}
+window.openExportPilots=openExportPilots;
+function exportPilotsPdf(){
+  const e=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const r=(typeof races!=='undefined'&&races&&races[activeRaceId])||{};
+  const stLab={red:'da fare',orange:'in corso',green:'fatto'};
+  const hlOf=p=>{let h=p.highlight;if(typeof h==='string')h=[h];if(h&&!Array.isArray(h))h=Object.values(h);return h||[];};
+  const work=p=>hlOf(p).map(x=>x==='foto'?'Foto':x==='video'?'Video':x==='priority'?'Priorità':x).join(', ')+(hasVideo(p)?' · Reel '+reelLabel(p.reel):'');
+  const tasks=st=>TASKS.map(k=>'<span class="t '+((st&&st[k])||'red')+'">'+k+'</span>').join(' ');
+  const byNum=(a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0);
+  const rows=pilots.slice().sort((a,b)=>String(a.cat).localeCompare(String(b.cat))||byNum(a,b)).map(p=>{
+    let ft=null;try{ft=followedTeamOf(p.num,p.team||'');}catch(x){}
+    return'<tr><td class="n">#'+e(p.num)+'</td><td><b>'+e(p.name)+'</b><br><span class="s">'+e(p.team)+(ft?' · anche personale':'')+'</span></td><td>'+e(p.cat)+'</td><td>'+e(work(p))+'</td><td>'+e(notes[p.num]||'')+'</td></tr>';}).join('');
+  const trows=teams.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(t=>{const w=teamWork(t);const ents=teamEntrants(t).sort(byNum);
+    return'<tr><td colspan="2"><b>'+e(t.name)+'</b><br><span class="s">'+ents.map(p=>'#'+e(p.num)+' '+e(p.name)+(notes[p.num]?' — '+e(notes[p.num]):'')).join('<br>')+'</span></td><td>'+e([...new Set(ents.map(p=>p.cat))].join(', '))+'</td><td>'
+      +e(w.highlight.map(x=>x==='foto'?'Foto':'Video').join(', ')+(w.reel?' · Reel '+reelLabel(w.reel):''))+'</td><td>'+e(teamNotes[t.key]||'')+'</td></tr>';}).join('');
+  const head='<tr><th colspan="2">Pilota</th><th>Cat.</th><th>Lavoro</th><th>Note</th></tr>';
+  const d=new Date();const when=d.toLocaleDateString('it-IT')+' '+d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  // 19/11/2026 (Andrea): nome del file = NOME EVENTO + NOME CIRCUITO + DATA (la data di inizio gara, gg-mm-aaaa)
+  const fname=[r.name||'Gara',r.circuit||'',r.startDate?r.startDate.split('-').reverse().join('-'):''].filter(Boolean).join(' ').replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+  const html='<!doctype html><html lang="it"><head><meta charset="utf-8"><title>'+e(fname)+'</title><style>'
+    +'body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#111;margin:16px}h1{font-size:18px;margin:0}h2{font-size:13px;margin:18px 0 6px}.sub{color:#555;margin:2px 0 12px}'
+    +'table{width:100%;border-collapse:collapse}th,td{border:1px solid #bbb;padding:4px 6px;text-align:left;vertical-align:top}th{background:#eee;font-size:10px}'
+    +'.n{font-weight:bold;white-space:nowrap}.s{color:#555;font-size:10px}.t{font-size:8px;padding:1px 3px;border-radius:3px;border:1px solid #999;white-space:nowrap}.t.green{background:#c8f0d2}.t.orange{background:#ffe2a8}.t.red{background:#f7c9c9}'
+    +'tr{page-break-inside:avoid}@page{margin:10mm}</style></head><body>'
+    +'<h1>'+e(r.name||'Gara')+'</h1><div class="sub">'+e(r.circuit||'')+(r.startDate?' · '+e(r.startDate.split('-').reverse().join('/')):'')+' · utente '+e(currentUserId)+' · esportato '+e(when)+'</div>'
+    +(rows?'<h2>Piloti ('+pilots.length+')</h2><table>'+head+rows+'</table>':'')
+    +(trows?'<h2>Team ('+teams.length+')</h2><table>'+head.replace('Pilota','Team e piloti')+trows+'</table>':'')
+    +'</body></html>';
+  // stampa da un riquadro nascosto: nella finestra di stampa si sceglie "Salva come PDF"
+  let f=document.getElementById('rt-print');if(f)f.remove();
+  f=document.createElement('iframe');f.id='rt-print';f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(f);
+  const w=f.contentWindow;w.document.open();w.document.write(html);w.document.close();
+  // alcuni browser prendono il nome del file dal titolo della pagina principale: lo si cambia solo durante la stampa
+  const oldTitle=document.title;const back=()=>{document.title=oldTitle;};
+  // Su Android "afterprint" scatta subito, prima che il telefono legga il nome: il titolo si rimette solo quando si torna
+  // nell'app dopo la stampa (pagina di nuovo visibile, passati almeno 4 s) o comunque dopo 5 minuti.
+  document.title=fname;const t0=Date.now();
+  const onBack=()=>{if(document.visibilityState==='visible'&&Date.now()-t0>4000){back();document.removeEventListener('visibilitychange',onBack);window.removeEventListener('focus',onBack);}};
+  document.addEventListener('visibilitychange',onBack);window.addEventListener('focus',onBack);
+  setTimeout(()=>{back();document.removeEventListener('visibilitychange',onBack);window.removeEventListener('focus',onBack);},300000);
+  setTimeout(()=>{try{w.focus();w.print();}catch(x){back();alert('Stampa non disponibile su questo dispositivo');}},300);
+}
+window.exportPilotsPdf=exportPilotsPdf;
 function copyAllForEditor(){
   if(!pilots.length){alert('Nessun pilota da copiare');return;}
   const all=pilots.slice();
@@ -2781,8 +2937,9 @@ function copyAllForEditor(){
     // 16/11/2026 (Andrea): chi e' arrivato in finale ha la nota "Arrivato in finale" nella copia per l'editor
     const e=currentEntryList[p.num]||{};const fin=p.inFinal===true||e.inFinal===true;
     const note=[notes[p.num]?notes[p.num].trim():'',fin?'Arrivato in finale':''].filter(Boolean).join(' · ');
-    const rl=reelLabel(p.reel);
-    return'#'+p.num+' '+p.name+(rl?' · Reel '+rl:'')+(note?'\nNote: '+note:'');
+    const rl=hasVideo(p)?reelLabel(p.reel):'';
+    const ft=hasFoto(p)?fotoTagsOf(p).map(v=>FOTO_OPTS.find(o=>o[0]===v)[1]).join(', '):'';
+    return'#'+p.num+' '+p.name+(rl?' · Reel '+rl:'')+(ft?' · Foto '+ft:'')+(note?'\nNote: '+note:'');
   };
   const byNum=(a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0);
   const tOf=p=>{try{return followedTeamOf(p.num,p.team||((currentEntryList[p.num]||{}).team)||'');}catch(e){return null;}};
@@ -2797,7 +2954,7 @@ function copyAllForEditor(){
       let x=null;try{x=followedTeamOf(n,e.team||'');}catch(err){}
       if(x&&x.key===t.key)g.push({num:n,name:String((e.lastName||'')+' '+(e.firstName||'')).trim(),team:e.team||''});});
     g.sort(byNum);
-    if(g.length)parts.push('#'+String(t.name||t.key).toUpperCase()+'\n\n'+g.map(p=>fmt(p).replace(/^(#\S+ [^\n]*)/,p._pers?'$1 (anche personale)':'$1')).join('\n\n'));});
+    if(g.length)parts.push('#'+String(t.name||t.key).toUpperCase()+(function(){const w=teamWork(t);return' · '+w.highlight.map(x=>x==='foto'?'Foto':'Video').join(' + ')+(w.reel?' · Reel '+reelLabel(w.reel):'');})()+'\n\n'+g.map(p=>fmt(p).replace(/^(#\S+ [^\n]*)/,p._pers?'$1 (anche personale)':'$1')).join('\n\n'));});
   const text=parts.join('\n\n\n');
   navigator.clipboard.writeText(text)
     .then(()=>alert('✅ Copiato! '+all.length+' piloti negli appunti.'))
@@ -3185,7 +3342,7 @@ function renderPilots(){
     +'<div class="pilot-cat '+catClass(p.cat)+'">'+p.cat+(isElim?' <span style="color:#ef4444;font-size:9px">ELIMINATO</span>':'')+'</div>'
     +'<div style="display:flex;align-items:center;gap:8px;margin-top:3px">'
     +'<span class="pilot-num">#'+p.num+'</span>'+riskTri(p.num)
-    +'<span class="pilot-name">'+p.name+'</span>'+reelChip(p)+'</div>'
+    +'<span class="pilot-name">'+p.name+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)+'</div>'
     +'<div class="pilot-team">'+p.team+'</div></div></div>'
     +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">'
     +(hl.length?'<div class="hl-badges">'+hl.map(function(h){return'<span class="hl-badge hl-'+h+'">'+(hlLabels[h]||h)+'</span>';}).join('')+'</div>':'')
@@ -3197,6 +3354,7 @@ function renderPilots(){
     +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="deletePilot(\''+p.num+'\')">✕ rimuovi</button>'
     +'</div></div>'
     +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,false,isElim)).join('')+spotPill(p.num)+'</div>'
+    +reelRowHtml(p)+fotoRowHtml(p,true)
     +'<div class="note-wrap"><span class="note-label">Note</span>'
     +'<textarea class="note-area" id="note-'+p.num+'" placeholder="Aggiungi una nota..." onblur="saveNote(\''+p.num+'\')">'+(notes[p.num]||'')+'</textarea></div></div>';
   }).join('')+missingDashHtml();
@@ -3349,7 +3507,102 @@ function progDayState(day,slotsArr){
   const nowM=now.getHours()*60+now.getMinutes()-(typeof scheduleDelay==='number'?scheduleDelay:0);
   return (last>=0&&nowM>last+30)?'ended':'today';
 }
+/* ══ METEO (19/11/2026, Andrea) — riga indicativa in cima al Programma per il giorno scelto ══
+   Fonte gratuita anche per uso commerciale con attribuzione (crediti in Guida). Solo indicazione: temperatura, vento, fasce di pioggia.
+   PROVA: la legge il telefono, al massimo una volta l'ora per sede (copia locale). Prima dell'app vera va spostata sul server
+   (una lettura l'ora per gara, scritta nella gara) come deciso per tutte le fonti esterne.
+   Coordinate: venues/<chiave>/geo se presente, altrimenti la tabella qui sotto (approssimate, bastano per il meteo). */
+const WX_GEO={lonato:[45.4329,10.4853],franciacorta:[45.513,9.985],cremona:[45.085,10.305],sarno:[40.817,14.590],viterbo:[42.420,12.060],
+  lemans:[47.939,0.218],ala:[45.760,11.000],zuera:[41.870,-0.800],genk:[50.990,5.560],wackersdorf:[49.320,12.190]};
+let _wx={key:'',at:0,ts:null,loading:false};
+function wxGeo(){let v=null;try{v=raceVenue();}catch(e){}if(!v)return null;const g=v.geo||WX_GEO[v.key];
+  return g?{key:v.key,lat:Number(g.lat!=null?g.lat:g[0]),lon:Number(g.lon!=null?g.lon:g[1])}:null;}
+function wxDayDate(day){const r=(typeof races!=='undefined'&&races&&races[activeRaceId])||{};if(!r.startDate)return'';
+  const N=['DOMENICA','LUNEDÌ','MARTEDÌ','MERCOLEDÌ','GIOVEDÌ','VENERDÌ','SABATO'];const z=n=>String(n).padStart(2,'0');
+  const d=new Date(r.startDate+'T12:00:00'),end=new Date((r.endDate||r.startDate)+'T12:00:00');
+  for(let i=0;i<10&&d<=end;i++,d.setDate(d.getDate()+1))if(N[d.getDay()]===day)return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate());
+  return'';}
+function wxLoad(){
+  const g=wxGeo();if(!g)return;
+  if(_wx.key!==g.key){_wx={key:g.key,at:0,ts:null,loading:false};
+    try{const c=JSON.parse(localStorage.getItem('rt_wx_'+g.key)||'null');if(c&&c.ts&&c.ts[0]&&c.ts[0].s!==undefined){_wx.at=c.at;_wx.ts=c.ts;}}catch(e){}}
+  if(_wx.loading||Date.now()-_wx.at<3600000)return;
+  _wx.loading=true;_wx.at=Date.now();   // anche se fallisce non si riprova prima di un'ora
+  fetch('https://api.met.no/weatherapi/locationforecast/2.0/compact?lat='+g.lat.toFixed(4)+'&lon='+g.lon.toFixed(4))
+    .then(r=>r.ok?r.json():null).then(j=>{_wx.loading=false;const ts=j&&j.properties&&j.properties.timeseries;if(!ts)return;
+      _wx.ts=ts.map(x=>{const d=x.data||{},i=(d.instant||{}).details||{},h1=d.next_1_hours,h6=d.next_6_hours;
+        return{t:x.time,T:i.air_temperature,W:i.wind_speed,p:h1?(h1.details||{}).precipitation_amount:(h6?(h6.details||{}).precipitation_amount:null),n:h1?1:(h6?6:0),s:String(((h1||h6||{}).summary||{}).symbol_code||'')};});
+      try{localStorage.setItem('rt_wx_'+g.key,JSON.stringify({at:_wx.at,ts:_wx.ts}));}catch(e){}
+      wxRender();}).catch(()=>{_wx.loading=false;});
+}
+function wxSummary(day){
+  const date=wxDayDate(day);if(!date||!_wx.ts)return null;const z=n=>String(n).padStart(2,'0');
+  const rows=_wx.ts.map(x=>{const d=new Date(x.t);return Object.assign({h:d.getHours(),ds:d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())},x);}).filter(x=>x.ds===date&&x.h+(x.n||1)>7&&x.h<19);
+  if(!rows.length)return null;
+  const T=rows.map(x=>x.T).filter(v=>v!=null),W=rows.map(x=>x.W).filter(v=>v!=null);
+  // ore di pioggia (07-19): almeno 0,2 mm nell'ora; con dati a 6 ore, la fascia intera se >= 1 mm
+  const wet=new Set();rows.forEach(x=>{if(x.p==null)return;if(x.n===1&&x.p>=0.2)wet.add(x.h);if(x.n===6&&x.p>=1)for(let k=x.h;k<x.h+6;k++)if(k>=7&&k<19)wet.add(k);});
+  // 19/11/2026 (Andrea): mattina (7-13) e pomeriggio (13-19) separati, ognuno con la sua icona, cosi' si capisce a colpo d'occhio
+  const half=(a,b)=>{const hs=[...wet].filter(h=>h>=a&&h<b).sort((x,y)=>x-y),bands=[];hs.forEach(h=>{const l=bands[bands.length-1];if(l&&h===l[1])l[1]=h+1;else bands.push([h,h+1]);});
+    const rr=rows.filter(x=>x.h<b&&x.h+(x.n||1)>a);if(!rr.length)return null;
+    if(bands.length){const wr=rr.filter(x=>x.p!=null&&((x.n===1&&x.p>=0.2)||(x.n===6&&x.p>=1)));
+      const k=wxWorst(wr.map(wxClass));return{k,wet:true,txt:WX_TXT[k]+' '+bands.map(v=>v[0]+'–'+v[1]).join(', ')};}
+    // asciutto: nuvolosita' media della fascia (sereno 0 ... coperto 3); nebbia se prevale
+    const cl=rr.map(wxClass);if(cl.filter(x=>x==='fog').length*2>cl.length)return{k:'fog',txt:WX_TXT.fog};
+    const sc={sun:0,fair:1,part:2,cloud:3};const v=cl.map(x=>sc[x]!=null?sc[x]:3);const m=Math.round(v.reduce((p,q)=>p+q,0)/v.length);
+    const k=['sun','fair','part','cloud'][m];return{k,txt:WX_TXT[k]};};
+  return{tmin:Math.round(Math.min.apply(null,T)),tmax:Math.round(Math.max.apply(null,T)),wind:W.length?Math.round(Math.max.apply(null,W)*3.6):null,am:half(7,13),pm:half(13,19),coarse:rows.some(x=>x.n===6)};
+}
+/* 19/11/2026 (Andrea): set di icone proprie (niente emoji) che segue il tempo previsto ora per ora:
+   sereno, quasi sereno, poco nuvoloso, nuvoloso, nebbia, pioviggine, pioggia, pioggia forte, rovesci, temporale, nevischio, neve. */
+const WX_TXT={sun:'sereno',fair:'quasi sereno',part:'poco nuvoloso',cloud:'nuvoloso',fog:'nebbia',drizzle:'pioviggine',rain:'pioggia',heavy:'pioggia forte',
+  showers:'rovesci',thunder:'temporale',sleet:'nevischio',snow:'neve'};
+const WX_RANK=['sun','fair','part','cloud','fog','drizzle','showers','rain','sleet','snow','heavy','thunder'];
+function wxWorst(list){let k='cloud',r=-1;list.forEach(x=>{const i=WX_RANK.indexOf(x);if(i>r){r=i;k=x;}});return k;}
+function wxClass(x){const y=String((x&&x.s)||'');const p=x&&x.p!=null?x.p/(x.n||1):0;
+  if(/thunder/.test(y))return'thunder';if(/snow/.test(y))return'snow';if(/sleet/.test(y))return'sleet';
+  if(/heavyrain/.test(y))return'heavy';if(/lightrain/.test(y))return/showers/.test(y)?'showers':'drizzle';
+  if(/rainshowers/.test(y))return'showers';if(/rain/.test(y))return'rain';
+  if(/^fog/.test(y))return'fog';if(/^clearsky/.test(y))return'sun';if(/^fair/.test(y))return'fair';if(/^partlycloudy/.test(y))return'part';if(/^cloudy/.test(y))return'cloud';
+  return p>=2.5?'heavy':p>=0.5?'rain':p>=0.2?'drizzle':'cloud';}   // copia vecchia senza codice: dalla quantita'
+function wxIcon(k,size){const z=size||22;
+  const cl=(f,dy)=>'<path transform="translate(0,'+(dy||0)+')" d="M7 18h10a4 4 0 0 0 .6-7.96A5.5 5.5 0 0 0 7.1 8.6 4.7 4.7 0 0 0 7 18z" fill="'+f+'"/>';
+  const sun=(x,y,r)=>'<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="#fbbf24"/>';
+  const rays='<g stroke="#fbbf24" stroke-width="2" stroke-linecap="round"><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M4.6 19.4l2.1-2.1M17.3 6.7l2.1-2.1"/></g>';
+  const drops=(n,w,col)=>'<g stroke="'+(col||'#60a5fa')+'" stroke-width="'+w+'" stroke-linecap="round">'+[[8,17],[12.5,17],[17,17]].slice(n===1?1:0,n===1?2:n===2?2:3).map(q=>'<path d="M'+q[0]+' '+q[1]+'l-1.2 4"/>').join('')+'</g>';
+  const B={
+    sun:sun(12,12,5)+rays,
+    fair:sun(11,10,5)+'<g stroke="#fbbf24" stroke-width="2" stroke-linecap="round"><path d="M11 1.5v2.5M2.5 10h2.5M4.8 3.8l1.8 1.8M17.2 3.8l-1.8 1.8"/></g><path d="M12 20h7a3 3 0 0 0 .4-5.97A4.1 4.1 0 0 0 12.1 13 3.5 3.5 0 0 0 12 20z" fill="#cbd5e1"/>',
+    part:sun(8,8,4.5)+cl('#cbd5e1'),
+    cloud:cl('#9ca3af'),
+    fog:cl('#9ca3af',-5)+'<g stroke="#9ca3af" stroke-width="2" stroke-linecap="round"><path d="M4 17h16M6 21h12"/></g>',
+    drizzle:cl('#94a3b8',-4)+drops(1,2),
+    rain:cl('#94a3b8',-4)+drops(2,2.2),
+    heavy:cl('#64748b',-4)+drops(3,2.6,'#3b82f6'),
+    showers:sun(8,6,4)+cl('#cbd5e1',-3)+drops(2,2.2),
+    thunder:cl('#64748b',-4)+'<path d="M13 14l-4 5h3l-1.5 4.5L15 18h-3l1-4z" fill="#fbbf24"/>',
+    sleet:cl('#94a3b8',-4)+drops(1,2.2)+'<g fill="#e5e7eb"><circle cx="8" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/></g>',
+    snow:cl('#94a3b8',-4)+'<g fill="#e5e7eb"><circle cx="8" cy="18" r="1.5"/><circle cx="12.5" cy="21" r="1.5"/><circle cx="17" cy="18" r="1.5"/></g>'};
+  return'<svg viewBox="0 0 24 24" width="'+z+'" height="'+z+'" style="vertical-align:-'+Math.round(z/4)+'px;margin-right:4px;flex-shrink:0" aria-hidden="true">'+(B[k]||B.cloud)+'</svg>';}
+// icona del tempo previsto all'ora di inizio di un blocco del programma (accanto a PROVE LIBERE, MANCHE...)
+function wxSlotIcon(day,time){
+  try{const date=wxDayDate(day);if(!date||!_wx.ts)return'';const z=n=>String(n).padStart(2,'0');const hh=parseInt(String(time).split('.')[0]);if(isNaN(hh))return'';
+    const x=_wx.ts.find(r=>{const d=new Date(r.t);return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())===date&&d.getHours()<=hh&&hh<d.getHours()+(r.n||1);});
+    if(!x||!x.n)return'';const k=wxClass(x);
+    return'<span title="'+WX_TXT[k]+'" style="order:2;display:inline-flex;align-items:center;font-style:normal;flex-shrink:0">'+wxIcon(k,24).replace('margin-right:4px','margin-right:0')+'</span>';}catch(e){return'';}
+}
+function wxRender(){
+  const el=document.getElementById('wx-bar');if(!el)return;
+  const s=wxSummary(activeDay);if(!s||(!s.am&&!s.pm)){el.style.display='none';return;}
+  const seg=(lab,h)=>h?'<span style="white-space:nowrap;margin-right:12px">'+wxIcon(h.k)+'<span style="color:var(--text4);font-size:10px;font-weight:800;letter-spacing:.06em;margin-right:4px">'+lab+'</span>'
+    +'<span style="font-weight:900;color:'+(h.wet?'#60a5fa':'var(--text)')+'">'+h.txt+'</span></span>':'';
+  el.innerHTML='<div style="display:flex;flex-wrap:wrap;align-items:center;row-gap:4px">'+seg('MATTINA',s.am)+seg('POMERIGGIO',s.pm)
+    +'<span style="white-space:nowrap;color:var(--text3)">'+s.tmin+'–'+s.tmax+'°'+(s.wind!=null?' · vento '+s.wind+' km/h':'')
+    +' <span style="color:var(--text4);font-weight:600;font-size:10px">'+(s.coarse?'(a fasce di 6 ore, indicativo)':'(indicativo)')+'</span></span></div>';
+  el.style.display='';
+}
 function renderSchedule(){
+  try{wxLoad();wxRender();}catch(e){}
   const dt=document.getElementById('day-tabs');
   dt.innerHTML=currentDays.map(d=>'<button class="day-tab '+(d===activeDay?'active':'')+'" onclick="setDay(\''+d+'\')">'+d+'</button>').join('');
   const el=document.getElementById('schedule-content');
@@ -3379,6 +3632,22 @@ function renderSchedule(){
   const _ds=progDayState(activeDay,slotsArr);
   if(_ds!=='today'){currentIdx=_ds==='future'?-1:slotsArr.length;_finalNowKey=null;}
   let html='';let lastSession='';
+  /* 19/11/2026 (Andrea): l'intestazione si ripete ogni volta che ricomincia il giro delle categorie, anche nella stessa sessione
+     (es. PROVE LIBERE · TURNO 2). Il numero del turno viene dal programma ufficiale quando lo scrive, altrimenti dal ripetersi dello stesso turno. */
+  const _blk=[];const _blkCnt={};
+  {let ses='',n=0,turn='',seen={};
+    slotsArr.forEach(sl=>{
+      const tm=String(sl.wsk||'').match(/(\d+)\s*°\s*turn/i);
+      const k=[canonCat(sl.cat),sl.type,JSON.stringify(sl.filter||'')].join('|');
+      let nw=false;
+      if(sl.session&&sl.session!==ses){ses=sl.session;n=0;turn='';nw=true;}
+      else if(tm?(turn!==''&&tm[1]!==turn):!!seen[k])nw=true;
+      if(nw){n++;seen={};_blkCnt[ses]=(_blkCnt[ses]||0)+1;}
+      if(tm)turn=tm[1];
+      seen[k]=1;
+      _blk.push({id:[ses,n].join('#'),ses:ses,num:tm?tm[1]:String(n)});
+    });}
+  let _lastBlk='';
   // Quante volte corre oggi ogni mio pilota e quale di queste è lo slot (es. Gara 2/3)
   // Se un turno dipende da dati non ancora ufficiali (prefinale non assegnata, finale non decisa) il totale è "?"
   const _runs={},_unc={},_finIn={};
@@ -3388,7 +3657,17 @@ function renderSchedule(){
     if(entrantInSlot(p,sl))(_runs[p.num]=_runs[p.num]||[]).push(i);
     else if(_awaits(p,sl)){const u=(_unc[p.num]=_unc[p.num]||{});const k=[_sess,sl.type].join('|');if(!(k in u))u[k]=i;}
   });});
+  /* 19/11/2026 (Andrea): stesso conteggio anche per i piloti dei team seguiti che non sono tra i miei */
+  const _mineSet=new Set(pilots.map(p=>String(p.num)));const _tCat={};
+  _sess='';
+  slotsArr.forEach((sl,i)=>{if(sl.session)_sess=sl.session;teamsForSlot(sl).forEach(x=>{
+    x.inSlot.forEach(p=>{const n=String(p.num);if(_mineSet.has(n))return;_tCat[n]=p.cat;const l=(_runs[n]=_runs[n]||[]);if(!l.includes(i))l.push(i);});
+    x.waiting.forEach(p=>{const n=String(p.num);if(_mineSet.has(n))return;_tCat[n]=p.cat;const u=(_unc[n]=_unc[n]||{});const k=[_sess,sl.type].join('|');if(!(k in u))u[k]=i;});
+  });});
   const _lastDay=activeDay===currentDays[currentDays.length-1]&&currentFinals.length;
+  if(_lastDay){Object.keys(_tCat).forEach(n=>{const e=(currentEntryList||{})[n]||{};if(e.eliminated)return;
+    if(!currentFinals.find(x=>canonCat(x.cat)===canonCat(_tCat[n])))return;
+    if(e.inFinal)_finIn[n]=1;else{const u=(_unc[n]=_unc[n]||{});u['FINALE']=1e6;}});}
   if(_lastDay){pilots.forEach(p=>{if(p.eliminated)return;const f=currentFinals.find(x=>canonCat(x.cat)===canonCat(p.cat));if(!f)return;
     const decided=pilots.some(q=>canonCat(q.cat)===canonCat(p.cat)&&q.inFinal);
     if(p.inFinal)_finIn[p.num]=1;else if(!decided){const u=(_unc[p.num]=_unc[p.num]||{});u['FINALE']=1e6;}});}
@@ -3399,6 +3678,7 @@ function renderSchedule(){
     return['Gara ',before?'?':String(k),'/',unk?'?':String(tot)].join('');};
   const runChip=(num,i)=>{const t=runLabel(num,i);if(!t)return'';
     return['<span class="run-chip',(i<currentIdx?' done':''),'" title="Gare di oggi">',t,'</span>'].join('');};
+  _progRunChip=runChip;
   slotsArr.forEach((slot,idx)=>{
     const ps=pilotsForSlot(slot);const isNow=idx===currentIdx;
     const awaiting=pilotsAwaitingData(slot);
@@ -3407,7 +3687,8 @@ function renderSchedule(){
     const _tv=teamViewMode(),_hl=_tv!=='cards';
     const tHtml=_pf?'':(_tv==='both'?teamsHighlightHtml(slot,ps)+teamsSlotHtml(slot):_hl?teamsHighlightHtml(slot,ps):teamsSlotHtml(slot));
     if(_pf&&!ps.length)return; // con il filtro attivo si vedono solo gli orari dei piloti filtrati
-    if(slot.session&&slot.session!==lastSession){html+='<div class="session-divider">'+slot.session+'</div>';lastSession=slot.session;}
+    const _b=_blk[idx];
+    if(_b&&_b.ses&&_b.id!==_lastBlk){html+=['<div class="session-divider">',_b.ses,(_blkCnt[_b.ses]>1?[' · TURNO ',_b.num].join(''):''),wxSlotIcon(activeDay,slot.time),'</div>'].join('');_lastBlk=_b.id;}
 
     // No pilots matched AND some are waiting for data assignment
     if(!ps.length&&awaiting.length&&!tHtml){
@@ -3445,17 +3726,14 @@ function renderSchedule(){
       var shCls=hlClassOf(sh);
       var shIco={foto:'<i class="ic ic-hl-foto"></i>',video:'<i class="ic ic-hl-video"></i>',priority:'<i class="ic ic-hl-prio"></i>'};
       var _ft=_hl?followedTeamOf(p.num,p.team):null;
-      _items.push({num:p.num,key:_ft?_ft.key:null,html:'<div class="card-inner'+(shCls?' '+shCls:'')+(_ft?' tglow':'')+'"'+(_ft?' style="--tc:'+teamColor(_ft.key)+'"':'')+'><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
-        +(sh.length?sh.map(function(h){return'<span class="hl-badge hl-'+h+' hl-mini">'+(shIco[h]||'')+'</span>';}).join(''):'')
-        +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,slot)+'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+runChip(p.num,idx)
-        +(p.group?'<span class="inner-group">GRP '+p.group+'</span>':'')
-        +'<span class="inner-team-big">'+p.team+'</span>'
-        +(_ft?'<span title="Pilota del team con acquisto personale" style="font-family:\'Chakra Petch\',sans-serif;font-size:9px;font-weight:700;letter-spacing:.06em;color:#4ade80;border:1px solid rgba(74,222,128,.45);border-radius:4px;padding:0 4px;flex-shrink:0;line-height:14px">PERS</span>':'')
-        +noteBtn(p.num)+'</div>'
+      _items.push({num:p.num,key:_ft?_ft.key:null,html:'<div class="card-inner'+(shCls?' '+shCls:'')+(_ft?' tglow':'')+'"'+(_ft?' style="--tc:'+teamColor(_ft.key)+'"':'')+'>'
+        +progHead({num:p.num,name:p.name,team:p.team,note:noteBtn(p.num),badges:[riskTri(p.num),gridBadge(p.num,slot)].join(''),
+          top:[sh.map(function(h){return['<span class="hl-badge hl-',h,' hl-mini">',(shIco[h]||''),'</span>'].join('');}).join(''),reelChip(p),fotoChips(p)].join(''),
+          chips:[persChip(p),(p.group?['<span class="inner-group">GRP ',p.group,'</span>'].join(''):''),runChip(p.num,idx)].join('')})
         +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+spotPill(p.num)+'</div>'
         +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>'});
     });
-    if(_hl&&!_pf){teamsHighlightItems(slot,ps).forEach(x=>_items.push(x));}
+    if(_hl&&!_pf){teamsHighlightItems(slot,ps,idx).forEach(x=>_items.push(x));}
     html+=groupSlotItems(_items)+(_hl&&!_pf?teamsWaitingHtml(slot)+(_tv==='both'?teamsSlotHtml(slot):''):tHtml)+'</div></div>';
   });
   updateProgTicker(slotsArr,_ds==='today'?currentIdx:slotsArr.length);
@@ -3480,9 +3758,10 @@ function renderSchedule(){
       ps.forEach(p=>{
         const _ft=_fhl?followedTeamOf(p.num,p.team):null;const _sc=hlClassOf(p.highlight||[]);
         let html='';
-        html+='<div class="card-inner'+(_poss?' final-maybe':'')+(_sc?' '+_sc:'')+(_ft?' tglow':'')+'" style="margin-top:8px'+(_ft?';--tc:'+teamColor(_ft.key):'')+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
-          +'<span class="inner-num">#'+p.num+'</span>'+riskTri(p.num)+gridBadge(p.num,{type:'final'})+'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+(p.eliminated?'':runChip(p.num,1e6))
-          +'<span class="inner-team-big">'+p.team+'</span>'+noteBtn(p.num)+'</div>'
+        html+='<div class="card-inner'+(_poss?' final-maybe':'')+(_sc?' '+_sc:'')+(_ft?' tglow':'')+'" style="margin-top:8px'+(_ft?';--tc:'+teamColor(_ft.key):'')+'">'
+          +progHead({num:p.num,name:p.name,team:p.team,note:noteBtn(p.num),badges:[riskTri(p.num),gridBadge(p.num,{type:'final'})].join(''),
+            top:[(p.highlight||[]).map(function(h){return['<span class="hl-badge hl-',h,' hl-mini"><i class="ic ic-hl-',(h==='priority'?'prio':h),'"></i></span>'].join('');}).join(''),reelChip(p),fotoChips(p)].join(''),
+            chips:[persChip(p),(p.eliminated?'':runChip(p.num,1e6))].join('')})
           +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,true)).join('')+spotPill(p.num)+'</div>'
           +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>';
         _fItems.push({num:p.num,key:_ft?_ft.key:null,html});
@@ -3501,7 +3780,7 @@ function renderSchedule(){
       _elim.slice().sort((a,b)=>parseInt(a.num)-parseInt(b.num)).forEach(p=>{
         html+='<div class="card-inner" style="opacity:.55;border-style:dashed;cursor:pointer;margin-top:6px" onclick="openEditPilot(\''+p.num+'\')"><div style="display:flex;align-items:center;gap:8px">'
           +'<span class="inner-num" style="color:var(--text4)">#'+p.num+'</span>'
-          +'<span class="inner-name">'+p.name+'</span>'+reelChip(p)
+          +'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)
           +'<span class="'+catClass(p.cat)+'" style="font-size:9px;font-weight:800;margin-left:auto">'+p.cat+'</span>'
           +'</div>'+noteLine(p.num)+'</div>';
       });
@@ -4088,6 +4367,7 @@ function openLegend(){
   h.push(p_('Griglie, arrivi e finalisti si correggono da soli quando gli organizzatori pubblicano le correzioni (arriva “Classifica corretta”). Note e lavori li modifichi tu.'));
   h.push(sec('CREDITI'));
   h.push(p_('Disegni dei tracciati: © contributori di OpenStreetMap (licenza ODbL).'));
+  h.push(p_('Previsioni meteo: dati di MET Norway (Istituto meteorologico norvegese), licenza CC BY 4.0.'));
   h.push('</div>');
 
   const tocH='<div class="gd-toc">'+toc.map(([n,t])=>n?'<a href="#" onclick="guideGo('+n+');return false">'+t+'</a>':'<div class="gd-toc-c">'+t+'</div>').join('')+'</div>';
@@ -4167,12 +4447,19 @@ setInterval(()=>{try{
 setTimeout(watchUserSettings,3000);
 // Piloti dei team seguiti, uno per uno con il colore del team (modalità "evidenzia")
 /* 15/11/2026 (Andrea): piloti dei team seguiti (non miei) come elementi singoli, per raggrupparli con i miei */
-function teamsHighlightItems(slot,ps){
+let _progRunChip=null;
+/* 19/11/2026 (Andrea): riga pilota del Programma con layout unico e fisso, uguale per miei piloti, piloti dei team e finali.
+   Riga 1: numero, rischio, posizione, nome (una riga, tagliato se lungo), matita. Riga 2: team a sinistra, etichette a destra sempre nello stesso ordine. */
+function progHead(o){
+  return ['<div class="ph">',(o.top?['<div class="ph-0">',o.top,'</div>'].join(''):''),'<div class="ph-1"><span class="inner-num">#',o.num,'</span>',o.badges||'','<span class="inner-name">',o.name,'</span>',o.note||'','</div>',
+    '<div class="ph-2"><span class="ph-team">',o.team||'','</span><span class="ph-chips">',o.chips||'','</span></div></div>'].join('');
+}
+function teamsHighlightItems(slot,ps,idx){
   const mine=new Set(ps.map(p=>String(p.num)));const out=[];
   teamsForSlot(slot).forEach(({t,inSlot})=>{const c=teamColor(t.key);
-    inSlot.filter(p=>!mine.has(String(p.num))).forEach(p=>out.push({num:p.num,key:t.key,html:'<div class="card-inner tglow" style="--tc:'+c+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">'
-      +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,slot)+'<span class="inner-name">'+String(p.name).replace(/</g,'&lt;')+'</span>'
-      +'<span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span>'+noteBtn(p.num)+'</div>'
+    inSlot.filter(p=>!mine.has(String(p.num))).forEach(p=>out.push({num:p.num,key:t.key,html:'<div class="card-inner tglow" style="--tc:'+c+'">'
+      +progHead({num:p.num,name:String(p.name).replace(/</g,'&lt;'),team:String(t.name).replace(/</g,'&lt;'),note:noteBtn(p.num),badges:gridBadge(p.num,slot),
+        chips:[(p.group?['<span class="inner-group">GRP ',p.group,'</span>'].join(''):''),(_progRunChip&&idx!=null?_progRunChip(p.num,idx):'')].join('')})
       +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,true)).join('')+'</div>'
       +(teamNotes[t.key]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+teamNotes[t.key]+'</div>':'')+noteLine(p.num)+'</div>'}));});
   return out;
@@ -4189,7 +4476,7 @@ function groupSlotItems(items,keepOrder){
   const gk=teams.map(t=>t.key).filter(k=>cnt[k]>=1);
   const out=[];
   gk.forEach(k=>{const g=items.filter(x=>x.key===k).sort(byNum);const t=teams.find(x=>x.key===k)||{name:k};const c=teamColor(k);
-    out.push('<div class="tgroup" style="--tc:'+c+'"><div class="tgroup-head"><span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span><span>'+g.length+(g.length===1?' pilota':' piloti')+'</span></div>'+g.map(x=>x.html.replace(' tglow','').replace(/<span class="tchip"[^>]*>[^<]*<\/span>/,'')).join('')+'</div>');});
+    out.push('<div class="tgroup" style="--tc:'+c+'"><div class="tgroup-head"><span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span>'+teamWorkChips(t)+'<span>'+g.length+(g.length===1?' pilota':' piloti')+'</span></div>'+g.map(x=>x.html.replace(' tglow','').replace(/<span class="tchip"[^>]*>[^<]*<\/span>/,'')).join('')+'</div>');});
   items.filter(x=>!x.key||!cnt[x.key]||!gk.includes(x.key)).sort(byNum).forEach(x=>out.push(x.html));
   return out.join('');
 }
@@ -5133,7 +5420,7 @@ function renderPista(){
   if(pistaView==='pilota'){
     el.innerHTML=pilots.map(p=>'<div class="card '+hlClassOf(p.highlight)+'">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
-      +'<span class="pilot-num">#'+p.num+'</span>'+riskTri(p.num)+'<span class="pilot-name">'+p.name+'</span>'+reelChip(p)
+      +'<span class="pilot-num">#'+p.num+'</span>'+riskTri(p.num)+'<span class="pilot-name">'+p.name+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)
       +'<span class="pilot-cat '+catClass(p.cat)+'" style="margin-left:auto">'+p.cat+'</span>'+noteBtn(p.num)+'</div>'
       +noteLine(p.num)
       +'<div class="track-grid">'+trackSections.map(s=>{
@@ -5168,20 +5455,30 @@ function closeModalOutside(e){if(e.target===document.getElementById('modal'))clo
 window.closeModal=closeModal;window.closeModalOutside=closeModalOutside;
 
 let _entryPreview=null;
-let _addHl=[];
+/* 19/11/2026 (Andrea): ogni account ha un lavoro predefinito (FOTO o VIDEO) scelto alla creazione dell'account;
+   andrea = VIDEO, gli altri senza scelta = FOTO. Reel predefinito 30". Foto/video e reel non possono restare vuoti. */
+function defaultHl(){const v=(typeof userSettings!=='undefined'&&userSettings&&userSettings.defaultHl)||'';return v==='video'||v==='foto'?v:(currentUserId==='andrea'?'video':'foto');}
+let _addHl=[],_addReel='30';
 function addHlHtml(){return[['foto','<i class="ic ic-hl-foto"></i><span>FOTO</span>'],['video','<i class="ic ic-hl-video"></i><span>VIDEO</span>']]
   .map(([k,h])=>'<div class="hl-option hl-'+k+(_addHl.includes(k)?' active':'')+'" onclick="toggleAddHl(\''+k+'\')">'+h+'</div>').join('');}
-function toggleAddHl(k){_addHl=_addHl.includes(k)?_addHl.filter(x=>x!==k):_addHl.concat(k);const el=document.getElementById('f-hl');if(el)el.innerHTML=addHlHtml();}
+function toggleAddHl(k){if(_addHl.includes(k)){if(_addHl.length===1)return;_addHl=_addHl.filter(x=>x!==k);}else _addHl=_addHl.concat(k);   // mai vuoto
+  const el=document.getElementById('f-hl');if(el)el.innerHTML=addHlHtml();
+  const w=document.getElementById('f-reel-wrap');if(w)w.style.display=_addHl.includes('video')?'':'none';}
+function addReelHtml(){return REEL_OPTS.map(([v,l])=>'<button type="button" onclick="setAddReel(\''+v+'\')" style="flex:1;min-height:44px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
+  +(_addReel===v?'background:#e9d5a8;color:#1a160e;border:1px solid #e9d5a8':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>').join('');}
+function setAddReel(v){_addReel=v;const el=document.getElementById('f-reel');if(el)el.innerHTML=addReelHtml();}
+window.setAddReel=setAddReel;
 window.toggleAddHl=toggleAddHl;
 function openAddPilot(){
   if(!activeRaceId){alert('Seleziona prima una gara dalla tab GARE');return;}
-  _addHl=[];
+  _addHl=[defaultHl()];_addReel='30';
   openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
     +'<div class="modal-title">Aggiungi Pilota</div>'
     +'<div class="form-group"><label class="form-label">Numero Kart</label>'
     +'<input class="form-input" id="f-num" placeholder="es. 342" type="number" oninput="previewFromNum(this.value)" autocomplete="off" style="font-size:22px;font-weight:900"></div>'
     // 18/11/2026 (Andrea): foto / video scelti gia' quando si aggiunge il pilota (stesse evidenziazioni del pilota)
     +'<div class="form-group"><label class="form-label">Lavoro</label><div class="hl-picker" id="f-hl">'+addHlHtml()+'</div></div>'
+    +'<div class="form-group" id="f-reel-wrap"'+(_addHl.includes('video')?'':' style="display:none"')+'><label class="form-label">Reel</label><div id="f-reel" style="display:flex;gap:8px">'+addReelHtml()+'</div></div>'
     +'<div id="f-preview" style="display:none;background:var(--bg3);border:2px solid #22c55e;border-radius:10px;padding:12px;margin-bottom:12px">'
     +'<div style="font-size:10px;color:#22c55e;letter-spacing:2px;font-weight:700;margin-bottom:8px">✓ TROVATO IN ENTRY LIST</div>'
     +'<div id="f-preview-content"></div>'
@@ -5229,7 +5526,7 @@ function confirmFromEntryList(){
   const group=_entryPreview.group||'';
   const serie=_entryPreview.serie?_entryPreview.serie.toString():'';
   const prefinal=_entryPreview.prefinal||'';
-  _rtNewPilots.add(String(num));pilots.push({num,name:(_entryPreview.lastName||'')+' '+(_entryPreview.firstName||''),team:_entryPreview.team||'',cat:_entryPreview.cat||'OK',parity:_entryPreview.parity||autoParity(num),group,prefinal,serie,eliminated:false,highlight:_addHl.slice()});
+  _rtNewPilots.add(String(num));pilots.push({num,name:(_entryPreview.lastName||'')+' '+(_entryPreview.firstName||''),team:_entryPreview.team||'',cat:_entryPreview.cat||'OK',parity:_entryPreview.parity||autoParity(num),group,prefinal,serie,eliminated:false,highlight:_addHl.slice(),reel:_addHl.includes('video')?_addReel:''});
   statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');trackStatus[num]={};notes[num]=note;
   const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;update(ref(db),u);
   saveAll();closeModal();
@@ -5244,7 +5541,7 @@ function savePilotManual(){
   const note=document.getElementById('f-note-m')?document.getElementById('f-note-m').value.trim():'';
   if(!num||!name||!team){alert('Compila tutti i campi');return;}
   if(pilots.find(p=>p.num===num)){alert('Numero già presente');return;}
-  _rtNewPilots.add(String(num));pilots.push({num,name,team,cat,parity:autoParity(num),group:'',prefinal:'',serie:'',heats:[],eliminated:false,highlight:_addHl.slice()});
+  _rtNewPilots.add(String(num));pilots.push({num,name,team,cat,parity:autoParity(num),group:'',prefinal:'',serie:'',heats:[],eliminated:false,highlight:_addHl.slice(),reel:_addHl.includes('video')?_addReel:''});
   statuses[num]={};TASKS.forEach(t=>statuses[num][t]='red');trackStatus[num]={};notes[num]=note;
   const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;update(ref(db),u);
   saveAll();closeModal();
@@ -5277,16 +5574,39 @@ function openEditPilot(num){
     +'<button type="button" class="hl-option hl-video'+(hl.indexOf("video")>=0?' active':'')+'" data-hl="video" aria-pressed="'+(hl.indexOf("video")>=0)+'" onclick="toggleHL(this,\''+p.num+'\')"><i class="ic ic-hl-video"></i><span>VIDEO</span></button>'
     +'<button type="button" class="hl-option hl-priority'+(hl.indexOf("priority")>=0?' active':'')+'" data-hl="priority" aria-pressed="'+(hl.indexOf("priority")>=0)+'" onclick="toggleHL(this,\''+p.num+'\')"><i class="ic ic-hl-prio"></i><span>PRIORITÀ</span></button>'
     +'</div></div>'
+    +'<div id="ef-extras">'+efExtrasHtml(p)+'</div>'
     +'<button class="form-submit" onclick="updatePilot(\''+num+'\')">SALVA</button>'
     +'<button class="form-delete" onclick="deletePilot(\''+num+'\')">Elimina pilota</button>');
 }
 window.openEditPilot=openEditPilot;
 
 /* 15/11/2026 (Andrea): FOTO/VIDEO/PRIORITA' si salvano subito al tocco, senza premere SALVA */
-function toggleHL(btn,num){const on=btn.classList.toggle('active');btn.setAttribute('aria-pressed',on);try{if(navigator.vibrate)navigator.vibrate(15);}catch(e){}
+/* 19/11/2026 (Andrea): in Modifica pilota tutto e' editabile: durata reel (se VIDEO), etichette foto (se FOTO, quando esisteranno),
+   personale/team. Si salva subito come le evidenziazioni. */
+function efExtrasHtml(p){
+  let h='';
+  if(hasVideo(p))h+='<div class="form-group"><label class="form-label">Durata reel</label><div style="display:flex;gap:8px">'
+    +REEL_OPTS.map(([v,l])=>{const on=String(p.reel||'30')===v;
+      return'<button type="button" onclick="setPilotReelEdit(\''+p.num+'\',\''+v+'\')" style="flex:1;min-height:44px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
+        +(on?'background:#e9d5a8;color:#1a160e;border:1px solid #e9d5a8':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>';}).join('')+'</div></div>';
+  if(FOTO_OPTS.length&&hasFoto(p))h+='<div class="form-group"><label class="form-label">Foto</label><div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +FOTO_OPTS.map(([v,l])=>'<button type="button" onclick="toggleFotoTagEdit(\''+p.num+'\',\''+v+'\')" style="min-height:44px;padding:0 12px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
+      +(fotoTagsOf(p).includes(v)?'background:#7dd3fc;color:#0b1220;border:1px solid #7dd3fc':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>').join('')+'</div></div>';
+  return h+persToggleHtml(p.num);
+}
+function efRefresh(p){const el=document.getElementById('ef-extras');if(el)el.innerHTML=efExtrasHtml(p);try{renderAll();}catch(e){}}
+function setPilotReelEdit(num,v){const p=pilots.find(x=>x.num===String(num));if(!p)return;p.reel=v;saveAll();efRefresh(p);}
+function toggleFotoTagEdit(num,v){const p=pilots.find(x=>x.num===String(num));if(!p)return;const c=fotoTagsOf(p);p.fotoTags=c.includes(v)?c.filter(x=>x!==v):c.concat(v);saveAll();efRefresh(p);}
+window.setPilotReelEdit=setPilotReelEdit;window.toggleFotoTagEdit=toggleFotoTagEdit;
+function toggleHL(btn,num){
+  // FOTO/VIDEO non possono restare entrambi spenti
+  if(num!==undefined&&btn.classList.contains('active')&&/^(foto|video)$/.test(btn.getAttribute('data-hl')||'')){
+    const other=document.querySelector('#ef-hl-picker .hl-option.active[data-hl="'+(btn.getAttribute('data-hl')==='foto'?'video':'foto')+'"]');if(!other)return;}
+  const on=btn.classList.toggle('active');btn.setAttribute('aria-pressed',on);try{if(navigator.vibrate)navigator.vibrate(15);}catch(e){}
   if(num===undefined)return;const p=pilots.find(x=>String(x.num)===String(num));if(!p)return;
   const h=[];document.querySelectorAll('#ef-hl-picker .hl-option.active').forEach(b=>{const v=b.getAttribute('data-hl');if(v)h.push(v);});
   p.highlight=h;saveAll();
+  {const ex=document.getElementById('ef-extras');if(ex)ex.innerHTML=efExtrasHtml(p);}
   const lb=document.getElementById('ef-hl-saved');if(lb){lb.textContent='Salvato';lb.style.opacity=1;clearTimeout(lb._t);lb._t=setTimeout(()=>{lb.style.opacity=0;},1500);}
   try{renderAll();}catch(e){}}
 

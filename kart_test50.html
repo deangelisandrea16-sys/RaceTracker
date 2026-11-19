@@ -149,12 +149,7 @@ var t=q('meta[name="apple-mobile-web-app-title"]');if(t)t.content='RT Prova';})(
 <!-- TAB PILOTI -->
 <div id="tab-piloti" class="tab-content">
   <div class="content">
-    <div class="io-row">
-      <button class="io-btn export" onclick="exportData()"><i class="ic ic-download"></i> ESPORTA</button>
-      <button class="io-btn import" onclick="document.getElementById('import-input').click()"><i class="ic ic-upload"></i> IMPORTA</button>
-      <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(event)">
-    </div>
-    <button class="mgmt-btn" onclick="copyAllForEditor()"><i class="ic ic-list"></i> COPIA TUTTI PER EDITOR</button>
+    <button class="mgmt-btn" onclick="openExportPilots()"><i class="ic ic-download"></i> ESPORTA PILOTI</button>
     <div class="filter-section">
       <div class="filter-row">
         <span class="filter-row-label">TASK</span>
@@ -231,6 +226,7 @@ var t=q('meta[name="apple-mobile-web-app-title"]');if(t)t.content='RT Prova';})(
   </div>
   <div class="content" id="apex-delay-box" style="display:none;padding-top:8px;padding-bottom:0"></div>
   <div class="content" style="padding-top:8px;padding-bottom:0">
+    <div id="wx-bar" style="display:none;margin-bottom:8px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);font-size:12px;font-weight:700;color:var(--text2)"></div>
     <button class="ov-btn" onclick="openOverview()"><i class="ic ic-list"></i> VISTA GENERALE GIORNATA</button>
     <div class="adv-search-wrap">
       <div class="adv-search-mode">
@@ -321,7 +317,7 @@ var t=q('meta[name="apple-mobile-web-app-title"]');if(t)t.content='RT Prova';})(
 
 <script src="vendor/firebase-app-compat.js"></script>
 <script src="vendor/firebase-database-compat.js"></script>
-<script>const APP_BUILD='2026-11-18-2350';</script>
+<script>const APP_BUILD='2026-11-19-0735';</script>
 <script src="app/app.js"></script>
 <script>/* file dello script vecchio rimasto in cache: lo riscarica una volta e ricarica la pagina */
 if(window.RT_JS_BUILD!==APP_BUILD){try{if(sessionStorage.getItem('rt_jsfix')!==APP_BUILD){sessionStorage.setItem('rt_jsfix',APP_BUILD);Promise.all(['app/app.js','app/app.css'].map(function(u){return fetch(u,{cache:'reload'});})).then(function(){location.reload();});}}catch(e){}}</script>

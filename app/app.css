@@ -772,3 +772,18 @@ body.light .sp-vp.td .sp-track{stroke:#4a4e57}
 .sp-vp.td::after{z-index:1}.sp-marks,.sp-dots{z-index:2}
 .sp-vp.td.hasbg{background:var(--spbg) center/cover no-repeat,#111}
 .sp-dots .sp-dot.drag{box-shadow:0 0 0 4px var(--accent),0 6px 16px rgba(0,0,0,.6);transform:translate(-50%,-50%) scale(1.25);transition:none!important}
+
+/* 19/11/2026: riga pilota del Programma, layout unico e fisso (mai a capo in base allo spazio) */
+.ph{margin-bottom:8px}
+.ph-1{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-height:44px}
+.ph-1 .inner-num{flex:0 0 auto}
+.ph-1 .inner-name{flex:1 1 0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ph-1>*:not(.inner-name){flex-shrink:0}
+.ph-2{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;min-height:24px;padding-left:52px;margin-top:-2px}
+.ph-team{flex:1 1 0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px;font-weight:600;color:var(--text3);letter-spacing:.5px;text-transform:uppercase}
+.ph-chips{display:flex;align-items:center;gap:4px;flex:0 0 auto;flex-wrap:nowrap;max-width:100%;overflow:hidden}
+.ph-chips>*{flex-shrink:0}
+.ph-chips .inner-group{margin-left:0}
+.tgroup>.card-inner .ph-2{padding-left:52px}
+.ph-0{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;min-height:22px;margin-bottom:2px;overflow:hidden}
+.ph-0>*{flex-shrink:0}
