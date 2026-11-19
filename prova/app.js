@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1050';
+var RT_JS_BUILD='2026-11-19-1100';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2479,8 +2479,9 @@ function noteBtn(num){const n=String(num).replace(/[^0-9A-Za-z_-]/g,'');
 /* 18/11/2026 (Andrea): durata del reel acquistato per pilota (30", 45", 1') — per tutti i miei piloti.
    Si sceglie nella finestra della matita; l'etichetta compare solo se impostata; nella copia per editor "Reel 30"". */
 // 19/11/2026 (Andrea): oltre a 30"/45"/1' anche "Clip sfuse" (es. team AKM: clip ogni giorno, niente reel montato)
-const REEL_OPTS=[['30','30"'],['45','45"'],['60',"1'"],['clip','Clip sfuse']];
-function reelLabel(v){const o=REEL_OPTS.find(x=>x[0]===String(v||'30'));return o?o[1]:'30"';}
+// 19/11/2026 (Andrea): tolto il 45" dalle scelte (nessun dato lo usava); resta solo l'etichetta per eventuali dati vecchi
+const REEL_OPTS=[['30','30"'],['60',"1'"],['clip','Clip sfuse']];
+function reelLabel(v){const o=REEL_OPTS.concat([['45','45"']]).find(x=>x[0]===String(v||'30'));return o?o[1]:'30"';}
 function reelText(v){return String(v||'')==='clip'?'Clip sfuse':'Reel '+reelLabel(v);}   // testo per copia editor / PDF
 /* 18/11/2026 (Andrea): un mio pilota che fa parte di un team seguito = acquisto personale oltre al team -> "PERS" ovunque compare
    (programma, lista piloti, finali, ricerca), sia se segnato dalla matita sia se aggiunto a mano. */
