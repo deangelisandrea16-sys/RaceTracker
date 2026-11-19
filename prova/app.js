@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1030';
+var RT_JS_BUILD='2026-11-19-1040';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1265,16 +1265,27 @@ function pillSave(field,value){
   const prev=window._rtDeferRender;window._rtDeferRender=true;
   try{saveUserField(field,value);}finally{window._rtDeferRender=prev;}
 }
+/* 19/11/2026 (Andrea): "perche' deve aggiornarsi tutta la pagina?" -> si ridisegna solo quello che dipende dallo stato:
+   - filtro STATO attivo: la scheda (il pilota/team puo' dover sparire o comparire);
+   - Vista generale aperta: solo il suo corpo (numeri colorati con PISTA);
+   - sempre: i contatori "COSA MI MANCA" (solo i numeri). Tutto il resto resta com'e'. */
+function missRefresh(){
+  const els=document.querySelectorAll('.miss-chips');if(!els.length)return;
+  const tmp=document.createElement('div');tmp.innerHTML=missingDashHtml();
+  const src=tmp.querySelector('.miss-chips');if(!src)return;
+  els.forEach(e=>{e.innerHTML=src.innerHTML;});
+}
 function pillRenderLater(){
   clearTimeout(window._pillRT);
   window._pillRT=setTimeout(()=>{
-    // ridisegno senza animazione di comparsa: niente lampeggio
     if(window._rtDeferRender)return;   // c'e' un modale interattivo aperto: ridisegna lui alla chiusura
     window._rtRenderDirty=false;
-    document.body.classList.add('quiet');try{renderAll();}catch(e){}
     try{if(document.getElementById('ov-body'))renderOverviewBody();}catch(e){}
-    clearTimeout(window._quietT);window._quietT=setTimeout(()=>document.body.classList.remove('quiet'),400);
-  },700);
+    if(filterStatuses.size){
+      document.body.classList.add('quiet');try{renderAll();}catch(e){}
+      clearTimeout(window._quietT);window._quietT=setTimeout(()=>document.body.classList.remove('quiet'),400);
+    }else{try{missRefresh();}catch(e){}}
+  },filterStatuses.size?700:150);
 }
 
 function toggleTrack(num,section){
@@ -1321,7 +1332,7 @@ function missingDashHtml(){
       +'</div>';
   }).join('');
   return '<div class="session-divider" style="margin-top:26px">COSA MI MANCA</div>'
-    +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+chips+'</div>'
+    +'<div class="miss-chips" style="display:flex;gap:6px;flex-wrap:wrap">'+chips+'</div>'
     +'<div style="font-size:10px;color:var(--text4);text-align:center;padding:6px 0 2px">verde = completati sui '+tot+' tuoi piloti</div>';
 }
 window.missingDashHtml=missingDashHtml;
@@ -3877,7 +3888,7 @@ function renderSchedule(){
         +'</div>';
     }).join('');
     html+='<div class="session-divider" style="margin-top:26px">COSA MI MANCA</div>';
-    html+='<div style="display:flex;gap:6px;flex-wrap:wrap">'+chips+'</div>';
+    html+='<div class="miss-chips" style="display:flex;gap:6px;flex-wrap:wrap">'+chips+'</div>';
     html+='<div style="font-size:10px;color:var(--text4);text-align:center;padding:6px 0 2px">verde = completati sui '+tot+' tuoi piloti</div>';
   }
   el.innerHTML=awardsStrip(activeDay)+(html||'<div class="empty-state"><p>Nessun tuo pilota in questa giornata</p></div>');
