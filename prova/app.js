@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0350';
+var RT_JS_BUILD='2026-11-19-0610';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3504,7 +3504,55 @@ function progDayState(day,slotsArr){
   const nowM=now.getHours()*60+now.getMinutes()-(typeof scheduleDelay==='number'?scheduleDelay:0);
   return (last>=0&&nowM>last+30)?'ended':'today';
 }
+/* ══ METEO (19/11/2026, Andrea) — riga indicativa in cima al Programma per il giorno scelto ══
+   Fonte gratuita anche per uso commerciale con attribuzione (crediti in Guida). Solo indicazione: temperatura, vento, fasce di pioggia.
+   PROVA: la legge il telefono, al massimo una volta l'ora per sede (copia locale). Prima dell'app vera va spostata sul server
+   (una lettura l'ora per gara, scritta nella gara) come deciso per tutte le fonti esterne.
+   Coordinate: venues/<chiave>/geo se presente, altrimenti la tabella qui sotto (approssimate, bastano per il meteo). */
+const WX_GEO={lonato:[45.4329,10.4853],franciacorta:[45.513,9.985],cremona:[45.085,10.305],sarno:[40.817,14.590],viterbo:[42.420,12.060],
+  lemans:[47.939,0.218],ala:[45.760,11.000],zuera:[41.870,-0.800],genk:[50.990,5.560],wackersdorf:[49.320,12.190]};
+let _wx={key:'',at:0,ts:null,loading:false};
+function wxGeo(){let v=null;try{v=raceVenue();}catch(e){}if(!v)return null;const g=v.geo||WX_GEO[v.key];
+  return g?{key:v.key,lat:Number(g.lat!=null?g.lat:g[0]),lon:Number(g.lon!=null?g.lon:g[1])}:null;}
+function wxDayDate(day){const r=(typeof races!=='undefined'&&races&&races[activeRaceId])||{};if(!r.startDate)return'';
+  const N=['DOMENICA','LUNEDÌ','MARTEDÌ','MERCOLEDÌ','GIOVEDÌ','VENERDÌ','SABATO'];const z=n=>String(n).padStart(2,'0');
+  const d=new Date(r.startDate+'T12:00:00'),end=new Date((r.endDate||r.startDate)+'T12:00:00');
+  for(let i=0;i<10&&d<=end;i++,d.setDate(d.getDate()+1))if(N[d.getDay()]===day)return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate());
+  return'';}
+function wxLoad(){
+  const g=wxGeo();if(!g)return;
+  if(_wx.key!==g.key){_wx={key:g.key,at:0,ts:null,loading:false};
+    try{const c=JSON.parse(localStorage.getItem('rt_wx_'+g.key)||'null');if(c&&c.ts){_wx.at=c.at;_wx.ts=c.ts;}}catch(e){}}
+  if(_wx.loading||Date.now()-_wx.at<3600000)return;
+  _wx.loading=true;_wx.at=Date.now();   // anche se fallisce non si riprova prima di un'ora
+  fetch('https://api.met.no/weatherapi/locationforecast/2.0/compact?lat='+g.lat.toFixed(4)+'&lon='+g.lon.toFixed(4))
+    .then(r=>r.ok?r.json():null).then(j=>{_wx.loading=false;const ts=j&&j.properties&&j.properties.timeseries;if(!ts)return;
+      _wx.ts=ts.map(x=>{const d=x.data||{},i=(d.instant||{}).details||{},h1=d.next_1_hours,h6=d.next_6_hours;
+        return{t:x.time,T:i.air_temperature,W:i.wind_speed,p:h1?(h1.details||{}).precipitation_amount:(h6?(h6.details||{}).precipitation_amount:null),n:h1?1:(h6?6:0)};});
+      try{localStorage.setItem('rt_wx_'+g.key,JSON.stringify({at:_wx.at,ts:_wx.ts}));}catch(e){}
+      wxRender();}).catch(()=>{_wx.loading=false;});
+}
+function wxSummary(day){
+  const date=wxDayDate(day);if(!date||!_wx.ts)return null;const z=n=>String(n).padStart(2,'0');
+  const rows=_wx.ts.map(x=>{const d=new Date(x.t);return Object.assign({h:d.getHours(),ds:d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())},x);}).filter(x=>x.ds===date&&x.h+(x.n||1)>7&&x.h<19);
+  if(!rows.length)return null;
+  const T=rows.map(x=>x.T).filter(v=>v!=null),W=rows.map(x=>x.W).filter(v=>v!=null);
+  // ore di pioggia (07-19): almeno 0,2 mm nell'ora; con dati a 6 ore, la fascia intera se >= 1 mm
+  const wet=new Set();rows.forEach(x=>{if(x.p==null)return;if(x.n===1&&x.p>=0.2)wet.add(x.h);if(x.n===6&&x.p>=1)for(let k=x.h;k<x.h+6;k++)if(k>=7&&k<19)wet.add(k);});
+  const hrs=[...wet].sort((a,b)=>a-b),bands=[];hrs.forEach(h=>{const l=bands[bands.length-1];if(l&&h===l[1])l[1]=h+1;else bands.push([h,h+1]);});
+  return{tmin:Math.round(Math.min.apply(null,T)),tmax:Math.round(Math.max.apply(null,T)),wind:W.length?Math.round(Math.max.apply(null,W)*3.6):null,bands,coarse:rows.some(x=>x.n===6)};
+}
+function wxRender(){
+  const el=document.getElementById('wx-bar');if(!el)return;
+  const s=wxSummary(activeDay);if(!s){el.style.display='none';return;}
+  const rain=s.bands.length?'<span style="color:#60a5fa;font-weight:900">Pioggia '+s.bands.map(b=>b[0]+'–'+b[1]).join(', ')+'</span>':'<span style="color:#4ade80">Asciutto</span>';
+  el.innerHTML='<span style="font-size:10px;letter-spacing:.08em;color:var(--text4);font-weight:800;margin-right:8px">METEO</span>'+rain
+    +' <span style="color:var(--text4)">·</span> '+s.tmin+'–'+s.tmax+'°'+(s.wind!=null?' <span style="color:var(--text4)">·</span> vento '+s.wind+' km/h':'')
+    +' <span style="color:var(--text4);font-weight:600;font-size:10px">'+(s.coarse?'(a fasce di 6 ore, indicativo)':'(indicativo)')+'</span>';
+  el.style.display='';
+}
 function renderSchedule(){
+  try{wxLoad();wxRender();}catch(e){}
   const dt=document.getElementById('day-tabs');
   dt.innerHTML=currentDays.map(d=>'<button class="day-tab '+(d===activeDay?'active':'')+'" onclick="setDay(\''+d+'\')">'+d+'</button>').join('');
   const el=document.getElementById('schedule-content');
@@ -4242,6 +4290,7 @@ function openLegend(){
   h.push(p_('Griglie, arrivi e finalisti si correggono da soli quando gli organizzatori pubblicano le correzioni (arriva “Classifica corretta”). Note e lavori li modifichi tu.'));
   h.push(sec('CREDITI'));
   h.push(p_('Disegni dei tracciati: © contributori di OpenStreetMap (licenza ODbL).'));
+  h.push(p_('Previsioni meteo: dati di MET Norway (Istituto meteorologico norvegese), licenza CC BY 4.0.'));
   h.push('</div>');
 
   const tocH='<div class="gd-toc">'+toc.map(([n,t])=>n?'<a href="#" onclick="guideGo('+n+');return false">'+t+'</a>':'<div class="gd-toc-c">'+t+'</div>').join('')+'</div>';
