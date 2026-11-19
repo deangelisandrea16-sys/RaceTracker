@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1620';
+var RT_JS_BUILD='2026-11-19-1630';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -893,6 +893,7 @@ function rtAuthStart(){
     const name=await rtResolveUser(u);
     if(!name){rtRequestScreen(u);return;}
     _rtAuthUser=name;rtAuthOverlay('');try{rtWatchRequests();}catch(e){}
+    try{const up={};up['authMap/'+u.uid+'/last']=Date.now();update(ref(db),up);}catch(e){}   // ultimo accesso, per il pannello Utenti
     if(currentUserId!==name){
       currentUserId=name;try{localStorage.setItem('rt_user',name);}catch(e){}
       const url=new URL(location);url.searchParams.delete('user');history.replaceState({},'',url);
@@ -933,36 +934,45 @@ function rtSendRequest(){
 window.rtSendRequest=rtSendRequest;
 function rtIsAdmin(){return !!_fbAuth&&rtAuthGateOn()&&RT_ADMINS.includes(_rtAuthUser);}
 // pannello admin: utenti, richieste, mail abilitate
+let _rtAdmTab='req';
+function rtAdmTab(t){_rtAdmTab=t;rtAdminPanel();}
+window.rtAdmTab=rtAdmTab;
+function rtAgo(t){if(!t)return'mai';const m=Math.round((Date.now()-t)/60000);if(m<2)return'adesso';if(m<60)return[m,' min fa'].join('');
+  const h=Math.round(m/60);if(h<24)return[h,' h fa'].join('');const d=Math.round(h/24);return d===1?'ieri':[d,' giorni fa'].join('');}
+function rtAvatar(n){const c=['#22c55e','#f59e0b','#3b82f6','#ef4444','#a855f7','#14b8a6','#ec4899'];let x=0;String(n).split('').forEach(ch=>x+=ch.charCodeAt(0));
+  return['<div class="adm-av" style="background:',c[x%c.length],'">',rtEsc(String(n).charAt(0).toUpperCase()),'</div>'].join('');}
+// pannello admin: richieste, utenti, mail
 function rtAdminPanel(){
   if(!rtIsAdmin())return;
   Promise.all(['settings','authRequests','authEmails','authMap'].map(k=>new Promise(res=>onValue(ref(db,k),s=>res(s.val()||{}),{onlyOnce:true}))))
   .then(([st,rq,em,mp])=>{
-    const users=new Set(Object.keys(st));Object.values(em).forEach(v=>users.add(String(v)));
-    let saved=[];try{saved=JSON.parse(localStorage.getItem('rt_users')||'[]');}catch(e){}saved.forEach(v=>users.add(v));
-    users.delete('utente prova');
-    const btn=(lbl,act,on)=>['<button class="form-submit" style="margin:0 0 8px;padding:12px;background:',on?'#22c55e':'none',';border:1.5px solid ',on?'#22c55e':'var(--border2,#444)',';color:',on?'#000':'var(--text)','" onclick="',act,'">',lbl,'</button>'].join('');
-    const sec=t=>['<div style="font-size:10px;color:var(--text4);font-weight:800;letter-spacing:1px;margin:14px 0 8px">',t,'</div>'].join('');
-    const h=['<div class="modal-title">Utenti</div>'];
-    const rqk=Object.keys(rq);
-    h.push(sec(['RICHIESTE (',rqk.length,')'].join('')));
-    if(!rqk.length)h.push('<div style="font-size:12px;color:var(--text4)">Nessuna richiesta.</div>');
-    rqk.forEach(k=>{const r=rq[k];h.push('<div style="border:1px solid var(--border2,#444);border-radius:10px;padding:10px;margin-bottom:8px">',
-      '<div style="font-size:12px;margin-bottom:6px">',rtEsc(r.email),'</div>',
-      '<input class="form-input" id="rq-',rtEsc(k),'" value="',rtEsc(r.name),'" style="margin-bottom:8px">',
-      '<div style="display:flex;gap:8px"><button class="form-submit" style="flex:1;margin:0;background:#22c55e;color:#000" onclick="rtApprove(\'',rtEsc(k),'\')">APPROVA</button>',
-      '<button class="form-submit" style="flex:1;margin:0;background:none;border:1.5px solid #ef4444;color:#ef4444" onclick="rtReject(\'',rtEsc(k),'\')">RIFIUTA</button></div></div>');});
-    h.push(sec('ABILITA UNA MAIL'));
-    h.push('<input class="form-input" id="ad-email" type="email" placeholder="mail@esempio.it" style="margin-bottom:8px">',
-      '<input class="form-input" id="ad-name" placeholder="nome utente (es. ricky)" style="margin-bottom:8px">',btn('ABILITA','rtAdminAdd()',false));
-    h.push(sec('MAIL ABILITATE'));
-    Object.keys(em).sort().forEach(k=>{const used=Object.values(mp).some(v=>v&&rtEmailKey(v.email)===k);
-      h.push('<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px"><div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">',
-        rtEsc(k.replace(/,/g,'.')),' → <b>',rtEsc(String(em[k]).toUpperCase()),'</b>',used?'':' <span style="color:var(--text4)">(mai entrato)</span>','</div>',
-        (RT_ADMINS.includes(String(em[k]))||rtEmailKey((_fbAuth.currentUser||{}).email)===k)?'':['<button style="min-height:44px;padding:0 12px;background:none;border:1px solid var(--border2,#444);border-radius:8px;color:var(--text3);font-family:inherit" onclick="rtUnlink(\'',rtEsc(k),'\')">Scollega</button>'].join(''),'</div>');});
-    h.push(sec('GUARDA COME'));
-    [...users].sort().forEach(n=>h.push(btn([rtEsc(n.toUpperCase()),n===currentUserId?' ✓':''].join(''),["rtViewAs('",rtEsc(n),"')"].join(''),n===currentUserId)));
-    h.push(btn('UTENTE PROVA (test)',"location.href=location.pathname+'?user=utente%20prova'",false));
-    h.push(rtAccountHtml().replace('<div class="modal-title">Account</div>',''));
+    const users=new Set(Object.keys(st));Object.values(em).forEach(v=>users.add(String(v)));users.delete('utente prova');
+    const rqk=Object.keys(rq),emk=Object.keys(em).sort();
+    // ultimo accesso e mail per utente
+    const info={};Object.keys(mp).forEach(uid=>{const v=mp[uid];if(!v||!v.user)return;const i=info[v.user]||(info[v.user]={last:0,mails:[]});
+      i.last=Math.max(i.last,v.last||v.at||0);if(v.email&&!i.mails.includes(v.email))i.mails.push(v.email);});
+    const tab=(k,l,n)=>['<button class="adm-tab',_rtAdmTab===k?' on':'','" onclick="rtAdmTab(\'',k,'\')">',l,n?['<span class="adm-cnt">',n,'</span>'].join(''):'','</button>'].join('');
+    const h=['<div class="adm"><div class="adm-head"><div class="adm-title">UTENTI</div><div class="adm-me">',rtEsc(String(_rtAuthUser).toUpperCase()),' · SUPER ADMIN</div></div>',
+      '<div class="adm-tabs">',tab('req','Richieste',rqk.length),tab('usr','Utenti',0),tab('mail','Mail',0),'</div>'];
+    if(_rtAdmTab==='req'){
+      if(!rqk.length)h.push('<div class="adm-empty">Nessuna richiesta in attesa</div>');
+      rqk.forEach(k=>{const r=rq[k];h.push('<div class="adm-card adm-req"><div class="adm-row">',rtAvatar(r.name),'<div class="adm-who"><div class="adm-mail">',rtEsc(r.email),'</div><div class="adm-sub">',rtAgo(r.at),'</div></div></div>',
+        '<label class="adm-lbl">Entra come</label><input class="form-input adm-in" id="rq-',rtEsc(k),'" value="',rtEsc(r.name),'" autocomplete="off">',
+        '<div class="adm-btns"><button class="adm-btn ok" onclick="rtApprove(\'',rtEsc(k),'\')">APPROVA</button><button class="adm-btn no" onclick="rtReject(\'',rtEsc(k),'\')">RIFIUTA</button></div></div>');});
+    }else if(_rtAdmTab==='usr'){
+      [...users].sort().forEach(n=>{const i=info[n]||{last:0,mails:[]},adm=RT_ADMINS.includes(n),me=n===currentUserId;
+        h.push('<div class="adm-card',me?' me':'','"><div class="adm-row">',rtAvatar(n),'<div class="adm-who"><div class="adm-name">',rtEsc(n.toUpperCase()),
+          '<span class="adm-role',adm?' sa':'','">',adm?'SUPER ADMIN':'UTENTE','</span></div><div class="adm-sub">',i.mails.length?rtEsc(i.mails.join(', ')):'nessuna mail collegata',' · ',rtAgo(i.last),'</div></div>',
+          me?'<span class="adm-now">IN USO</span>':['<button class="adm-btn sm" onclick="rtViewAs(\'',rtEsc(n),'\')">GUARDA</button>'].join(''),'</div></div>');});
+      h.push('<button class="adm-btn ghost" onclick="location.href=location.pathname+\'?user=utente%20prova\'">UTENTE PROVA (test)</button>');
+    }else{
+      h.push('<div class="adm-card"><label class="adm-lbl">Abilita una mail</label><input class="form-input adm-in" id="ad-email" type="email" inputmode="email" placeholder="mail@esempio.it" autocomplete="off">',
+        '<input class="form-input adm-in" id="ad-name" placeholder="nome utente (es. ricky)" autocomplete="off"><button class="adm-btn ok" onclick="rtAdminAdd()">ABILITA</button></div>');
+      emk.forEach(k=>{const n=String(em[k]),used=Object.values(mp).some(v=>v&&rtEmailKey(v.email)===k),lock=RT_ADMINS.includes(n)||rtEmailKey((_fbAuth.currentUser||{}).email)===k;
+        h.push('<div class="adm-card"><div class="adm-row">',rtAvatar(n),'<div class="adm-who"><div class="adm-mail">',rtEsc(k.replace(/,/g,'.')),'</div><div class="adm-sub">→ <b>',rtEsc(n.toUpperCase()),'</b>',used?'':' · mai entrato','</div></div>',
+          lock?'<span class="adm-now">🔒</span>':['<button class="adm-btn sm no" onclick="rtUnlink(\'',rtEsc(k),'\')">SCOLLEGA</button>'].join(''),'</div></div>');});
+    }
+    h.push('<button class="adm-btn ghost" onclick="rtLogout()">ESCI DA QUESTO TELEFONO</button></div>');
     openModal(h.join(''));
   });
 }
@@ -971,7 +981,7 @@ function rtApprove(k){
   onValue(ref(db,'authRequests/'+k),s=>{const r=s.val();if(!r)return rtAdminPanel();
     const el=document.getElementById('rq-'+k);const n=rtCleanName(el&&el.value)||rtCleanName(r.name);if(!n)return;
     const up={};up['authEmails/'+k]=n;up['authMap/'+r.uid]={user:n,email:String(r.email||''),at:Date.now(),by:_rtAuthUser};up['authRequests/'+k]=null;
-    update(ref(db),up).then(rtAdminPanel);},{onlyOnce:true});
+    update(ref(db),up).then(()=>{if(!Object.keys(up).length)return;rtAdminPanel();});},{onlyOnce:true});
 }
 function rtReject(k){if(!rtIsAdmin())return;const up={};up['authRequests/'+k]=null;update(ref(db),up).then(rtAdminPanel);}
 function rtAdminAdd(){
