@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1005';
+var RT_JS_BUILD='2026-11-19-1020';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1248,11 +1248,27 @@ function toggleTask(num,task){
     document.querySelectorAll('button.task-btn').forEach(b=>{if(b.getAttribute('onclick')==="toggleTask('"+num+"','"+task+"')")b.className='task-btn '+st;});
     return;
   }
-  // ridisegno senza animazione di comparsa: niente lampeggio toccando una pillola
-  document.body.classList.add('quiet');renderAll();
-  clearTimeout(window._quietT);window._quietT=setTimeout(()=>document.body.classList.remove('quiet'),400);
+  pillPaint("toggleTask('"+num+"','"+task+"')",statuses[num][task]);
+  pillRenderLater();
 }
 window.toggleTask=toggleTask;
+/* 19/11/2026 (Andrea): "quando premo una pillola c'e' un attimo di lag". La pillola cambia colore subito (solo il suo DOM);
+   il ridisegno della scheda (filtri, conteggi) parte dopo, uno solo anche con piu' tocchi di fila. */
+function pillPaint(onclickStr,st){
+  document.querySelectorAll('[onclick]').forEach(b=>{
+    if(b.getAttribute('onclick')!==onclickStr)return;
+    STATUS_CYCLE.forEach(c=>b.classList.remove(c));b.classList.add(st);
+  });
+}
+function pillRenderLater(){
+  clearTimeout(window._pillRT);
+  window._pillRT=setTimeout(()=>{
+    // ridisegno senza animazione di comparsa: niente lampeggio
+    document.body.classList.add('quiet');try{renderAll();}catch(e){}
+    try{if(document.getElementById('ov-body'))renderOverviewBody();}catch(e){}
+    clearTimeout(window._quietT);window._quietT=setTimeout(()=>document.body.classList.remove('quiet'),400);
+  },700);
+}
 
 function toggleTrack(num,section){
   if(!trackStatus[num])trackStatus[num]={};
@@ -2783,8 +2799,9 @@ window.removeTeam=removeTeam;
 function toggleTeamTask(key,task){
   if(!teamStatuses[key])teamStatuses[key]={};
   teamStatuses[key][task]=cycleStatus(teamStatuses[key][task]||'red');
-  saveUserField('teamStatuses',teamStatuses);renderAll();
-  if(document.getElementById('ov-body'))renderOverviewBody();
+  saveUserField('teamStatuses',teamStatuses);
+  pillPaint("toggleTeamTask('"+escAttr(key).replace(/&quot;/g,'"')+"','"+task+"')",teamStatuses[key][task]);
+  pillRenderLater();
 }
 window.toggleTeamTask=toggleTeamTask;
 function saveTeamNote(key){
