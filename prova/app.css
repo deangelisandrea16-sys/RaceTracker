@@ -800,7 +800,7 @@ body.light .sp-vp.td .sp-track{stroke:#4a4e57}
   .slot-header{flex-wrap:nowrap;min-width:0;overflow:hidden;white-space:nowrap}
   .slot-header>.slot-time,.slot-header>.now-badge,.slot-header>.slot-dur{flex:0 0 auto}
   .slot-header>.slot-label{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .slot-header>.slot-type{flex:0 1 auto;min-width:0;max-width:48%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .slot-header>.slot-type{flex:0 6 auto;min-width:0;max-width:48%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .final-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .final-title .now-badge{white-space:nowrap}
 }
