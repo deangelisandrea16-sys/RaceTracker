@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1540';
+var RT_JS_BUILD='2026-11-19-1615';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -738,6 +738,7 @@ function showUserPicker(){
   // 19/11/2026: con il login l'utente e' quello dell'accesso; solo l'admin puo' passare all'utente di prova per i test
   if(rtAuthGateOn()&&_rtAuthUser!=='andrea'){openModal(rtAccountHtml());return;}
   // 19/11/2026 (Andrea): con il login niente passaggio agli altri account: solo il proprio utente e l'utente di prova
+  if(rtIsAdmin()){rtAdminPanel();return;}
   if(_fbAuth){openModal(rtSwitchHtml());return;}
   _upHl='foto';
   // Get saved users from all races
@@ -772,7 +773,6 @@ function rtSwitchHtml(){
   if(prova){h.push('<div style="font-size:13px;margin-bottom:14px">Sei nell\'<b>UTENTE PROVA</b> (dati di test).</div>');
     h.push(b('TORNA AL MIO ACCOUNT',false,"location.href=location.pathname"));return h.join('');}
   h.push(b([String(me).toUpperCase(),' ✓'].join(''),true,'closeModal()'));
-  if(me==='andrea')h.push(b('UTENTE PROVA (test)',false,"location.href=location.pathname+'?user=utente%20prova'"));
   h.push(rtAccountHtml().replace('<div class="modal-title">Account</div>',''));
   return h.join('');
 }
@@ -891,15 +891,114 @@ function rtAuthStart(){
     if(!rtAuthGateOn()){rtAuthOverlay('');return;}
     if(!u){rtAuthOverlay(rtLoginHtml(''));return;}
     const name=await rtResolveUser(u);
-    if(!name){rtAuthOverlay(['<div class="ra-box"><div class="ra-title">ACCOUNT NON ABILITATO</div><div class="ra-sub">',String(u.email||'').replace(/</g,'&lt;'),
-      ' non e\' ancora collegato a un utente. Chiedi all\'amministratore di abilitarlo.</div><button class="ra-btn" onclick="rtLogout()">Esci</button></div>'].join(''));return;}
-    _rtAuthUser=name;rtAuthOverlay('');
+    if(!name){rtRequestScreen(u);return;}
+    _rtAuthUser=name;rtAuthOverlay('');try{rtWatchRequests();}catch(e){}
     if(currentUserId!==name){
       currentUserId=name;try{localStorage.setItem('rt_user',name);}catch(e){}
       const url=new URL(location);url.searchParams.delete('user');history.replaceState({},'',url);
       updateUserHeader();if(activeRaceId)listenRaceData(activeRaceId);
     }
   });
+}
+/* ══ RICHIESTE DI ACCESSO e PANNELLO UTENTI (19/11/2026, Andrea) ══
+   Mail non abilitata -> l'utente scrive il suo nome -> authRequests/<emailKey>. Solo l'admin (andrea) vede le richieste,
+   approva (authEmails + authMap), rifiuta, abilita mail in anticipo, scollega. L'admin vede tutti gli utenti, gli altri solo se stessi.
+   NB: finche' il database e' aperto e' un blocco dell'app, non del database (fase 3). */
+const RT_ADMIN='andrea';
+let _rtReqOff=null;
+function rtEsc(x){return String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function rtCleanName(x){return String(x||'').trim().toLowerCase().replace(/[.#$\[\]\/]/g,'').slice(0,30);}
+function rtRequestScreen(u,msg){
+  const k=rtEmailKey(u.email);
+  onValue(ref(db,'authRequests/'+k),s=>{const r=s.val();
+    const h=['<div class="ra-box"><div class="ra-title">RICHIESTA DI ACCESSO</div><div class="ra-sub">',rtEsc(u.email),'</div>'];
+    if(r){h.push('<div class="ra-sub">Richiesta inviata come <b>',rtEsc(String(r.name).toUpperCase()),'</b>. Appena l\'amministratore approva entri da solo.</div>');}
+    else{h.push('<input class="form-input" id="ra-name" placeholder="Il tuo nome (es. Ricky)" autocomplete="off">',
+      '<button class="ra-btn" onclick="rtSendRequest()">Chiedi l\'accesso</button>');}
+    if(msg)h.push('<div class="ra-msg">',msg,'</div>');
+    h.push('<button class="ra-btn" style="background:none" onclick="rtLogout()">Esci</button></div>');
+    rtAuthOverlay(h.join(''));},{onlyOnce:true});
+  // quando l'admin approva, si entra senza ricaricare
+  if(_rtReqOff)_rtReqOff();
+  _rtReqOff=onValue(ref(db,'authMap/'+u.uid),s=>{const v=s.val();if(v&&v.user){if(_rtReqOff){_rtReqOff();_rtReqOff=null;}location.reload();}});
+}
+function rtSendRequest(){
+  const u=_fbAuth&&_fbAuth.currentUser;if(!u)return;
+  const el=document.getElementById('ra-name');const n=rtCleanName(el&&el.value);
+  if(!n){rtRequestScreen(u,'Scrivi il tuo nome.');return;}
+  const up={};up['authRequests/'+rtEmailKey(u.email)]={email:String(u.email||''),uid:u.uid,name:n,at:Date.now()};
+  update(ref(db),up).then(()=>rtRequestScreen(u)).catch(()=>rtRequestScreen(u,'Invio non riuscito, riprova.'));
+}
+window.rtSendRequest=rtSendRequest;
+function rtIsAdmin(){return !!_fbAuth&&rtAuthGateOn()&&_rtAuthUser===RT_ADMIN;}
+// pannello admin: utenti, richieste, mail abilitate
+function rtAdminPanel(){
+  if(!rtIsAdmin())return;
+  Promise.all(['settings','authRequests','authEmails','authMap'].map(k=>new Promise(res=>onValue(ref(db,k),s=>res(s.val()||{}),{onlyOnce:true}))))
+  .then(([st,rq,em,mp])=>{
+    const users=new Set(Object.keys(st));Object.values(em).forEach(v=>users.add(String(v)));
+    let saved=[];try{saved=JSON.parse(localStorage.getItem('rt_users')||'[]');}catch(e){}saved.forEach(v=>users.add(v));
+    users.delete('utente prova');
+    const btn=(lbl,act,on)=>['<button class="form-submit" style="margin:0 0 8px;padding:12px;background:',on?'#22c55e':'none',';border:1.5px solid ',on?'#22c55e':'var(--border2,#444)',';color:',on?'#000':'var(--text)','" onclick="',act,'">',lbl,'</button>'].join('');
+    const sec=t=>['<div style="font-size:10px;color:var(--text4);font-weight:800;letter-spacing:1px;margin:14px 0 8px">',t,'</div>'].join('');
+    const h=['<div class="modal-title">Utenti</div>'];
+    const rqk=Object.keys(rq);
+    h.push(sec(['RICHIESTE (',rqk.length,')'].join('')));
+    if(!rqk.length)h.push('<div style="font-size:12px;color:var(--text4)">Nessuna richiesta.</div>');
+    rqk.forEach(k=>{const r=rq[k];h.push('<div style="border:1px solid var(--border2,#444);border-radius:10px;padding:10px;margin-bottom:8px">',
+      '<div style="font-size:12px;margin-bottom:6px">',rtEsc(r.email),'</div>',
+      '<input class="form-input" id="rq-',rtEsc(k),'" value="',rtEsc(r.name),'" style="margin-bottom:8px">',
+      '<div style="display:flex;gap:8px"><button class="form-submit" style="flex:1;margin:0;background:#22c55e;color:#000" onclick="rtApprove(\'',rtEsc(k),'\')">APPROVA</button>',
+      '<button class="form-submit" style="flex:1;margin:0;background:none;border:1.5px solid #ef4444;color:#ef4444" onclick="rtReject(\'',rtEsc(k),'\')">RIFIUTA</button></div></div>');});
+    h.push(sec('ABILITA UNA MAIL'));
+    h.push('<input class="form-input" id="ad-email" type="email" placeholder="mail@esempio.it" style="margin-bottom:8px">',
+      '<input class="form-input" id="ad-name" placeholder="nome utente (es. ricky)" style="margin-bottom:8px">',btn('ABILITA','rtAdminAdd()',false));
+    h.push(sec('MAIL ABILITATE'));
+    Object.keys(em).sort().forEach(k=>{const used=Object.values(mp).some(v=>v&&rtEmailKey(v.email)===k);
+      h.push('<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px"><div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">',
+        rtEsc(k.replace(/,/g,'.')),' → <b>',rtEsc(String(em[k]).toUpperCase()),'</b>',used?'':' <span style="color:var(--text4)">(mai entrato)</span>','</div>',
+        String(em[k])===RT_ADMIN?'':['<button style="min-height:44px;padding:0 12px;background:none;border:1px solid var(--border2,#444);border-radius:8px;color:var(--text3);font-family:inherit" onclick="rtUnlink(\'',rtEsc(k),'\')">Scollega</button>'].join(''),'</div>');});
+    h.push(sec('GUARDA COME'));
+    [...users].sort().forEach(n=>h.push(btn([rtEsc(n.toUpperCase()),n===currentUserId?' ✓':''].join(''),["rtViewAs('",rtEsc(n),"')"].join(''),n===currentUserId)));
+    h.push(btn('UTENTE PROVA (test)',"location.href=location.pathname+'?user=utente%20prova'",false));
+    h.push(rtAccountHtml().replace('<div class="modal-title">Account</div>',''));
+    openModal(h.join(''));
+  });
+}
+function rtApprove(k){
+  if(!rtIsAdmin())return;
+  onValue(ref(db,'authRequests/'+k),s=>{const r=s.val();if(!r)return rtAdminPanel();
+    const el=document.getElementById('rq-'+k);const n=rtCleanName(el&&el.value)||rtCleanName(r.name);if(!n)return;
+    const up={};up['authEmails/'+k]=n;up['authMap/'+r.uid]={user:n,email:String(r.email||''),at:Date.now(),by:RT_ADMIN};up['authRequests/'+k]=null;
+    update(ref(db),up).then(rtAdminPanel);},{onlyOnce:true});
+}
+function rtReject(k){if(!rtIsAdmin())return;const up={};up['authRequests/'+k]=null;update(ref(db),up).then(rtAdminPanel);}
+function rtAdminAdd(){
+  if(!rtIsAdmin())return;
+  const e=String((document.getElementById('ad-email')||{}).value||'').trim(),n=rtCleanName((document.getElementById('ad-name')||{}).value);
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)||!n){alert('Serve una mail valida e un nome utente');return;}
+  const up={};up['authEmails/'+rtEmailKey(e)]=n;update(ref(db),up).then(rtAdminPanel);
+}
+function rtUnlink(k){
+  if(!rtIsAdmin())return;
+  if(!confirm('Scollegare '+k.replace(/,/g,'.')+'? I suoi dati restano, solo non potra\' piu\' entrare.'))return;
+  onValue(ref(db,'authMap'),s=>{const mp=s.val()||{};const up={};up['authEmails/'+k]=null;
+    Object.keys(mp).forEach(uid=>{if(mp[uid]&&rtEmailKey(mp[uid].email)===k)up['authMap/'+uid]=null;});
+    update(ref(db),up).then(rtAdminPanel);},{onlyOnce:true});
+}
+function rtViewAs(n){
+  if(!rtIsAdmin())return;
+  currentUserId=n;try{localStorage.setItem('rt_user',n);}catch(e){}
+  closeModal();updateUserHeader();if(activeRaceId)listenRaceData(activeRaceId);
+}
+window.rtApprove=rtApprove;window.rtReject=rtReject;window.rtAdminAdd=rtAdminAdd;window.rtUnlink=rtUnlink;window.rtViewAs=rtViewAs;window.rtAdminPanel=rtAdminPanel;
+// pallino rosso sul nome se ci sono richieste (solo admin)
+let _rtReqWatch=false;
+function rtWatchRequests(){
+  if(_rtReqWatch||!rtIsAdmin())return;_rtReqWatch=true;
+  onValue(ref(db,'authRequests'),s=>{const n=Object.keys(s.val()||{}).length;const el=document.getElementById('user-badge');
+    if(el){el.style.boxShadow=n?'0 0 0 2px #ef4444':'';el.title=n?n+' richieste di accesso':'';}
+    if(n&&!sessionStorage.getItem('rt_req_seen_'+n)){sessionStorage.setItem('rt_req_seen_'+n,'1');try{showToast&&showToast(n+' richiesta di accesso: tocca il tuo nome');}catch(e){}}});
 }
 function updateUserHeader(){
   const el=document.getElementById('user-badge');
