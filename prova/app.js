@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1240';
+var RT_JS_BUILD='2026-11-19-1250';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3444,39 +3444,42 @@ setInterval(()=>{try{const was=window._rtManPrev;const now=delayManualOn();if(wa
 /* 19/11/2026 (Andrea): tasto PARTITO ADESSO, solo quando gli automatismi sono saltati (live muto), per tutti gli account.
    Su 5 turni attorno a quello in corso (2 prima, ORA, 2 dopo), senza conferma (fa perdere tempo). Dopo il tocco il turno mostra in verde
    "PARTITO 11.59 · +23 min" (si capisce che ha preso il comando); toccandolo di nuovo si annulla (torna il ritardo di prima). */
-let _partito=null;   // {time, prev, v, at} dell'ultimo tocco
-function partitoBtn(slot,idx,curIdx,ds){
-  // 19/11/2026 (Andrea): disponibile a TUTTI gli account (il ritardo della gara e' condiviso); i comandi -5/+5/modifica restano del titolare
+let _partito=null;   // {time, prev, v, at, lab} dell'ultimo tocco su questo telefono
+/* 19/11/2026 (Andrea): "con tutti sti tasti la rendiamo incasinata" + "devo sapere l'orario in cui dovevano partire".
+   Una sola barra compatta in cima al Programma, solo con il live muto: i turni attorno a ORA indicati come si vedono in pista
+   (categoria + dispari/pari, fascia di numeri o gruppo + i miei piloti in quel turno). Un tocco = partito adesso. */
+function partitoLabel(sl){
+  const f=slotFilterLabel(sl);
+  const x=f==='ODD'?'dispari':f==='EVEN'?'pari':f==='ALL'?'tutti':f.replace(/^GRP /,'').replace(/\+/g,'–').replace(/^PREF /,'pref. ').replace(/^SERIE /,'serie ');
+  let mine=[];try{mine=pilotsForSlot(sl).map(p=>'#'+p.num);}catch(e){}
+  return {cat:String(sl.label||sl.cat||''),sub:x,mine:mine.slice(0,3).join(' ')+(mine.length>3?' +'+(mine.length-3):'')};
+}
+function partitoBar(slotsArr,curIdx,ds){
   if(ds!=='today'||liveAlive())return'';
-  const t=String(slot.time);
-  if(_partito&&_partito.time===t&&Date.now()-_partito.at<30*60000){
+  const nowM=new Date().getHours()*60+new Date().getMinutes();
+  const ids=new Set();
+  if(curIdx>=0)for(let i=Math.max(0,curIdx-2);i<=Math.min(slotsArr.length-1,curIdx+2);i++)ids.add(i);
+  try{const lu=lunchOf(slotsArr);const pc=currentPartito;
+    [0,lu?lu.idx:-1].forEach(i=>{if(i<0||!slotsArr[i])return;const tm=slotMins(slotsArr[i].time);
+      const done=pc&&pc.day===activeDay&&slotMins(pc.time)>=tm;if(!done&&nowM>=tm-15&&nowM<=tm+120)ids.add(i);});}catch(e){}
+  if(!ids.size)return'';
+  const h=['<div class="partito-bar"><div class="pb-head">LIVE ASSENTE · <b>chi parte adesso?</b></div>'];
+  if(_partito&&Date.now()-_partito.at<30*60000){
     const hm=new Date(_partito.at).toTimeString().slice(0,5).replace(':','.');
     const d=_partito.v===0?'in orario':(_partito.v>0?'+':'')+_partito.v+' min';
-    return['<button class="partito-btn ok" onclick="partitoAnnulla()"><i class="ic ic-flag"></i> PARTITO ',hm,' · ',d,' <span>tocca per annullare</span></button>'].join('');
+    h.push('<button class="pb-ok" onclick="partitoAnnulla()"><i class="ic ic-flag"></i> PARTITO ',hm,' · ',_partito.lab||'',' · ',d,' <span>tocca per annullare</span></button>');
   }
-  // 19/11/2026 (Andrea): anche sul PRIMO turno della giornata e sul PRIMO dopo la pausa (partenze in ritardo come stamattina),
-  // finche' nessuno li ha confermati (races/<gara>/partito, condiviso) e fino a 2 ore dopo l'orario del programma
-  let extra=false;
-  // 19/11/2026 (Andrea): "la stiamo costruendo piu' sugli anticipi che sui ritardi": finestra di 5 turni attorno a ORA
-  // (2 prima = pista piu' indietro dell'app, ORA, 2 dopo = pista piu' avanti)
-  const near=curIdx>=0&&idx>=curIdx-2&&idx<=curIdx+2;
-  if(!near){
-    try{
-      const arr=currentSchedule[activeDay];const sl=Array.isArray(arr)?arr:Object.values(arr||{});
-      const lu=lunchOf(sl);const key=idx===0||(lu&&lu.idx===idx);
-      const nowM=new Date().getHours()*60+new Date().getMinutes(),tm=slotMins(t);
-      const pc=currentPartito;
-      const done=pc&&pc.day===activeDay&&slotMins(pc.time)>=tm;
-      extra=key&&!done&&nowM>=tm-15&&nowM<=tm+120;
-    }catch(e){}
-    if(!extra)return'';
-  }
-  return['<button class="partito-btn" onclick="partitoAdesso(\'',t,'\')"><i class="ic ic-flag"></i> PARTITO ADESSO</button>'].join('');
+  h.push('<div class="pb-chips">');
+  [...ids].sort((x,y)=>x-y).forEach(i=>{const sl=slotsArr[i];const l=partitoLabel(sl);
+    h.push('<button class="pb-chip',(i===curIdx?' now':''),'" onclick="partitoAdesso(\'',String(sl.time),'\')"><span class="pb-cat ',catClass(sl.cat),'">',l.cat,'</span><span class="pb-sub">',l.sub,'</span>',(l.mine?'<span class="pb-mine">'+l.mine+'</span>':''),'</button>');});
+  h.push('</div></div>');
+  return h.join('');
 }
 function partitoAdesso(t){
   if(liveAlive())return;
   const d=new Date();const v=d.getHours()*60+d.getMinutes()-slotMins(t);
-  _partito={time:String(t),prev:scheduleDelay||0,v,at:Date.now()};
+  let lab='';try{const arr=currentSchedule[activeDay];const sl=(Array.isArray(arr)?arr:Object.values(arr||{})).find(x=>String(x.time)===String(t));if(sl){const l=partitoLabel(sl);lab=l.cat+' '+l.sub;}}catch(e){}
+  _partito={time:String(t),prev:scheduleDelay||0,v,at:Date.now(),lab};
   try{if(navigator.vibrate)navigator.vibrate(25);}catch(e){}
   currentPartito={day:activeDay,time:String(t),at:Date.now(),by:currentUserId||''};
   try{if(activeRaceId)saveSharedField('partito',currentPartito);}catch(e){}
@@ -3861,7 +3864,6 @@ function renderSchedule(){
         +'<span class="slot-time">'+slot.time+'</span>'+(isNow?'<span class="now-badge">ORA</span>':'')
         +'<span class="slot-label '+catClass(slot.cat)+'">'+slot.label+'</span>'
         +'<span class="slot-type">'+slotFilterLabel(slot)+'</span>'+slotDur(slot)+'</div>'
-        +partitoBtn(slot,idx,currentIdx,_ds)
         +'<div style="font-size:11px;font-weight:700;color:var(--text4);padding:2px 0">— NESSUNO —</div></div>';
       return;
     }
@@ -3871,7 +3873,6 @@ function renderSchedule(){
       +'<span class="slot-time">'+slot.time+'</span>'+(isNow?'<span class="now-badge">ORA</span>':'')
       +'<span class="slot-label '+catClass(slot.cat)+'">'+slot.label+'</span>'
       +'<span class="slot-type">'+slotFilterLabel(slot)+'</span>'+slotDur(slot)+'</div>'
-      +partitoBtn(slot,idx,currentIdx,_ds)
       +(awaiting.length?'<div style="font-size:9px;color:#fbbf24;font-weight:600;margin-top:4px"><i class="ic ic-wait"></i> '+awaiting.map(p=>'#'+p.num).join(' ')+' in attesa</div>':'')
       +'<div style="margin-top:8px">';
     const _items=[]; // 15/11 (Andrea): raccolti per poter raggruppare i piloti dello stesso team
@@ -3956,7 +3957,7 @@ function renderSchedule(){
     html+='<div class="miss-chips" style="display:flex;gap:6px;flex-wrap:wrap">'+chips+'</div>';
     html+='<div style="font-size:10px;color:var(--text4);text-align:center;padding:6px 0 2px">verde = completati sui '+tot+' tuoi piloti</div>';
   }
-  el.innerHTML=awardsStrip(activeDay)+(html||'<div class="empty-state"><p>Nessun tuo pilota in questa giornata</p></div>');
+  el.innerHTML=awardsStrip(activeDay)+partitoBar(slotsArr,currentIdx,_ds)+(html||'<div class="empty-state"><p>Nessun tuo pilota in questa giornata</p></div>');
   const fab=document.getElementById('fab-now');if(fab)fab.classList.add('visible');
   const fabTop=document.getElementById('fab-top');if(fabTop)fabTop.classList.add('visible');
   const fabBot=document.getElementById('fab-bottom');if(fabBot)fabBot.classList.add('visible');

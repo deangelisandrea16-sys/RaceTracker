@@ -809,3 +809,12 @@ body.light .sp-vp.td .sp-track{stroke:#4a4e57}
 .partito-btn span{font-weight:700;font-size:11px;letter-spacing:.3px;color:var(--text3)}
 .card[style*="opacity"] .partito-btn{opacity:1}
 .partito-btn.ok{border-color:#22c55e;background:rgba(34,197,94,.16);color:#4ade80}
+/* 19/11/2026: barra unica "chi parte adesso?" (solo con il live muto) */
+.partito-bar{margin:6px 0 12px;padding:10px;border:1.5px solid #fbbf24;border-radius:12px;background:rgba(251,191,36,.07)}
+.pb-head{font-size:11px;font-weight:800;letter-spacing:1px;color:#fbbf24;margin-bottom:8px}.pb-head b{color:var(--text)}
+.pb-chips{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+.pb-chip{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;min-height:52px;min-width:84px;padding:6px 10px;border-radius:10px;border:1px solid var(--border2,#444);background:var(--bg3,#1a1a1d);color:var(--text);font-family:inherit;cursor:pointer;touch-action:manipulation;text-align:left}
+.pb-chip.now{border:1.5px solid var(--rt-orange,#ff5a1f)}
+.pb-cat{font-size:13px;font-weight:900;white-space:nowrap}.pb-sub{font-size:11px;font-weight:700;color:var(--text3);white-space:nowrap}.pb-mine{font-size:11px;font-weight:800;color:#4ade80;white-space:nowrap}
+.pb-ok{display:flex;align-items:center;gap:6px;width:100%;min-height:44px;margin-bottom:8px;padding:0 10px;border-radius:10px;border:1.5px solid #22c55e;background:rgba(34,197,94,.16);color:#4ade80;font-family:inherit;font-weight:900;font-size:12px;cursor:pointer}
+.pb-ok span{margin-left:auto;font-weight:700;font-size:10px;color:var(--text3)}
