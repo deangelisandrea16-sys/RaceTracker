@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1630';
+var RT_JS_BUILD='2026-11-19-1730';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1897,6 +1897,8 @@ function orgOptions(sel){
 // Live timing automatico: 1) URL scritto nella gara  2) circuito riconosciuto  3) default dell'organizzazione
 function resolveLiveUrl(r){
   r=r||{};
+  // 19/11/2026 (Andrea): link del sito WSK (wskarting.it/livetiming.asp...) = live Apex 'wsk'. Solo per gare WSK.
+  if(r.org==='WSK'&&/wskarting\.it/i.test(String(r.liveTiming||'')))return 'https://www.apex-timing.com/live-timing/wsk/index.html';
   if(r.liveTiming&&String(r.liveTiming).trim())return String(r.liveTiming).trim();
   const cfg=ORG_CONFIG[r.org]||null;
   /* 17/11/2026: organizzatori con live proprio (es. WSK a Lonato usa il suo, non quello del circuito) */
@@ -1907,6 +1909,19 @@ function resolveLiveUrl(r){
   return cfg&&cfg.liveTiming?cfg.liveTiming:'';
 }
 window.resolveLiveUrl=resolveLiveUrl;
+/* 19/11/2026 (Andrea): controllo del link live nelle impostazioni gara: si vede subito se l'app si collega al live */
+function rtLiveCheck(){
+  const el=document.getElementById('rs-lt-chk');if(!el)return;
+  const v=k=>String((document.getElementById(k)||{}).value||'').trim();
+  const cur=(typeof races!=='undefined'&&races[activeRaceId])||{};
+  const r={liveTiming:v('rs-livetiming'),org:v('rs-org')||cur.org||'',circuit:cur.circuit||'',name:cur.name||''};
+  const url=resolveLiveUrl(r);const m=url.match(/apex-timing\.com\/live-timing\/([a-z0-9\-]+)\//i);
+  const name=m?m[1].toLowerCase():'',port=name?APEX_LIVE_PORTS[name]:0;
+  el.innerHTML=name&&port?['<span style="color:#22c55e">✓ Collegato al live <b>',name,'</b>',r.liveTiming?'':' (predefinito)','</span>'].join('')
+    :name?['<span style="color:#f59e0b">⚠ Live <b>',name,'</b> non ancora noto all\'app: niente orari automatici</span>'].join('')
+    :'<span style="color:#ef4444">⚠ Link non riconosciuto: niente live né orari automatici. Usa il link Apex (apex-timing.com/live-timing/…)</span>';
+}
+window.rtLiveCheck=rtLiveCheck;
 // Embed live timing per-gara: usa l'URL della gara, fallback al default dell'organizzazione
 function setLiveTimingSrc(){
   const f=document.getElementById('live-timing-frame');if(!f)return;
@@ -2193,9 +2208,10 @@ function openRaceSettings(raceId){
     +'<div class="form-group"><label class="form-label">Circuito</label>'
     +'<input class="form-input" id="rs-circuit" value="'+(r.circuit||'')+'"></div>'
     +'<div class="form-group"><label class="form-label">Organizzazione</label>'
-    +'<select class="form-input" id="rs-org">'+orgOptions(r.org||'')+'</select></div>'
+    +'<select class="form-input" id="rs-org" onchange="rtLiveCheck()">'+orgOptions(r.org||'')+'</select></div>'
     +'<div class="form-group"><label class="form-label">URL Live Timing (opzionale)</label>'
-    +'<input class="form-input" id="rs-livetiming" value="'+(r.liveTiming||'')+'" placeholder="default organizzazione se vuoto"></div>'
+    +'<input class="form-input" id="rs-livetiming" value="'+(r.liveTiming||'')+'" placeholder="default organizzazione se vuoto" oninput="rtLiveCheck()">'
+    +'<div id="rs-lt-chk" style="font-size:12px;font-weight:700;margin-top:6px"></div></div>'
     +'<div style="display:flex;gap:8px">'
     +'<div class="form-group" style="flex:1"><label class="form-label">Data Inizio</label>'
     +'<input class="form-input" id="rs-start" type="date" value="'+(r.startDate||'')+'"></div>'
@@ -2239,6 +2255,7 @@ function openRaceSettings(raceId){
     +'</div>'
     +'<button class="mgmt-btn" style="margin-top:4px;border-color:#a78bfa;color:#a78bfa" onclick="closeModal();showWSKBookmarklet()"><i class="ic ic-bookmark"></i> MOSTRA BOOKMARKLET WSK</button>'
     +'</div>');
+  setTimeout(rtLiveCheck,0);
 }
 window.openRaceSettings=openRaceSettings;
 
@@ -5591,7 +5608,10 @@ function apexParse(txt){
 function apexCat(t){
   const s=String(t||'').toUpperCase().replace(/\s+/g,' ').trim();
   let r;
-  if(/U10/.test(s))r='MINI U10';
+  // 19/11/2026 (Andrea): le regole sui nomi valgono SOLO per WSK; le altre organizzazioni hanno categorie e numeri diversi
+  let wsk=false;try{wsk=((races||{})[activeRaceId]||{}).org==='WSK';}catch(e){}
+  if(!wsk)r=normCat(s);
+  else if(/U10/.test(s))r='MINI U10';
   else if(/OK-?N\s*-?\s*J/.test(s))r='OK-NJ';
   else if(/^OK-?N\b/.test(s))r='OKN';
   else if(/^OK\s*-?\s*J/.test(s))r='OKJ';
