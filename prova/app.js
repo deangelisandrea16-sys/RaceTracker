@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0610';
+var RT_JS_BUILD='2026-11-19-0620';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3522,13 +3522,13 @@ function wxDayDate(day){const r=(typeof races!=='undefined'&&races&&races[active
 function wxLoad(){
   const g=wxGeo();if(!g)return;
   if(_wx.key!==g.key){_wx={key:g.key,at:0,ts:null,loading:false};
-    try{const c=JSON.parse(localStorage.getItem('rt_wx_'+g.key)||'null');if(c&&c.ts){_wx.at=c.at;_wx.ts=c.ts;}}catch(e){}}
+    try{const c=JSON.parse(localStorage.getItem('rt_wx_'+g.key)||'null');if(c&&c.ts&&c.ts[0]&&c.ts[0].s!==undefined){_wx.at=c.at;_wx.ts=c.ts;}}catch(e){}}
   if(_wx.loading||Date.now()-_wx.at<3600000)return;
   _wx.loading=true;_wx.at=Date.now();   // anche se fallisce non si riprova prima di un'ora
   fetch('https://api.met.no/weatherapi/locationforecast/2.0/compact?lat='+g.lat.toFixed(4)+'&lon='+g.lon.toFixed(4))
     .then(r=>r.ok?r.json():null).then(j=>{_wx.loading=false;const ts=j&&j.properties&&j.properties.timeseries;if(!ts)return;
       _wx.ts=ts.map(x=>{const d=x.data||{},i=(d.instant||{}).details||{},h1=d.next_1_hours,h6=d.next_6_hours;
-        return{t:x.time,T:i.air_temperature,W:i.wind_speed,p:h1?(h1.details||{}).precipitation_amount:(h6?(h6.details||{}).precipitation_amount:null),n:h1?1:(h6?6:0)};});
+        return{t:x.time,T:i.air_temperature,W:i.wind_speed,p:h1?(h1.details||{}).precipitation_amount:(h6?(h6.details||{}).precipitation_amount:null),n:h1?1:(h6?6:0),s:String(((h1||h6||{}).summary||{}).symbol_code||'')};});
       try{localStorage.setItem('rt_wx_'+g.key,JSON.stringify({at:_wx.at,ts:_wx.ts}));}catch(e){}
       wxRender();}).catch(()=>{_wx.loading=false;});
 }
@@ -3539,16 +3539,30 @@ function wxSummary(day){
   const T=rows.map(x=>x.T).filter(v=>v!=null),W=rows.map(x=>x.W).filter(v=>v!=null);
   // ore di pioggia (07-19): almeno 0,2 mm nell'ora; con dati a 6 ore, la fascia intera se >= 1 mm
   const wet=new Set();rows.forEach(x=>{if(x.p==null)return;if(x.n===1&&x.p>=0.2)wet.add(x.h);if(x.n===6&&x.p>=1)for(let k=x.h;k<x.h+6;k++)if(k>=7&&k<19)wet.add(k);});
-  const hrs=[...wet].sort((a,b)=>a-b),bands=[];hrs.forEach(h=>{const l=bands[bands.length-1];if(l&&h===l[1])l[1]=h+1;else bands.push([h,h+1]);});
-  return{tmin:Math.round(Math.min.apply(null,T)),tmax:Math.round(Math.max.apply(null,T)),wind:W.length?Math.round(Math.max.apply(null,W)*3.6):null,bands,coarse:rows.some(x=>x.n===6)};
+  // 19/11/2026 (Andrea): mattina (7-13) e pomeriggio (13-19) separati, ognuno con la sua icona, cosi' si capisce a colpo d'occhio
+  const half=(a,b)=>{const hs=[...wet].filter(h=>h>=a&&h<b).sort((x,y)=>x-y),bands=[];hs.forEach(h=>{const l=bands[bands.length-1];if(l&&h===l[1])l[1]=h+1;else bands.push([h,h+1]);});
+    const rr=rows.filter(x=>x.h<b&&x.h+(x.n||1)>a);if(!rr.length)return null;
+    if(bands.length)return{k:'rain',txt:'pioggia '+bands.map(v=>v[0]+'–'+v[1]).join(', ')};
+    const c={sun:0,part:0,cloud:0};rr.forEach(x=>{const y=x.s||'';if(/^(clearsky|fair)/.test(y))c.sun++;else if(/^partlycloudy/.test(y))c.part++;else c.cloud++;});
+    const k=c.cloud>=c.sun&&c.cloud>=c.part?'cloud':(c.part>=c.sun?'part':'sun');return{k,txt:k==='sun'?'sereno':k==='part'?'poco nuvoloso':'nuvoloso'};};
+  return{tmin:Math.round(Math.min.apply(null,T)),tmax:Math.round(Math.max.apply(null,T)),wind:W.length?Math.round(Math.max.apply(null,W)*3.6):null,am:half(7,13),pm:half(13,19),coarse:rows.some(x=>x.n===6)};
 }
+// icone proprie (niente emoji): sole, sole e nuvola, nuvola, pioggia
+function wxIcon(k){const c={sun:'#fbbf24',part:'#fbbf24',cloud:'#9ca3af',rain:'#60a5fa'}[k];
+  const cloud='<path d="M7 18h10a4 4 0 0 0 .6-7.96A5.5 5.5 0 0 0 7.1 8.6 4.7 4.7 0 0 0 7 18z" fill="'+(k==='part'?'#cbd5e1':k==='rain'?'#94a3b8':c)+'"/>';
+  const sun=(x,y,r)=>'<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="#fbbf24"/>';
+  const rays='<g stroke="#fbbf24" stroke-width="2" stroke-linecap="round"><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M4.6 19.4l2.1-2.1M17.3 6.7l2.1-2.1"/></g>';
+  const body=k==='sun'?sun(12,12,5)+rays:k==='part'?sun(8,8,4.5)+cloud:k==='cloud'?cloud
+    :'<path d="M7 14h10a4 4 0 0 0 .6-7.96A5.5 5.5 0 0 0 7.1 4.6 4.7 4.7 0 0 0 7 14z" fill="#94a3b8"/><g stroke="#60a5fa" stroke-width="2.2" stroke-linecap="round"><path d="M8 17l-1.2 4M12.5 17l-1.2 4M17 17l-1.2 4"/></g>';
+  return'<svg viewBox="0 0 24 24" width="22" height="22" style="vertical-align:-5px;margin-right:4px;flex-shrink:0" aria-hidden="true">'+body+'</svg>';}
 function wxRender(){
   const el=document.getElementById('wx-bar');if(!el)return;
-  const s=wxSummary(activeDay);if(!s){el.style.display='none';return;}
-  const rain=s.bands.length?'<span style="color:#60a5fa;font-weight:900">Pioggia '+s.bands.map(b=>b[0]+'–'+b[1]).join(', ')+'</span>':'<span style="color:#4ade80">Asciutto</span>';
-  el.innerHTML='<span style="font-size:10px;letter-spacing:.08em;color:var(--text4);font-weight:800;margin-right:8px">METEO</span>'+rain
-    +' <span style="color:var(--text4)">·</span> '+s.tmin+'–'+s.tmax+'°'+(s.wind!=null?' <span style="color:var(--text4)">·</span> vento '+s.wind+' km/h':'')
-    +' <span style="color:var(--text4);font-weight:600;font-size:10px">'+(s.coarse?'(a fasce di 6 ore, indicativo)':'(indicativo)')+'</span>';
+  const s=wxSummary(activeDay);if(!s||(!s.am&&!s.pm)){el.style.display='none';return;}
+  const seg=(lab,h)=>h?'<span style="white-space:nowrap;margin-right:12px">'+wxIcon(h.k)+'<span style="color:var(--text4);font-size:10px;font-weight:800;letter-spacing:.06em;margin-right:4px">'+lab+'</span>'
+    +'<span style="font-weight:900;color:'+(h.k==='rain'?'#60a5fa':'var(--text)')+'">'+h.txt+'</span></span>':'';
+  el.innerHTML='<div style="display:flex;flex-wrap:wrap;align-items:center;row-gap:4px">'+seg('MATTINA',s.am)+seg('POMERIGGIO',s.pm)
+    +'<span style="white-space:nowrap;color:var(--text3)">'+s.tmin+'–'+s.tmax+'°'+(s.wind!=null?' · vento '+s.wind+' km/h':'')
+    +' <span style="color:var(--text4);font-weight:600;font-size:10px">'+(s.coarse?'(a fasce di 6 ore, indicativo)':'(indicativo)')+'</span></span></div>';
   el.style.display='';
 }
 function renderSchedule(){
