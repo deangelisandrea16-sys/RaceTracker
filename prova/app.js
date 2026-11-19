@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0640';
+var RT_JS_BUILD='2026-11-19-0650';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1222,7 +1222,10 @@ function slotFilterLabel(slot){
   if(slot.type==='serie')return'SERIE '+slot.filter;
   if(slot.type==='group')return'GRP '+slot.filter.join('+');
   if(slot.type==='prefinal')return'PREF '+slot.filter;
-  if(slot.type==='list')return'LIST '+(Array.isArray(slot.filter)?slot.filter.length:0);
+  if(slot.type==='list'){   // 19/11/2026 (Andrea): fascia di numeri del turno (es. 701–762) al posto di "LIST 62" (quanti numeri)
+    let f=slot.filter||[];if(!Array.isArray(f))f=Object.values(f);const n=f.map(x=>parseInt(x)).filter(x=>!isNaN(x)).sort((a,b)=>a-b);
+    if(!n.length)return'NUMERI';
+    return n.length>1&&n[n.length-1]-n[0]===n.length-1?'N° '+n[0]+'–'+n[n.length-1]:(n.length<=3?'N° '+n.join(', '):n.length+' NUMERI');}
   return'ALL';
 }
 function taskBtn(num,task,small,readonly){
