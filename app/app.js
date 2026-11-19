@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1005';
+var RT_JS_BUILD='2026-11-19-1100';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1242,17 +1242,51 @@ function taskBtn(num,task,small,readonly){
 function toggleTask(num,task){
   if(!statuses[num])statuses[num]={};
   statuses[num][task]=cycleStatus(statuses[num][task]||'red');
-  saveUserField('statuses',statuses);
+  pillSave('statuses',statuses);
   if(activeTab==='livetiming'){ // nel Live cambia solo il colore della pillola: niente ridisegno della pagina
     const st=statuses[num][task];
     document.querySelectorAll('button.task-btn').forEach(b=>{if(b.getAttribute('onclick')==="toggleTask('"+num+"','"+task+"')")b.className='task-btn '+st;});
     return;
   }
-  // ridisegno senza animazione di comparsa: niente lampeggio toccando una pillola
-  document.body.classList.add('quiet');renderAll();
-  clearTimeout(window._quietT);window._quietT=setTimeout(()=>document.body.classList.remove('quiet'),400);
+  pillPaint("toggleTask('"+num+"','"+task+"')",statuses[num][task]);
+  pillRenderLater();
 }
 window.toggleTask=toggleTask;
+/* 19/11/2026 (Andrea): "quando premo una pillola c'e' un attimo di lag". La pillola cambia colore subito (solo il suo DOM);
+   il ridisegno della scheda (filtri, conteggi) parte dopo, uno solo anche con piu' tocchi di fila. */
+function pillPaint(onclickStr,st){
+  document.querySelectorAll('[onclick]').forEach(b=>{
+    if(b.getAttribute('onclick')!==onclickStr)return;
+    STATUS_CYCLE.forEach(c=>b.classList.remove(c));b.classList.add(st);
+  });
+}
+// il salvataggio fa scattare subito il listener locale di Firebase (2 ridisegni completi): qui li si rimanda al ridisegno unico
+function pillSave(field,value){
+  const prev=window._rtDeferRender;window._rtDeferRender=true;
+  try{saveUserField(field,value);}finally{window._rtDeferRender=prev;}
+}
+/* 19/11/2026 (Andrea): "perche' deve aggiornarsi tutta la pagina?" -> si ridisegna solo quello che dipende dallo stato:
+   - filtro STATO attivo: la scheda (il pilota/team puo' dover sparire o comparire);
+   - Vista generale aperta: solo il suo corpo (numeri colorati con PISTA);
+   - sempre: i contatori "COSA MI MANCA" (solo i numeri). Tutto il resto resta com'e'. */
+function missRefresh(){
+  const els=document.querySelectorAll('.miss-chips');if(!els.length)return;
+  const tmp=document.createElement('div');tmp.innerHTML=missingDashHtml();
+  const src=tmp.querySelector('.miss-chips');if(!src)return;
+  els.forEach(e=>{e.innerHTML=src.innerHTML;});
+}
+function pillRenderLater(){
+  clearTimeout(window._pillRT);
+  window._pillRT=setTimeout(()=>{
+    if(window._rtDeferRender)return;   // c'e' un modale interattivo aperto: ridisegna lui alla chiusura
+    window._rtRenderDirty=false;
+    try{if(document.getElementById('ov-body'))renderOverviewBody();}catch(e){}
+    if(filterStatuses.size){
+      document.body.classList.add('quiet');try{renderAll();}catch(e){}
+      clearTimeout(window._quietT);window._quietT=setTimeout(()=>document.body.classList.remove('quiet'),400);
+    }else{try{missRefresh();}catch(e){}}
+  },filterStatuses.size?700:150);
+}
 
 function toggleTrack(num,section){
   if(!trackStatus[num])trackStatus[num]={};
@@ -1298,7 +1332,7 @@ function missingDashHtml(){
       +'</div>';
   }).join('');
   return '<div class="session-divider" style="margin-top:26px">COSA MI MANCA</div>'
-    +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+chips+'</div>'
+    +'<div class="miss-chips" style="display:flex;gap:6px;flex-wrap:wrap">'+chips+'</div>'
     +'<div style="font-size:10px;color:var(--text4);text-align:center;padding:6px 0 2px">verde = completati sui '+tot+' tuoi piloti</div>';
 }
 window.missingDashHtml=missingDashHtml;
@@ -2444,8 +2478,11 @@ function noteBtn(num){const n=String(num).replace(/[^0-9A-Za-z_-]/g,'');
    Si segna e si toglie dalla finestra della nota (matita), solo per i piloti dei team seguiti. */
 /* 18/11/2026 (Andrea): durata del reel acquistato per pilota (30", 45", 1') — per tutti i miei piloti.
    Si sceglie nella finestra della matita; l'etichetta compare solo se impostata; nella copia per editor "Reel 30"". */
-const REEL_OPTS=[['30','30"'],['45','45"'],['60',"1'"]];
-function reelLabel(v){const o=REEL_OPTS.find(x=>x[0]===String(v||'30'));return o?o[1]:'30"';}
+// 19/11/2026 (Andrea): oltre a 30"/45"/1' anche "Clip sfuse" (es. team AKM: clip ogni giorno, niente reel montato)
+// 19/11/2026 (Andrea): tolto il 45" dalle scelte (nessun dato lo usava); resta solo l'etichetta per eventuali dati vecchi
+const REEL_OPTS=[['30','30"'],['60',"1'"],['clip','Clip sfuse']];
+function reelLabel(v){const o=REEL_OPTS.concat([['45','45"']]).find(x=>x[0]===String(v||'30'));return o?o[1]:'30"';}
+function reelText(v){return String(v||'')==='clip'?'Clip sfuse':'Reel '+reelLabel(v);}   // testo per copia editor / PDF
 /* 18/11/2026 (Andrea): un mio pilota che fa parte di un team seguito = acquisto personale oltre al team -> "PERS" ovunque compare
    (programma, lista piloti, finali, ricerca), sia se segnato dalla matita sia se aggiunto a mano. */
 function persChip(p){let ft=null;try{ft=p&&pilots.some(x=>x.num===String(p.num))?followedTeamOf(p.num,p.team||''):null;}catch(e){}
@@ -2472,7 +2509,7 @@ function togglePilotFotoTag(num,v,quick){
 window.togglePilotFotoTag=togglePilotFotoTag;
 function hasVideo(p){let h=p&&p.highlight;if(typeof h==='string')h=[h];if(h&&!Array.isArray(h))h=Object.values(h);return!!(h&&h.includes('video'));}
 function reelChip(p){if(!hasVideo(p))return'';const l=reelLabel(p&&p.reel);
-  return l?'<span title="Durata reel" style="font-family:\'Chakra Petch\',sans-serif;font-size:13px;font-weight:800;color:#1a160e;background:#e9d5a8;border-radius:6px;padding:2px 8px;flex-shrink:0;line-height:16px;white-space:nowrap"><i class="ic ic-hl-video"></i> '+l+'</span>':'';}
+  return l?'<span title="'+(String(p&&p.reel)==='clip'?'Clip sfuse':'Durata reel')+'" style="font-family:\'Chakra Petch\',sans-serif;font-size:13px;font-weight:800;color:#1a160e;background:#e9d5a8;border-radius:6px;padding:2px 8px;flex-shrink:0;line-height:16px;white-space:nowrap"><i class="ic ic-hl-video"></i> '+l+'</span>':'';}
 function reelPickerHtml(num){
   const p=pilots.find(x=>x.num===String(num));if(!p||!hasVideo(p))return'';
   return'<div style="margin-top:12px;font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--text4)">REEL</div><div style="display:flex;gap:8px;margin-top:6px">'
@@ -2783,8 +2820,9 @@ window.removeTeam=removeTeam;
 function toggleTeamTask(key,task){
   if(!teamStatuses[key])teamStatuses[key]={};
   teamStatuses[key][task]=cycleStatus(teamStatuses[key][task]||'red');
-  saveUserField('teamStatuses',teamStatuses);renderAll();
-  if(document.getElementById('ov-body'))renderOverviewBody();
+  pillSave('teamStatuses',teamStatuses);
+  pillPaint("toggleTeamTask('"+escAttr(key).replace(/&quot;/g,'"')+"','"+task+"')",teamStatuses[key][task]);
+  pillRenderLater();
 }
 window.toggleTeamTask=toggleTeamTask;
 function saveTeamNote(key){
@@ -2902,7 +2940,7 @@ function exportPilotsPdf(){
   const r=(typeof races!=='undefined'&&races&&races[activeRaceId])||{};
   const stLab={red:'da fare',orange:'in corso',green:'fatto'};
   const hlOf=p=>{let h=p.highlight;if(typeof h==='string')h=[h];if(h&&!Array.isArray(h))h=Object.values(h);return h||[];};
-  const work=p=>hlOf(p).map(x=>x==='foto'?'Foto':x==='video'?'Video':x==='priority'?'Priorità':x).join(', ')+(hasVideo(p)?' · Reel '+reelLabel(p.reel):'');
+  const work=p=>hlOf(p).map(x=>x==='foto'?'Foto':x==='video'?'Video':x==='priority'?'Priorità':x).join(', ')+(hasVideo(p)?' · '+reelText(p.reel):'');
   const tasks=st=>TASKS.map(k=>'<span class="t '+((st&&st[k])||'red')+'">'+k+'</span>').join(' ');
   const byNum=(a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0);
   const rows=pilots.slice().sort((a,b)=>String(a.cat).localeCompare(String(b.cat))||byNum(a,b)).map(p=>{
@@ -2910,7 +2948,7 @@ function exportPilotsPdf(){
     return'<tr><td class="n">#'+e(p.num)+'</td><td><b>'+e(p.name)+'</b><br><span class="s">'+e(p.team)+(ft?' · anche personale':'')+'</span></td><td>'+e(p.cat)+'</td><td>'+e(work(p))+'</td><td>'+e(notes[p.num]||'')+'</td></tr>';}).join('');
   const trows=teams.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(t=>{const w=teamWork(t);const ents=teamEntrants(t).sort(byNum);
     return'<tr><td colspan="2"><b>'+e(t.name)+'</b><br><span class="s">'+ents.map(p=>'#'+e(p.num)+' '+e(p.name)+(notes[p.num]?' — '+e(notes[p.num]):'')).join('<br>')+'</span></td><td>'+e([...new Set(ents.map(p=>p.cat))].join(', '))+'</td><td>'
-      +e(w.highlight.map(x=>x==='foto'?'Foto':'Video').join(', ')+(w.reel?' · Reel '+reelLabel(w.reel):''))+'</td><td>'+e(teamNotes[t.key]||'')+'</td></tr>';}).join('');
+      +e(w.highlight.map(x=>x==='foto'?'Foto':'Video').join(', ')+(w.reel?' · '+reelText(w.reel):''))+'</td><td>'+e(teamNotes[t.key]||'')+'</td></tr>';}).join('');
   const head='<tr><th colspan="2">Pilota</th><th>Cat.</th><th>Lavoro</th><th>Note</th></tr>';
   const d=new Date();const when=d.toLocaleDateString('it-IT')+' '+d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
   // 19/11/2026 (Andrea): nome del file = NOME EVENTO + NOME CIRCUITO + DATA (la data di inizio gara, gg-mm-aaaa)
@@ -2948,9 +2986,9 @@ function copyAllForEditor(){
     // 16/11/2026 (Andrea): chi e' arrivato in finale ha la nota "Arrivato in finale" nella copia per l'editor
     const e=currentEntryList[p.num]||{};const fin=p.inFinal===true||e.inFinal===true;
     const note=[notes[p.num]?notes[p.num].trim():'',fin?'Arrivato in finale':''].filter(Boolean).join(' · ');
-    const rl=hasVideo(p)?reelLabel(p.reel):'';
+    const rl=hasVideo(p)?reelText(p.reel):'';
     const ft=hasFoto(p)?fotoTagsOf(p).map(v=>FOTO_OPTS.find(o=>o[0]===v)[1]).join(', '):'';
-    return'#'+p.num+' '+p.name+(rl?' · Reel '+rl:'')+(ft?' · Foto '+ft:'')+(note?'\nNote: '+note:'');
+    return'#'+p.num+' '+p.name+(rl?' · '+rl:'')+(ft?' · Foto '+ft:'')+(note?'\nNote: '+note:'');
   };
   const byNum=(a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0);
   const tOf=p=>{try{return followedTeamOf(p.num,p.team||((currentEntryList[p.num]||{}).team)||'');}catch(e){return null;}};
@@ -2965,7 +3003,7 @@ function copyAllForEditor(){
       let x=null;try{x=followedTeamOf(n,e.team||'');}catch(err){}
       if(x&&x.key===t.key)g.push({num:n,name:String((e.lastName||'')+' '+(e.firstName||'')).trim(),team:e.team||''});});
     g.sort(byNum);
-    if(g.length)parts.push('#'+String(t.name||t.key).toUpperCase()+(function(){const w=teamWork(t);return' · '+w.highlight.map(x=>x==='foto'?'Foto':'Video').join(' + ')+(w.reel?' · Reel '+reelLabel(w.reel):'');})()+'\n\n'+g.map(p=>fmt(p).replace(/^(#\S+ [^\n]*)/,p._pers?'$1 (anche personale)':'$1')).join('\n\n'));});
+    if(g.length)parts.push('#'+String(t.name||t.key).toUpperCase()+(function(){const w=teamWork(t);return' · '+w.highlight.map(x=>x==='foto'?'Foto':'Video').join(' + ')+(w.reel?' · '+reelText(w.reel):'');})()+'\n\n'+g.map(p=>fmt(p).replace(/^(#\S+ [^\n]*)/,p._pers?'$1 (anche personale)':'$1')).join('\n\n'));});
   const text=parts.join('\n\n\n');
   navigator.clipboard.writeText(text)
     .then(()=>alert('✅ Copiato! '+all.length+' piloti negli appunti.'))
@@ -3853,7 +3891,7 @@ function renderSchedule(){
         +'</div>';
     }).join('');
     html+='<div class="session-divider" style="margin-top:26px">COSA MI MANCA</div>';
-    html+='<div style="display:flex;gap:6px;flex-wrap:wrap">'+chips+'</div>';
+    html+='<div class="miss-chips" style="display:flex;gap:6px;flex-wrap:wrap">'+chips+'</div>';
     html+='<div style="font-size:10px;color:var(--text4);text-align:center;padding:6px 0 2px">verde = completati sui '+tot+' tuoi piloti</div>';
   }
   el.innerHTML=awardsStrip(activeDay)+(html||'<div class="empty-state"><p>Nessun tuo pilota in questa giornata</p></div>');
