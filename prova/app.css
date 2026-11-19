@@ -804,3 +804,7 @@ body.light .sp-vp.td .sp-track{stroke:#4a4e57}
   .final-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .final-title .now-badge{white-space:nowrap}
 }
+/* 19/11/2026: tasto PARTITO ADESSO (solo con il live muto) */
+.partito-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px;margin:4px 0 8px;border-radius:10px;border:1.5px solid #fbbf24;background:rgba(251,191,36,.10);color:#fbbf24;font-family:inherit;font-weight:900;font-size:13px;letter-spacing:1px;cursor:pointer;touch-action:manipulation}
+.partito-btn span{font-weight:700;font-size:11px;letter-spacing:.3px;color:var(--text3)}
+.card[style*="opacity"] .partito-btn{opacity:1}

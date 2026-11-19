@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1120';
+var RT_JS_BUILD='2026-11-19-1200';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3433,7 +3433,27 @@ function applySharedDelay(d,auto){
 }
 /* 15/11/2026 (Andrea): con il live timing collegato il ritardo e' automatico: niente comandi manuali.
    I comandi (-5, +5, 0, modifica) compaiono solo se il live non e' disponibile. */
-function delayManualOn(){return isDelayAdmin()&&!apexWsKey;}
+/* 19/11/2026 (Andrea): gli automatismi contano solo se il live MANDA dati (prima bastava il collegamento aperto:
+   con il live muto alla fonte i comandi manuali sparivano lo stesso). Live vivo = un messaggio negli ultimi 10 minuti. */
+let apexLastMsgAt=0;
+function liveAlive(){return !!apexWsKey&&apexLastMsgAt>0&&Date.now()-apexLastMsgAt<600000;}
+function delayManualOn(){return isDelayAdmin()&&!liveAlive();}
+setInterval(()=>{try{const was=window._rtManPrev;const now=delayManualOn();if(was!==now){window._rtManPrev=now;applyDelayPerms();if(activeTab==='programma')renderSchedule();}}catch(e){}},60000);
+/* 19/11/2026 (Andrea): tasto PARTITO ADESSO, solo quando gli automatismi sono saltati (live muto) e solo per chi gestisce il ritardo.
+   Sul turno ORA e sul successivo: un tocco (con conferma) = ritardo = adesso - orario del programma, per tutti gli account della gara. */
+function partitoBtn(slot,idx,curIdx,ds){
+  if(ds!=='today'||!delayManualOn())return'';
+  if(!(idx===curIdx||idx===curIdx+1))return'';
+  return['<button class="partito-btn" onclick="partitoAdesso(\'',String(slot.time),'\')"><i class="ic ic-flag"></i> PARTITO ADESSO <span>turno delle ',String(slot.time),'</span></button>'].join('');
+}
+function partitoAdesso(t){
+  if(!delayManualOn())return;
+  const d=new Date();const v=d.getHours()*60+d.getMinutes()-slotMins(t);
+  const txt=v===0?'in orario':(v>0?'ritardo +'+v+' min':'anticipo '+v+' min');
+  if(!confirm(['Il turno delle ',t,' e\' partito adesso?\nIl programma si sposta: ',txt,'.'].join('')))return;
+  setDelay(v);
+}
+window.partitoAdesso=partitoAdesso;
 function applyDelayPerms(){
   const man=delayManualOn();
   document.querySelectorAll('[onclick^="setDelay("]').forEach(b=>{if(!b.closest('#apex-delay-box'))b.style.display=man?'':'none';});
@@ -3807,6 +3827,7 @@ function renderSchedule(){
         +'<span class="slot-time">'+slot.time+'</span>'+(isNow?'<span class="now-badge">ORA</span>':'')
         +'<span class="slot-label '+catClass(slot.cat)+'">'+slot.label+'</span>'
         +'<span class="slot-type">'+slotFilterLabel(slot)+'</span>'+slotDur(slot)+'</div>'
+        +partitoBtn(slot,idx,currentIdx,_ds)
         +'<div style="font-size:11px;font-weight:700;color:var(--text4);padding:2px 0">— NESSUNO —</div></div>';
       return;
     }
@@ -3816,6 +3837,7 @@ function renderSchedule(){
       +'<span class="slot-time">'+slot.time+'</span>'+(isNow?'<span class="now-badge">ORA</span>':'')
       +'<span class="slot-label '+catClass(slot.cat)+'">'+slot.label+'</span>'
       +'<span class="slot-type">'+slotFilterLabel(slot)+'</span>'+slotDur(slot)+'</div>'
+      +partitoBtn(slot,idx,currentIdx,_ds)
       +(awaiting.length?'<div style="font-size:9px;color:#fbbf24;font-weight:600;margin-top:4px"><i class="ic ic-wait"></i> '+awaiting.map(p=>'#'+p.num).join(' ')+' in attesa</div>':'')
       +'<div style="margin-top:8px">';
     const _items=[]; // 15/11 (Andrea): raccolti per poter raggruppare i piloti dello stesso team
@@ -4072,7 +4094,7 @@ function apexConnect(){
   if(!key){renderApexDelay();return;}
   try{
     apexWs=new WebSocket('wss://live-data.apex-timing.com:'+(port+3)+'/');
-    apexWs.onmessage=ev=>apexParse(String(ev.data));
+    apexWs.onmessage=ev=>{const was=liveAlive();apexLastMsgAt=Date.now();if(!was)try{applyDelayPerms();}catch(e){}apexParse(String(ev.data));};
     apexWs.onclose=()=>{apexWs=null;clearTimeout(apexRetry);apexRetry=setTimeout(()=>{if(!document.hidden){apexWsKey='';apexConnect();}},15000);};
     apexWs.onerror=()=>{};
   }catch(e){}
