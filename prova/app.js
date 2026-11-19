@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1250';
+var RT_JS_BUILD='2026-11-19-1500';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -735,6 +735,8 @@ function upHlHtml(){return[['foto','<i class="ic ic-hl-foto"></i><span>FOTO</spa
 function setUpHl(k){_upHl=k;const el=document.getElementById('up-hl');if(el)el.innerHTML=upHlHtml();}
 window.setUpHl=setUpHl;
 function showUserPicker(){
+  // 19/11/2026: con il login l'utente e' quello dell'accesso; solo l'admin puo' passare all'utente di prova per i test
+  if(rtAuthGateOn()&&_rtAuthUser!=='andrea'){openModal(rtAccountHtml());return;}
   _upHl='foto';
   // Get saved users from all races
   let savedUsers=JSON.parse(localStorage.getItem('rt_users')||'[]');
@@ -799,6 +801,91 @@ function setUser(){
 window.setUser=setUser;
 window.showUserPicker=showUserPicker;
 
+/* ══ ACCESSO (19/11/2026, Andrea) — fase 1, senza chiudere il database ══
+   Accesso una volta per telefono: Google oppure link via email. Sessione lunga (resta dentro finche' non esci).
+   L'account e' collegato all'utente dell'app tramite authEmails/<email> (deciso dall'admin) -> authMap/<uid>.
+   ?user=utente+prova resta valido per i test (il database e' ancora aperto: la chiusura e' la fase 3). */
+var _fbAuth=null;try{_fbAuth=firebase.auth();}catch(e){_fbAuth=null;}
+let _rtAuthUser='';   // utente dell'app ricavato dall'accesso
+function rtAuthGateOn(){
+  if(!_fbAuth)return false;
+  const q=new URLSearchParams(location.search).get('user');
+  if(q&&q.toLowerCase().trim()==='utente prova')return false;   // utente di prova per i test
+  return true;
+}
+function rtEmailKey(e){return String(e||'').trim().toLowerCase().replace(/[.#$\[\]\/]/g,',');}
+function rtAuthOverlay(html){
+  let o=document.getElementById('rt-auth');
+  if(!html){if(o)o.remove();return;}
+  if(!o){o=document.createElement('div');o.id='rt-auth';document.body.appendChild(o);}
+  o.innerHTML=html;try{window.hideLoader&&window.hideLoader();}catch(e){}
+}
+function rtLoginHtml(msg){
+  return ['<div class="ra-box"><div class="ra-title">RACE TRACKER</div><div class="ra-sub">Accedi una volta su questo telefono: poi resti dentro.</div>',
+    '<button class="ra-btn ra-google" onclick="rtLoginGoogle()"><span class="ra-g">G</span> Accedi con Google</button>',
+    '<div class="ra-or">oppure</div>',
+    '<input class="form-input" id="ra-email" type="email" inputmode="email" autocomplete="email" placeholder="la-tua@email.it">',
+    '<button class="ra-btn" onclick="rtLoginEmail()">Mandami il link di accesso</button>',
+    (msg?['<div class="ra-msg">',msg,'</div>'].join(''):''),'</div>'].join('');
+}
+function rtAccountHtml(){
+  const u=_fbAuth&&_fbAuth.currentUser;
+  return ['<div class="modal-title">Account</div><div style="font-size:13px;margin-bottom:6px">Utente: <b>',String(currentUserId||'').toUpperCase(),'</b></div>',
+    '<div style="font-size:12px;color:var(--text3);margin-bottom:16px">',(u?String(u.email||''):''),'</div>',
+    '<button class="form-submit" style="background:none;border:1.5px solid var(--border2,#444);color:var(--text)" onclick="rtLogout()">ESCI DA QUESTO TELEFONO</button>'].join('');
+}
+async function rtLoginGoogle(){
+  const pr=new firebase.auth.GoogleAuthProvider();pr.setCustomParameters({prompt:'select_account'});
+  try{await _fbAuth.signInWithPopup(pr);}
+  catch(e){
+    if(/popup|operation-not-supported|cancelled/.test(String(e&&e.code))){try{await _fbAuth.signInWithRedirect(pr);return;}catch(e2){e=e2;}}
+    rtAuthOverlay(rtLoginHtml('Accesso con Google non riuscito ('+String(e&&e.code||'errore')+'). Prova con il link via email.'));
+  }
+}
+async function rtLoginEmail(){
+  const el=document.getElementById('ra-email');const em=String(el&&el.value||'').trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){rtAuthOverlay(rtLoginHtml('Scrivi un indirizzo email valido.'));return;}
+  try{
+    await _fbAuth.sendSignInLinkToEmail(em,{url:location.origin+location.pathname,handleCodeInApp:true});
+    try{localStorage.setItem('rt_login_email',em);}catch(e){}
+    rtAuthOverlay(rtLoginHtml('Ti ho mandato il link a <b>'+em.replace(/</g,'&lt;')+'</b>. Aprilo da questo telefono (guarda anche nello spam).'));
+  }catch(e){rtAuthOverlay(rtLoginHtml('Invio non riuscito ('+String(e&&e.code||'errore')+'). Riprova tra poco.'));}
+}
+async function rtLogout(){try{await _fbAuth.signOut();}catch(e){}try{localStorage.removeItem('rt_user');}catch(e){}location.href=location.pathname;}
+window.rtLoginGoogle=rtLoginGoogle;window.rtLoginEmail=rtLoginEmail;window.rtLogout=rtLogout;
+// account -> utente dell'app: authMap/<uid>, altrimenti authEmails/<email> (deciso dall'admin) e si registra authMap
+function rtResolveUser(u){
+  return new Promise(res=>{
+    onValue(ref(db,'authMap/'+u.uid),s=>{const v=s.val();if(v&&v.user)return res(String(v.user));
+      onValue(ref(db,'authEmails/'+rtEmailKey(u.email)),s2=>{const w=s2.val();if(!w)return res('');
+        const up={};up['authMap/'+u.uid]={user:String(w),email:String(u.email||''),at:Date.now()};
+        update(ref(db),up).then(()=>res(String(w))).catch(()=>res(String(w)));},{onlyOnce:true});},{onlyOnce:true});
+  });
+}
+function rtAuthStart(){
+  if(!_fbAuth)return;
+  // ritorno dal link via email
+  try{if(_fbAuth.isSignInWithEmailLink(location.href)){
+    let em='';try{em=localStorage.getItem('rt_login_email')||'';}catch(e){}
+    if(!em)em=prompt('Conferma la tua email per completare l\'accesso')||'';
+    _fbAuth.signInWithEmailLink(em,location.href).then(()=>{try{localStorage.removeItem('rt_login_email');}catch(e){}history.replaceState({},'',location.pathname);})
+      .catch(e=>rtAuthOverlay(rtLoginHtml('Link non valido o scaduto ('+String(e&&e.code||'errore')+'). Chiedine un altro.')));
+  }}catch(e){}
+  try{_fbAuth.getRedirectResult().catch(e=>{if(rtAuthGateOn())rtAuthOverlay(rtLoginHtml('Accesso con Google non riuscito ('+String(e&&e.code||'errore')+').'));});}catch(e){}
+  _fbAuth.onAuthStateChanged(async u=>{
+    if(!rtAuthGateOn()){rtAuthOverlay('');return;}
+    if(!u){rtAuthOverlay(rtLoginHtml(''));return;}
+    const name=await rtResolveUser(u);
+    if(!name){rtAuthOverlay(['<div class="ra-box"><div class="ra-title">ACCOUNT NON ABILITATO</div><div class="ra-sub">',String(u.email||'').replace(/</g,'&lt;'),
+      ' non e\' ancora collegato a un utente. Chiedi all\'amministratore di abilitarlo.</div><button class="ra-btn" onclick="rtLogout()">Esci</button></div>'].join(''));return;}
+    _rtAuthUser=name;rtAuthOverlay('');
+    if(currentUserId!==name){
+      currentUserId=name;try{localStorage.setItem('rt_user',name);}catch(e){}
+      const url=new URL(location);url.searchParams.delete('user');history.replaceState({},'',url);
+      updateUserHeader();if(activeRaceId)listenRaceData(activeRaceId);
+    }
+  });
+}
 function updateUserHeader(){
   const el=document.getElementById('user-badge');
   if(el)el.textContent=currentUserId?currentUserId.toUpperCase():'?';
@@ -1061,10 +1148,11 @@ listenRaces();
 watchConnection();
 if(activeRaceId&&currentUserId) listenRaceData(activeRaceId);
 updateUserHeader();
-// If no user set, show picker after a short delay
-if(!currentUserId){
+// If no user set, show picker after a short delay (senza login; con il login l'utente arriva dall'accesso)
+if(!currentUserId&&!rtAuthGateOn()){
   setTimeout(()=>{try{window.hideLoader&&window.hideLoader();}catch(e){}showUserPicker();},500);
 }
+rtAuthStart();
 
 // ── SAVE HELPERS ──
 function racePath(){return 'races/'+activeRaceId;}
