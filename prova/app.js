@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1020';
+var RT_JS_BUILD='2026-11-19-1030';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1242,7 +1242,7 @@ function taskBtn(num,task,small,readonly){
 function toggleTask(num,task){
   if(!statuses[num])statuses[num]={};
   statuses[num][task]=cycleStatus(statuses[num][task]||'red');
-  saveUserField('statuses',statuses);
+  pillSave('statuses',statuses);
   if(activeTab==='livetiming'){ // nel Live cambia solo il colore della pillola: niente ridisegno della pagina
     const st=statuses[num][task];
     document.querySelectorAll('button.task-btn').forEach(b=>{if(b.getAttribute('onclick')==="toggleTask('"+num+"','"+task+"')")b.className='task-btn '+st;});
@@ -1260,10 +1260,17 @@ function pillPaint(onclickStr,st){
     STATUS_CYCLE.forEach(c=>b.classList.remove(c));b.classList.add(st);
   });
 }
+// il salvataggio fa scattare subito il listener locale di Firebase (2 ridisegni completi): qui li si rimanda al ridisegno unico
+function pillSave(field,value){
+  const prev=window._rtDeferRender;window._rtDeferRender=true;
+  try{saveUserField(field,value);}finally{window._rtDeferRender=prev;}
+}
 function pillRenderLater(){
   clearTimeout(window._pillRT);
   window._pillRT=setTimeout(()=>{
     // ridisegno senza animazione di comparsa: niente lampeggio
+    if(window._rtDeferRender)return;   // c'e' un modale interattivo aperto: ridisegna lui alla chiusura
+    window._rtRenderDirty=false;
     document.body.classList.add('quiet');try{renderAll();}catch(e){}
     try{if(document.getElementById('ov-body'))renderOverviewBody();}catch(e){}
     clearTimeout(window._quietT);window._quietT=setTimeout(()=>document.body.classList.remove('quiet'),400);
@@ -2799,7 +2806,7 @@ window.removeTeam=removeTeam;
 function toggleTeamTask(key,task){
   if(!teamStatuses[key])teamStatuses[key]={};
   teamStatuses[key][task]=cycleStatus(teamStatuses[key][task]||'red');
-  saveUserField('teamStatuses',teamStatuses);
+  pillSave('teamStatuses',teamStatuses);
   pillPaint("toggleTeamTask('"+escAttr(key).replace(/&quot;/g,'"')+"','"+task+"')",teamStatuses[key][task]);
   pillRenderLater();
 }
