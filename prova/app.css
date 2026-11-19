@@ -794,3 +794,13 @@ body.light .sp-vp.td .sp-track{stroke:#4a4e57}
 .lunch-break.now{border-color:#22c55e;background:rgba(34,197,94,.10)}
 .lunch-break.ov{margin:6px 0;padding:6px 10px;min-height:0;font-size:11px}
 .session-divider.ov-div{font-size:14px;padding:12px 0 4px}
+/* 19/11/2026 (Andrea): intestazione del turno a layout fisso, sempre su una riga come le righe pilota.
+   Orario, ORA e durata non si stringono mai; categoria ed etichetta del turno si tagliano con i puntini. Vale anche per le finali. */
+@media(max-width:767px){
+  .slot-header{flex-wrap:nowrap;min-width:0;overflow:hidden;white-space:nowrap}
+  .slot-header>.slot-time,.slot-header>.now-badge,.slot-header>.slot-dur{flex:0 0 auto}
+  .slot-header>.slot-label{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .slot-header>.slot-type{flex:0 1 auto;min-width:0;max-width:48%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .final-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .final-title .now-badge{white-space:nowrap}
+}

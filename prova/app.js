@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-0915';
+var RT_JS_BUILD='2026-11-19-0930';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3629,8 +3629,8 @@ function progBlocks(slotsArr){
 }
 function blkLabel(b,cnt){return [b.ses,(cnt[b.ses]>1?[' · TURNO ',b.num].join(''):'')].join('');}
 /* 19/11/2026 (Andrea): pausa pranzo segnata nel Programma e nella Vista generale.
-   Si ricava dal programma ufficiale: tra un turno e il successivo nessuna sessione per almeno 30 minuti
-   (40 se il turno precedente non ha la durata), con il centro del buco tra le 11.30 e le 14.30. */
+   Si ricava dal programma ufficiale: tra un turno e il successivo nessuna sessione per almeno 20 minuti
+   (40 se il turno precedente non ha la durata; tarato sul BREAK del timetable WSK FC R2: ven 12.16-12.40, sab 11.50-12.40), con il centro del buco tra le 11.30 e le 14.30. */
 function lunchOf(slotsArr){
   // al massimo una pausa al giorno: il buco piu' lungo con il centro tra le 11.30 e le 14.30
   const m=t=>{const x=String(t||'').match(/(\d{1,2})[.:](\d{2})/);return x?(+x[1])*60+(+x[2]):-1;};
@@ -3639,7 +3639,7 @@ function lunchOf(slotsArr){
     const prev=slotsArr[i-1],next=slotsArr[i];
     const a=m(prev&&prev.time),b=m(next&&next.time);if(a<0||b<0||b<=a)continue;
     const d=parseInt(String((prev&&prev.dur)||''),10);const end=a+(d>0?d:0);
-    if(b-end<(d>0?30:40))continue;
+    if(b-end<(d>0?20:40))continue;
     const mid=(end+b)/2;if(mid<11*60+30||mid>14*60+30)continue;
     if(!best||b-end>best.toM-best.fromM)best={idx:i,hasDur:d>0,fromM:end,toM:b};
   }
