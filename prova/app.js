@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1440';
+var RT_JS_BUILD='2026-11-20-1445';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5631,12 +5631,13 @@ function renderLtMyTable(){
   const mineCount=sorted.filter(x=>myNums.has(txt(x.r,C('no','4')))).length;
   // 20/11/2026 (Andrea): anche i piloti dei team seguiti contano tra i "tuoi" e prendono il colore del team
   const teamCount=sorted.filter(x=>{const n=txt(x.r,C('no','4'));return !myNums.has(n)&&teamNums.has(n);}).length;
-  const _pvI=ltLastOn?3:ltNextOn?1:ltOnlyMine?0:2;
+  // 20/11/2026 (Andrea): ordine nel tempo, SOLO MIEI e TUTTI al centro
+  const _pvI=ltLastOn?0:ltNextOn?3:ltOnlyMine?1:2;
   const sw='<div class="pv-switch pv4 pvi'+_pvI+(window._ltSwAnim?' anim-'+window._ltSwAnim:'')+'" style="margin-bottom:8px">'
-    +'<button class="pv-btn'+(_pvI===0?' active':'')+'" onclick="toggleLtMine(true)">SOLO MIEI</button>'
-    +'<button class="pv-btn'+(_pvI===1?' active':'')+'" onclick="setLtNext(true)">PROSSIMA</button>'
+    +'<button class="pv-btn'+(_pvI===0?' active':'')+'" onclick="setLtLast(true)">SCORSA</button>'
+    +'<button class="pv-btn'+(_pvI===1?' active':'')+'" onclick="toggleLtMine(true)">SOLO MIEI</button>'
     +'<button class="pv-btn'+(_pvI===2?' active':'')+'" onclick="toggleLtMine(false)">TUTTI</button>'
-    +'<button class="pv-btn'+(_pvI===3?' active':'')+'" onclick="setLtLast(true)">SCORSA</button></div>';
+    +'<button class="pv-btn'+(_pvI===3?' active':'')+'" onclick="setLtNext(true)">PROSSIMA</button></div>';
   if(ltLastOn){box.innerHTML=sw+renderLtLast();ltFlip();return;}
   if(ltNextOn){box.innerHTML=sw+renderLtNext();ltFlip();return;}
   const title='<div style="font-size:11px;font-weight:800;color:var(--text3);margin-bottom:6px">'+(apexState.cat||'')+' · '+(apexState.sess||'')
