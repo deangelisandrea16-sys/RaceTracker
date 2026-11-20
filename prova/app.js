@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-0850';
+var RT_JS_BUILD='2026-11-20-0855';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -6299,6 +6299,9 @@ function progStep(dir){
   else{const prev=cards.filter(c=>c.getBoundingClientRect().top<off-4);target=prev[prev.length-1];}
   if(!target){window.scrollTo({top:dir<0?0:document.body.scrollHeight,behavior:'smooth'});return;}
   window.scrollTo({top:window.scrollY+target.getBoundingClientRect().top-off,behavior:'smooth'});
+  // le barre in alto possono comparire/sparire durante lo scorrimento: a fine corsa si riallinea l'intestazione del turno
+  clearTimeout(window._progFixT);window._progFixT=setTimeout(()=>{const d=target.getBoundingClientRect().top-(progTopCover()+6);
+    if(Math.abs(d)>3)window.scrollTo({top:window.scrollY+d,behavior:'smooth'});},650);
 }
 window.progStep=progStep;
 // altezza coperta in alto da barre fisse (testata, barra di stato, barre della pagina): si scende finche' si trova contenuto che scorre
