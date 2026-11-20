@@ -892,3 +892,5 @@ body.light .sp-vp.td .sp-track{stroke:#4a4e57}
 .sp-sec-l b{font-size:14px;font-weight:900}.sp-sec-l i{font-style:normal;font-size:11px;font-weight:800}
 .sp-sec-l{padding:2px 6px;border-radius:8px;min-width:30px}
 .sp-sec-l.todo{border-color:#ef4444}.sp-sec-l.part{border-color:#f97316}.sp-sec-l.ok{border-color:#22c55e}
+.sp-back{position:absolute;left:8px;top:8px;z-index:5;min-height:44px;padding:0 14px;border-radius:10px;border:2px solid #fff;background:rgba(0,0,0,.8);color:#fff;font-weight:900;font-size:15px;letter-spacing:.5px}
+.sp-vp.over .sp-back{display:none}

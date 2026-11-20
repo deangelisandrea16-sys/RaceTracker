@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1120';
+var RT_JS_BUILD='2026-11-20-1125';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -6121,7 +6121,7 @@ function renderSpots(){
     +'<path d="'+dd+'" class="sp-kerb" style="stroke-width:'+(w+4)+'"/>'
     +'<path d="'+dd+'" class="sp-track" style="stroke-width:'+w+'"/>'
     +'<path d="'+dd+'" class="sp-track-line" style="stroke-width:'+Math.max(.6,w/14)+'"/>'+spotsSectorsSvg(v)+'</svg>');
-  h.push('</div><div class="sp-secl" id="sp-secl">'+spotsSectorsLbl(v)+'</div><div class="sp-marks" id="sp-marks">'+spotsMarksHtml(v)+'</div><div class="sp-dots" id="sp-dots">');
+  h.push('</div><button class="sp-back" onclick="event.stopPropagation();spotsBackAll()" onpointerdown="event.stopPropagation()" aria-label="Torna a tutte le curve">← CURVE</button><div class="sp-secl" id="sp-secl">'+spotsSectorsLbl(v)+'</div><div class="sp-marks" id="sp-marks">'+spotsMarksHtml(v)+'</div><div class="sp-dots" id="sp-dots">');
   ids.forEach(id=>{const on=!!d[id],n=spotNo(id);
     h.push('<button class="sp-dot'+(on?' on':'')+'" data-id="'+id+'" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'✓':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>');});
   h.push('</div></div>');
@@ -6130,6 +6130,7 @@ function renderSpots(){
   if(t&&!_spTrash)h.push('<div class="sp-hint sp-hint-zoom">I numeri sono punti da spuntare. Tieni premuto un punto per spostarlo. Due dita: zoom e rotazione.</div>');
   openModal(h.join(''));
   spotsLayout(false);spotsBindGestures();
+  if(spotsOverview()&&!_spMarkMode){let ci=null;try{ci=localStorage.getItem(spotsCurveKey());}catch(_){}if(ci!==null&&ci!=='')spotsZoomCurve(parseInt(ci),false);}
 }
 let _spM=null;
 function spotsMatrix(Sw,Sh,W,H){
@@ -6198,13 +6199,19 @@ function spotsSectorsLbl(v){const cv=spotsCurves(v),cnt=spotsCurveCounts(cv),[x0
     return'<span class="sp-sec-l'+cl+'" data-x="'+((c.cx-x0)/VW*100)+'" data-y="'+((c.cy-y0)/VH*100)+'"><b>C'+(i+1)+'</b>'+(k?'<i>'+k[0]+'/'+k[1]+'</i>':'')+'</span>';}).join('');}
 function spotsZoomSector(cx,cy){const v=venueMap(),vp=document.getElementById('sp-vp');if(!v||!vp||!_spSize)return;
   const cv=spotsCurves(v);if(!cv.list.length){spotsZoom(3);return;}
-  const q0=spotsToMap(cx,cy);const i=spotsCurveOf(q0.x,q0.y,cv);if(i<0)return;const c=cv.list[i],[x0,y0,VW,VH]=cv.vb,pad=12;
+  const q0=spotsToMap(cx,cy);const i=spotsCurveOf(q0.x,q0.y,cv);if(i<0)return;spotsZoomCurve(i,true);}
+/* 20/11/2026 (Andrea): la curva scelta resta quella aperta anche per gli altri piloti della stessa gara */
+function spotsCurveKey(){return'rt_spcurve_'+(activeRaceId||'');}
+function spotsZoomCurve(i,anim){const v=venueMap();if(!v||!_spSize)return;const cv=spotsCurves(v);const c=cv.list[i];if(!c)return;const[x0,y0,VW,VH]=cv.vb,pad=12;
+  try{localStorage.setItem(spotsCurveKey(),String(i));}catch(_){}
   const bw=(c.x2-c.x1+2*pad)/VW*_spSize.Sw,bh=(c.y2-c.y1+2*pad)/VH*_spSize.Sh;
   _spView.z=Math.max(2,Math.min(8,Math.min(_spSize.W,_spSize.H)*0.9/Math.max(bw,bh,1)));_spView.x=0;_spView.y=0;
   const m=spotsMatrix(_spSize.Sw,_spSize.Sh,_spSize.W,_spSize.H),q=m.transformPoint(new DOMPoint((c.cx-x0)/VW*_spSize.Sw,(c.cy-y0)/VH*_spSize.Sh,0,1));
   _spView.x=_spSize.W/2-q.x/q.w;_spView.y=_spSize.H/2-q.y/q.w;
-  try{if(navigator.vibrate)navigator.vibrate(15);}catch(_){}
-  spotsLayout(true);}
+  if(anim){try{if(navigator.vibrate)navigator.vibrate(15);}catch(_){}}
+  spotsLayout(anim);}
+function spotsBackAll(){try{localStorage.removeItem(spotsCurveKey());}catch(_){}spotsResetView();}
+window.spotsBackAll=spotsBackAll;
 function spotsToggle3D(){_spView.t=_spView.t?0:52;const vp=document.getElementById('sp-vp');if(vp)vp.classList.toggle('td',!!_spView.t);document.querySelectorAll('.sp-tools .sp-btn').forEach(b=>{if(b.textContent==='3D')b.classList.toggle('on',!!_spView.t);});spotsLayout(true);}
 window.spotsToggle3D=spotsToggle3D;
 function spotsRotate(dg){const a=dg*Math.PI/180,c=Math.cos(a),s=Math.sin(a),x=_spView.x,y=_spView.y;_spView.x=x*c-y*s;_spView.y=x*s+y*c;_spView.r+=dg;spotsLayout(true);}
