@@ -875,3 +875,5 @@ body.light .sp-vp.td .sp-track{stroke:#4a4e57}
 .tsp-item{display:inline-flex;align-items:center;gap:4px}
 /* 20/11/2026: piloti dei team nel live */
 .ltbig.tglow{outline:2px solid var(--tc);outline-offset:-2px;box-shadow:0 0 16px -4px var(--tc)}
+.ltbig.team.tglow .num{color:var(--rt-orange)}
+.ltbig.tglow{border-color:var(--tc)!important}
