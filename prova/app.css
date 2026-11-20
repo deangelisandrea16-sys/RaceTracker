@@ -917,3 +917,9 @@ body.light .sp-vp.td .sp-track{stroke:#4a4e57}
 .rem-res i{font-style:normal;color:#fbbf24;font-weight:800;margin-left:auto}
 .rem-item{cursor:pointer}
 .lt-lastlap{animation:ltLast 1s ease-in-out infinite alternate}@keyframes ltLast{from{opacity:1}to{opacity:.55}}
+/* 20/11/2026: selettore live a 4 schede (SOLO MIEI · PROSSIMA · TUTTI · SCORSA) */
+.pv-switch.pv4::before{width:calc((100% - 6px)/4)}
+.pv-switch.pv4.pvi0::before{transform:none!important}.pv-switch.pv4.pvi1::before{transform:translateX(100%)!important}
+.pv-switch.pv4.pvi2::before{transform:translateX(200%)!important}.pv-switch.pv4.pvi3::before{transform:translateX(300%)!important}
+.pv-switch.pv4.anim-r::before,.pv-switch.pv4.anim-l::before{animation:none}
+.pv-switch.pv4 .pv-btn{font-size:12px;padding-left:2px;padding-right:2px;letter-spacing:0}

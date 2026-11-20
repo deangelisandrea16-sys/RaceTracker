@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1430';
+var RT_JS_BUILD='2026-11-20-1440';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5362,7 +5362,7 @@ setInterval(()=>{if(ltFullOn)renderLtFull();},1000);
 let ltView='mia'; // vista "Apex originale" rimossa il 13/11/2026
 let ltOnlyMine=localStorage.getItem('rt_ltmine')!=='0';
 function toggleLtMine(v){
-  if(ltOnlyMine===v&&!ltLastOn)return;ltLastOn=false;
+  if(ltOnlyMine===v&&!ltLastOn&&!ltNextOn)return;ltLastOn=false;ltNextOn=false;
   ltOnlyMine=v;localStorage.setItem('rt_ltmine',v?'1':'0');
   const box=document.getElementById('lt-mytable');const dir=v?'l':'r';
   if(box){box.classList.remove('swap-r','swap-l');void box.offsetWidth;box.classList.add('swap-'+dir);clearTimeout(window._ltSwT);window._ltSwT=setTimeout(()=>box.classList.remove('swap-r','swap-l'),350);}
@@ -5372,7 +5372,35 @@ window.toggleLtMine=toggleLtMine;
 // ── ULTIMA GARA: quando nel live entra la sessione nuova, l'arrivo della precedente (solo miei) resta qui ──
 let ltLastOn=false,ltLast=null;
 try{ltLast=JSON.parse(localStorage.getItem('rt_ltlast')||'null');}catch(e){ltLast=null;}
-function setLtLast(v){ltLastOn=!!v;renderLtMyTable();}
+function setLtLast(v){ltLastOn=!!v;if(v)ltNextOn=false;renderLtMyTable();}
+/* 20/11/2026 (Andrea): scheda PROSSIMA GARA: i tuoi piloti (e del team) nel prossimo turno, con posizione in griglia e tasti */
+let ltNextOn=false;
+function setLtNext(v){ltNextOn=!!v;if(v)ltLastOn=false;renderLtMyTable();}
+window.setLtNext=setLtNext;
+function ltNextSlot(){
+  const day=typeof autoDayName==='function'?autoDayName():activeDay;let arr=currentSchedule[day]||[];arr=Array.isArray(arr)?arr:Object.values(arr);if(!arr.length)return null;
+  try{if(apexNext&&apexNext.sess){const m=apexMatchFor(apexNext.cat,apexNext.sess,null);if(m&&m.slot)return{slot:m.slot,day,src:'live'};}}catch(e){}
+  try{const cur=apexMatchSlot();if(cur&&cur.slot){const i=arr.indexOf(cur.slot);if(i>=0&&arr[i+1])return{slot:arr[i+1],day,src:'programma'};}}catch(e){}
+  const nm=new Date().getHours()*60+new Date().getMinutes()-(parseInt(scheduleDelay)||0);
+  const nx=arr.find(x=>slotMins(x.time)>=nm);return nx?{slot:nx,day,src:'programma'}:null;}
+function renderLtNext(){
+  const N=ltNextSlot();if(!N)return'<div class="empty-state"><p>Nessun turno successivo nel programma di oggi.</p></div>';
+  const sl=N.slot,d=parseInt(scheduleDelay)||0,at=slotMins(sl.time)+d,hh=String(Math.floor(at/60)%24).padStart(2,'0'),mm=String(at%60).padStart(2,'0');
+  const esc=x=>String(x||'').replace(/</g,'&lt;');
+  const mine=pilotsForSlot(sl).filter(p=>!p.eliminated).map(p=>({p,ft:null}));const seen=new Set(mine.map(x=>String(x.p.num)));
+  try{teamsForSlot(sl).forEach(({t,inSlot})=>inSlot.forEach(p=>{if(seen.has(String(p.num)))return;seen.add(String(p.num));mine.push({p,ft:followedTeamOf(p.num,(currentEntryList[p.num]||{}).team)||t});}));}catch(e){}
+  mine.sort((a,b)=>(gridPos(a.p.num,sl)||999)-(gridPos(b.p.num,sl)||999)||(parseInt(a.p.num)||0)-(parseInt(b.p.num)||0));
+  const head='<div style="font-size:11px;font-weight:800;color:var(--text3);margin-bottom:6px">'+esc(sl.time)+' '+esc(sl.label||sl.cat)+' '+esc(slotFilterLabel(sl))
+    +' <span style="color:var(--text)">· ore '+hh+':'+mm+(d?' (ritardo '+d+'′)':'')+'</span> <span style="color:var(--text4)">· '+mine.length+' tuoi'+(N.src==='live'?' · annunciato dal live':'')+'</span></div>'+remLine(sl);
+  if(!mine.length)return head+'<div class="empty-state"><p>Nessun tuo pilota nel prossimo turno.</p></div>';
+  return head+mine.map(({p,ft})=>{const no=String(p.num),gp=gridPos(no,sl),isMine=!ft,ent=currentEntryList[no]||{};const nt=String((notes&&notes[no])||'').trim();
+    return'<div class="ltbig '+(isMine?hlOfNum(no):hlClassOf(ft.highlight||[])+' tglow')+'"'+(ft?' style="--tc:'+teamColor(ft.key)+'"':'')+' data-no="'+esc(no)+'" onclick="openPilotDetail(\''+esc(no)+'\')">'
+      +'<div class="pos">'+(gp?'<span style="font-size:.55em;opacity:.7">P</span>'+gp:'–')+'</div>'
+      +'<div style="flex:1;min-width:0"><div><span class="num">#'+esc(no)+'</span>'+riskTri(no)+' <span class="nm">'+esc(p.name||ent.lastName||'')+'</span><span onclick="event.stopPropagation()" style="float:right">'+noteBtn(no)+'</span></div>'
+      +'<div class="tm">'+esc(p.team||ent.team||'')+'</div>'
+      +(nt?'<div class="note-txt" style="margin-top:2px"><i class="ic ic-note"></i> '+esc(nt)+'</div>':'')
+      +'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+TASKS.map(t=>isMine?taskBtn(no,t,true):teamPilotTaskBtn(no,t)).join('')+spotPill(no)+'</div></div></div>';}).join('');
+}
 window.setLtLast=setLtLast;
 // Apex al cambio sessione può mandare la griglia NUOVA prima dei titoli nuovi: la foto della griglia vecchia si prende appena prima di sostituirla
 let ltPre=null,ltPreAt=0;
@@ -5582,7 +5610,7 @@ function renderLtMyTable(){
   const box=document.getElementById('lt-mytable');const wrap=document.getElementById('lt-wrap');
   if(!box)return;
   // 20/11/2026 (Andrea): in SOLO MIEI e ULTIMA GARA niente frecce su/giu' che coprono le schede
-  {const tl=document.getElementById('tab-livetiming');if(tl)tl.classList.toggle('lt-nofab',ltView==='mia'&&!!(ltOnlyMine||ltLastOn));}
+  {const tl=document.getElementById('tab-livetiming');if(tl)tl.classList.toggle('lt-nofab',ltView==='mia'&&!!(ltOnlyMine||ltLastOn||ltNextOn));}
   if(ltView!=='mia'){box.style.display='none';if(wrap)wrap.style.display='';return;}
   box.style.display='';if(wrap)wrap.style.display='none';
   if(activeTab!=='livetiming')return;
@@ -5603,11 +5631,14 @@ function renderLtMyTable(){
   const mineCount=sorted.filter(x=>myNums.has(txt(x.r,C('no','4')))).length;
   // 20/11/2026 (Andrea): anche i piloti dei team seguiti contano tra i "tuoi" e prendono il colore del team
   const teamCount=sorted.filter(x=>{const n=txt(x.r,C('no','4'));return !myNums.has(n)&&teamNums.has(n);}).length;
-  const sw='<div class="pv-switch pv3'+(window._ltSwAnim?' anim-'+window._ltSwAnim:'')+'" style="margin-bottom:8px">'
-    +'<button class="pv-btn'+(ltOnlyMine&&!ltLastOn?' active':'')+'" onclick="toggleLtMine(true)">SOLO MIEI</button>'
-    +'<button class="pv-btn'+(!ltOnlyMine&&!ltLastOn?' active':'')+'" onclick="toggleLtMine(false)">TUTTI</button>'
-    +'<button class="pv-btn'+(ltLastOn?' active':'')+'" onclick="setLtLast(true)">ULTIMA GARA</button></div>';
+  const _pvI=ltLastOn?3:ltNextOn?1:ltOnlyMine?0:2;
+  const sw='<div class="pv-switch pv4 pvi'+_pvI+(window._ltSwAnim?' anim-'+window._ltSwAnim:'')+'" style="margin-bottom:8px">'
+    +'<button class="pv-btn'+(_pvI===0?' active':'')+'" onclick="toggleLtMine(true)">SOLO MIEI</button>'
+    +'<button class="pv-btn'+(_pvI===1?' active':'')+'" onclick="setLtNext(true)">PROSSIMA</button>'
+    +'<button class="pv-btn'+(_pvI===2?' active':'')+'" onclick="toggleLtMine(false)">TUTTI</button>'
+    +'<button class="pv-btn'+(_pvI===3?' active':'')+'" onclick="setLtLast(true)">SCORSA</button></div>';
   if(ltLastOn){box.innerHTML=sw+renderLtLast();ltFlip();return;}
+  if(ltNextOn){box.innerHTML=sw+renderLtNext();ltFlip();return;}
   const title='<div style="font-size:11px;font-weight:800;color:var(--text3);margin-bottom:6px">'+(apexState.cat||'')+' · '+(apexState.sess||'')
     +' <span style="color:var(--text)">· '+(mineCount+teamCount)+' tuoi in pista'+(teamCount?' ('+teamCount+' team)':'')+'</span> <span style="color:var(--text4)">· '+sorted.length+' totali</span></div>';
   if(ltOnlyMine){
