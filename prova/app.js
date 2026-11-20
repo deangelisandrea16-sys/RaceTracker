@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1200';
+var RT_JS_BUILD='2026-11-20-1205';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -6265,11 +6265,14 @@ function spotsAttachVenue(){const p=spotsVenuePath();if(!p||p===_spVenueKey)retu
   onValue(ref(db,p),sn=>{if(_spVenueKey!==p)return;_spVenueSpots=sn.val()||{};
     const miss={};Object.keys(_spRaceSpots||{}).forEach(id=>{if(!_spVenueSpots[id])miss[p+'/'+id]=_spRaceSpots[id];});
     if(Object.keys(miss).length){update(ref(db),miss).catch(()=>{});dlog('Punti di scatto copiati nel tracciato: '+Object.keys(miss).length,'info');}
-    let ch=false;Object.keys(_spVenueSpots).forEach(id=>{if(!trackSpots[id]){trackSpots[id]=_spVenueSpots[id];ch=true;}});
+    const nx=Object.assign({},_spVenueSpots,_spRaceSpots||{});const ch=JSON.stringify(nx)!==JSON.stringify(trackSpots||{});trackSpots=nx;
     if(ch){window._rtRenderDirty=true;try{if(document.getElementById('sp-dots'))spotsRefresh();else renderAll();}catch(_){}}});}
 function spotsSave(){if(!activeRaceId||!currentUserId)return;const u={};
   {const p=spotsVenuePath();if(p&&_spVenueSpots){const all=new Set([...Object.keys(_spVenueSpots),...Object.keys(trackSpots||{})]);
-    all.forEach(id=>{const a=_spVenueSpots[id]||null,b=(trackSpots||{})[id]||null;if(JSON.stringify(a)!==JSON.stringify(b))u[p+'/'+id]=b;});}}
+    all.forEach(id=>{const a=_spVenueSpots[id]||null,b=(trackSpots||{})[id]||null;if(JSON.stringify(a)!==JSON.stringify(b))u[p+'/'+id]=b;});
+    // copie locali subito allineate: altrimenti un aggiornamento in arrivo rimetterebbe il punto appena eliminato
+    _spVenueSpots=JSON.parse(JSON.stringify(trackSpots||{}));}}
+  _spRaceSpots=JSON.parse(JSON.stringify(trackSpots||{}));
   rtDiff(userPath()+'/trackSpots',_rtBaseUser.trackSpots,trackSpots,u);rtDiff(userPath()+'/spotDone',_rtBaseUser.spotDone,spotDone,u);rtWrite(u,'punti di scatto');}
 function spotsRefresh(){
   const dl=document.getElementById('sp-dots'),sub=document.querySelector('.sp-sub');if(!dl){renderSpots();return;}
