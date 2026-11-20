@@ -894,3 +894,4 @@ body.light .sp-vp.td .sp-track{stroke:#4a4e57}
 .sp-sec-l.todo{border-color:#ef4444}.sp-sec-l.part{border-color:#f97316}.sp-sec-l.ok{border-color:#22c55e}
 .sp-back{position:absolute;left:8px;top:8px;z-index:5;min-height:44px;padding:0 14px;border-radius:10px;border:2px solid #fff;background:rgba(0,0,0,.8);color:#fff;font-weight:900;font-size:15px;letter-spacing:.5px}
 .sp-vp.over .sp-back{display:none}
+#tab-livetiming.lt-nofab .fab-top{display:none!important}
