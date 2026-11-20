@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1130';
+var RT_JS_BUILD='2026-11-20-1145';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -6285,6 +6285,9 @@ function spotsAddAt(cx,cy){
 window.spotsAddAt=spotsAddAt;
 function spotsTap(id){
   if(_spTrash){
+    // 20/11/2026 (Andrea): conferma prima di eliminare (un punto cancellato perde le spunte di tutti i piloti)
+    const nP=Object.keys(spotDone||{}).filter(n=>spotDone[n]&&spotDone[n][id]).length;
+    if(!confirm('Eliminare il punto '+spotNo(id)+'?'+(nP?' È segnato su '+nP+(nP===1?' pilota':' piloti')+': le spunte si perdono.':'')))return;
     delete trackSpots[id];Object.keys(spotDone).forEach(n=>{if(spotDone[n])delete spotDone[n][id];});
     try{if(navigator.vibrate)navigator.vibrate([20,40,20]);}catch(_){}
   }else{
