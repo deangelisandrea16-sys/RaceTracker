@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1730';
+var RT_JS_BUILD='2026-11-20-0830';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1198,7 +1198,9 @@ function listenRaceData(raceId){
     pilots.forEach(p=>{
       if(!p.group)p.group='';if(!p.prefinal)p.prefinal='';if(!p.serie)p.serie='';if(!p.eliminated)p.eliminated=false;
       // 15/11/2026: la prefinale ufficiale (entry list, aggiornata dal server per tutti) vale piu' del dato salvato sul pilota
-      {const _e=currentEntryList&&currentEntryList[p.num];if(_e&&_e.prefinal&&String(_e.prefinal).toUpperCase()!==String(p.prefinal).toUpperCase())p.prefinal=String(_e.prefinal).toUpperCase();}
+      {const _e=currentEntryList&&currentEntryList[p.num];if(_e&&_e.prefinal&&String(_e.prefinal).toUpperCase()!==String(p.prefinal).toUpperCase())p.prefinal=String(_e.prefinal).toUpperCase();
+       // 20/11/2026 (Andrea): anche la SERIE ufficiale (scritta dal server dai PDF WSK) vale piu' del dato salvato sul pilota
+       if(_e&&_e.serie&&String(_e.serie)!==String(p.serie))p.serie=String(_e.serie);}
       if(!p.heats)p.heats=[];
       if(!Array.isArray(p.heats))p.heats=typeof p.heats==='object'?Object.values(p.heats):[];
       // 17/11/2026: manche ufficiali dall'entry list (il server le scrive per tutti, es. WSK) unite a quelle del pilota
@@ -1416,7 +1418,7 @@ function pilotsForSlot(slot){
     if(canonCat(p.cat)!==canonCat(slot.cat))return false;
     if(slot.type==='all')return true;
     if(slot.type==='parity')return p.parity===slot.filter;
-    if(slot.type==='serie'){if(!p.serie)return false;return String(p.serie).trim()===String(slot.filter).trim();}
+    if(slot.type==='serie'){if(!pSerie(p))return false;return pSerie(p)===String(slot.filter).trim();}
     if(slot.type==='group')return pilotInGroup(p,slot.filter);
     if(slot.type==='prefinal'){if(!p.prefinal)return false;return String(p.prefinal).trim().toUpperCase()===String(slot.filter).trim().toUpperCase();}
     if(slot.type==='list'){if(!Array.isArray(slot.filter))return false;return slot.filter.map(String).includes(String(p.num));}
@@ -1428,7 +1430,7 @@ function pilotsAwaitingData(slot){
   return pilots.filter(p=>{
     if(p.eliminated)return false;
     if(canonCat(p.cat)!==canonCat(slot.cat))return false;
-    if(slot.type==='serie'&&!String(p.serie||'').trim())return true;
+    if(slot.type==='serie'&&!pSerie(p))return true;
     if(slot.type==='group'&&!pilotHasGroupData(p))return true;
     if(slot.type==='prefinal'&&!String(p.prefinal||'').trim())return true;
     return false;
@@ -2671,7 +2673,9 @@ function gridPos(num,slot){
 }
 // Dopo la manche: posizione d'arrivo dai risultati Apex (entryList/{num}/result = {"A-B":"3"}), badge verde
 // Chiavi: manche "A-B"; prefinali "PF-A"/"PF-B"; finale "FIN" (scritte dal server dai documenti ufficiali Apex)
-function slotKeyOf(slot){if(!slot)return'';if(slot.type==='prefinal'){const x=String(slot.filter||'').trim().toUpperCase();return x?'PF-'+x:'';}if(slot.type==='final')return'FIN';if(slot.type==='serie'){const q=String(slot.filter||'').trim().toUpperCase();return q?'Q-S'+q.replace(/^S/,''):'';}if(slot.type==='parity'){const p=String(slot.filter||'').trim().toUpperCase();return p&&activeDay?'PAR-'+String(activeDay).toUpperCase()+'-'+p:'';}if(slot.type!=='group')return'';const f=Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{});return f.map(x=>String(x).trim().toUpperCase()).sort().join('-');}
+// 20/11/2026: serie del pilota = quella ufficiale dell'entry list (server) se c'e', altrimenti quella salvata
+function pSerie(p){const e=p&&currentEntryList&&currentEntryList[p.num];return String((e&&e.serie)||(p&&p.serie)||'').trim();}
+function slotKeyOf(slot){if(!slot)return'';if(slot.type==='prefinal'){const x=String(slot.filter||'').trim().toUpperCase();return x?'PF-'+x:'';}if(slot.type==='final')return'FIN';if(slot.type==='serie'){const q=String(slot.filter||'').trim().toUpperCase();return q?'Q-S'+q.replace(/^S/,''):'';}if(slot.type==='parity'||slot.type==='all'||slot.type==='list'){return activeDay&&slot.time?['PR-',String(activeDay).toUpperCase(),'-',String(slot.time)].join(''):'';}if(slot.type!=='group')return'';const f=Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{});return f.map(x=>String(x).trim().toUpperCase()).sort().join('-');}
 // la sessione è già finita? (giorno visualizzato vs oggi, orario + ritardo). Prima della partenza si mostra sempre la griglia.
 function slotHasRun(slot){
   try{
@@ -2690,7 +2694,13 @@ var resultStatus={};
 function resStatusOf(cat,k){try{const c=resultStatus[String(cat||'').replace(/[.#$\[\]\/]/g,'_')]||{};return c[String(k).replace(/[.#$\[\]\/]/g,'_')]||null;}catch(e){return null;}}
 function gridBadge(num,slot){
   const k=slotKeyOf(slot);if(!k)return'';
-  const e=currentEntryList[num]||{};const r=e.result&&e.result[k];
+  const e=currentEntryList[num]||{};let r=e.result&&e.result[k];
+  // 19/11/2026: prima l'arrivo delle prove era uno solo al giorno per pari/dispari (PAR-<giorno>-<ODD|EVEN>), scritto
+  // dall'ultimo turno: si mostra solo sull'ultimo turno di quel tipo della giornata
+  if((r===undefined||r===null||r==='')&&slot.type==='parity'&&e.result){try{const f=String(slot.filter||'').trim().toUpperCase();
+    const old=e.result[['PAR-',String(activeDay).toUpperCase(),'-',f].join('')];
+    if(old){const same=((currentSchedule||{})[activeDay]||[]).filter(x=>x&&x.type==='parity'&&x.cat===slot.cat&&String(x.filter||'').trim().toUpperCase()===f);
+      const last=same.sort((a,b)=>slotMins(b.time)-slotMins(a.time))[0];if(last&&last.time===slot.time)r=old;}}catch(x){}}
   const _out=(e.out&&e.out[k])||/^(X|DNF|DNS|RIT|AB|NC|RET|DSQ|SQ)/i.test(String(r||''));
   if(r!==undefined&&r!==null&&r!==''&&slotHasRun(slot)&&_out)
     return'<span title="Uscito: posizione in classifica" style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:900;color:#fff;background:#dc2626;border-radius:5px;padding:1px 7px;flex-shrink:0">✕'+(/^\d+$/.test(String(r))?' '+r+'°':/DSQ|SQ/i.test(String(r))?' SQ':'')+'</span>';
@@ -2977,7 +2987,7 @@ function entrantInSlot(p,slot){
   if(canonCat(p.cat)!==canonCat(slot.cat))return false;
   if(slot.type==='all')return true;
   if(slot.type==='parity')return p.parity===slot.filter;
-  if(slot.type==='serie')return!!p.serie&&String(p.serie).trim()===String(slot.filter).trim();
+  if(slot.type==='serie')return!!pSerie(p)&&pSerie(p)===String(slot.filter).trim();
   if(slot.type==='group')return pilotInGroup(p,Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{}));
   if(slot.type==='prefinal')return!!p.prefinal&&String(p.prefinal).trim().toUpperCase()===String(slot.filter).trim().toUpperCase();
   if(slot.type==='list')return Array.isArray(slot.filter)&&slot.filter.map(String).includes(String(p.num));
@@ -2991,7 +3001,7 @@ function teamsForSlot(slot){
     if(!ents.length)return;
     const inSlot=ents.filter(p=>entrantInSlot(p,slot));
     let waiting=[];
-    if(slot.type==='serie')waiting=ents.filter(p=>!String(p.serie||'').trim());
+    if(slot.type==='serie')waiting=ents.filter(p=>!pSerie(p));
     if(slot.type==='group')waiting=ents.filter(p=>!pilotHasGroupData(p));
     if(slot.type==='prefinal')waiting=ents.filter(p=>!String(p.prefinal||'').trim());
     if(inSlot.length||waiting.length)res.push({t,inSlot,waiting});
@@ -3450,7 +3460,7 @@ function buildProgResultsHtml(fakePilots){
       if(canonCat(p.cat)!==canonCat(slot.cat))return false;
       if(slot.type==='all')return true;
       if(slot.type==='parity')return p.parity===slot.filter;
-      if(slot.type==='serie'){if(!p.serie)return false;return String(p.serie).trim()===String(slot.filter).trim();}
+      if(slot.type==='serie'){if(!pSerie(p))return false;return pSerie(p)===String(slot.filter).trim();}
       if(slot.type==='group')return pilotInGroup(p,slot.filter);
       if(slot.type==='prefinal'){if(!p.prefinal)return false;return String(p.prefinal).trim().toUpperCase()===String(slot.filter).trim().toUpperCase();}
       if(slot.type==='list'){if(!Array.isArray(slot.filter))return false;return slot.filter.map(String).includes(String(p.num));}
@@ -4400,10 +4410,16 @@ function apexEvaluate(why){
     // Prove pari/dispari (warm-up, libere): a fine sessione la posizione del live (ordine per miglior giro)
     const mp=ss.match(/\b(EVEN|ODD)\b/);
     let _pfin=why==='finish';try{if(!_pfin)_pfin=apexLapInfo().fin;}catch(e){}
-    if(!mh&&mp&&/WARM|FREE|PRACT/.test(ss)&&!/QUALIF/.test(ss)&&activeRaceId&&_pfin){
-      const day=typeof autoDayName==='function'?autoDayName():activeDay;const pk='PAR-'+String(day).toUpperCase()+'-'+mp[1];const u={};
-      snap.forEach(x=>{
-        if(!x.pos||x.pos>=999)return;const e=currentEntryList[x.num];if(!e||apexCat(e.cat)!==cat)return;
+    // 19/11/2026 (Andrea): arrivo delle prove PER TURNO (PR-<giorno>-<orario del turno>), anche per i turni "All" (KZ2, OKN)
+    // e per le liste di numeri. Il turno e' quello abbinato dal live (il piu' vicino all'orario, con il ritardo).
+    if(!mh&&/WARM|FREE|PRACT/.test(ss)&&!/QUALIF/.test(ss)&&activeRaceId&&_pfin){
+      const day=typeof autoDayName==='function'?autoDayName():activeDay;let pk='',inSlot=null;
+      try{const ms=apexMatchSlot();const sl=ms&&ms.slot;if(sl&&['parity','all','list'].includes(sl.type)&&sl.time){pk=['PR-',String(day).toUpperCase(),'-',String(sl.time)].join('');
+        if(sl.type==='list'){const f=Array.isArray(sl.filter)?sl.filter:String(sl.filter||'').split(',');inSlot=new Set(f.map(v=>String(v).trim()));}}}catch(e){}
+      if(!pk&&mp)pk=['PAR-',String(day).toUpperCase(),'-',mp[1]].join('');
+      const u={};
+      if(pk)snap.forEach(x=>{
+        if(!x.pos||x.pos>=999)return;const e=currentEntryList[x.num];if(!e||apexCat(e.cat)!==cat)return;if(inSlot&&!inSlot.has(String(x.num)))return;
         e.result=e.result||{};
         if(!e.result[pk]){e.result[pk]=String(x.pos);u['races/'+activeRaceId+'/entryList/'+x.num+'/result/'+pk]=String(x.pos);}
       });
@@ -5642,6 +5658,8 @@ function apexMatchFor(catTxt,sessTxt,startTxt){
     if(/QUALIF/.test(ss)&&(m=ss.match(/S\s*(\d)/)))return x.type==='serie'&&f===m[1];
     if(/(FREE|PRACT|WARM)/.test(ss)&&/EVEN|PARI/.test(ss))return x.type==='parity'&&f==='EVEN'&&(/WARM/.test(ss)===/WARM/i.test((x.session||'')+(x.label||''))||true);
     if(/(FREE|PRACT|WARM)/.test(ss)&&/ODD|DISPARI/.test(ss))return x.type==='parity'&&f==='ODD';
+    // 19/11/2026: prove senza pari/dispari (KZ2, OKN "All", liste di numeri)
+    if(/(FREE|PRACT|WARM)/.test(ss)&&!/QUALIF/.test(ss))return x.type==='all'||x.type==='list';
     if(/HEAT|MANCHE/.test(ss)&&(m=ss.match(/\b([A-H])\s*-\s*([A-H])\b/)))return x.type==='group'&&f.toUpperCase().replace(/\s/g,'')===(m[1]+'-'+m[2]);
     if(/PREFINAL/.test(ss)&&(m=ss.match(/PREFINAL[E]?\s+([AB])\b/)))return x.type==='prefinal'&&f.toUpperCase()===m[1];
     return false;
@@ -5773,7 +5791,7 @@ function _progSlotMatch(p,slot){
   if(p.cat!==slot.cat)return false;
   if(slot.type==='all')return true;
   if(slot.type==='parity')return p.parity===slot.filter;
-  if(slot.type==='serie'){if(!p.serie)return false;return String(p.serie).trim()===String(slot.filter).trim();}
+  if(slot.type==='serie'){if(!pSerie(p))return false;return pSerie(p)===String(slot.filter).trim();}
   if(slot.type==='group')return pilotInGroup(p,Array.isArray(slot.filter)?slot.filter:[slot.filter]);
   if(slot.type==='prefinal'){if(!p.prefinal)return false;return String(p.prefinal).trim().toUpperCase()===String(slot.filter).trim().toUpperCase();}
   if(slot.type==='list'){if(!Array.isArray(slot.filter))return false;return slot.filter.map(String).includes(String(p.num));}
