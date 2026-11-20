@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-0830';
+var RT_JS_BUILD='2026-11-20-0840';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1200,7 +1200,9 @@ function listenRaceData(raceId){
       // 15/11/2026: la prefinale ufficiale (entry list, aggiornata dal server per tutti) vale piu' del dato salvato sul pilota
       {const _e=currentEntryList&&currentEntryList[p.num];if(_e&&_e.prefinal&&String(_e.prefinal).toUpperCase()!==String(p.prefinal).toUpperCase())p.prefinal=String(_e.prefinal).toUpperCase();
        // 20/11/2026 (Andrea): anche la SERIE ufficiale (scritta dal server dai PDF WSK) vale piu' del dato salvato sul pilota
-       if(_e&&_e.serie&&String(_e.serie)!==String(p.serie))p.serie=String(_e.serie);}
+       if(_e&&_e.serie&&String(_e.serie)!==String(p.serie))p.serie=String(_e.serie);
+       // 20/11/2026: e il GRUPPO ufficiale (server, classifica qualifiche WSK), se il pilota non ha l'elenco manche
+       if(_e&&_e.group&&!(Array.isArray(p.heats)&&p.heats.length)&&String(_e.group).toUpperCase()!==String(p.group||'').toUpperCase())p.group=String(_e.group).toUpperCase();}
       if(!p.heats)p.heats=[];
       if(!Array.isArray(p.heats))p.heats=typeof p.heats==='object'?Object.values(p.heats):[];
       // 17/11/2026: manche ufficiali dall'entry list (il server le scrive per tutti, es. WSK) unite a quelle del pilota
@@ -1398,8 +1400,9 @@ function pilotInGroup(pilot,filterArr){
       return hKey===slotKey;
     });
   }
-  // FALLBACK LEGACY: usa group singolo
-  const g=normalizeGroup(pilot.group);
+  // FALLBACK LEGACY: usa group singolo (20/11/2026: quello ufficiale dell'entry list se c'e')
+  const _e=currentEntryList&&currentEntryList[pilot.num];
+  const g=normalizeGroup((_e&&_e.group)||pilot.group);
   if(!g)return false;
   return filterArr.map(x=>String(x).trim().toUpperCase()).includes(g);
 }
@@ -1407,7 +1410,8 @@ function pilotInGroup(pilot,filterArr){
 // Indica se il pilota ha dati gruppo validi (heats[] nuovo o group legacy)
 function pilotHasGroupData(pilot){
   if(pilot.heats&&Array.isArray(pilot.heats)&&pilot.heats.length)return true;
-  return!!normalizeGroup(pilot.group);
+  const _e=currentEntryList&&currentEntryList[pilot.num];
+  return!!normalizeGroup((_e&&_e.group)||pilot.group);
 }
 
 function pilotsForSlot(slot){
