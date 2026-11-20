@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1355';
+var RT_JS_BUILD='2026-11-20-1410';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -4142,7 +4142,7 @@ function renderSchedule(){
         +'<span style="font-size:13px;font-weight:900;color:var(--text4)">'+slot.time+'</span>'
         +'<span class="'+catClass(slot.cat)+'" style="font-size:10px;font-weight:800">'+slot.label+'</span>'
         +'<span style="font-size:9px;color:#fbbf24;font-weight:700;margin-left:auto;letter-spacing:1px"><i class="ic ic-wait"></i> ATTESA '+typeLabel.toUpperCase()+'</span>'
-        +remBell(slot).replace('margin-left:auto','')+'</div>'+remLine(slot)+'</div>';
+        +'</div>'+remLine(slot)+'</div>';
       return;
     }
 
@@ -4152,7 +4152,7 @@ function renderSchedule(){
       html+='<div class="card'+(isNow?' slot-now':'')+'" style="opacity:.45" '+(isNow?'id="slot-now"':'')+'><div class="slot-header">'
         +'<span class="slot-time">'+slot.time+'</span>'+(isNow?'<span class="now-badge">ORA</span>':'')
         +'<span class="slot-label '+catClass(slot.cat)+'">'+slot.label+'</span>'
-        +'<span class="slot-type">'+slotFilterLabel(slot)+'</span>'+slotDur(slot)+remBell(slot)+'</div>'+remLine(slot)
+        +'<span class="slot-type">'+slotFilterLabel(slot)+'</span>'+slotDur(slot)+'</div>'+remLine(slot)
         +'<div style="font-size:11px;font-weight:700;color:var(--text4);padding:2px 0">— NESSUNO —</div></div>';
       return;
     }
@@ -4161,7 +4161,7 @@ function renderSchedule(){
     html+='<div class="card'+(isNow?' slot-now':'')+'" '+(isNow?'id="slot-now"':'')+'><div class="slot-header">'
       +'<span class="slot-time">'+slot.time+'</span>'+(isNow?'<span class="now-badge">ORA</span>':'')
       +'<span class="slot-label '+catClass(slot.cat)+'">'+slot.label+'</span>'
-      +'<span class="slot-type">'+slotFilterLabel(slot)+'</span>'+slotDur(slot)+remBell(slot)+'</div>'
+      +'<span class="slot-type">'+slotFilterLabel(slot)+'</span>'+slotDur(slot)+'</div>'
       +remLine(slot)
       +(awaiting.length?'<div style="font-size:9px;color:#fbbf24;font-weight:600;margin-top:4px"><i class="ic ic-wait"></i> '+awaiting.map(p=>'#'+p.num).join(' ')+' in attesa</div>':'')
       +'<div style="margin-top:8px">';
@@ -4858,6 +4858,7 @@ function renderSettings(){
   const sw=(on,lbl,fn)=>'<label class="set-opt" style="justify-content:space-between"><span>'+lbl+'</span><input type="checkbox" '+(on?'checked':'')+' onchange="'+fn+'" style="width:24px;height:24px"></label>';
   const light=document.body.classList.contains('light');const lv=userSettings.liveDefault||'mine';
   b.innerHTML='<div class="set-opt" onclick="openLegend()" style="border:1px solid var(--accent);border-radius:10px;margin-bottom:6px"><i class="ic ic-note"></i> <b>GUIDA</b> · come funziona l\'app, simboli e notifiche</div>'
+    +'<div class="set-opt" onclick="openRemPanel()" style="border:1px solid #fbbf24;border-radius:10px;margin-bottom:6px">🔔 <b>PROMEMORIA</b> · avvisi personali sui turni ('+Object.keys(reminders||{}).length+')</div>'
     +'<div class="set-sec">PROFILO</div><div class="set-opt" onclick="closeModal();showUserPicker()"><i class="ic ic-user"></i> Cambia utente <span style="margin-left:auto;color:var(--text4)">'+currentUserId+'</span></div>'
     +'<div class="set-sec">ASPETTO (QUESTO TELEFONO)</div>'+opt(!light,'Tema scuro','setTheme(false)')+opt(light,'Tema chiaro','setTheme(true)')
     +'<div class="set-sec">LEGGIBILITÀ E AVVISI</div>'
@@ -5491,6 +5492,10 @@ function apexLapInfo(){
 function apexLapText(){
   const L=apexLapInfo();
   if(L.fin)return'ARRIVO';
+  // 20/11/2026 (Andrea): nelle gare a giri, all'ultimo giro si scrive "ULTIMO GIRO" (Apex manda "Lap 11/11" o un testo tipo "Last lap")
+  try{const dt=[apexDynText(apexDyn.dyn1),apexDynText(apexDyn.dyn2)].join(' ');
+    if(/last\s*lap|final\s*lap|ultimo\s*giro|dernier\s*tour|letzte\s*runde/i.test(dt))return'ULTIMO GIRO';
+    if(L.tot&&L.led!==null&&L.led+1>=L.tot&&apexState.start)return'ULTIMO GIRO';}catch(e){}
   if(L.led!==null&&L.tot)return'Giro '+Math.min(L.led+1,L.tot)+'/'+L.tot;
   if(L.led!==null&&L.led>0)return'Giro '+(L.led+1);
   return'';
@@ -5505,9 +5510,10 @@ function renderApexDyn(){
   if((!t.length&&!lap&&!lh)||!apexWsKey){el.style.display='none';return;}
   const sess=((apexState.cat||'')+' '+(apexState.sess||'')).trim();
   el.style.display='flex';
-  el.style.outline=fin?'2px solid #fff':'none';
+  const ul=lap==='ULTIMO GIRO';
+  el.style.outline=fin?'2px solid #fff':ul?'2px solid #facc15':'none';
   el.innerHTML='<span style="display:flex;align-items:center;gap:10px;min-width:0">'+lh+'<span style="font-size:10px;line-height:1.25;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.3px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word">'+sess.replace(/</g,'&lt;')+'</span></span><span style="display:flex;align-items:center;gap:12px;white-space:nowrap">'
-    +(lap?'<span style="font-size:'+(fin?'24':'22')+'px;color:'+(fin?'#fff':'var(--rt-orange)')+';font-weight:900">'+(fin?'<i class="ic ic-flag"></i> ':'')+lap+'</span>':'')
+    +(lap?'<span class="'+(ul?'lt-lastlap':'')+'" style="font-size:'+(fin||ul?'24':'22')+'px;color:'+(fin?'#fff':ul?'#facc15':'var(--rt-orange)')+';font-weight:900">'+(fin?'<i class="ic ic-flag"></i> ':'')+lap+'</span>':'')
     +(t.length&&!fin?'<span style="font-size:16px;color:var(--text2)"><i class="ic ic-timer" style="color:var(--rt-orange)"></i> '+t.join(' · ').replace(/</g,'&lt;')+'</span>':'')+'</span>';
 }
 /* 14/11/2026: riga PROSSIMA dal "Next" di Apex + controllo sul programma (se l'ordine e' diverso lo segnala) */
@@ -5937,26 +5943,26 @@ window.editSectionInline=editSectionInline;
 let reminders={},_remRef=null,_remKey='';
 const REM_BEFORE=[0,5,10,15,20,30,45,60];
 function remAttach(){if(!activeRaceId||!currentUserId)return;const k=activeRaceId+'|'+currentUserId;if(k===_remKey)return;_remKey=k;reminders={};
-  onValue(ref(db,'races/'+activeRaceId+'/reminders/'+currentUserId),sn=>{if(_remKey!==k)return;reminders=sn.val()||{};window._rtRenderDirty=true;try{if(activeTab==='programma')renderAll();}catch(_){}});}
-function remSlotKey(slot){return[activeDay,slot.time,slot.cat,[].concat(slot.filter||'').join('-')].join('|');}
-function remOfSlot(slot){const k=remSlotKey(slot);return Object.entries(reminders||{}).filter(([id,r])=>r&&r.slot===k);}
-function remBell(slot){try{remAttach();}catch(_){}const n=remOfSlot(slot).length;const k=remSlotKey(slot).replace(/'/g,"\\'");
-  return'<button class="rem-bell'+(n?' on':'')+'" onclick="event.stopPropagation();openReminder(\''+k+'\')" aria-label="Promemoria per questo turno">🔔'+(n>1?'<b>'+n+'</b>':'')+'</button>';}
+  onValue(ref(db,'races/'+activeRaceId+'/reminders/'+currentUserId),sn=>{if(_remKey!==k)return;reminders=sn.val()||{};window._rtRenderDirty=true;try{remRenderMine();}catch(_){}try{if(activeTab==='programma')renderAll();}catch(_){}});}
+function remSlotKey(slot,day){return[day||activeDay,slot.time,slot.cat,[].concat(slot.filter||'').join('-')].join('|');}
+function remOfSlot(slot,day){try{remAttach();}catch(_){}const k=remSlotKey(slot,day);return Object.entries(reminders||{}).filter(([id,r])=>r&&r.slot===k);}
+function remFindSlot(k){for(const d of currentDays||[]){const sl=(currentSchedule[d]||[]).find(x=>remSlotKey(x,d)===k);if(sl)return{day:d,slot:sl};}return null;}
 function remBeforeTxt(b){return b?b+'′ prima':'all\'ora';}
 function remLine(slot){const l=remOfSlot(slot);if(!l.length)return'';
   return l.map(([id,r])=>'<div class="rem-line" onclick="event.stopPropagation();openReminder(\''+remSlotKey(slot).replace(/'/g,"\\'")+'\')">🔔 '+(r.num?'<b>#'+escAttr(r.num)+'</b> ':'')+escapeHtmlSp(r.text||'Promemoria')+' <span>· '+[].concat(r.before||[]).sort((a,b)=>b-a).map(remBeforeTxt).join(', ')+'</span></div>').join('');}
 let _remEdit=null;
-function openReminder(k){const slot=(currentSchedule[activeDay]||[]).find(x=>remSlotKey(x)===k);if(!slot)return;
-  _remEdit={k,slot,before:new Set([10]),num:'',text:''};renderReminder();}
+function openReminder(k){const f=remFindSlot(k);if(!f)return;
+  _remEdit={k,slot:f.slot,day:f.day,before:new Set([10]),num:'',text:''};renderReminder();}
 window.openReminder=openReminder;
 function renderReminder(){const e=_remEdit;if(!e)return;const sl=e.slot;
   let ps=[];try{ps=pilotsForSlot(sl).map(p=>({num:String(p.num),name:p.name}));teamsForSlot(sl).forEach(x=>x.inSlot.concat(x.waiting||[]).forEach(p=>{if(!ps.some(q=>q.num===String(p.num)))ps.push({num:String(p.num),name:p.name});}));}catch(_){}
   ps.sort((a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0));
   const d=parseInt(scheduleDelay)||0,h=[];
   h.push('<button class="modal-close" onclick="closeModal()">✕</button>');
-  h.push('<div class="modal-title">🔔 Promemoria · '+escapeHtmlSp(sl.time)+' '+escapeHtmlSp(sl.label||sl.cat)+' '+escapeHtmlSp(slotFilterLabel(sl))+'</div>');
+  h.push('<button class="rem-back" onclick="openRemPanel()">← Tutti i promemoria</button>');
+  h.push('<div class="modal-title">🔔 Promemoria · '+escapeHtmlSp(e.day.slice(0,3))+' '+escapeHtmlSp(sl.time)+' '+escapeHtmlSp(sl.label||sl.cat)+' '+escapeHtmlSp(slotFilterLabel(sl))+'</div>');
   h.push('<div class="sp-sub">Orario turno '+sl.time+(d?' + ritardo live '+d+'′':'')+'. Arriva come notifica, anche con l\'app chiusa.</div>');
-  const ex=remOfSlot(sl);
+  const ex=remOfSlot(sl,e.day);
   if(ex.length)h.push('<div class="rem-list">'+ex.map(([id,r])=>'<div class="rem-item"><div>'+(r.num?'<b>#'+escapeHtmlSp(r.num)+'</b> ':'')+escapeHtmlSp(r.text||'Promemoria')+'<br><span>'+[].concat(r.before||[]).sort((a,b)=>b-a).map(remBeforeTxt).join(', ')+'</span></div><button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="remDelete(\''+id+'\')">✕</button></div>').join('')+'</div>');
   h.push('<div class="rem-lbl">Pilota (facoltativo)</div><select id="rem-num" class="add-input" onchange="_remEdit.num=this.value"><option value="">— nessuno —</option>'+ps.map(p=>'<option value="'+p.num+'"'+(e.num===p.num?' selected':'')+'>#'+p.num+' '+escapeHtmlSp(p.name||'')+'</option>').join('')+'</select>');
   h.push('<div class="rem-lbl">Cosa fare</div><input id="rem-text" class="add-input" maxlength="80" placeholder="es. clip pregriglia, bilancia, gara" value="'+escapeHtmlSp(e.text)+'" oninput="_remEdit.text=this.value">');
@@ -5966,10 +5972,31 @@ function renderReminder(){const e=_remEdit;if(!e)return;const sl=e.slot;
 function remToggleBefore(b){const s=_remEdit.before;if(s.has(b))s.delete(b);else s.add(b);renderReminder();}
 function remSave(){const e=_remEdit;if(!e||!activeRaceId||!currentUserId)return;if(!e.before.size){alert('Scegli almeno un momento');return;}
   const id='r'+Date.now().toString(36),sl=e.slot,p=e.num?((pilots.find(x=>String(x.num)===e.num))||spotPilotOf(e.num)||{}):{};
-  const val={slot:e.k,day:activeDay,time:String(sl.time),cat:sl.cat,label:[sl.label||sl.cat,slotFilterLabel(sl)].filter(Boolean).join(' '),num:e.num||'',name:p.name||'',text:String(e.text||'').trim().slice(0,80),before:[...e.before].sort((a,b)=>b-a),at:Date.now()};
+  const val={slot:e.k,day:e.day,time:String(sl.time),cat:sl.cat,label:[sl.label||sl.cat,slotFilterLabel(sl)].filter(Boolean).join(' '),num:e.num||'',name:p.name||'',text:String(e.text||'').trim().slice(0,80),before:[...e.before].sort((a,b)=>b-a),at:Date.now()};
   reminders[id]=val;ref(db,'races/'+activeRaceId+'/reminders/'+currentUserId+'/'+id).set(val).then(()=>{try{if(navigator.vibrate)navigator.vibrate(15);}catch(_){}}).catch(err=>alert('Promemoria non salvato: '+err.message));
-  _remEdit={k:e.k,slot:sl,before:new Set([10]),num:'',text:''};renderReminder();window._rtRenderDirty=true;}
+  _remEdit={k:e.k,slot:sl,day:e.day,before:new Set([10]),num:'',text:''};renderReminder();window._rtRenderDirty=true;}
 function remDelete(id){if(!confirm('Eliminare il promemoria?'))return;delete reminders[id];ref(db,'races/'+activeRaceId+'/reminders/'+currentUserId+'/'+id).remove();renderReminder();window._rtRenderDirty=true;}
+/* pannello unico (Impostazioni → PROMEMORIA): cerca il turno e vedi tutti i promemoria della gara */
+let _remQ='';
+function openRemPanel(){try{remAttach();}catch(_){}_remEdit=null;
+  openModal('<button class="modal-close" onclick="closeModal()">✕</button><button class="rem-back" onclick="openSettings()">← Impostazioni</button><div class="modal-title">🔔 Promemoria</div>'
+    +'<div class="sp-sub">Cerca il turno (es. "ok-nj a-e", "16.40", "kz2 sabato") e scegli quando essere avvisato. L\'orario segue il ritardo live.</div>'
+    +'<input id="rem-q" class="add-input" type="search" placeholder="Cerca turno…" value="'+escapeHtmlSp(_remQ)+'" oninput="_remQ=this.value;remRenderResults()" autocomplete="off">'
+    +'<div id="rem-res"></div><div class="rem-lbl">I tuoi promemoria</div><div id="rem-mine"></div>');
+  remRenderResults();remRenderMine();setTimeout(()=>{const q=document.getElementById('rem-q');if(q&&!_remQ)q.focus();},50);}
+window.openRemPanel=openRemPanel;
+function remSlotText(sl,d){return[d,sl.time,sl.cat,sl.label||'',slotFilterLabel(sl),[].concat(sl.filter||'').join('-')].join(' ');}
+function remRenderResults(){const el=document.getElementById('rem-res');if(!el)return;const q=String(_remQ||'').toLowerCase().replace(/[.:]/g,'.').trim();
+  if(!q){el.innerHTML='';return;}const tk=q.split(/\s+/).filter(Boolean);const out=[];
+  (currentDays||[]).forEach(d=>(currentSchedule[d]||[]).forEach(sl=>{const t=remSlotText(sl,d).toLowerCase().replace(/[.:]/g,'.');if(tk.every(x=>t.indexOf(x)>=0))out.push({d,sl});}));
+  el.innerHTML=out.length?'<div class="rem-list">'+out.slice(0,25).map(({d,sl})=>{const k=remSlotKey(sl,d),n=remOfSlot(sl,d).length;
+    return'<div class="rem-res" onclick="openReminder(\''+k.replace(/'/g,"\\'")+'\')"><b>'+escapeHtmlSp(d.slice(0,3))+' '+escapeHtmlSp(sl.time)+'</b> <span class="'+catClass(sl.cat)+'">'+escapeHtmlSp(sl.label||sl.cat)+'</span> '+escapeHtmlSp(slotFilterLabel(sl))+(n?' <i>🔔 '+n+'</i>':'')+'</div>';}).join('')+'</div>'
+    :'<div class="sp-sub">Nessun turno trovato.</div>';}
+function remRenderMine(){const el=document.getElementById('rem-mine');if(!el)return;const l=Object.entries(reminders||{}).filter(([,r])=>r);
+  const ord=d=>(currentDays||[]).indexOf(d);l.sort((a,b)=>ord(a[1].day)-ord(b[1].day)||hm2minRem(a[1].time)-hm2minRem(b[1].time));
+  el.innerHTML=l.length?'<div class="rem-list">'+l.map(([id,r])=>'<div class="rem-item" onclick="openReminder(\''+String(r.slot).replace(/'/g,"\\'")+'\')"><div><b>'+escapeHtmlSp(String(r.day||'').slice(0,3))+' '+escapeHtmlSp(r.time)+'</b> '+escapeHtmlSp(r.label||r.cat||'')+'<br>'+(r.num?'#'+escapeHtmlSp(r.num)+' ':'')+escapeHtmlSp(r.text||'')+' <span>· '+[].concat(r.before||[]).map(remBeforeTxt).join(', ')+'</span></div><span style="font-size:18px">›</span></div>').join('')+'</div>'
+    :'<div class="sp-sub">Nessun promemoria per questa gara.</div>';}
+function hm2minRem(t){const p=String(t||'').split(/[.:]/);return(parseInt(p[0])||0)*60+(parseInt(p[1])||0);}
 window.remToggleBefore=remToggleBefore;window.remSave=remSave;window.remDelete=remDelete;
 function openModal(html){document.getElementById('modal-inner').innerHTML=html;document.getElementById('modal').style.display='flex';}
 function closeModal(){document.getElementById('modal').style.display='none';if(window._rtDeferRender){window._rtDeferRender=false;if(window._rtRenderDirty){window._rtRenderDirty=false;try{renderAll();}catch(e){}}}}
