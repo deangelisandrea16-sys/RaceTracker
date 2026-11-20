@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1125';
+var RT_JS_BUILD='2026-11-20-1130';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5557,6 +5557,8 @@ function renderLtMyTable(){
   ['mia','apex'].forEach(x=>{const b=document.getElementById('ltv-'+x);if(b)b.classList.toggle('active',ltView===x);});
   const box=document.getElementById('lt-mytable');const wrap=document.getElementById('lt-wrap');
   if(!box)return;
+  // 20/11/2026 (Andrea): in SOLO MIEI e ULTIMA GARA niente frecce su/giu' che coprono le schede
+  {const tl=document.getElementById('tab-livetiming');if(tl)tl.classList.toggle('lt-nofab',ltView==='mia'&&!!(ltOnlyMine||ltLastOn));}
   if(ltView!=='mia'){box.style.display='none';if(wrap)wrap.style.display='';return;}
   box.style.display='';if(wrap)wrap.style.display='none';
   if(activeTab!=='livetiming')return;
