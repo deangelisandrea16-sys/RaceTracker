@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1040';
+var RT_JS_BUILD='2026-11-20-1045';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5575,13 +5575,15 @@ function renderLtMyTable(){
   try{teams.forEach(t=>teamEntrants(t).forEach(e=>teamNums.add(String(e.num))));}catch(e){}
   const sorted=rows.map(r=>({r,pos:parseInt(r.getAttribute('data-pos'))||999})).sort((a,b)=>a.pos-b.pos);
   const mineCount=sorted.filter(x=>myNums.has(txt(x.r,C('no','4')))).length;
+  // 20/11/2026 (Andrea): anche i piloti dei team seguiti contano tra i "tuoi" e prendono il colore del team
+  const teamCount=sorted.filter(x=>{const n=txt(x.r,C('no','4'));return !myNums.has(n)&&teamNums.has(n);}).length;
   const sw='<div class="pv-switch pv3'+(window._ltSwAnim?' anim-'+window._ltSwAnim:'')+'" style="margin-bottom:8px">'
     +'<button class="pv-btn'+(ltOnlyMine&&!ltLastOn?' active':'')+'" onclick="toggleLtMine(true)">SOLO MIEI</button>'
     +'<button class="pv-btn'+(!ltOnlyMine&&!ltLastOn?' active':'')+'" onclick="toggleLtMine(false)">TUTTI</button>'
     +'<button class="pv-btn'+(ltLastOn?' active':'')+'" onclick="setLtLast(true)">ULTIMA GARA</button></div>';
   if(ltLastOn){box.innerHTML=sw+renderLtLast();ltFlip();return;}
   const title='<div style="font-size:11px;font-weight:800;color:var(--text3);margin-bottom:6px">'+(apexState.cat||'')+' · '+(apexState.sess||'')
-    +' <span style="color:var(--text)">· '+mineCount+' tuoi in pista</span> <span style="color:var(--text4)">· '+sorted.length+' totali</span></div>';
+    +' <span style="color:var(--text)">· '+(mineCount+teamCount)+' tuoi in pista'+(teamCount?' ('+teamCount+' team)':'')+'</span> <span style="color:var(--text4)">· '+sorted.length+' totali</span></div>';
   if(ltOnlyMine){
     const mine=sorted.filter(x=>{const n=txt(x.r,C('no','4'));return myNums.has(n)||teamNums.has(n);});
     box.innerHTML=sw+title+(mine.length?mine.map(({r})=>{
@@ -5594,13 +5596,14 @@ function renderLtMyTable(){
       const nt=String((notes&&notes[no])||'').trim();
       const pos=parseInt(txt(r,C('rk','3')))||0;const mv=ltMove(no,pos);
       const rt=ltRetOf(no);
-      return'<div class="ltbig '+(tm?'':hlOfNum(no))+(tm?' team':'')+(rt?' ret':'')+(mv>0?' up':mv<0?' down':'')+'" data-no="'+no+'"'+(tm?'':' onclick="openPilotDetail(\''+no+'\')"')+'>'
+      const ft=tm?followedTeamOf(no,ent.team):null;
+      return'<div class="ltbig '+(tm?(ft?hlClassOf(ft.highlight||[]):''):hlOfNum(no))+(tm?' team':'')+(ft?' tglow':'')+(rt?' ret':'')+(mv>0?' up':mv<0?' down':'')+'"'+(ft?' style="--tc:'+teamColor(ft.key)+'"':'')+' data-no="'+no+'"'+(tm?'':' onclick="openPilotDetail(\''+no+'\')"')+'>'
         +'<div class="pos">'+(rt?ltXSpan(rt):(txt(r,C('rk','3'))||'–'))+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>'
         +'<div style="flex:1;min-width:0"><div><span class="num">#'+no+'</span>'+(tm?'':riskTri(no))+' <span class="nm">'+nm+'</span>'+ltRetBadge(rt)+(tm?'':'<span onclick="event.stopPropagation()" style="float:right">'+noteBtn(no)+'</span>')+'</div>'
         +'<div class="tm">'+team+'</div>'
 
         +(nt?'<div class="note-txt" style="margin-top:2px"><i class="ic ic-note"></i> '+nt.replace(/</g,'&lt;')+'</div>':'')
-        +(tm?'':'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+TASKS.map(t=>taskBtn(no,t,true)).join('')+spotPill(no)+'</div>')+'</div></div>';
+        +(tm?(spotPill(no)?'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+spotPill(no)+'</div>':''):'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+TASKS.map(t=>taskBtn(no,t,true)).join('')+spotPill(no)+'</div>')+'</div></div>';
     }).join(''):'<div class="empty-state"><p>Nessun tuo pilota in questa sessione</p></div>');
     ltFlip();return;
   }
