@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1445';
+var RT_JS_BUILD='2026-11-20-1500';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2793,13 +2793,13 @@ function setPilotReelQuick(num,v){
   /* 19/11/2026 (Andrea): quello che vedo e' quello che sta nel DB: si confronta con il valore salvato, non con il predefinito mostrato */
   const p=pilots.find(x=>x.num===String(num));if(!p||String(p.reel||'')===v)return;
   const t=document.getElementById('note-'+p.num);if(t)notes[p.num]=t.value;   // non perdere una nota in scrittura
-  p.reel=v;saveAll();try{renderPilots();}catch(e){}
+  p.reel=v;reelPrio(p,v);saveAll();try{renderPilots();}catch(e){}
 }
 window.setPilotReelQuick=setPilotReelQuick;
 function setPilotReel(num,v){
   const p=pilots.find(x=>x.num===String(num));if(!p)return;
   const t=document.getElementById('pn-text');if(t){notes[p.num]=t.value;}
-  p.reel=v;   // 19/11: il reel non puo' restare vuoto
+  p.reel=v;reelPrio(p,v);   // 19/11: il reel non puo' restare vuoto
   saveAll();editPilotNote(p.num);try{renderAll();}catch(e){}
 }
 window.setPilotReel=setPilotReel;
@@ -6045,14 +6045,18 @@ let _entryPreview=null;
    andrea = VIDEO, gli altri senza scelta = FOTO. Reel predefinito 30". Foto/video e reel non possono restare vuoti. */
 function defaultHl(){const v=(typeof userSettings!=='undefined'&&userSettings&&userSettings.defaultHl)||'';return v==='video'||v==='foto'?v:(currentUserId==='andrea'?'video':'foto');}
 let _addHl=[],_addReel='30';
-function addHlHtml(){return[['foto','<i class="ic ic-hl-foto"></i><span>FOTO</span>'],['video','<i class="ic ic-hl-video"></i><span>VIDEO</span>']]
+function addHlHtml(){return[['foto','<i class="ic ic-hl-foto"></i><span>FOTO</span>'],['video','<i class="ic ic-hl-video"></i><span>VIDEO</span>'],['priority','<i class="ic ic-hl-prio"></i><span>PRIORITÀ</span>']]
   .map(([k,h])=>'<div class="hl-option hl-'+k+(_addHl.includes(k)?' active':'')+'" onclick="toggleAddHl(\''+k+'\')">'+h+'</div>').join('');}
 function toggleAddHl(k){if(_addHl.includes(k)){if(_addHl.length===1)return;_addHl=_addHl.filter(x=>x!==k);}else _addHl=_addHl.concat(k);   // mai vuoto
   const el=document.getElementById('f-hl');if(el)el.innerHTML=addHlHtml();
   const w=document.getElementById('f-reel-wrap');if(w)w.style.display=_addHl.includes('video')?'':'none';}
 function addReelHtml(){return REEL_OPTS.map(([v,l])=>'<button type="button" onclick="setAddReel(\''+v+'\')" style="flex:1;min-height:44px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
   +(_addReel===v?'background:#e9d5a8;color:#1a160e;border:1px solid #e9d5a8':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>').join('');}
-function setAddReel(v){_addReel=v;const el=document.getElementById('f-reel');if(el)el.innerHTML=addReelHtml();}
+function setAddReel(v){_addReel=v;const el=document.getElementById('f-reel');if(el)el.innerHTML=addReelHtml();
+  // 20/11/2026 (Andrea): video da 1' = priorita' automatica (si puo' togliere a mano)
+  if(v==='60'&&!_addHl.includes('priority')){_addHl=_addHl.concat('priority');const h=document.getElementById('f-hl');if(h)h.innerHTML=addHlHtml();}}
+/* stessa regola per piloti e team gia' inseriti: passando a 1' si aggiunge PRIORITA' (solo in quel momento) */
+function reelPrio(o,v){if(!o||v!=='60')return;const h=Array.isArray(o.highlight)?o.highlight.slice():(o.highlight?[o.highlight]:[]);if(!h.includes('priority')){h.push('priority');o.highlight=h;}}
 window.setAddReel=setAddReel;
 window.toggleAddHl=toggleAddHl;
 function openAddPilot(){
@@ -6181,7 +6185,7 @@ function efExtrasHtml(p){
   return h+persToggleHtml(p.num);
 }
 function efRefresh(p){const el=document.getElementById('ef-extras');if(el)el.innerHTML=efExtrasHtml(p);try{renderAll();}catch(e){}}
-function setPilotReelEdit(num,v){const p=pilots.find(x=>x.num===String(num));if(!p)return;p.reel=v;saveAll();efRefresh(p);}
+function setPilotReelEdit(num,v){const p=pilots.find(x=>x.num===String(num));if(!p)return;p.reel=v;reelPrio(p,v);saveAll();efRefresh(p);try{const pk=document.querySelector('#ef-hl-picker .hl-option[data-hl="priority"]');if(pk&&v==='60'){pk.classList.add('active');pk.setAttribute('aria-pressed','true');}}catch(_){}}
 function toggleFotoTagEdit(num,v){const p=pilots.find(x=>x.num===String(num));if(!p)return;const c=fotoTagsOf(p);p.fotoTags=c.includes(v)?c.filter(x=>x!==v):c.concat(v);saveAll();efRefresh(p);}
 window.setPilotReelEdit=setPilotReelEdit;window.toggleFotoTagEdit=toggleFotoTagEdit;
 function toggleHL(btn,num){
