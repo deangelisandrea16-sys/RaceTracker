@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1805';
+var RT_JS_BUILD='2026-11-20-1815';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1168,7 +1168,7 @@ function listenRaceData(raceId){
 
   function mergeAndRender(){
     if(!sharedReady||!userReady)return;
-    currentEntryList=sharedData.entryList||{};
+    currentEntryList=sharedData.entryList||{};window._rtElSig=Date.now();
     currentSchedule=sharedData.schedule||{};
     currentDays=sharedData.days||Object.keys(currentSchedule);
     if(!Array.isArray(currentDays))currentDays=typeof currentDays==='object'?Object.values(currentDays):[];
@@ -1392,6 +1392,11 @@ function canonCat(c){
   return s;
 }
 window.canonCat=canonCat;
+/* manche gia' pubblicata da WSK per la categoria = almeno un pilota dell'entry list ce l'ha nei suoi heats */
+let _hpCache={k:'',m:null};
+function heatPublished(cat,key){try{const el=currentEntryList||{};const sig=Object.keys(el).length+'|'+(window._rtElSig||'');
+  if(_hpCache.k!==sig||!_hpCache.m){const m={};Object.values(el).forEach(e=>{if(!e)return;const h=Array.isArray(e.heats)?e.heats:Object.values(e.heats||{});h.forEach(x=>{m[canonCat(e.cat)+'|'+String(x).trim().toUpperCase().split('-').map(y=>y.trim()).sort().join('-')]=1;});});_hpCache={k:sig,m};}
+  return!!_hpCache.m[canonCat(cat)+'|'+key];}catch(e){return false;}}
 function pilotInGroup(pilot,filterArr){
   // NUOVO: se il pilota ha heats[], controlla se questa coppia di gruppi è nella lista
   // es. filterArr=['A','B'] → cerca 'A-B' in pilot.heats
@@ -1402,7 +1407,9 @@ function pilotInGroup(pilot,filterArr){
       return hKey===slotKey;
     }))return true;
     // 20/11/2026: le manche note (heats) sono solo quelle gia' pubblicate (es. solo A-E venerdi'): per le altre
-    // (A-B, A-C, A-D di sabato) si decide col gruppo ufficiale, altrimenti il programma di domani resta vuoto
+    // (A-B, A-C, A-D di sabato) si decide col gruppo ufficiale, altrimenti il programma di domani resta vuoto.
+    // Se invece quella manche e' gia' pubblicata e il pilota non c'e', vale il documento ufficiale: non c'e'.
+    if(heatPublished(pilot.cat,slotKey))return false;
   }
   // FALLBACK LEGACY: usa group singolo (20/11/2026: quello ufficiale dell'entry list se c'e')
   const _e=currentEntryList&&currentEntryList[pilot.num];
