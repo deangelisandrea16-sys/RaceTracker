@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1205';
+var RT_JS_BUILD='2026-11-20-1210';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5397,6 +5397,8 @@ function ltSnapshot(build,forceKey){
     const C=(t,d)=>col[t]||d;
     const txt=(r,c)=>{const el=r.querySelector('[data-id="'+r.getAttribute('data-id')+'c'+c+'"]');return el?el.textContent.trim():'';};
     const myNums=new Set(pilots.map(x=>String(x.num)));
+    // 20/11/2026 (Andrea): anche i piloti dei team seguiti entrano nell'ultima gara
+    try{teams.forEach(t=>teamEntrants(t).forEach(e=>myNums.add(String(e.num))));}catch(e){}
     const rows=[...apexGrid.querySelectorAll('tr[data-id]')].filter(r=>r.getAttribute('data-id')!=='r0')
       .map(r=>({no:txt(r,C('no','4')),pos:parseInt(txt(r,C('rk','3')))||parseInt(r.getAttribute('data-pos'))||999,dr:txt(r,C('dr','5')),gap:txt(r,C('gap','13')),blp:txt(r,C('blp','12')),laps:txt(r,C('tlp','14'))})).map(x=>{const rr=ltRet[key+'|'+x.no];if(rr)x.ret={t:rr.t,race:/HEAT|MANCHE|PREFINAL|FINAL|RACE|GARA/i.test(key)&&!/QUALIF|PRACT|FREE|WARM/i.test(key)};return x;})
       .filter(x=>myNums.has(x.no)).sort((a,b)=>a.pos-b.pos);
@@ -5418,12 +5420,13 @@ function renderLtLast(){
     +L.rows.map(x=>{
       const pl=pilots.find(p=>String(p.num)===x.no)||{};const ent=(currentEntryList&&currentEntryList[x.no])||{};
       const nt=String((notes&&notes[x.no])||'').trim();
-      return'<div class="ltbig '+hlOfNum(x.no)+'" data-no="'+esc(x.no)+'" onclick="openPilotDetail(\''+esc(x.no)+'\')">'
+      const mine=pilots.some(p=>String(p.num)===x.no);const ft=mine?null:followedTeamOf(x.no,ent.team);
+      return'<div class="ltbig '+(mine?hlOfNum(x.no):ft?hlClassOf(ft.highlight||[])+' tglow':'')+'"'+(ft?' style="--tc:'+teamColor(ft.key)+'"':'')+' data-no="'+esc(x.no)+'" onclick="openPilotDetail(\''+esc(x.no)+'\')">'
         +'<div class="pos">'+(x.ret?ltXSpan(x.ret):(x.pos<999?x.pos:'–'))+'</div>'
         +'<div style="flex:1;min-width:0"><div><span class="num">#'+esc(x.no)+'</span>'+riskTri(x.no)+' <span class="nm">'+esc(pl.name||x.dr)+'</span>'+ltRetBadge(x.ret)+'<span onclick="event.stopPropagation()" style="float:right">'+noteBtn(x.no)+'</span></div>'
         +'<div class="tm">'+esc(pl.team||ent.team||'')+(x.gap?' · '+esc(x.gap):'')+(x.blp?' · best '+esc(x.blp):'')+'</div>'
         +(nt?'<div class="note-txt" style="margin-top:2px"><i class="ic ic-note"></i> '+esc(nt)+'</div>':'')
-        +'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+TASKS.map(t=>taskBtn(x.no,t,true)).join('')+spotPill(x.no)+'</div></div></div>';
+        +'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+TASKS.map(t=>mine?taskBtn(x.no,t,true):teamPilotTaskBtn(x.no,t)).join('')+spotPill(x.no)+'</div></div></div>';
     }).join('');
 }
 // Animazione del contenuto quando si cambia vista con un selettore
@@ -5619,7 +5622,9 @@ function renderLtMyTable(){
     +sorted.map(({r})=>{
       const no=txt(r,C('no','4'));const mine=myNums.has(no);const tm=!mine&&teamNums.has(no);
       const llc=cls(r,C('llp','10'));
-      return'<tr data-no="'+no+'" class="'+(mine?'mine '+hlOfNum(no):tm?'team':'')+'"'+(mine?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
+      // 20/11/2026 (Andrea): piloti dei team seguiti = riga come i tuoi, con il colore del team a sinistra e sopra/sotto
+      const ftr=tm?followedTeamOf(no,((currentEntryList||{})[no]||{}).team):null;
+      return'<tr data-no="'+no+'" class="'+(mine?'mine '+hlOfNum(no):ftr?'mine tglow':tm?'team':'')+'"'+(ftr?' style="--tc:'+teamColor(ftr.key)+'"':'')+(mine||ftr?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
         +'<td>'+(ltRetOf(no)?ltXSpan(ltRetOf(no)):txt(r,C('rk','3')))+'</td><td class="n">'+no+(mine?riskTri(no):'')+'</td><td class="d">'+txt(r,C('dr','5'))+ltRetBadge(ltRetOf(no))+'</td><td class="d" style="color:var(--text3)">'+(((pilots.find(x=>String(x.num)===no)||{}).team)||((currentEntryList&&currentEntryList[no])||{}).team||'')+'</td></tr>'
         +(mine&&String((notes&&notes[no])||'').trim()?'<tr class="mine"><td></td><td colspan="6" class="note-txt" style="white-space:normal"><i class="ic ic-note"></i> '+String(notes[no]).replace(/</g,'&lt;')+'</td></tr>':'');
     }).join('')+'</table>'
