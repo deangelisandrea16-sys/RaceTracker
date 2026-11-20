@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1415';
+var RT_JS_BUILD='2026-11-20-1445';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5362,7 +5362,7 @@ setInterval(()=>{if(ltFullOn)renderLtFull();},1000);
 let ltView='mia'; // vista "Apex originale" rimossa il 13/11/2026
 let ltOnlyMine=localStorage.getItem('rt_ltmine')!=='0';
 function toggleLtMine(v){
-  if(ltOnlyMine===v&&!ltLastOn)return;ltLastOn=false;
+  if(ltOnlyMine===v&&!ltLastOn&&!ltNextOn)return;ltLastOn=false;ltNextOn=false;
   ltOnlyMine=v;localStorage.setItem('rt_ltmine',v?'1':'0');
   const box=document.getElementById('lt-mytable');const dir=v?'l':'r';
   if(box){box.classList.remove('swap-r','swap-l');void box.offsetWidth;box.classList.add('swap-'+dir);clearTimeout(window._ltSwT);window._ltSwT=setTimeout(()=>box.classList.remove('swap-r','swap-l'),350);}
@@ -5372,7 +5372,35 @@ window.toggleLtMine=toggleLtMine;
 // ── ULTIMA GARA: quando nel live entra la sessione nuova, l'arrivo della precedente (solo miei) resta qui ──
 let ltLastOn=false,ltLast=null;
 try{ltLast=JSON.parse(localStorage.getItem('rt_ltlast')||'null');}catch(e){ltLast=null;}
-function setLtLast(v){ltLastOn=!!v;renderLtMyTable();}
+function setLtLast(v){ltLastOn=!!v;if(v)ltNextOn=false;renderLtMyTable();}
+/* 20/11/2026 (Andrea): scheda PROSSIMA GARA: i tuoi piloti (e del team) nel prossimo turno, con posizione in griglia e tasti */
+let ltNextOn=false;
+function setLtNext(v){ltNextOn=!!v;if(v)ltLastOn=false;renderLtMyTable();}
+window.setLtNext=setLtNext;
+function ltNextSlot(){
+  const day=typeof autoDayName==='function'?autoDayName():activeDay;let arr=currentSchedule[day]||[];arr=Array.isArray(arr)?arr:Object.values(arr);if(!arr.length)return null;
+  try{if(apexNext&&apexNext.sess){const m=apexMatchFor(apexNext.cat,apexNext.sess,null);if(m&&m.slot)return{slot:m.slot,day,src:'live'};}}catch(e){}
+  try{const cur=apexMatchSlot();if(cur&&cur.slot){const i=arr.indexOf(cur.slot);if(i>=0&&arr[i+1])return{slot:arr[i+1],day,src:'programma'};}}catch(e){}
+  const nm=new Date().getHours()*60+new Date().getMinutes()-(parseInt(scheduleDelay)||0);
+  const nx=arr.find(x=>slotMins(x.time)>=nm);return nx?{slot:nx,day,src:'programma'}:null;}
+function renderLtNext(){
+  const N=ltNextSlot();if(!N)return'<div class="empty-state"><p>Nessun turno successivo nel programma di oggi.</p></div>';
+  const sl=N.slot,d=parseInt(scheduleDelay)||0,at=slotMins(sl.time)+d,hh=String(Math.floor(at/60)%24).padStart(2,'0'),mm=String(at%60).padStart(2,'0');
+  const esc=x=>String(x||'').replace(/</g,'&lt;');
+  const mine=pilotsForSlot(sl).filter(p=>!p.eliminated).map(p=>({p,ft:null}));const seen=new Set(mine.map(x=>String(x.p.num)));
+  try{teamsForSlot(sl).forEach(({t,inSlot})=>inSlot.forEach(p=>{if(seen.has(String(p.num)))return;seen.add(String(p.num));mine.push({p,ft:followedTeamOf(p.num,(currentEntryList[p.num]||{}).team)||t});}));}catch(e){}
+  mine.sort((a,b)=>(gridPos(a.p.num,sl)||999)-(gridPos(b.p.num,sl)||999)||(parseInt(a.p.num)||0)-(parseInt(b.p.num)||0));
+  const head='<div style="font-size:11px;font-weight:800;color:var(--text3);margin-bottom:6px">'+esc(sl.time)+' '+esc(sl.label||sl.cat)+' '+esc(slotFilterLabel(sl))
+    +' <span style="color:var(--text)">· ore '+hh+':'+mm+(d?' (ritardo '+d+'′)':'')+'</span> <span style="color:var(--text4)">· '+mine.length+' tuoi'+(N.src==='live'?' · annunciato dal live':'')+'</span></div>'+remLine(sl);
+  if(!mine.length)return head+'<div class="empty-state"><p>Nessun tuo pilota nel prossimo turno.</p></div>';
+  return head+mine.map(({p,ft})=>{const no=String(p.num),gp=gridPos(no,sl),isMine=!ft,ent=currentEntryList[no]||{};const nt=String((notes&&notes[no])||'').trim();
+    return'<div class="ltbig '+(isMine?hlOfNum(no):hlClassOf(ft.highlight||[])+' tglow')+'"'+(ft?' style="--tc:'+teamColor(ft.key)+'"':'')+' data-no="'+esc(no)+'" onclick="openPilotDetail(\''+esc(no)+'\')">'
+      +'<div class="pos">'+(gp?'<span style="font-size:.55em;opacity:.7">P</span>'+gp:'–')+'</div>'
+      +'<div style="flex:1;min-width:0"><div><span class="num">#'+esc(no)+'</span>'+riskTri(no)+' <span class="nm">'+esc(p.name||ent.lastName||'')+'</span><span onclick="event.stopPropagation()" style="float:right">'+noteBtn(no)+'</span></div>'
+      +'<div class="tm">'+esc(p.team||ent.team||'')+'</div>'
+      +(nt?'<div class="note-txt" style="margin-top:2px"><i class="ic ic-note"></i> '+esc(nt)+'</div>':'')
+      +'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+TASKS.map(t=>isMine?taskBtn(no,t,true):teamPilotTaskBtn(no,t)).join('')+spotPill(no)+'</div></div></div>';}).join('');
+}
 window.setLtLast=setLtLast;
 // Apex al cambio sessione può mandare la griglia NUOVA prima dei titoli nuovi: la foto della griglia vecchia si prende appena prima di sostituirla
 let ltPre=null,ltPreAt=0;
@@ -5582,7 +5610,7 @@ function renderLtMyTable(){
   const box=document.getElementById('lt-mytable');const wrap=document.getElementById('lt-wrap');
   if(!box)return;
   // 20/11/2026 (Andrea): in SOLO MIEI e ULTIMA GARA niente frecce su/giu' che coprono le schede
-  {const tl=document.getElementById('tab-livetiming');if(tl)tl.classList.toggle('lt-nofab',ltView==='mia'&&!!(ltOnlyMine||ltLastOn));}
+  {const tl=document.getElementById('tab-livetiming');if(tl)tl.classList.toggle('lt-nofab',ltView==='mia'&&!!(ltOnlyMine||ltLastOn||ltNextOn));}
   if(ltView!=='mia'){box.style.display='none';if(wrap)wrap.style.display='';return;}
   box.style.display='';if(wrap)wrap.style.display='none';
   if(activeTab!=='livetiming')return;
@@ -5603,11 +5631,15 @@ function renderLtMyTable(){
   const mineCount=sorted.filter(x=>myNums.has(txt(x.r,C('no','4')))).length;
   // 20/11/2026 (Andrea): anche i piloti dei team seguiti contano tra i "tuoi" e prendono il colore del team
   const teamCount=sorted.filter(x=>{const n=txt(x.r,C('no','4'));return !myNums.has(n)&&teamNums.has(n);}).length;
-  const sw='<div class="pv-switch pv3'+(window._ltSwAnim?' anim-'+window._ltSwAnim:'')+'" style="margin-bottom:8px">'
-    +'<button class="pv-btn'+(ltOnlyMine&&!ltLastOn?' active':'')+'" onclick="toggleLtMine(true)">SOLO MIEI</button>'
-    +'<button class="pv-btn'+(!ltOnlyMine&&!ltLastOn?' active':'')+'" onclick="toggleLtMine(false)">TUTTI</button>'
-    +'<button class="pv-btn'+(ltLastOn?' active':'')+'" onclick="setLtLast(true)">ULTIMA GARA</button></div>';
+  // 20/11/2026 (Andrea): ordine nel tempo, SOLO MIEI e TUTTI al centro
+  const _pvI=ltLastOn?0:ltNextOn?3:ltOnlyMine?1:2;
+  const sw='<div class="pv-switch pv4 pvi'+_pvI+(window._ltSwAnim?' anim-'+window._ltSwAnim:'')+'" style="margin-bottom:8px">'
+    +'<button class="pv-btn'+(_pvI===0?' active':'')+'" onclick="setLtLast(true)">SCORSA</button>'
+    +'<button class="pv-btn'+(_pvI===1?' active':'')+'" onclick="toggleLtMine(true)">SOLO MIEI</button>'
+    +'<button class="pv-btn'+(_pvI===2?' active':'')+'" onclick="toggleLtMine(false)">TUTTI</button>'
+    +'<button class="pv-btn'+(_pvI===3?' active':'')+'" onclick="setLtNext(true)">PROSSIMA</button></div>';
   if(ltLastOn){box.innerHTML=sw+renderLtLast();ltFlip();return;}
+  if(ltNextOn){box.innerHTML=sw+renderLtNext();ltFlip();return;}
   const title='<div style="font-size:11px;font-weight:800;color:var(--text3);margin-bottom:6px">'+(apexState.cat||'')+' · '+(apexState.sess||'')
     +' <span style="color:var(--text)">· '+(mineCount+teamCount)+' tuoi in pista'+(teamCount?' ('+teamCount+' team)':'')+'</span> <span style="color:var(--text4)">· '+sorted.length+' totali</span></div>';
   if(ltOnlyMine){
@@ -6004,7 +6036,7 @@ function remRenderMine(){const el=document.getElementById('rem-mine');if(!el)ret
 function hm2minRem(t){const p=String(t||'').split(/[.:]/);return(parseInt(p[0])||0)*60+(parseInt(p[1])||0);}
 window.remToggleBefore=remToggleBefore;window.remSave=remSave;window.remDelete=remDelete;
 function openModal(html){document.getElementById('modal-inner').innerHTML=html;document.getElementById('modal').style.display='flex';}
-function closeModal(){document.getElementById('modal').style.display='none';if(window._rtDeferRender){window._rtDeferRender=false;if(window._rtRenderDirty){window._rtRenderDirty=false;try{renderAll();}catch(e){}}}}
+function closeModal(){document.getElementById('modal').style.display='none';try{spotPillsRefresh();}catch(_){}if(window._rtDeferRender){window._rtDeferRender=false;if(window._rtRenderDirty){window._rtRenderDirty=false;try{renderAll();}catch(e){}}}}
 function closeModalOutside(e){if(e.target===document.getElementById('modal'))closeModal();}
 window.closeModal=closeModal;window.closeModalOutside=closeModalOutside;
 
@@ -6177,8 +6209,12 @@ function spotPill(num){
   if(!venueMap())return'';
   if(!spotPilotOf(num))return'';
   const[f,t]=spotCount(num),cls=!t?'none':f===t?'green':f?'orange':'red';
-  return'<button class="task-btn spot-pill '+cls+'" aria-label="Punti di scatto in pista" onclick="event.stopPropagation();openSpots(\''+num+'\')"><i class="ic ic-camera"></i>'+(t?'<span>'+f+'/'+t+'</span>':'')+'</button>';
+  return'<button class="task-btn spot-pill '+cls+'" data-sp="'+String(num).replace(/"/g,'')+'" aria-label="Punti di scatto in pista" onclick="event.stopPropagation();openSpots(\''+num+'\')"><i class="ic ic-camera"></i>'+(t?'<span>'+f+'/'+t+'</span>':'')+'</button>';
 }
+/* 20/11/2026 (Andrea): il conteggio sulla fotocamera si aggiorna subito in tutte le schermate, senza aspettare il ridisegno */
+function spotPillsRefresh(num){const sel=num!=null?'.spot-pill[data-sp="'+String(num).replace(/"/g,'')+'"]':'.spot-pill[data-sp]';
+  document.querySelectorAll(sel).forEach(b=>{const n=b.getAttribute('data-sp');const[f,t]=spotCount(n),cls=!t?'none':f===t?'green':f?'orange':'red';
+    b.classList.remove('none','green','orange','red');b.classList.add(cls);let sp=b.querySelector('span');if(t){if(!sp){sp=document.createElement('span');b.appendChild(sp);}sp.textContent=f+'/'+t;}else if(sp)sp.remove();});}
 let _spNum=null,_spTrash=false,_spMarkMode=false;
 /* 15/11 (Andrea): la mappa e' legata al LUOGO (sede), non a campionato o organizzazione.
    venues/<chiave> = {name, aliases[], map:{vb,d,w}}: la sede si riconosce dal circuito della gara.
@@ -6295,20 +6331,35 @@ function spotsZoomSector(cx,cy){const v=venueMap(),vp=document.getElementById('s
   const q0=spotsToMap(cx,cy);const i=spotsCurveOf(q0.x,q0.y,cv);if(i<0)return;spotsZoomCurve(i,true);}
 /* 20/11/2026 (Andrea): la curva scelta resta quella aperta anche per gli altri piloti della stessa gara */
 function spotsCurveKey(){return'rt_spcurve_'+(activeRaceId||'');}
+/* 20/11/2026 (Andrea): ogni curva ricorda come l'hai girata (rotazione, 3D, zoom, spostamento), per account e tracciato,
+   di gara in gara: userSpotViews/<utente>/<sede>/<curva> */
+let _spViews={},_spViewsKey='',_spCurCurve=null,_spViewT=0;
+function spotsViewsAttach(){const v=venueMap();if(!v||!currentUserId)return;const p='userSpotViews/'+currentUserId+'/'+v.key;if(p===_spViewsKey)return;_spViewsKey=p;_spViews={};
+  onValue(ref(db,p),sn=>{if(_spViewsKey===p)_spViews=sn.val()||{};});}
+function spotsCurveCenter(i){const v=venueMap(),cv=spotsCurves(v),c=cv.list[i];if(!c||!_spSize)return null;const[x0,y0,VW,VH]=cv.vb;const sx=_spView.x,sy=_spView.y;_spView.x=0;_spView.y=0;
+  const m=spotsMatrix(_spSize.Sw,_spSize.Sh,_spSize.W,_spSize.H),q=m.transformPoint(new DOMPoint((c.cx-x0)/VW*_spSize.Sw,(c.cy-y0)/VH*_spSize.Sh,0,1));_spView.x=sx;_spView.y=sy;
+  return{x:_spSize.W/2-q.x/q.w,y:_spSize.H/2-q.y/q.w};}
+function spotsSaveView(){if(_spCurCurve===null||spotsOverview()||!currentUserId)return;const v=venueMap();if(!v)return;clearTimeout(_spViewT);
+  _spViewT=setTimeout(()=>{const i=_spCurCurve;if(i===null)return;const c0=spotsCurveCenter(i);if(!c0)return;
+    const val={r:Math.round(_spView.r*10)/10,t:_spView.t||0,z:Math.round(_spView.z*100)/100,dx:Math.round(_spView.x-c0.x),dy:Math.round(_spView.y-c0.y)};
+    const o=_spViews[i];if(o&&o.r===val.r&&o.t===val.t&&o.z===val.z&&o.dx===val.dx&&o.dy===val.dy)return;
+    _spViews[i]=val;try{ref(db,'userSpotViews/'+currentUserId+'/'+v.key+'/'+i).set(val);}catch(_){}},700);}
 function spotsZoomCurve(i,anim){const v=venueMap();if(!v||!_spSize)return;const cv=spotsCurves(v);const c=cv.list[i];if(!c)return;const[x0,y0,VW,VH]=cv.vb,pad=12;
   try{localStorage.setItem(spotsCurveKey(),String(i));}catch(_){}
+  try{spotsViewsAttach();}catch(_){}_spCurCurve=i;const sv=_spViews[i];
+  if(sv){_spView.r=+sv.r||0;if(!!sv.t!==!!_spView.t){_spView.t=sv.t||0;const vp=document.getElementById('sp-vp');if(vp)vp.classList.toggle('td',!!_spView.t);}}
   const bw=(c.x2-c.x1+2*pad)/VW*_spSize.Sw,bh=(c.y2-c.y1+2*pad)/VH*_spSize.Sh;
-  _spView.z=Math.max(2,Math.min(8,Math.min(_spSize.W,_spSize.H)*0.9/Math.max(bw,bh,1)));_spView.x=0;_spView.y=0;
+  _spView.z=sv&&sv.z?Math.max(SP_SEC_ZOOM,Math.min(8,+sv.z)):Math.max(2,Math.min(8,Math.min(_spSize.W,_spSize.H)*0.9/Math.max(bw,bh,1)));_spView.x=0;_spView.y=0;
   const m=spotsMatrix(_spSize.Sw,_spSize.Sh,_spSize.W,_spSize.H),q=m.transformPoint(new DOMPoint((c.cx-x0)/VW*_spSize.Sw,(c.cy-y0)/VH*_spSize.Sh,0,1));
-  _spView.x=_spSize.W/2-q.x/q.w;_spView.y=_spSize.H/2-q.y/q.w;
+  _spView.x=_spSize.W/2-q.x/q.w+(sv?(+sv.dx||0):0);_spView.y=_spSize.H/2-q.y/q.w+(sv?(+sv.dy||0):0);
   if(anim){try{if(navigator.vibrate)navigator.vibrate(15);}catch(_){}}
   spotsLayout(anim);}
-function spotsBackAll(){try{localStorage.removeItem(spotsCurveKey());}catch(_){}spotsResetView();}
+function spotsBackAll(){try{localStorage.removeItem(spotsCurveKey());}catch(_){}_spCurCurve=null;spotsResetView();}
 window.spotsBackAll=spotsBackAll;
-function spotsToggle3D(){_spView.t=_spView.t?0:52;const vp=document.getElementById('sp-vp');if(vp)vp.classList.toggle('td',!!_spView.t);document.querySelectorAll('.sp-tools .sp-btn').forEach(b=>{if(b.textContent==='3D')b.classList.toggle('on',!!_spView.t);});spotsLayout(true);}
+function spotsToggle3D(){_spView.t=_spView.t?0:52;const vp=document.getElementById('sp-vp');if(vp)vp.classList.toggle('td',!!_spView.t);document.querySelectorAll('.sp-tools .sp-btn').forEach(b=>{if(b.textContent==='3D')b.classList.toggle('on',!!_spView.t);});spotsLayout(true);spotsSaveView();}
 window.spotsToggle3D=spotsToggle3D;
-function spotsRotate(dg){const a=dg*Math.PI/180,c=Math.cos(a),s=Math.sin(a),x=_spView.x,y=_spView.y;_spView.x=x*c-y*s;_spView.y=x*s+y*c;_spView.r+=dg;spotsLayout(true);}
-function spotsZoom(k){_spView.z=Math.max(.6,Math.min(8,_spView.z*k));spotsLayout(true);}
+function spotsRotate(dg){const a=dg*Math.PI/180,c=Math.cos(a),s=Math.sin(a),x=_spView.x,y=_spView.y;_spView.x=x*c-y*s;_spView.y=x*s+y*c;_spView.r+=dg;spotsLayout(true);spotsSaveView();}
+function spotsZoom(k){_spView.z=Math.max(.6,Math.min(8,_spView.z*k));spotsLayout(true);spotsSaveView();}
 function spotsResetView(){const vr=((venueMap()||{}).map||{}).rot||0;_spView.z=1;_spView.x=0;_spView.y=0;_spView.r=vr+Math.round((_spView.r-vr)/360)*360;spotsLayout(true);}
 window.spotsRotate=spotsRotate;window.spotsZoom=spotsZoom;window.spotsResetView=spotsResetView;
 /* punto dello schermo -> posizione % sulla mappa (inverso di traslazione, rotazione, zoom) */
@@ -6336,7 +6387,7 @@ function spotsBindGestures(){
     const wasTap=pts.size===1&&!moved;pts.delete(e.pointerId);
     if(wasTap&&spotsOverview()&&!_spMarkMode){spotsZoomSector(e.clientX,e.clientY);}
     else if(wasTap){const mt=e.target.closest&&e.target.closest('.sp-mark');if(mt&&_spTrash){spotsDelMark(mt.getAttribute('data-mid'));}else if(_spMarkMode){spotsAddMark(e.clientX,e.clientY);}else if(downT)spotsTap(downT.getAttribute('data-id'));else spotsAddAt(e.clientX,e.clientY);}
-    if(!pts.size){g=null;}else if(pts.size===1){const q=[...pts.values()][0];g={x:q.x,y:q.y,vx:_spView.x,vy:_spView.y};}};
+    if(!pts.size){g=null;spotsSaveView();}else if(pts.size===1){const q=[...pts.values()][0];g={x:q.x,y:q.y,vx:_spView.x,vy:_spView.y};}};
   vp.onwheel=e=>{e.preventDefault();_spView.z=Math.max(.6,Math.min(8,_spView.z*(e.deltaY<0?1.12:1/1.12)));spotsLayoutSoon();};
   vp.onpointerup=up;vp.onpointercancel=e=>{pts.delete(e.pointerId);if(!pts.size)g=null;};
 }
@@ -6348,7 +6399,7 @@ function escapeHtmlSp(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;
    nel tracciato la prima volta (solo aggiunta, niente viene tolto dalla gara). */
 let _spVenueSpots=null,_spVenueKey='',_spRaceSpots={};
 function spotsVenuePath(){const v=venueMap();return v&&currentUserId?'userSpots/'+currentUserId+'/'+v.key:'';}
-function spotsAttachVenue(){const p=spotsVenuePath();if(!p||p===_spVenueKey)return;_spVenueKey=p;_spVenueSpots=null;
+function spotsAttachVenue(){try{spotsViewsAttach();}catch(_){}const p=spotsVenuePath();if(!p||p===_spVenueKey)return;_spVenueKey=p;_spVenueSpots=null;
   trackSpots=Object.assign({},_spRaceSpots||{});
   onValue(ref(db,p),sn=>{if(_spVenueKey!==p)return;_spVenueSpots=sn.val()||{};
     const miss={};Object.keys(_spRaceSpots||{}).forEach(id=>{if(!_spVenueSpots[id])miss[p+'/'+id]=_spRaceSpots[id];});
@@ -6388,7 +6439,7 @@ function spotsAddAt(cx,cy){
   trackSpots[id]={x:Math.round(q.x*10)/10,y:Math.round(q.y*10)/10,o:Date.now(),k:k};
   if(!spotDone[_spNum])spotDone[_spNum]={};spotDone[_spNum][id]=1;
   try{if(navigator.vibrate)navigator.vibrate(12);}catch(_){}
-  spotsSave();window._rtRenderDirty=true;spotsRefresh();
+  spotsSave();window._rtRenderDirty=true;spotsRefresh();try{spotPillsRefresh(null);}catch(_){}
 }
 window.spotsAddAt=spotsAddAt;
 function spotsTap(id){
@@ -6403,7 +6454,7 @@ function spotsTap(id){
     if(spotDone[_spNum][id])delete spotDone[_spNum][id];else spotDone[_spNum][id]=1;
     try{if(navigator.vibrate)navigator.vibrate(12);}catch(_){}
   }
-  spotsSave();window._rtRenderDirty=true;spotsRefresh();
+  spotsSave();window._rtRenderDirty=true;spotsRefresh();try{spotPillsRefresh(null);}catch(_){}
 }
 window.spotsTap=spotsTap;
 
