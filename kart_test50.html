@@ -150,7 +150,8 @@ var t=q('meta[name="apple-mobile-web-app-title"]');if(t)t.content='RT Prova';})(
 <div id="tab-piloti" class="tab-content">
   <div class="content">
     <button class="mgmt-btn" onclick="openExportPilots()"><i class="ic ic-download"></i> ESPORTA PILOTI</button>
-    <div class="filter-section">
+    <button class="filt-toggle" id="filt-toggle" onclick="toggleFilterPanel()" aria-expanded="false"><span>FILTRI</span><span class="filt-count" id="filt-count"></span><span class="filt-arrow">▾</span></button>
+    <div class="filter-section filt-panel" id="filt-panel"><div class="filt-inner">
       <div class="filter-row">
         <span class="filter-row-label">TASK</span>
         <button class="filter-chip active" data-fk="task" data-fv="all" onclick="toggleFilter('task','all')">TUTTI</button>
@@ -174,7 +175,14 @@ var t=q('meta[name="apple-mobile-web-app-title"]');if(t)t.content='RT Prova';})(
         <button class="filter-chip f-hl-video" data-fk="hl" data-fv="video" onclick="toggleFilter('hl','video')"><i class="ic ic-hl-video"></i> VIDEO</button>
         <button class="filter-chip f-hl-priority" data-fk="hl" data-fv="priority" onclick="toggleFilter('hl','priority')"><i class="ic ic-hl-prio"></i> PRIORITÀ</button>
       </div>
-    </div>
+      <div class="filter-row">
+        <span class="filter-row-label">REEL</span>
+        <button class="filter-chip active" data-fk="reel" data-fv="all" onclick="toggleFilter('reel','all')">TUTTI</button>
+        <button class="filter-chip" data-fk="reel" data-fv="30" onclick="toggleFilter('reel','30')">30"</button>
+        <button class="filter-chip" data-fk="reel" data-fv="60" onclick="toggleFilter('reel','60')">1'</button>
+        <button class="filter-chip" data-fk="reel" data-fv="clip" onclick="toggleFilter('reel','clip')">CLIP SFUSE</button>
+      </div>
+    </div></div>
     <div class="pv-switch">
       <button class="pv-btn" id="pv-piloti" onclick="setPilotsView('piloti')"><i class="ic ic-user"></i> PILOTI</button>
       <button class="pv-btn" id="pv-team" onclick="setPilotsView('team')"><i class="ic ic-team"></i> TEAM</button>
@@ -318,7 +326,7 @@ var t=q('meta[name="apple-mobile-web-app-title"]');if(t)t.content='RT Prova';})(
 <script src="vendor/firebase-app-compat.js"></script>
 <script src="vendor/firebase-database-compat.js"></script>
 <script src="vendor/firebase-auth-compat.js"></script>
-<script>const APP_BUILD='2026-11-20-0910';</script>
+<script>const APP_BUILD='2026-11-20-1020';</script>
 <script src="app/app.js"></script>
 <script>/* file dello script vecchio rimasto in cache: lo riscarica una volta e ricarica la pagina */
 if(window.RT_JS_BUILD!==APP_BUILD){try{if(sessionStorage.getItem('rt_jsfix')!==APP_BUILD){sessionStorage.setItem('rt_jsfix',APP_BUILD);Promise.all(['app/app.js','app/app.css'].map(function(u){return fetch(u,{cache:'reload'});})).then(function(){location.reload();});}}catch(e){}}</script>

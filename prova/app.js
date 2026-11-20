@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1010';
+var RT_JS_BUILD='2026-11-20-1020';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5697,6 +5697,8 @@ function apexMatchFor(catTxt,sessTxt,startTxt){
     const f=Array.isArray(x.filter)?x.filter.join('-'):String(x.filter||'');
     let m;
     if(/QUALIF/.test(ss)&&(m=ss.match(/S\s*(\d)/)))return x.type==='serie'&&f===m[1];
+    // 20/11/2026: qualifica unica (OKN "Qualifying Practice", senza serie) = turno All/lista della categoria
+    if(/QUALIF/.test(ss))return x.type==='all'||x.type==='list';
     // 20/11/2026: prove per serie (WSK "Free Practice Serie N") = turni di tipo serie N (il piu' vicino all'orario)
     if(/(FREE|PRACT|WARM)/.test(ss)&&(m=ss.match(/SERIE?S?\s*(\d)/)))return x.type==='serie'&&f===m[1];
     if(/(FREE|PRACT|WARM)/.test(ss)&&/EVEN|PARI/.test(ss))return x.type==='parity'&&f==='EVEN'&&(/WARM/.test(ss)===/WARM/i.test((x.session||'')+(x.label||''))||true);

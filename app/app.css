@@ -859,3 +859,14 @@ body.light .sp-vp.td .sp-track{stroke:#4a4e57}
 .adm-btn.sm{flex:0 0 auto;min-height:44px;padding:0 12px;font-size:12px}
 .adm-btn.ghost{flex:0 0 auto;color:var(--text3)}
 .adm-empty{text-align:center;padding:28px 10px;color:var(--text4);font-size:13px;border:1px dashed var(--border2);border-radius:14px}
+
+/* 20/11/2026 (Andrea): filtri della pagina Piloti apribili/chiudibili con animazione */
+.filt-toggle{width:100%;min-height:48px;display:flex;align-items:center;gap:10px;padding:0 16px;margin:10px 0 8px;background:var(--bg2);border:1px solid var(--border2);border-radius:14px;color:var(--text);font-family:inherit;font-size:14px;font-weight:800;letter-spacing:1px;cursor:pointer}
+.filt-toggle>span:first-child{flex:1;text-align:left}
+.filt-count{min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:var(--accent);color:#04150a;font-size:12px;display:none;align-items:center;justify-content:center}
+.filt-count.on{display:inline-flex}
+.filt-arrow{transition:transform .28s var(--ease,ease);color:var(--text3)}
+.filt-toggle[aria-expanded="true"] .filt-arrow{transform:rotate(180deg)}
+.filt-panel{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .3s var(--ease,ease),opacity .25s ease}
+.filt-panel.open{grid-template-rows:1fr;opacity:1}
+.filt-inner{overflow:hidden;min-height:0}

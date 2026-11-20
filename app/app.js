@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-0910';
+var RT_JS_BUILD='2026-11-20-1020';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1650,18 +1650,29 @@ window.showTab=showTab;
 // Task: piu' task accesi = basta che UNO dei task scelti sia nello stato scelto.
 // Stato: piu' colori accesi = uno qualsiasi dei colori scelti.
 // Evidenziazione: FOTO e VIDEO si sommano (foto O video); PRIORITA' restringe (solo prioritari).
-const filterTasks=new Set(),filterStatuses=new Set(),filterHL=new Set();
-function filtersActive(){return filterStatuses.size>0||filterHL.size>0;}
+const filterTasks=new Set(),filterStatuses=new Set(),filterHL=new Set(),filterReel=new Set();   // 20/11/2026: + durata video (reel)
+function filtersActive(){return filterStatuses.size>0||filterHL.size>0||filterReel.size>0;}
 function syncFilterChips(){
   document.querySelectorAll('.filter-chip[data-fk]').forEach(c=>{
     const k=c.getAttribute('data-fk'),v=c.getAttribute('data-fv');
-    const set=k==='task'?filterTasks:k==='status'?filterStatuses:filterHL;
+    const set=k==='task'?filterTasks:k==='status'?filterStatuses:k==='reel'?filterReel:filterHL;
     const on=v==='all'?set.size===0:set.has(v);
     c.classList.toggle('active',on);c.setAttribute('aria-pressed',on);
   });
+  // 20/11/2026: quanti filtri sono attivi, sul tasto FILTRI (si vede anche a pannello chiuso)
+  const n=filterTasks.size+filterStatuses.size+filterHL.size+filterReel.size,el=document.getElementById('filt-count');
+  if(el){el.textContent=n?String(n):'';el.classList.toggle('on',n>0);}
 }
+function toggleFilterPanel(force){
+  const pn=document.getElementById('filt-panel'),bt=document.getElementById('filt-toggle');if(!pn)return;
+  const open=typeof force==='boolean'?force:!pn.classList.contains('open');
+  pn.classList.toggle('open',open);if(bt)bt.setAttribute('aria-expanded',open);
+  try{localStorage.setItem('rt_filters_open',open?'1':'0');}catch(e){}
+}
+window.toggleFilterPanel=toggleFilterPanel;
+(function(){const init=()=>{let o=false;try{o=localStorage.getItem('rt_filters_open')==='1';}catch(e){}toggleFilterPanel(o);syncFilterChips();};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();})();
 function toggleFilter(kind,v){
-  const set=kind==='task'?filterTasks:kind==='status'?filterStatuses:filterHL;
+  const set=kind==='task'?filterTasks:kind==='status'?filterStatuses:kind==='reel'?filterReel:filterHL;
   if(v==='all')set.clear();else if(set.has(v))set.delete(v);else set.add(v);
   try{if(navigator.vibrate)navigator.vibrate(10);}catch(e){}
   syncFilterChips();renderPilots();
@@ -1685,8 +1696,10 @@ function hlMatches(p){
 }
 function pilotMatchesFilter(p){
   if(!filtersActive())return true;
-  return statusMatches(statuses[p.num]||{})&&hlMatches(p);
+  return statusMatches(statuses[p.num]||{})&&hlMatches(p)&&reelMatches(p);
 }
+// durata video: solo piloti con VIDEO, con la durata scelta (30" se non impostata)
+function reelMatches(p){if(!filterReel.size)return true;if(!hasVideo(p))return false;return filterReel.has(String(p.reel||'30'));}
 
 // ══════════════════════════════════════
 // DEBUG TAB
@@ -2682,7 +2695,7 @@ function pSerie(p){const e=p&&currentEntryList&&currentEntryList[p.num];return S
 // 20/11/2026: sessione (PROVE LIBERE / QUALIFICHE / MANCHE...) del blocco a cui appartiene il turno, nel giorno attivo
 function slotSessionOf(slot){let cur='';const arr=((currentSchedule||{})[activeDay]||[]);for(const x of (Array.isArray(arr)?arr:Object.values(arr))){if(!x)continue;if(x.session)cur=x.session;
   if(x===slot||(x.time===slot.time&&x.cat===slot.cat&&x.type===slot.type&&String(x.filter)===String(slot.filter)))return cur;}return '';}
-function slotKeyOf(slot){if(!slot)return'';if(slot.type==='prefinal'){const x=String(slot.filter||'').trim().toUpperCase();return x?'PF-'+x:'';}if(slot.type==='final')return'FIN';if(slot.type==='serie'&&/PROV|PRACT|LIBER|WARM/i.test(slotSessionOf(slot))){return activeDay&&slot.time?['PR-',String(activeDay).toUpperCase(),'-',String(slot.time)].join(''):'';}if(slot.type==='serie'){const q=String(slot.filter||'').trim().toUpperCase();return q?'Q-S'+q.replace(/^S/,''):'';}if(slot.type==='parity'||slot.type==='all'||slot.type==='list'){return activeDay&&slot.time?['PR-',String(activeDay).toUpperCase(),'-',String(slot.time)].join(''):'';}if(slot.type!=='group')return'';const f=Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{});return f.map(x=>String(x).trim().toUpperCase()).sort().join('-');}
+function slotKeyOf(slot){if(!slot)return'';if(slot.type==='prefinal'){const x=String(slot.filter||'').trim().toUpperCase();return x?'PF-'+x:'';}if(slot.type==='final')return'FIN';if(slot.type==='serie'&&/PROV|PRACT|LIBER|WARM/i.test(slotSessionOf(slot))){return activeDay&&slot.time?['PR-',String(activeDay).toUpperCase(),'-',String(slot.time).replace(/[.:]/g,'_')].join(''):'';}if(slot.type==='serie'){const q=String(slot.filter||'').trim().toUpperCase();return q?'Q-S'+q.replace(/^S/,''):'';}if(slot.type==='parity'||slot.type==='all'||slot.type==='list'){return activeDay&&slot.time?['PR-',String(activeDay).toUpperCase(),'-',String(slot.time).replace(/[.:]/g,'_')].join(''):'';}if(slot.type!=='group')return'';const f=Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{});return f.map(x=>String(x).trim().toUpperCase()).sort().join('-');}
 // la sessione è già finita? (giorno visualizzato vs oggi, orario + ritardo). Prima della partenza si mostra sempre la griglia.
 function slotHasRun(slot){
   try{
@@ -3187,9 +3200,30 @@ function openExportPilots(){
   if(!pilots.length&&!teams.length){alert('Nessun pilota da esportare');return;}
   openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Esporta piloti</div>'
     +'<button class="form-submit" style="margin-bottom:10px" onclick="closeModal();copyAllForEditor()"><i class="ic ic-list"></i> COPIA NEGLI APPUNTI</button>'
-    +'<button class="form-submit" style="background:none;border:1.5px solid var(--border2,#444);color:var(--text)" onclick="closeModal();exportPilotsPdf()"><i class="ic ic-download"></i> PDF CON TUTTI I DATI</button>');
+    +'<button class="form-submit" style="background:none;border:1.5px solid var(--border2,#444);color:var(--text)" onclick="closeModal();exportPilotsPdf()"><i class="ic ic-download"></i> PDF CON TUTTI I DATI</button>'
+    +'<button class="form-submit" style="margin-top:10px;background:none;border:1.5px solid var(--border2,#444);color:var(--text)" onclick="closeModal();exportPilotsJson()"><i class="ic ic-download"></i> JSON (PILOTI E TEAM)</button>');
 }
 window.openExportPilots=openExportPilots;
+/* 20/11/2026 (Andrea): JSON dei MIEI piloti e team, con account e gara (servira' anche all'esportazione automatica di un altro progetto) */
+function exportPilotsJson(){
+  const r=(typeof races!=='undefined'&&races&&races[activeRaceId])||{};
+  const el=currentEntryList||{};
+  const hlOf=p=>{let h=p.highlight;if(typeof h==='string')h=[h];if(h&&!Array.isArray(h))h=Object.values(h);return h||[];};
+  const byNum=(a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0);
+  const pil=p=>{const e=el[p.num]||{};return{num:String(p.num),nome:String(p.name||'').trim(),cat:p.cat||e.cat||'',team:p.team||e.team||'',
+    serie:String(e.serie||p.serie||''),gruppo:String(e.group||p.group||''),evidenzia:hlOf(p),reel:hasVideo(p)?String(p.reel||'30'):''};};
+  const out={formato:'racetracker-piloti-v1',esportato:new Date().toISOString(),
+    account:{utente:currentUserId||'',login:(_fbAuth&&_fbAuth.currentUser&&_fbAuth.currentUser.email)||''},
+    gara:{id:activeRaceId||'',nome:r.name||'',circuito:r.circuit||'',organizzazione:r.org||'',inizio:r.startDate||'',fine:r.endDate||''},
+    piloti:pilots.slice().sort(byNum).map(pil),
+    team:teams.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(t=>{const w=teamWork(t);return{team:t.name,evidenzia:w.highlight,reel:w.reel,
+      piloti:teamEntrants(t).sort(byNum).map(p=>{const e=el[p.num]||{};return{num:String(p.num),nome:String(p.name||'').trim(),cat:p.cat||e.cat||'',team:p.team||e.team||'',serie:String(e.serie||''),gruppo:String(e.group||'')};})};})};
+  const fname=[r.name||'Gara',r.circuit||'',currentUserId||''].filter(Boolean).join(' ').replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim()+'.json';
+  const blob=new Blob([JSON.stringify(out,null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
+}
+window.exportPilotsJson=exportPilotsJson;
 function exportPilotsPdf(){
   const e=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const r=(typeof races!=='undefined'&&races&&races[activeRaceId])||{};
@@ -4421,7 +4455,7 @@ function apexEvaluate(why){
     // e per le liste di numeri. Il turno e' quello abbinato dal live (il piu' vicino all'orario, con il ritardo).
     if(!mh&&/WARM|FREE|PRACT/.test(ss)&&!/QUALIF/.test(ss)&&activeRaceId&&_pfin){
       const day=typeof autoDayName==='function'?autoDayName():activeDay;let pk='',inSlot=null;
-      try{const ms=apexMatchSlot();const sl=ms&&ms.slot;if(sl&&['parity','all','list','serie'].includes(sl.type)&&sl.time){pk=['PR-',String(day).toUpperCase(),'-',String(sl.time)].join('');
+      try{const ms=apexMatchSlot();const sl=ms&&ms.slot;if(sl&&['parity','all','list','serie'].includes(sl.type)&&sl.time){pk=['PR-',String(day).toUpperCase(),'-',String(sl.time).replace(/[.:]/g,'_')].join('');
         if(sl.type==='list'){const f=Array.isArray(sl.filter)?sl.filter:String(sl.filter||'').split(',');inSlot=new Set(f.map(v=>String(v).trim()));}}}catch(e){}
       if(!pk&&mp)pk=['PAR-',String(day).toUpperCase(),'-',mp[1]].join('');
       const u={};
@@ -5663,6 +5697,8 @@ function apexMatchFor(catTxt,sessTxt,startTxt){
     const f=Array.isArray(x.filter)?x.filter.join('-'):String(x.filter||'');
     let m;
     if(/QUALIF/.test(ss)&&(m=ss.match(/S\s*(\d)/)))return x.type==='serie'&&f===m[1];
+    // 20/11/2026: qualifica unica (OKN "Qualifying Practice", senza serie) = turno All/lista della categoria
+    if(/QUALIF/.test(ss))return x.type==='all'||x.type==='list';
     // 20/11/2026: prove per serie (WSK "Free Practice Serie N") = turni di tipo serie N (il piu' vicino all'orario)
     if(/(FREE|PRACT|WARM)/.test(ss)&&(m=ss.match(/SERIE?S?\s*(\d)/)))return x.type==='serie'&&f===m[1];
     if(/(FREE|PRACT|WARM)/.test(ss)&&/EVEN|PARI/.test(ss))return x.type==='parity'&&f==='EVEN'&&(/WARM/.test(ss)===/WARM/i.test((x.session||'')+(x.label||''))||true);
