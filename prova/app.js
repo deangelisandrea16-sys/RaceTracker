@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-0855';
+var RT_JS_BUILD='2026-11-20-0905';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2679,7 +2679,10 @@ function gridPos(num,slot){
 // Chiavi: manche "A-B"; prefinali "PF-A"/"PF-B"; finale "FIN" (scritte dal server dai documenti ufficiali Apex)
 // 20/11/2026: serie del pilota = quella ufficiale dell'entry list (server) se c'e', altrimenti quella salvata
 function pSerie(p){const e=p&&currentEntryList&&currentEntryList[p.num];return String((e&&e.serie)||(p&&p.serie)||'').trim();}
-function slotKeyOf(slot){if(!slot)return'';if(slot.type==='prefinal'){const x=String(slot.filter||'').trim().toUpperCase();return x?'PF-'+x:'';}if(slot.type==='final')return'FIN';if(slot.type==='serie'){const q=String(slot.filter||'').trim().toUpperCase();return q?'Q-S'+q.replace(/^S/,''):'';}if(slot.type==='parity'||slot.type==='all'||slot.type==='list'){return activeDay&&slot.time?['PR-',String(activeDay).toUpperCase(),'-',String(slot.time)].join(''):'';}if(slot.type!=='group')return'';const f=Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{});return f.map(x=>String(x).trim().toUpperCase()).sort().join('-');}
+// 20/11/2026: sessione (PROVE LIBERE / QUALIFICHE / MANCHE...) del blocco a cui appartiene il turno, nel giorno attivo
+function slotSessionOf(slot){let cur='';const arr=((currentSchedule||{})[activeDay]||[]);for(const x of (Array.isArray(arr)?arr:Object.values(arr))){if(!x)continue;if(x.session)cur=x.session;
+  if(x===slot||(x.time===slot.time&&x.cat===slot.cat&&x.type===slot.type&&String(x.filter)===String(slot.filter)))return cur;}return '';}
+function slotKeyOf(slot){if(!slot)return'';if(slot.type==='prefinal'){const x=String(slot.filter||'').trim().toUpperCase();return x?'PF-'+x:'';}if(slot.type==='final')return'FIN';if(slot.type==='serie'&&/PROV|PRACT|LIBER|WARM/i.test(slotSessionOf(slot))){return activeDay&&slot.time?['PR-',String(activeDay).toUpperCase(),'-',String(slot.time)].join(''):'';}if(slot.type==='serie'){const q=String(slot.filter||'').trim().toUpperCase();return q?'Q-S'+q.replace(/^S/,''):'';}if(slot.type==='parity'||slot.type==='all'||slot.type==='list'){return activeDay&&slot.time?['PR-',String(activeDay).toUpperCase(),'-',String(slot.time)].join(''):'';}if(slot.type!=='group')return'';const f=Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{});return f.map(x=>String(x).trim().toUpperCase()).sort().join('-');}
 // la sessione è già finita? (giorno visualizzato vs oggi, orario + ritardo). Prima della partenza si mostra sempre la griglia.
 function slotHasRun(slot){
   try{
@@ -4418,7 +4421,7 @@ function apexEvaluate(why){
     // e per le liste di numeri. Il turno e' quello abbinato dal live (il piu' vicino all'orario, con il ritardo).
     if(!mh&&/WARM|FREE|PRACT/.test(ss)&&!/QUALIF/.test(ss)&&activeRaceId&&_pfin){
       const day=typeof autoDayName==='function'?autoDayName():activeDay;let pk='',inSlot=null;
-      try{const ms=apexMatchSlot();const sl=ms&&ms.slot;if(sl&&['parity','all','list'].includes(sl.type)&&sl.time){pk=['PR-',String(day).toUpperCase(),'-',String(sl.time)].join('');
+      try{const ms=apexMatchSlot();const sl=ms&&ms.slot;if(sl&&['parity','all','list','serie'].includes(sl.type)&&sl.time){pk=['PR-',String(day).toUpperCase(),'-',String(sl.time)].join('');
         if(sl.type==='list'){const f=Array.isArray(sl.filter)?sl.filter:String(sl.filter||'').split(',');inSlot=new Set(f.map(v=>String(v).trim()));}}}catch(e){}
       if(!pk&&mp)pk=['PAR-',String(day).toUpperCase(),'-',mp[1]].join('');
       const u={};
@@ -5660,6 +5663,8 @@ function apexMatchFor(catTxt,sessTxt,startTxt){
     const f=Array.isArray(x.filter)?x.filter.join('-'):String(x.filter||'');
     let m;
     if(/QUALIF/.test(ss)&&(m=ss.match(/S\s*(\d)/)))return x.type==='serie'&&f===m[1];
+    // 20/11/2026: prove per serie (WSK "Free Practice Serie N") = turni di tipo serie N (il piu' vicino all'orario)
+    if(/(FREE|PRACT|WARM)/.test(ss)&&(m=ss.match(/SERIE?S?\s*(\d)/)))return x.type==='serie'&&f===m[1];
     if(/(FREE|PRACT|WARM)/.test(ss)&&/EVEN|PARI/.test(ss))return x.type==='parity'&&f==='EVEN'&&(/WARM/.test(ss)===/WARM/i.test((x.session||'')+(x.label||''))||true);
     if(/(FREE|PRACT|WARM)/.test(ss)&&/ODD|DISPARI/.test(ss))return x.type==='parity'&&f==='ODD';
     // 19/11/2026: prove senza pari/dispari (KZ2, OKN "All", liste di numeri)
