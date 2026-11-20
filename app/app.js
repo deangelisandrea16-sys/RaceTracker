@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-0840';
+var RT_JS_BUILD='2026-11-20-0855';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -6283,3 +6283,31 @@ if(false)onValue(ref(db,'tracker'),snap=>{
 // Init: show correct tab
 showTab(activeTab);
 
+
+/* 20/11/2026 (Andrea): tasti ↑ ↓ del Programma: un tocco = turno precedente/successivo, doppio tocco = inizio/fine */
+let _progStepAt=0,_progStepDir=0;
+function progStep(dir){
+  const now=Date.now();
+  if(now-_progStepAt<350&&_progStepDir===dir){_progStepAt=0;
+    window.scrollTo({top:dir<0?0:document.body.scrollHeight,behavior:'smooth'});return;}
+  _progStepAt=now;_progStepDir=dir;
+  const off=progTopCover()+6;
+  const cards=[...document.querySelectorAll('#schedule-content .slot-header')].map(x=>x.closest('.card')).filter(Boolean);
+  if(!cards.length){window.scrollTo({top:dir<0?0:document.body.scrollHeight,behavior:'smooth'});return;}
+  let target=null;
+  if(dir>0)target=cards.find(c=>c.getBoundingClientRect().top>off+4);
+  else{const prev=cards.filter(c=>c.getBoundingClientRect().top<off-4);target=prev[prev.length-1];}
+  if(!target){window.scrollTo({top:dir<0?0:document.body.scrollHeight,behavior:'smooth'});return;}
+  window.scrollTo({top:window.scrollY+target.getBoundingClientRect().top-off,behavior:'smooth'});
+  // le barre in alto possono comparire/sparire durante lo scorrimento: a fine corsa si riallinea l'intestazione del turno
+  clearTimeout(window._progFixT);window._progFixT=setTimeout(()=>{const d=target.getBoundingClientRect().top-(progTopCover()+6);
+    if(Math.abs(d)>3)window.scrollTo({top:window.scrollY+d,behavior:'smooth'});},650);
+}
+window.progStep=progStep;
+// altezza coperta in alto da barre fisse (testata, barra di stato, barre della pagina): si scende finche' si trova contenuto che scorre
+function progTopCover(){
+  const x=Math.round(window.innerWidth/2);let y=0;
+  const fixedUp=el=>{for(let e=el;e&&e!==document.body;e=e.parentElement){const p=getComputedStyle(e).position;if(p==='sticky'||p==='fixed')return true;}return false;};
+  for(;y<Math.min(400,window.innerHeight/2);y+=2){const el=document.elementFromPoint(x,y);if(!el||!fixedUp(el))break;}
+  return y;
+}
