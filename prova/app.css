@@ -870,3 +870,6 @@ body.light .sp-vp.td .sp-track{stroke:#4a4e57}
 .filt-panel{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .3s var(--ease,ease),opacity .25s ease}
 .filt-panel.open{grid-template-rows:1fr;opacity:1}
 .filt-inner{overflow:hidden;min-height:0}
+
+/* 20/11/2026: punti di scatto piloti del team nel programma */
+.tsp-item{display:inline-flex;align-items:center;gap:4px}
