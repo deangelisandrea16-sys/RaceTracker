@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1500';
+var RT_JS_BUILD='2026-11-20-1540';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3931,8 +3931,13 @@ function wxLoad(){
   _wx.loading=true;_wx.at=Date.now();   // anche se fallisce non si riprova prima di un'ora
   fetch('https://api.met.no/weatherapi/locationforecast/2.0/compact?lat='+g.lat.toFixed(4)+'&lon='+g.lon.toFixed(4))
     .then(r=>r.ok?r.json():null).then(j=>{_wx.loading=false;const ts=j&&j.properties&&j.properties.timeseries;if(!ts)return;
+      const old=_wx.ts||[];
       _wx.ts=ts.map(x=>{const d=x.data||{},i=(d.instant||{}).details||{},h1=d.next_1_hours,h6=d.next_6_hours;
         return{t:x.time,T:i.air_temperature,W:i.wind_speed,p:h1?(h1.details||{}).precipitation_amount:(h6?(h6.details||{}).precipitation_amount:null),n:h1?1:(h6?6:0),s:String(((h1||h6||{}).summary||{}).symbol_code||'')};});
+      // 20/11/2026 (Andrea): la previsione parte da "adesso": si tengono le ore gia' passate (ultimi 3 giorni) cosi' il meteo resta
+      // accanto a PROVE LIBERE, QUALIFICHE ecc. anche dopo che sono finite
+      try{const first=_wx.ts.length?new Date(_wx.ts[0].t).getTime():Infinity,lim=Date.now()-3*864e5;
+        const keep=old.filter(x=>{const t=new Date(x.t).getTime();return t<first&&t>lim&&x.n;});if(keep.length)_wx.ts=keep.concat(_wx.ts);}catch(e){}
       try{localStorage.setItem('rt_wx_'+g.key,JSON.stringify({at:_wx.at,ts:_wx.ts}));}catch(e){}
       wxRender();}).catch(()=>{_wx.loading=false;});
 }
