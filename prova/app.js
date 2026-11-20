@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1325';
+var RT_JS_BUILD='2026-11-20-1350';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -4152,7 +4152,7 @@ function renderSchedule(){
       html+='<div class="card'+(isNow?' slot-now':'')+'" style="opacity:.45" '+(isNow?'id="slot-now"':'')+'><div class="slot-header">'
         +'<span class="slot-time">'+slot.time+'</span>'+(isNow?'<span class="now-badge">ORA</span>':'')
         +'<span class="slot-label '+catClass(slot.cat)+'">'+slot.label+'</span>'
-        +'<span class="slot-type">'+slotFilterLabel(slot)+'</span>'+slotDur(slot)+'</div>'
+        +'<span class="slot-type">'+slotFilterLabel(slot)+'</span>'+slotDur(slot)+remBell(slot)+'</div>'+remLine(slot)
         +'<div style="font-size:11px;font-weight:700;color:var(--text4);padding:2px 0">— NESSUNO —</div></div>';
       return;
     }
@@ -4161,7 +4161,8 @@ function renderSchedule(){
     html+='<div class="card'+(isNow?' slot-now':'')+'" '+(isNow?'id="slot-now"':'')+'><div class="slot-header">'
       +'<span class="slot-time">'+slot.time+'</span>'+(isNow?'<span class="now-badge">ORA</span>':'')
       +'<span class="slot-label '+catClass(slot.cat)+'">'+slot.label+'</span>'
-      +'<span class="slot-type">'+slotFilterLabel(slot)+'</span>'+slotDur(slot)+'</div>'
+      +'<span class="slot-type">'+slotFilterLabel(slot)+'</span>'+slotDur(slot)+remBell(slot)+'</div>'
+      +remLine(slot)
       +(awaiting.length?'<div style="font-size:9px;color:#fbbf24;font-weight:600;margin-top:4px"><i class="ic ic-wait"></i> '+awaiting.map(p=>'#'+p.num).join(' ')+' in attesa</div>':'')
       +'<div style="margin-top:8px">';
     const _items=[]; // 15/11 (Andrea): raccolti per poter raggruppare i piloti dello stesso team
@@ -5930,6 +5931,46 @@ window.editSectionInline=editSectionInline;
 // ══════════════════════════════════════
 // MODAL + ADD/EDIT PILOT
 // ══════════════════════════════════════
+/* ══ PROMEMORIA PERSONALI (20/11/2026, Andrea) ══
+   Agganciati a un turno del programma: scattano X minuti prima dell'orario del turno PIU' il ritardo live.
+   Salvati in races/<gara>/reminders/<utente>/<id>; la notifica push la manda il server (monitor), cosi' arriva anche a telefono in tasca. */
+let reminders={},_remRef=null,_remKey='';
+const REM_BEFORE=[0,5,10,15,20,30,45,60];
+function remAttach(){if(!activeRaceId||!currentUserId)return;const k=activeRaceId+'|'+currentUserId;if(k===_remKey)return;_remKey=k;reminders={};
+  onValue(ref(db,'races/'+activeRaceId+'/reminders/'+currentUserId),sn=>{if(_remKey!==k)return;reminders=sn.val()||{};window._rtRenderDirty=true;try{if(activeTab==='programma')renderAll();}catch(_){}});}
+function remSlotKey(slot){return[activeDay,slot.time,slot.cat,[].concat(slot.filter||'').join('-')].join('|');}
+function remOfSlot(slot){const k=remSlotKey(slot);return Object.entries(reminders||{}).filter(([id,r])=>r&&r.slot===k);}
+function remBell(slot){try{remAttach();}catch(_){}const n=remOfSlot(slot).length;const k=remSlotKey(slot).replace(/'/g,"\\'");
+  return'<button class="rem-bell'+(n?' on':'')+'" onclick="event.stopPropagation();openReminder(\''+k+'\')" aria-label="Promemoria per questo turno">🔔'+(n>1?'<b>'+n+'</b>':'')+'</button>';}
+function remBeforeTxt(b){return b?b+'′ prima':'all\'ora';}
+function remLine(slot){const l=remOfSlot(slot);if(!l.length)return'';
+  return l.map(([id,r])=>'<div class="rem-line" onclick="event.stopPropagation();openReminder(\''+remSlotKey(slot).replace(/'/g,"\\'")+'\')">🔔 '+(r.num?'<b>#'+escAttr(r.num)+'</b> ':'')+escapeHtmlSp(r.text||'Promemoria')+' <span>· '+[].concat(r.before||[]).sort((a,b)=>b-a).map(remBeforeTxt).join(', ')+'</span></div>').join('');}
+let _remEdit=null;
+function openReminder(k){const slot=(currentSchedule[activeDay]||[]).find(x=>remSlotKey(x)===k);if(!slot)return;
+  _remEdit={k,slot,before:new Set([10]),num:'',text:''};renderReminder();}
+window.openReminder=openReminder;
+function renderReminder(){const e=_remEdit;if(!e)return;const sl=e.slot;
+  let ps=[];try{ps=pilotsForSlot(sl).map(p=>({num:String(p.num),name:p.name}));teamsForSlot(sl).forEach(x=>x.inSlot.concat(x.waiting||[]).forEach(p=>{if(!ps.some(q=>q.num===String(p.num)))ps.push({num:String(p.num),name:p.name});}));}catch(_){}
+  ps.sort((a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0));
+  const d=parseInt(scheduleDelay)||0,h=[];
+  h.push('<button class="modal-close" onclick="closeModal()">✕</button>');
+  h.push('<div class="modal-title">🔔 Promemoria · '+escapeHtmlSp(sl.time)+' '+escapeHtmlSp(sl.label||sl.cat)+' '+escapeHtmlSp(slotFilterLabel(sl))+'</div>');
+  h.push('<div class="sp-sub">Orario turno '+sl.time+(d?' + ritardo live '+d+'′':'')+'. Arriva come notifica, anche con l\'app chiusa.</div>');
+  const ex=remOfSlot(sl);
+  if(ex.length)h.push('<div class="rem-list">'+ex.map(([id,r])=>'<div class="rem-item"><div>'+(r.num?'<b>#'+escapeHtmlSp(r.num)+'</b> ':'')+escapeHtmlSp(r.text||'Promemoria')+'<br><span>'+[].concat(r.before||[]).sort((a,b)=>b-a).map(remBeforeTxt).join(', ')+'</span></div><button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="remDelete(\''+id+'\')">✕</button></div>').join('')+'</div>');
+  h.push('<div class="rem-lbl">Pilota (facoltativo)</div><select id="rem-num" class="add-input" onchange="_remEdit.num=this.value"><option value="">— nessuno —</option>'+ps.map(p=>'<option value="'+p.num+'"'+(e.num===p.num?' selected':'')+'>#'+p.num+' '+escapeHtmlSp(p.name||'')+'</option>').join('')+'</select>');
+  h.push('<div class="rem-lbl">Cosa fare</div><input id="rem-text" class="add-input" maxlength="80" placeholder="es. clip pregriglia, bilancia, gara" value="'+escapeHtmlSp(e.text)+'" oninput="_remEdit.text=this.value">');
+  h.push('<div class="rem-lbl">Avvisami</div><div class="rem-chips">'+REM_BEFORE.map(b=>'<button class="rem-chip'+(e.before.has(b)?' on':'')+'" onclick="remToggleBefore('+b+')">'+remBeforeTxt(b)+'</button>').join('')+'</div>');
+  h.push('<button class="btn-add-pilot" style="width:100%;min-height:48px;margin-top:12px;border-radius:12px;font-weight:900" onclick="remSave()">SALVA PROMEMORIA</button>');
+  openModal(h.join(''));}
+function remToggleBefore(b){const s=_remEdit.before;if(s.has(b))s.delete(b);else s.add(b);renderReminder();}
+function remSave(){const e=_remEdit;if(!e||!activeRaceId||!currentUserId)return;if(!e.before.size){alert('Scegli almeno un momento');return;}
+  const id='r'+Date.now().toString(36),sl=e.slot,p=e.num?((pilots.find(x=>String(x.num)===e.num))||spotPilotOf(e.num)||{}):{};
+  const val={slot:e.k,day:activeDay,time:String(sl.time),cat:sl.cat,label:[sl.label||sl.cat,slotFilterLabel(sl)].filter(Boolean).join(' '),num:e.num||'',name:p.name||'',text:String(e.text||'').trim().slice(0,80),before:[...e.before].sort((a,b)=>b-a),at:Date.now()};
+  reminders[id]=val;ref(db,'races/'+activeRaceId+'/reminders/'+currentUserId+'/'+id).set(val).then(()=>{try{if(navigator.vibrate)navigator.vibrate(15);}catch(_){}}).catch(err=>alert('Promemoria non salvato: '+err.message));
+  _remEdit={k:e.k,slot:sl,before:new Set([10]),num:'',text:''};renderReminder();window._rtRenderDirty=true;}
+function remDelete(id){if(!confirm('Eliminare il promemoria?'))return;delete reminders[id];ref(db,'races/'+activeRaceId+'/reminders/'+currentUserId+'/'+id).remove();renderReminder();window._rtRenderDirty=true;}
+window.remToggleBefore=remToggleBefore;window.remSave=remSave;window.remDelete=remDelete;
 function openModal(html){document.getElementById('modal-inner').innerHTML=html;document.getElementById('modal').style.display='flex';}
 function closeModal(){document.getElementById('modal').style.display='none';if(window._rtDeferRender){window._rtDeferRender=false;if(window._rtRenderDirty){window._rtRenderDirty=false;try{renderAll();}catch(e){}}}}
 function closeModalOutside(e){if(e.target===document.getElementById('modal'))closeModal();}
