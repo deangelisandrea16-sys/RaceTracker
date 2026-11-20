@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-19-1840';
+var RT_JS_BUILD='2026-11-20-0830';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1198,7 +1198,9 @@ function listenRaceData(raceId){
     pilots.forEach(p=>{
       if(!p.group)p.group='';if(!p.prefinal)p.prefinal='';if(!p.serie)p.serie='';if(!p.eliminated)p.eliminated=false;
       // 15/11/2026: la prefinale ufficiale (entry list, aggiornata dal server per tutti) vale piu' del dato salvato sul pilota
-      {const _e=currentEntryList&&currentEntryList[p.num];if(_e&&_e.prefinal&&String(_e.prefinal).toUpperCase()!==String(p.prefinal).toUpperCase())p.prefinal=String(_e.prefinal).toUpperCase();}
+      {const _e=currentEntryList&&currentEntryList[p.num];if(_e&&_e.prefinal&&String(_e.prefinal).toUpperCase()!==String(p.prefinal).toUpperCase())p.prefinal=String(_e.prefinal).toUpperCase();
+       // 20/11/2026 (Andrea): anche la SERIE ufficiale (scritta dal server dai PDF WSK) vale piu' del dato salvato sul pilota
+       if(_e&&_e.serie&&String(_e.serie)!==String(p.serie))p.serie=String(_e.serie);}
       if(!p.heats)p.heats=[];
       if(!Array.isArray(p.heats))p.heats=typeof p.heats==='object'?Object.values(p.heats):[];
       // 17/11/2026: manche ufficiali dall'entry list (il server le scrive per tutti, es. WSK) unite a quelle del pilota
@@ -1416,7 +1418,7 @@ function pilotsForSlot(slot){
     if(canonCat(p.cat)!==canonCat(slot.cat))return false;
     if(slot.type==='all')return true;
     if(slot.type==='parity')return p.parity===slot.filter;
-    if(slot.type==='serie'){if(!p.serie)return false;return String(p.serie).trim()===String(slot.filter).trim();}
+    if(slot.type==='serie'){if(!pSerie(p))return false;return pSerie(p)===String(slot.filter).trim();}
     if(slot.type==='group')return pilotInGroup(p,slot.filter);
     if(slot.type==='prefinal'){if(!p.prefinal)return false;return String(p.prefinal).trim().toUpperCase()===String(slot.filter).trim().toUpperCase();}
     if(slot.type==='list'){if(!Array.isArray(slot.filter))return false;return slot.filter.map(String).includes(String(p.num));}
@@ -1428,7 +1430,7 @@ function pilotsAwaitingData(slot){
   return pilots.filter(p=>{
     if(p.eliminated)return false;
     if(canonCat(p.cat)!==canonCat(slot.cat))return false;
-    if(slot.type==='serie'&&!String(p.serie||'').trim())return true;
+    if(slot.type==='serie'&&!pSerie(p))return true;
     if(slot.type==='group'&&!pilotHasGroupData(p))return true;
     if(slot.type==='prefinal'&&!String(p.prefinal||'').trim())return true;
     return false;
@@ -2671,6 +2673,8 @@ function gridPos(num,slot){
 }
 // Dopo la manche: posizione d'arrivo dai risultati Apex (entryList/{num}/result = {"A-B":"3"}), badge verde
 // Chiavi: manche "A-B"; prefinali "PF-A"/"PF-B"; finale "FIN" (scritte dal server dai documenti ufficiali Apex)
+// 20/11/2026: serie del pilota = quella ufficiale dell'entry list (server) se c'e', altrimenti quella salvata
+function pSerie(p){const e=p&&currentEntryList&&currentEntryList[p.num];return String((e&&e.serie)||(p&&p.serie)||'').trim();}
 function slotKeyOf(slot){if(!slot)return'';if(slot.type==='prefinal'){const x=String(slot.filter||'').trim().toUpperCase();return x?'PF-'+x:'';}if(slot.type==='final')return'FIN';if(slot.type==='serie'){const q=String(slot.filter||'').trim().toUpperCase();return q?'Q-S'+q.replace(/^S/,''):'';}if(slot.type==='parity'||slot.type==='all'||slot.type==='list'){return activeDay&&slot.time?['PR-',String(activeDay).toUpperCase(),'-',String(slot.time)].join(''):'';}if(slot.type!=='group')return'';const f=Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{});return f.map(x=>String(x).trim().toUpperCase()).sort().join('-');}
 // la sessione è già finita? (giorno visualizzato vs oggi, orario + ritardo). Prima della partenza si mostra sempre la griglia.
 function slotHasRun(slot){
@@ -2983,7 +2987,7 @@ function entrantInSlot(p,slot){
   if(canonCat(p.cat)!==canonCat(slot.cat))return false;
   if(slot.type==='all')return true;
   if(slot.type==='parity')return p.parity===slot.filter;
-  if(slot.type==='serie')return!!p.serie&&String(p.serie).trim()===String(slot.filter).trim();
+  if(slot.type==='serie')return!!pSerie(p)&&pSerie(p)===String(slot.filter).trim();
   if(slot.type==='group')return pilotInGroup(p,Array.isArray(slot.filter)?slot.filter:Object.values(slot.filter||{}));
   if(slot.type==='prefinal')return!!p.prefinal&&String(p.prefinal).trim().toUpperCase()===String(slot.filter).trim().toUpperCase();
   if(slot.type==='list')return Array.isArray(slot.filter)&&slot.filter.map(String).includes(String(p.num));
@@ -2997,7 +3001,7 @@ function teamsForSlot(slot){
     if(!ents.length)return;
     const inSlot=ents.filter(p=>entrantInSlot(p,slot));
     let waiting=[];
-    if(slot.type==='serie')waiting=ents.filter(p=>!String(p.serie||'').trim());
+    if(slot.type==='serie')waiting=ents.filter(p=>!pSerie(p));
     if(slot.type==='group')waiting=ents.filter(p=>!pilotHasGroupData(p));
     if(slot.type==='prefinal')waiting=ents.filter(p=>!String(p.prefinal||'').trim());
     if(inSlot.length||waiting.length)res.push({t,inSlot,waiting});
@@ -3456,7 +3460,7 @@ function buildProgResultsHtml(fakePilots){
       if(canonCat(p.cat)!==canonCat(slot.cat))return false;
       if(slot.type==='all')return true;
       if(slot.type==='parity')return p.parity===slot.filter;
-      if(slot.type==='serie'){if(!p.serie)return false;return String(p.serie).trim()===String(slot.filter).trim();}
+      if(slot.type==='serie'){if(!pSerie(p))return false;return pSerie(p)===String(slot.filter).trim();}
       if(slot.type==='group')return pilotInGroup(p,slot.filter);
       if(slot.type==='prefinal'){if(!p.prefinal)return false;return String(p.prefinal).trim().toUpperCase()===String(slot.filter).trim().toUpperCase();}
       if(slot.type==='list'){if(!Array.isArray(slot.filter))return false;return slot.filter.map(String).includes(String(p.num));}
@@ -5787,7 +5791,7 @@ function _progSlotMatch(p,slot){
   if(p.cat!==slot.cat)return false;
   if(slot.type==='all')return true;
   if(slot.type==='parity')return p.parity===slot.filter;
-  if(slot.type==='serie'){if(!p.serie)return false;return String(p.serie).trim()===String(slot.filter).trim();}
+  if(slot.type==='serie'){if(!pSerie(p))return false;return pSerie(p)===String(slot.filter).trim();}
   if(slot.type==='group')return pilotInGroup(p,Array.isArray(slot.filter)?slot.filter:[slot.filter]);
   if(slot.type==='prefinal'){if(!p.prefinal)return false;return String(p.prefinal).trim().toUpperCase()===String(slot.filter).trim().toUpperCase();}
   if(slot.type==='list'){if(!Array.isArray(slot.filter))return false;return slot.filter.map(String).includes(String(p.num));}
