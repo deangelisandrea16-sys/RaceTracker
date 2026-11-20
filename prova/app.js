@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1150';
+var RT_JS_BUILD='2026-11-20-1200';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1185,7 +1185,9 @@ function listenRaceData(raceId){
     statuses=userData.statuses||{};
     notes=userData.notes||{};
     trackStatus=userData.trackStatus||{};
-    trackSpots=userData.trackSpots||{};spotDone=userData.spotDone||{};
+    _spRaceSpots=userData.trackSpots||{};
+    trackSpots=Object.assign({},(_spVenueKey&&_spVenueKey===spotsVenuePath()&&_spVenueSpots)||{},_spRaceSpots);spotDone=userData.spotDone||{};
+    try{spotsAttachVenue();}catch(_){}
     teams=userData.teams?Object.values(userData.teams):[];
     teamStatuses=userData.teamStatuses||{};
     teamNotes=userData.teamNotes||{};
@@ -6095,7 +6097,7 @@ let _spNum=null,_spTrash=false,_spMarkMode=false;
    Senza mappa per la sede la pillola dei punti di scatto non compare. */
 let _venues=null,_spBg=null;
 function loadSpBg(){if(_spBg!==null)return;_spBg='';ref(db,'appAssets/mapBg/img').once('value').then(sn=>{_spBg=sn.val()||'';const vp=document.getElementById('sp-vp');if(vp&&_spBg){vp.style.setProperty('--spbg','url("'+_spBg+'")');vp.classList.add('hasbg');}}).catch(()=>{});}
-function loadVenues(){if(_venues!==null)return;_venues={};ref(db,'venues').once('value').then(sn=>{_venues=sn.val()||{};try{renderAll();}catch(_){}}).catch(()=>{_venues={};});}
+function loadVenues(){if(_venues!==null)return;_venues={};ref(db,'venues').once('value').then(sn=>{_venues=sn.val()||{};try{spotsAttachVenue();}catch(_){}try{renderAll();}catch(_){}}).catch(()=>{_venues={};});}
 function raceVenue(){
   const r=(typeof races!=='undefined'&&races&&races[activeRaceId])||{};const c=String(r.circuit||r.name||'').toLowerCase();
   if(!_venues||!c)return null;
@@ -6253,7 +6255,21 @@ function spotsBindGestures(){
 function escapeHtmlSp(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
 /* un'unica scrittura per punti e spunte: con due scritture separate l'aggiornamento locale della prima
    ricaricava le spunte vecchie prima di salvare la seconda (punti che sparivano o si rinumeravano) */
+/* 20/11/2026 (Andrea): i PUNTI appartengono all'account e al tracciato (userSpots/<utente>/<sede>), cosi' tornando
+   sulla stessa pista in un'altra gara si ritrovano. Le SPUNTE restano per gara. I punti della gara vengono copiati
+   nel tracciato la prima volta (solo aggiunta, niente viene tolto dalla gara). */
+let _spVenueSpots=null,_spVenueKey='',_spRaceSpots={};
+function spotsVenuePath(){const v=venueMap();return v&&currentUserId?'userSpots/'+currentUserId+'/'+v.key:'';}
+function spotsAttachVenue(){const p=spotsVenuePath();if(!p||p===_spVenueKey)return;_spVenueKey=p;_spVenueSpots=null;
+  trackSpots=Object.assign({},_spRaceSpots||{});
+  onValue(ref(db,p),sn=>{if(_spVenueKey!==p)return;_spVenueSpots=sn.val()||{};
+    const miss={};Object.keys(_spRaceSpots||{}).forEach(id=>{if(!_spVenueSpots[id])miss[p+'/'+id]=_spRaceSpots[id];});
+    if(Object.keys(miss).length){update(ref(db),miss).catch(()=>{});dlog('Punti di scatto copiati nel tracciato: '+Object.keys(miss).length,'info');}
+    let ch=false;Object.keys(_spVenueSpots).forEach(id=>{if(!trackSpots[id]){trackSpots[id]=_spVenueSpots[id];ch=true;}});
+    if(ch){window._rtRenderDirty=true;try{if(document.getElementById('sp-dots'))spotsRefresh();else renderAll();}catch(_){}}});}
 function spotsSave(){if(!activeRaceId||!currentUserId)return;const u={};
+  {const p=spotsVenuePath();if(p&&_spVenueSpots){const all=new Set([...Object.keys(_spVenueSpots),...Object.keys(trackSpots||{})]);
+    all.forEach(id=>{const a=_spVenueSpots[id]||null,b=(trackSpots||{})[id]||null;if(JSON.stringify(a)!==JSON.stringify(b))u[p+'/'+id]=b;});}}
   rtDiff(userPath()+'/trackSpots',_rtBaseUser.trackSpots,trackSpots,u);rtDiff(userPath()+'/spotDone',_rtBaseUser.spotDone,spotDone,u);rtWrite(u,'punti di scatto');}
 function spotsRefresh(){
   const dl=document.getElementById('sp-dots'),sub=document.querySelector('.sp-sub');if(!dl){renderSpots();return;}
