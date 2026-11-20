@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1415';
+var RT_JS_BUILD='2026-11-20-1425';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -6295,20 +6295,35 @@ function spotsZoomSector(cx,cy){const v=venueMap(),vp=document.getElementById('s
   const q0=spotsToMap(cx,cy);const i=spotsCurveOf(q0.x,q0.y,cv);if(i<0)return;spotsZoomCurve(i,true);}
 /* 20/11/2026 (Andrea): la curva scelta resta quella aperta anche per gli altri piloti della stessa gara */
 function spotsCurveKey(){return'rt_spcurve_'+(activeRaceId||'');}
+/* 20/11/2026 (Andrea): ogni curva ricorda come l'hai girata (rotazione, 3D, zoom, spostamento), per account e tracciato,
+   di gara in gara: userSpotViews/<utente>/<sede>/<curva> */
+let _spViews={},_spViewsKey='',_spCurCurve=null,_spViewT=0;
+function spotsViewsAttach(){const v=venueMap();if(!v||!currentUserId)return;const p='userSpotViews/'+currentUserId+'/'+v.key;if(p===_spViewsKey)return;_spViewsKey=p;_spViews={};
+  onValue(ref(db,p),sn=>{if(_spViewsKey===p)_spViews=sn.val()||{};});}
+function spotsCurveCenter(i){const v=venueMap(),cv=spotsCurves(v),c=cv.list[i];if(!c||!_spSize)return null;const[x0,y0,VW,VH]=cv.vb;const sx=_spView.x,sy=_spView.y;_spView.x=0;_spView.y=0;
+  const m=spotsMatrix(_spSize.Sw,_spSize.Sh,_spSize.W,_spSize.H),q=m.transformPoint(new DOMPoint((c.cx-x0)/VW*_spSize.Sw,(c.cy-y0)/VH*_spSize.Sh,0,1));_spView.x=sx;_spView.y=sy;
+  return{x:_spSize.W/2-q.x/q.w,y:_spSize.H/2-q.y/q.w};}
+function spotsSaveView(){if(_spCurCurve===null||spotsOverview()||!currentUserId)return;const v=venueMap();if(!v)return;clearTimeout(_spViewT);
+  _spViewT=setTimeout(()=>{const i=_spCurCurve;if(i===null)return;const c0=spotsCurveCenter(i);if(!c0)return;
+    const val={r:Math.round(_spView.r*10)/10,t:_spView.t||0,z:Math.round(_spView.z*100)/100,dx:Math.round(_spView.x-c0.x),dy:Math.round(_spView.y-c0.y)};
+    const o=_spViews[i];if(o&&o.r===val.r&&o.t===val.t&&o.z===val.z&&o.dx===val.dx&&o.dy===val.dy)return;
+    _spViews[i]=val;try{ref(db,'userSpotViews/'+currentUserId+'/'+v.key+'/'+i).set(val);}catch(_){}},700);}
 function spotsZoomCurve(i,anim){const v=venueMap();if(!v||!_spSize)return;const cv=spotsCurves(v);const c=cv.list[i];if(!c)return;const[x0,y0,VW,VH]=cv.vb,pad=12;
   try{localStorage.setItem(spotsCurveKey(),String(i));}catch(_){}
+  try{spotsViewsAttach();}catch(_){}_spCurCurve=i;const sv=_spViews[i];
+  if(sv){_spView.r=+sv.r||0;if(!!sv.t!==!!_spView.t){_spView.t=sv.t||0;const vp=document.getElementById('sp-vp');if(vp)vp.classList.toggle('td',!!_spView.t);}}
   const bw=(c.x2-c.x1+2*pad)/VW*_spSize.Sw,bh=(c.y2-c.y1+2*pad)/VH*_spSize.Sh;
-  _spView.z=Math.max(2,Math.min(8,Math.min(_spSize.W,_spSize.H)*0.9/Math.max(bw,bh,1)));_spView.x=0;_spView.y=0;
+  _spView.z=sv&&sv.z?Math.max(SP_SEC_ZOOM,Math.min(8,+sv.z)):Math.max(2,Math.min(8,Math.min(_spSize.W,_spSize.H)*0.9/Math.max(bw,bh,1)));_spView.x=0;_spView.y=0;
   const m=spotsMatrix(_spSize.Sw,_spSize.Sh,_spSize.W,_spSize.H),q=m.transformPoint(new DOMPoint((c.cx-x0)/VW*_spSize.Sw,(c.cy-y0)/VH*_spSize.Sh,0,1));
-  _spView.x=_spSize.W/2-q.x/q.w;_spView.y=_spSize.H/2-q.y/q.w;
+  _spView.x=_spSize.W/2-q.x/q.w+(sv?(+sv.dx||0):0);_spView.y=_spSize.H/2-q.y/q.w+(sv?(+sv.dy||0):0);
   if(anim){try{if(navigator.vibrate)navigator.vibrate(15);}catch(_){}}
   spotsLayout(anim);}
-function spotsBackAll(){try{localStorage.removeItem(spotsCurveKey());}catch(_){}spotsResetView();}
+function spotsBackAll(){try{localStorage.removeItem(spotsCurveKey());}catch(_){}_spCurCurve=null;spotsResetView();}
 window.spotsBackAll=spotsBackAll;
-function spotsToggle3D(){_spView.t=_spView.t?0:52;const vp=document.getElementById('sp-vp');if(vp)vp.classList.toggle('td',!!_spView.t);document.querySelectorAll('.sp-tools .sp-btn').forEach(b=>{if(b.textContent==='3D')b.classList.toggle('on',!!_spView.t);});spotsLayout(true);}
+function spotsToggle3D(){_spView.t=_spView.t?0:52;const vp=document.getElementById('sp-vp');if(vp)vp.classList.toggle('td',!!_spView.t);document.querySelectorAll('.sp-tools .sp-btn').forEach(b=>{if(b.textContent==='3D')b.classList.toggle('on',!!_spView.t);});spotsLayout(true);spotsSaveView();}
 window.spotsToggle3D=spotsToggle3D;
-function spotsRotate(dg){const a=dg*Math.PI/180,c=Math.cos(a),s=Math.sin(a),x=_spView.x,y=_spView.y;_spView.x=x*c-y*s;_spView.y=x*s+y*c;_spView.r+=dg;spotsLayout(true);}
-function spotsZoom(k){_spView.z=Math.max(.6,Math.min(8,_spView.z*k));spotsLayout(true);}
+function spotsRotate(dg){const a=dg*Math.PI/180,c=Math.cos(a),s=Math.sin(a),x=_spView.x,y=_spView.y;_spView.x=x*c-y*s;_spView.y=x*s+y*c;_spView.r+=dg;spotsLayout(true);spotsSaveView();}
+function spotsZoom(k){_spView.z=Math.max(.6,Math.min(8,_spView.z*k));spotsLayout(true);spotsSaveView();}
 function spotsResetView(){const vr=((venueMap()||{}).map||{}).rot||0;_spView.z=1;_spView.x=0;_spView.y=0;_spView.r=vr+Math.round((_spView.r-vr)/360)*360;spotsLayout(true);}
 window.spotsRotate=spotsRotate;window.spotsZoom=spotsZoom;window.spotsResetView=spotsResetView;
 /* punto dello schermo -> posizione % sulla mappa (inverso di traslazione, rotazione, zoom) */
@@ -6336,7 +6351,7 @@ function spotsBindGestures(){
     const wasTap=pts.size===1&&!moved;pts.delete(e.pointerId);
     if(wasTap&&spotsOverview()&&!_spMarkMode){spotsZoomSector(e.clientX,e.clientY);}
     else if(wasTap){const mt=e.target.closest&&e.target.closest('.sp-mark');if(mt&&_spTrash){spotsDelMark(mt.getAttribute('data-mid'));}else if(_spMarkMode){spotsAddMark(e.clientX,e.clientY);}else if(downT)spotsTap(downT.getAttribute('data-id'));else spotsAddAt(e.clientX,e.clientY);}
-    if(!pts.size){g=null;}else if(pts.size===1){const q=[...pts.values()][0];g={x:q.x,y:q.y,vx:_spView.x,vy:_spView.y};}};
+    if(!pts.size){g=null;spotsSaveView();}else if(pts.size===1){const q=[...pts.values()][0];g={x:q.x,y:q.y,vx:_spView.x,vy:_spView.y};}};
   vp.onwheel=e=>{e.preventDefault();_spView.z=Math.max(.6,Math.min(8,_spView.z*(e.deltaY<0?1.12:1/1.12)));spotsLayoutSoon();};
   vp.onpointerup=up;vp.onpointercancel=e=>{pts.delete(e.pointerId);if(!pts.size)g=null;};
 }
@@ -6348,7 +6363,7 @@ function escapeHtmlSp(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;
    nel tracciato la prima volta (solo aggiunta, niente viene tolto dalla gara). */
 let _spVenueSpots=null,_spVenueKey='',_spRaceSpots={};
 function spotsVenuePath(){const v=venueMap();return v&&currentUserId?'userSpots/'+currentUserId+'/'+v.key:'';}
-function spotsAttachVenue(){const p=spotsVenuePath();if(!p||p===_spVenueKey)return;_spVenueKey=p;_spVenueSpots=null;
+function spotsAttachVenue(){try{spotsViewsAttach();}catch(_){}const p=spotsVenuePath();if(!p||p===_spVenueKey)return;_spVenueKey=p;_spVenueSpots=null;
   trackSpots=Object.assign({},_spRaceSpots||{});
   onValue(ref(db,p),sn=>{if(_spVenueKey!==p)return;_spVenueSpots=sn.val()||{};
     const miss={};Object.keys(_spRaceSpots||{}).forEach(id=>{if(!_spVenueSpots[id])miss[p+'/'+id]=_spRaceSpots[id];});
