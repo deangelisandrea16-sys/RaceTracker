@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-0920';
+var RT_JS_BUILD='2026-11-20-0940';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3200,9 +3200,30 @@ function openExportPilots(){
   if(!pilots.length&&!teams.length){alert('Nessun pilota da esportare');return;}
   openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Esporta piloti</div>'
     +'<button class="form-submit" style="margin-bottom:10px" onclick="closeModal();copyAllForEditor()"><i class="ic ic-list"></i> COPIA NEGLI APPUNTI</button>'
-    +'<button class="form-submit" style="background:none;border:1.5px solid var(--border2,#444);color:var(--text)" onclick="closeModal();exportPilotsPdf()"><i class="ic ic-download"></i> PDF CON TUTTI I DATI</button>');
+    +'<button class="form-submit" style="background:none;border:1.5px solid var(--border2,#444);color:var(--text)" onclick="closeModal();exportPilotsPdf()"><i class="ic ic-download"></i> PDF CON TUTTI I DATI</button>'
+    +'<button class="form-submit" style="margin-top:10px;background:none;border:1.5px solid var(--border2,#444);color:var(--text)" onclick="closeModal();exportPilotsJson()"><i class="ic ic-download"></i> JSON (PILOTI E TEAM)</button>');
 }
 window.openExportPilots=openExportPilots;
+/* 20/11/2026 (Andrea): JSON dei MIEI piloti e team, con account e gara (servira' anche all'esportazione automatica di un altro progetto) */
+function exportPilotsJson(){
+  const r=(typeof races!=='undefined'&&races&&races[activeRaceId])||{};
+  const el=currentEntryList||{};
+  const hlOf=p=>{let h=p.highlight;if(typeof h==='string')h=[h];if(h&&!Array.isArray(h))h=Object.values(h);return h||[];};
+  const byNum=(a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0);
+  const pil=p=>{const e=el[p.num]||{};return{num:String(p.num),nome:String(p.name||'').trim(),cat:p.cat||e.cat||'',team:p.team||e.team||'',
+    serie:String(e.serie||p.serie||''),gruppo:String(e.group||p.group||''),evidenzia:hlOf(p),reel:hasVideo(p)?String(p.reel||'30'):''};};
+  const out={formato:'racetracker-piloti-v1',esportato:new Date().toISOString(),
+    account:{utente:currentUserId||'',login:(_fbAuth&&_fbAuth.currentUser&&_fbAuth.currentUser.email)||''},
+    gara:{id:activeRaceId||'',nome:r.name||'',circuito:r.circuit||'',organizzazione:r.org||'',inizio:r.startDate||'',fine:r.endDate||''},
+    piloti:pilots.slice().sort(byNum).map(pil),
+    team:teams.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(t=>{const w=teamWork(t);return{team:t.name,evidenzia:w.highlight,reel:w.reel,
+      piloti:teamEntrants(t).sort(byNum).map(p=>{const e=el[p.num]||{};return{num:String(p.num),nome:String(p.name||'').trim(),cat:p.cat||e.cat||'',team:p.team||e.team||'',serie:String(e.serie||''),gruppo:String(e.group||'')};})};})};
+  const fname=[r.name||'Gara',r.circuit||'',currentUserId||''].filter(Boolean).join(' ').replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim()+'.json';
+  const blob=new Blob([JSON.stringify(out,null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
+}
+window.exportPilotsJson=exportPilotsJson;
 function exportPilotsPdf(){
   const e=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const r=(typeof races!=='undefined'&&races&&races[activeRaceId])||{};
