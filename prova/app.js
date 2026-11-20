@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-0910';
+var RT_JS_BUILD='2026-11-20-0915';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1650,18 +1650,18 @@ window.showTab=showTab;
 // Task: piu' task accesi = basta che UNO dei task scelti sia nello stato scelto.
 // Stato: piu' colori accesi = uno qualsiasi dei colori scelti.
 // Evidenziazione: FOTO e VIDEO si sommano (foto O video); PRIORITA' restringe (solo prioritari).
-const filterTasks=new Set(),filterStatuses=new Set(),filterHL=new Set();
-function filtersActive(){return filterStatuses.size>0||filterHL.size>0;}
+const filterTasks=new Set(),filterStatuses=new Set(),filterHL=new Set(),filterReel=new Set();   // 20/11/2026: + durata video (reel)
+function filtersActive(){return filterStatuses.size>0||filterHL.size>0||filterReel.size>0;}
 function syncFilterChips(){
   document.querySelectorAll('.filter-chip[data-fk]').forEach(c=>{
     const k=c.getAttribute('data-fk'),v=c.getAttribute('data-fv');
-    const set=k==='task'?filterTasks:k==='status'?filterStatuses:filterHL;
+    const set=k==='task'?filterTasks:k==='status'?filterStatuses:k==='reel'?filterReel:filterHL;
     const on=v==='all'?set.size===0:set.has(v);
     c.classList.toggle('active',on);c.setAttribute('aria-pressed',on);
   });
 }
 function toggleFilter(kind,v){
-  const set=kind==='task'?filterTasks:kind==='status'?filterStatuses:filterHL;
+  const set=kind==='task'?filterTasks:kind==='status'?filterStatuses:kind==='reel'?filterReel:filterHL;
   if(v==='all')set.clear();else if(set.has(v))set.delete(v);else set.add(v);
   try{if(navigator.vibrate)navigator.vibrate(10);}catch(e){}
   syncFilterChips();renderPilots();
@@ -1685,8 +1685,10 @@ function hlMatches(p){
 }
 function pilotMatchesFilter(p){
   if(!filtersActive())return true;
-  return statusMatches(statuses[p.num]||{})&&hlMatches(p);
+  return statusMatches(statuses[p.num]||{})&&hlMatches(p)&&reelMatches(p);
 }
+// durata video: solo piloti con VIDEO, con la durata scelta (30" se non impostata)
+function reelMatches(p){if(!filterReel.size)return true;if(!hasVideo(p))return false;return filterReel.has(String(p.reel||'30'));}
 
 // ══════════════════════════════════════
 // DEBUG TAB
