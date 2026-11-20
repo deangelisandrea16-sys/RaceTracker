@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1425';
+var RT_JS_BUILD='2026-11-20-1430';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -6004,7 +6004,7 @@ function remRenderMine(){const el=document.getElementById('rem-mine');if(!el)ret
 function hm2minRem(t){const p=String(t||'').split(/[.:]/);return(parseInt(p[0])||0)*60+(parseInt(p[1])||0);}
 window.remToggleBefore=remToggleBefore;window.remSave=remSave;window.remDelete=remDelete;
 function openModal(html){document.getElementById('modal-inner').innerHTML=html;document.getElementById('modal').style.display='flex';}
-function closeModal(){document.getElementById('modal').style.display='none';if(window._rtDeferRender){window._rtDeferRender=false;if(window._rtRenderDirty){window._rtRenderDirty=false;try{renderAll();}catch(e){}}}}
+function closeModal(){document.getElementById('modal').style.display='none';try{spotPillsRefresh();}catch(_){}if(window._rtDeferRender){window._rtDeferRender=false;if(window._rtRenderDirty){window._rtRenderDirty=false;try{renderAll();}catch(e){}}}}
 function closeModalOutside(e){if(e.target===document.getElementById('modal'))closeModal();}
 window.closeModal=closeModal;window.closeModalOutside=closeModalOutside;
 
@@ -6177,8 +6177,12 @@ function spotPill(num){
   if(!venueMap())return'';
   if(!spotPilotOf(num))return'';
   const[f,t]=spotCount(num),cls=!t?'none':f===t?'green':f?'orange':'red';
-  return'<button class="task-btn spot-pill '+cls+'" aria-label="Punti di scatto in pista" onclick="event.stopPropagation();openSpots(\''+num+'\')"><i class="ic ic-camera"></i>'+(t?'<span>'+f+'/'+t+'</span>':'')+'</button>';
+  return'<button class="task-btn spot-pill '+cls+'" data-sp="'+String(num).replace(/"/g,'')+'" aria-label="Punti di scatto in pista" onclick="event.stopPropagation();openSpots(\''+num+'\')"><i class="ic ic-camera"></i>'+(t?'<span>'+f+'/'+t+'</span>':'')+'</button>';
 }
+/* 20/11/2026 (Andrea): il conteggio sulla fotocamera si aggiorna subito in tutte le schermate, senza aspettare il ridisegno */
+function spotPillsRefresh(num){const sel=num!=null?'.spot-pill[data-sp="'+String(num).replace(/"/g,'')+'"]':'.spot-pill[data-sp]';
+  document.querySelectorAll(sel).forEach(b=>{const n=b.getAttribute('data-sp');const[f,t]=spotCount(n),cls=!t?'none':f===t?'green':f?'orange':'red';
+    b.classList.remove('none','green','orange','red');b.classList.add(cls);let sp=b.querySelector('span');if(t){if(!sp){sp=document.createElement('span');b.appendChild(sp);}sp.textContent=f+'/'+t;}else if(sp)sp.remove();});}
 let _spNum=null,_spTrash=false,_spMarkMode=false;
 /* 15/11 (Andrea): la mappa e' legata al LUOGO (sede), non a campionato o organizzazione.
    venues/<chiave> = {name, aliases[], map:{vb,d,w}}: la sede si riconosce dal circuito della gara.
@@ -6403,7 +6407,7 @@ function spotsAddAt(cx,cy){
   trackSpots[id]={x:Math.round(q.x*10)/10,y:Math.round(q.y*10)/10,o:Date.now(),k:k};
   if(!spotDone[_spNum])spotDone[_spNum]={};spotDone[_spNum][id]=1;
   try{if(navigator.vibrate)navigator.vibrate(12);}catch(_){}
-  spotsSave();window._rtRenderDirty=true;spotsRefresh();
+  spotsSave();window._rtRenderDirty=true;spotsRefresh();try{spotPillsRefresh(null);}catch(_){}
 }
 window.spotsAddAt=spotsAddAt;
 function spotsTap(id){
@@ -6418,7 +6422,7 @@ function spotsTap(id){
     if(spotDone[_spNum][id])delete spotDone[_spNum][id];else spotDone[_spNum][id]=1;
     try{if(navigator.vibrate)navigator.vibrate(12);}catch(_){}
   }
-  spotsSave();window._rtRenderDirty=true;spotsRefresh();
+  spotsSave();window._rtRenderDirty=true;spotsRefresh();try{spotPillsRefresh(null);}catch(_){}
 }
 window.spotsTap=spotsTap;
 
