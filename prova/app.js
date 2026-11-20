@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1055';
+var RT_JS_BUILD='2026-11-20-1110';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -6114,19 +6114,20 @@ function renderSpots(){
   h.push('<div class="modal-title">#'+p.num+' '+escapeHtmlSp(p.name||'')+'</div>');
   h.push('<div class="sp-sub">'+(_spMarkMode?'<b style="color:#38bdf8">RIFERIMENTO</b> · tocca il punto del circuito (es. ingresso pregriglia) e dagli un nome':_spTrash?'<b style="color:#ef4444">CESTINO</b> · tocca un punto per eliminarlo per tutti i piloti':(t?'Fatti <b>'+f+'/'+t+'</b> · ':'')+'tocca la pista dove hai scattato')+'</div>');
   const w=v.map.w||10,dd=v.map.d;
-  h.push('<div class="sp-vp'+(_spTrash?' trash':'')+(_spView.t?' td':'')+(_spBg?' hasbg':'')+'" id="sp-vp"'+(_spBg?' style="--spbg:url(&quot;'+_spBg+'&quot;)"':'')+'><div class="sp-stage" id="sp-stage">');
+  h.push('<div class="sp-vp'+(spotsOverview()?' over':'')+(_spTrash?' trash':'')+(_spView.t?' td':'')+(_spBg?' hasbg':'')+'" id="sp-vp"'+(_spBg?' style="--spbg:url(&quot;'+_spBg+'&quot;)"':'')+'><div class="sp-stage" id="sp-stage">');
   h.push('<svg viewBox="'+v.map.vb+'" preserveAspectRatio="none" class="sp-svg">'
     +'<path d="'+dd+'" class="sp-track-shadow" style="stroke-width:'+(w+6)+'"/>'
     +'<path d="'+dd+'" class="sp-track-edge" style="stroke-width:'+(w+4)+'"/>'
     +'<path d="'+dd+'" class="sp-kerb" style="stroke-width:'+(w+4)+'"/>'
     +'<path d="'+dd+'" class="sp-track" style="stroke-width:'+w+'"/>'
-    +'<path d="'+dd+'" class="sp-track-line" style="stroke-width:'+Math.max(.6,w/14)+'"/></svg>');
-  h.push('</div><div class="sp-marks" id="sp-marks">'+spotsMarksHtml(v)+'</div><div class="sp-dots" id="sp-dots">');
+    +'<path d="'+dd+'" class="sp-track-line" style="stroke-width:'+Math.max(.6,w/14)+'"/>'+spotsSectorsSvg(v)+'</svg>');
+  h.push('</div><div class="sp-secl" id="sp-secl">'+spotsSectorsLbl(v)+'</div><div class="sp-marks" id="sp-marks">'+spotsMarksHtml(v)+'</div><div class="sp-dots" id="sp-dots">');
   ids.forEach(id=>{const on=!!d[id],n=spotNo(id);
     h.push('<button class="sp-dot'+(on?' on':'')+'" data-id="'+id+'" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'✓':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>');});
   h.push('</div></div>');
   h.push('<div class="sp-tools"><button class="sp-btn" onclick="spotsRotate(-30)" aria-label="Ruota a sinistra">⟲</button><button class="sp-btn" onclick="spotsRotate(30)" aria-label="Ruota a destra">⟳</button><button class="sp-btn" onclick="spotsZoom(1.4)" aria-label="Ingrandisci">＋</button><button class="sp-btn" onclick="spotsZoom(1/1.4)" aria-label="Riduci">－</button><button class="sp-btn" onclick="spotsResetView()" aria-label="Centra">⤢</button>'+(currentUserId===SERVER_OWNER?'<button class="sp-btn'+(_spMarkMode?' on':'')+'" onclick="spotsToggleMark()" aria-label="Aggiungi riferimento del circuito">📍</button>':'')+'</div>');
-  if(t&&!_spTrash)h.push('<div class="sp-hint">I numeri sono punti da spuntare. Tieni premuto un punto per spostarlo. Due dita: zoom e rotazione.</div>');
+  h.push('<div class="sp-hint sp-hint-over">Tocca un settore per ingrandirlo. ⤢ torna alla vista intera.</div>');
+  if(t&&!_spTrash)h.push('<div class="sp-hint sp-hint-zoom">I numeri sono punti da spuntare. Tieni premuto un punto per spostarlo. Due dita: zoom e rotazione.</div>');
   openModal(h.join(''));
   spotsLayout(false);spotsBindGestures();
 }
@@ -6150,15 +6151,57 @@ function spotsLayout(anim){
     _spSize={W,H,Sw,Sh};
   }
   const Sw=_spSize.Sw,Sh=_spSize.Sh;
+  {const ov=spotsOverview();vp.classList.toggle('over',ov);document.querySelectorAll('.sp-hint-over').forEach(x=>x.style.display=ov?'':'none');document.querySelectorAll('.sp-hint-zoom').forEach(x=>x.style.display=ov?'none':'');}
   st.style.width=Sw+'px';st.style.height=Sh+'px';
   const tr=anim?'transform .55s cubic-bezier(.25,.8,.25,1)':'none';st.style.transition=tr;
   const m=spotsMatrix(Sw,Sh,W,H);_spM={m,Sw,Sh};
   st.style.transform=m.toString();
   const mk=(v.marks)||{};document.querySelectorAll('#sp-marks .sp-mark').forEach(b=>{const sp=mk[b.getAttribute('data-mid')];if(!sp)return;
     const q=m.transformPoint(new DOMPoint(sp.x/100*Sw,sp.y/100*Sh,0,1));b.style.transition=anim?'left .55s cubic-bezier(.25,.8,.25,1),top .55s cubic-bezier(.25,.8,.25,1)':'none';b.style.left=(q.x/q.w)+'px';b.style.top=(q.y/q.w)+'px';});
+  document.querySelectorAll('#sp-secl .sp-sec-l').forEach(b=>{const q=m.transformPoint(new DOMPoint(+b.getAttribute('data-x')/100*Sw,+b.getAttribute('data-y')/100*Sh,0,1));b.style.left=(q.x/q.w)+'px';b.style.top=(q.y/q.w)+'px';});
   document.querySelectorAll('#sp-dots .sp-dot').forEach(b=>{const sp=trackSpots[b.getAttribute('data-id')];if(!sp)return;
     const q=m.transformPoint(new DOMPoint(sp.x/100*Sw,sp.y/100*Sh,0,1));b.style.transition=anim?'left .55s cubic-bezier(.25,.8,.25,1),top .55s cubic-bezier(.25,.8,.25,1)':'none';b.style.left=(q.x/q.w)+'px';b.style.top=(q.y/q.w)+'px';});
 }
+/* 20/11/2026 (Andrea): i punti si sovrapponevano. Mappa divisa in SETTORI: in panoramica si vedono solo i settori
+   (con fatti/totali), tocco un settore → zoom lì e da quel momento si toccano/aggiungono i punti. "Vista intera" torna indietro. */
+const SP_SEC_ZOOM=1.25;
+function spotsOverview(){return _spView.z<SP_SEC_ZOOM;}
+function spotsGrid(v){const vb=String(v.map.vb).split(/\s+/).map(Number);const land=vb[2]>=vb[3];return{vb,C:land?3:2,R:land?2:3};}
+function spotsSecOf(x,y,g){const c=Math.min(g.C-1,Math.max(0,Math.floor(x/100*g.C))),r=Math.min(g.R-1,Math.max(0,Math.floor(y/100*g.R)));return r*g.C+c;}
+let _spSecTrack=null;
+function spotsSectorsWithTrack(v,g){
+  if(_spSecTrack&&_spSecTrack.k===v.key)return _spSecTrack.s;
+  const set=new Set();try{const ns='http://www.w3.org/2000/svg',sv=document.createElementNS(ns,'svg'),pa=document.createElementNS(ns,'path');
+    pa.setAttribute('d',v.map.d);sv.appendChild(pa);sv.style.cssText='position:absolute;width:0;height:0;visibility:hidden';document.body.appendChild(sv);
+    const L=pa.getTotalLength(),[x0,y0,W,H]=g.vb;for(let i=0;i<=240;i++){const q=pa.getPointAtLength(L*i/240);set.add(spotsSecOf((q.x-x0)/W*100,(q.y-y0)/H*100,g));}
+    sv.remove();}catch(_){for(let i=0;i<g.C*g.R;i++)set.add(i);}
+  _spSecTrack={k:v.key,s:set};return set;}
+function spotsSectorsSvg(v){
+  const g=spotsGrid(v),[x0,y0,W,H]=g.vb,cw=W/g.C,rh=H/g.R,tr=spotsSectorsWithTrack(v,g),d=(spotDone[_spNum])||{};
+  const cnt={};spotIds().forEach(id=>{const sp=trackSpots[id];if(!sp)return;const k=spotsSecOf(sp.x,sp.y,g);cnt[k]=cnt[k]||[0,0];cnt[k][1]++;if(d[id])cnt[k][0]++;});
+  const fs=Math.min(cw,rh)*0.16,o=['<g class="sp-secs">'];let n=0;
+  for(let r=0;r<g.R;r++)for(let c=0;c<g.C;c++){const i=r*g.C+c;if(!tr.has(i))continue;n++;
+    const x=x0+c*cw,y=y0+r*rh,k=cnt[i],cl=!k?'':k[0]===k[1]?' ok':k[0]?' part':' todo';
+    o.push('<rect class="sp-sec'+cl+'" x="'+x+'" y="'+y+'" width="'+cw+'" height="'+rh+'" rx="'+fs*0.4+'"/>');
+  }
+  o.push('</g>');return o.join('');}
+/* etichette dei settori sempre dritte (HTML sopra la mappa, posizionate come i punti) */
+function spotsSectorsLbl(v){
+  const g=spotsGrid(v),tr=spotsSectorsWithTrack(v,g),d=(spotDone[_spNum])||{},cnt={};
+  spotIds().forEach(id=>{const sp=trackSpots[id];if(!sp)return;const k=spotsSecOf(sp.x,sp.y,g);cnt[k]=cnt[k]||[0,0];cnt[k][1]++;if(d[id])cnt[k][0]++;});
+  const o=[];let n=0;
+  for(let r=0;r<g.R;r++)for(let c=0;c<g.C;c++){const i=r*g.C+c;if(!tr.has(i))continue;n++;const k=cnt[i],cl=!k?'':k[0]===k[1]?' ok':k[0]?' part':' todo';
+    o.push('<span class="sp-sec-l'+cl+'" data-x="'+((c+.5)/g.C*100)+'" data-y="'+((r+.5)/g.R*100)+'"><b>S'+n+'</b>'+(k?'<i>'+k[0]+'/'+k[1]+'</i>':'')+'</span>');}
+  return o.join('');}
+function spotsZoomSector(cx,cy){const v=venueMap(),vp=document.getElementById('sp-vp');if(!v||!vp||!_spSize)return;
+  const q0=spotsToMap(cx,cy);if(q0.x<0||q0.x>100||q0.y<0||q0.y>100)return;
+  const g=spotsGrid(v),i=spotsSecOf(q0.x,q0.y,g),c=i%g.C,r=Math.floor(i/g.C);
+  const sx=(c+.5)/g.C*100,sy=(r+.5)/g.R*100;
+  _spView.z=Math.min(g.C,g.R)*1.25;_spView.x=0;_spView.y=0;
+  const m=spotsMatrix(_spSize.Sw,_spSize.Sh,_spSize.W,_spSize.H),q=m.transformPoint(new DOMPoint(sx/100*_spSize.Sw,sy/100*_spSize.Sh,0,1));
+  _spView.x=_spSize.W/2-q.x/q.w;_spView.y=_spSize.H/2-q.y/q.w;
+  try{if(navigator.vibrate)navigator.vibrate(15);}catch(_){}
+  spotsLayout(true);}
 function spotsToggle3D(){_spView.t=_spView.t?0:52;const vp=document.getElementById('sp-vp');if(vp)vp.classList.toggle('td',!!_spView.t);document.querySelectorAll('.sp-tools .sp-btn').forEach(b=>{if(b.textContent==='3D')b.classList.toggle('on',!!_spView.t);});spotsLayout(true);}
 window.spotsToggle3D=spotsToggle3D;
 function spotsRotate(dg){const a=dg*Math.PI/180,c=Math.cos(a),s=Math.sin(a),x=_spView.x,y=_spView.y;_spView.x=x*c-y*s;_spView.y=x*s+y*c;_spView.r+=dg;spotsLayout(true);}
@@ -6188,7 +6231,8 @@ function spotsBindGestures(){
     else if(pts.size===1&&g&&g.vx!==undefined){const dx=e.clientX-g.x,dy=e.clientY-g.y;if(Math.abs(dx)+Math.abs(dy)>8){moved=true;clearTimeout(holdT);}if(moved){_spView.x=g.vx+dx;_spView.y=g.vy+dy;spotsLayoutSoon();}}};
   const up=e=>{clearTimeout(holdT);if(drag){const d=drag;drag=null;pts.delete(e.pointerId);d.el.classList.remove('drag');spotsSave();spotsLayout(false);g=null;return;}
     const wasTap=pts.size===1&&!moved;pts.delete(e.pointerId);
-    if(wasTap){const mt=e.target.closest&&e.target.closest('.sp-mark');if(mt&&_spTrash){spotsDelMark(mt.getAttribute('data-mid'));}else if(_spMarkMode){spotsAddMark(e.clientX,e.clientY);}else if(downT)spotsTap(downT.getAttribute('data-id'));else spotsAddAt(e.clientX,e.clientY);}
+    if(wasTap&&spotsOverview()&&!_spMarkMode){spotsZoomSector(e.clientX,e.clientY);}
+    else if(wasTap){const mt=e.target.closest&&e.target.closest('.sp-mark');if(mt&&_spTrash){spotsDelMark(mt.getAttribute('data-mid'));}else if(_spMarkMode){spotsAddMark(e.clientX,e.clientY);}else if(downT)spotsTap(downT.getAttribute('data-id'));else spotsAddAt(e.clientX,e.clientY);}
     if(!pts.size){g=null;}else if(pts.size===1){const q=[...pts.values()][0];g={x:q.x,y:q.y,vx:_spView.x,vy:_spView.y};}};
   vp.onwheel=e=>{e.preventDefault();_spView.z=Math.max(.6,Math.min(8,_spView.z*(e.deltaY<0?1.12:1/1.12)));spotsLayoutSoon();};
   vp.onpointerup=up;vp.onpointercancel=e=>{pts.delete(e.pointerId);if(!pts.size)g=null;};
@@ -6202,6 +6246,7 @@ function spotsRefresh(){
   const dl=document.getElementById('sp-dots'),sub=document.querySelector('.sp-sub');if(!dl){renderSpots();return;}
   const d=(spotDone[_spNum])||{},[f,t]=spotCount(_spNum);
   if(sub)sub.innerHTML=_spTrash?'<b style="color:#ef4444">CESTINO</b> · tocca un punto per eliminarlo per tutti i piloti':(t?'Fatti <b>'+f+'/'+t+'</b> · ':'')+'tocca la pista dove hai scattato';
+  {const os=document.querySelector('#sp-stage .sp-secs'),sl=document.getElementById('sp-secl'),v=venueMap();if(os&&v){os.insertAdjacentHTML('afterend',spotsSectorsSvg(v));os.remove();}if(sl&&v)sl.innerHTML=spotsSectorsLbl(v);}
   dl.innerHTML=spotIds().map(id=>{const on=!!d[id],n=spotNo(id);return'<button class="sp-dot'+(on?' on':'')+'" data-id="'+id+'" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'✓':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>';}).join('');
   spotsLayout(false);
 }
