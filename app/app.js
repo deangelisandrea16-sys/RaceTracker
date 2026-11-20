@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1020';
+var RT_JS_BUILD='2026-11-20-1045';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3039,6 +3039,10 @@ function teamTaskBtn(key,task,small){
   const sz=small?'style="padding:4px 8px;font-size:10px"':'';
   return'<button class="task-btn '+s+'" '+sz+' onclick="toggleTeamTask(\''+escAttr(key)+'\',\''+task+'\')">'+task+'</button>';
 }
+/* 20/11/2026 (Andrea): punti di scatto dei piloti del team in pista, uno per pilota */
+function teamSpotsRow(list){if(!venueMap()||!list||!list.length)return'';
+  const it=list.map(p=>{const sp=spotPill(p.num);return sp?'<span class="tsp-item"><span class="inner-num">#'+p.num+'</span>'+sp+'</span>':'';}).filter(Boolean);
+  return it.length?'<div class="tasks tsp-row" style="margin-top:6px;flex-wrap:wrap">'+it.join('')+'</div>':'';}
 function teamsSlotHtml(slot){
   const list=teamsForSlot(slot);if(!list.length)return'';
   return list.map(({t,inSlot,waiting})=>'<div class="card-inner team-inner"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">'
@@ -3046,6 +3050,7 @@ function teamsSlotHtml(slot){
     +'<span style="font-size:10px;font-weight:800;color:#a78bfa">'+(inSlot.length?inSlot.length+' in pista: '+inSlot.map(p=>'#'+p.num+(gridPos(p.num,slot)?' <span style="color:#e9d5a8">P'+gridPos(p.num,slot)+'</span>':'')).join(' · '):'')
     +(waiting.length?(inSlot.length?' · ':'')+'<i class="ic ic-wait"></i> '+waiting.length+' in attesa':'')+'</span></div>'
     +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,true)).join('')+'</div>'
+    +teamSpotsRow(inSlot)
     +(teamNotes[t.key]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+teamNotes[t.key]+'</div>':'')+'</div>').join('');
 }
 function addTeam(name){
@@ -5570,13 +5575,15 @@ function renderLtMyTable(){
   try{teams.forEach(t=>teamEntrants(t).forEach(e=>teamNums.add(String(e.num))));}catch(e){}
   const sorted=rows.map(r=>({r,pos:parseInt(r.getAttribute('data-pos'))||999})).sort((a,b)=>a.pos-b.pos);
   const mineCount=sorted.filter(x=>myNums.has(txt(x.r,C('no','4')))).length;
+  // 20/11/2026 (Andrea): anche i piloti dei team seguiti contano tra i "tuoi" e prendono il colore del team
+  const teamCount=sorted.filter(x=>{const n=txt(x.r,C('no','4'));return !myNums.has(n)&&teamNums.has(n);}).length;
   const sw='<div class="pv-switch pv3'+(window._ltSwAnim?' anim-'+window._ltSwAnim:'')+'" style="margin-bottom:8px">'
     +'<button class="pv-btn'+(ltOnlyMine&&!ltLastOn?' active':'')+'" onclick="toggleLtMine(true)">SOLO MIEI</button>'
     +'<button class="pv-btn'+(!ltOnlyMine&&!ltLastOn?' active':'')+'" onclick="toggleLtMine(false)">TUTTI</button>'
     +'<button class="pv-btn'+(ltLastOn?' active':'')+'" onclick="setLtLast(true)">ULTIMA GARA</button></div>';
   if(ltLastOn){box.innerHTML=sw+renderLtLast();ltFlip();return;}
   const title='<div style="font-size:11px;font-weight:800;color:var(--text3);margin-bottom:6px">'+(apexState.cat||'')+' · '+(apexState.sess||'')
-    +' <span style="color:var(--text)">· '+mineCount+' tuoi in pista</span> <span style="color:var(--text4)">· '+sorted.length+' totali</span></div>';
+    +' <span style="color:var(--text)">· '+(mineCount+teamCount)+' tuoi in pista'+(teamCount?' ('+teamCount+' team)':'')+'</span> <span style="color:var(--text4)">· '+sorted.length+' totali</span></div>';
   if(ltOnlyMine){
     const mine=sorted.filter(x=>{const n=txt(x.r,C('no','4'));return myNums.has(n)||teamNums.has(n);});
     box.innerHTML=sw+title+(mine.length?mine.map(({r})=>{
@@ -5589,13 +5596,14 @@ function renderLtMyTable(){
       const nt=String((notes&&notes[no])||'').trim();
       const pos=parseInt(txt(r,C('rk','3')))||0;const mv=ltMove(no,pos);
       const rt=ltRetOf(no);
-      return'<div class="ltbig '+(tm?'':hlOfNum(no))+(tm?' team':'')+(rt?' ret':'')+(mv>0?' up':mv<0?' down':'')+'" data-no="'+no+'"'+(tm?'':' onclick="openPilotDetail(\''+no+'\')"')+'>'
+      const ft=tm?followedTeamOf(no,ent.team):null;
+      return'<div class="ltbig '+(tm?(ft?hlClassOf(ft.highlight||[]):''):hlOfNum(no))+(tm?' team':'')+(ft?' tglow':'')+(rt?' ret':'')+(mv>0?' up':mv<0?' down':'')+'"'+(ft?' style="--tc:'+teamColor(ft.key)+'"':'')+' data-no="'+no+'"'+(tm?'':' onclick="openPilotDetail(\''+no+'\')"')+'>'
         +'<div class="pos">'+(rt?ltXSpan(rt):(txt(r,C('rk','3'))||'–'))+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>'
         +'<div style="flex:1;min-width:0"><div><span class="num">#'+no+'</span>'+(tm?'':riskTri(no))+' <span class="nm">'+nm+'</span>'+ltRetBadge(rt)+(tm?'':'<span onclick="event.stopPropagation()" style="float:right">'+noteBtn(no)+'</span>')+'</div>'
         +'<div class="tm">'+team+'</div>'
 
         +(nt?'<div class="note-txt" style="margin-top:2px"><i class="ic ic-note"></i> '+nt.replace(/</g,'&lt;')+'</div>':'')
-        +(tm?'':'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+TASKS.map(t=>taskBtn(no,t,true)).join('')+spotPill(no)+'</div>')+'</div></div>';
+        +(tm?(spotPill(no)?'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+spotPill(no)+'</div>':''):'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+TASKS.map(t=>taskBtn(no,t,true)).join('')+spotPill(no)+'</div>')+'</div></div>';
     }).join(''):'<div class="empty-state"><p>Nessun tuo pilota in questa sessione</p></div>');
     ltFlip();return;
   }
@@ -6067,9 +6075,12 @@ function toggleHL(btn,num){
    Ogni operatore ha i SUOI punti (dove si mette lui, non solo curve). Piantina per gara in trackMaps/<gara>. */
 function spotIds(){return Object.keys(trackSpots||{}).sort((a,b)=>(trackSpots[a].o||0)-(trackSpots[b].o||0));}
 function spotCount(num){const ids=spotIds(),d=(spotDone&&spotDone[num])||{};return[ids.filter(i=>d[i]).length,ids.length];}
+/* 20/11/2026 (Andrea): punti di scatto anche per i piloti dei team seguiti (non aggiunti uno per uno) */
+function spotPilotOf(num){const n=String(num);const p=pilots.find(x=>String(x.num)===n);if(p)return p;
+  const e=(currentEntryList||{})[n];if(!e||!followedTeamOf(n,e.team))return null;return{num:n,name:e.name||((e.lastName||'')+' '+(e.firstName||'')).trim(),team:e.team||'',cat:e.cat||''};}
 function spotPill(num){
   if(!venueMap())return'';
-  if(!pilots.some(p=>String(p.num)===String(num)))return'';
+  if(!spotPilotOf(num))return'';
   const[f,t]=spotCount(num),cls=!t?'none':f===t?'green':f?'orange':'red';
   return'<button class="task-btn spot-pill '+cls+'" aria-label="Punti di scatto in pista" onclick="event.stopPropagation();openSpots(\''+num+'\')"><i class="ic ic-camera"></i>'+(t?'<span>'+f+'/'+t+'</span>':'')+'</button>';
 }
@@ -6093,7 +6104,7 @@ function openSpots(num){loadSpBg();window._rtDeferRender=true;_spSize=null;_spNu
 window.openSpots=openSpots;
 function spotNo(id){const sp=trackSpots[id]||{};if(sp.k)return sp.k;return spotIds().indexOf(id)+1;}
 function renderSpots(){
-  const p=pilots.find(x=>String(x.num)===_spNum);const v=venueMap();if(!p||!v){closeModal();return;}
+  const p=spotPilotOf(_spNum);const v=venueMap();if(!p||!v){closeModal();return;}
   const d=(spotDone[_spNum])||{},ids=spotIds(),[f,t]=spotCount(_spNum);
   const h=[];
   h.push('<button class="modal-close" onclick="closeModal()">✕</button>');
