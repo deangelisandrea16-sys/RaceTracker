@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-0915';
+var RT_JS_BUILD='2026-11-20-0920';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1659,7 +1659,18 @@ function syncFilterChips(){
     const on=v==='all'?set.size===0:set.has(v);
     c.classList.toggle('active',on);c.setAttribute('aria-pressed',on);
   });
+  // 20/11/2026: quanti filtri sono attivi, sul tasto FILTRI (si vede anche a pannello chiuso)
+  const n=filterTasks.size+filterStatuses.size+filterHL.size+filterReel.size,el=document.getElementById('filt-count');
+  if(el){el.textContent=n?String(n):'';el.classList.toggle('on',n>0);}
 }
+function toggleFilterPanel(force){
+  const pn=document.getElementById('filt-panel'),bt=document.getElementById('filt-toggle');if(!pn)return;
+  const open=typeof force==='boolean'?force:!pn.classList.contains('open');
+  pn.classList.toggle('open',open);if(bt)bt.setAttribute('aria-expanded',open);
+  try{localStorage.setItem('rt_filters_open',open?'1':'0');}catch(e){}
+}
+window.toggleFilterPanel=toggleFilterPanel;
+(function(){const init=()=>{let o=false;try{o=localStorage.getItem('rt_filters_open')==='1';}catch(e){}toggleFilterPanel(o);syncFilterChips();};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();})();
 function toggleFilter(kind,v){
   const set=kind==='task'?filterTasks:kind==='status'?filterStatuses:kind==='reel'?filterReel:filterHL;
   if(v==='all')set.clear();else if(set.has(v))set.delete(v);else set.add(v);
