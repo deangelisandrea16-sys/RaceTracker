@@ -911,3 +911,4 @@ body.light .sp-vp.td .sp-track{stroke:#4a4e57}
 .rem-list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
 .rem-item{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg2);border:1px solid rgba(251,191,36,.4);border-radius:10px;padding:8px 10px;font-size:13px}
 .rem-item span{font-size:11px;color:var(--text3)}
+.card[style*="opacity:.35"] .rem-bell.on,.card[style*="opacity:.45"] .rem-bell.on{box-shadow:0 0 0 2px #fbbf24}
