@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-20-1410';
+var RT_JS_BUILD='2026-11-20-1415';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5481,7 +5481,8 @@ function apexLapInfo(){
   }
   // nelle gare Apex scrive il giro in alto ("Lap 4/12") e non manda la colonna giri
   try{const dtx=[apexDynText(apexDyn.dyn1),apexDynText(apexDyn.dyn2)].join(' ');const lm=dtx.match(/(?:LAP|GIRO|TOUR)\s*(\d+)\s*\/\s*(\d+)/i);
-    if(lm){const cur=+lm[1],tt=+lm[2];if(!tot)tot=tt;if(led===null)led=apexFinished?Math.max(cur,tt):cur-1;}}catch(e){}
+    // 20/11/2026: "Lap x/y" di Apex = giri gia' COMPLETATI dal primo (parte da "Lap 0/8", finisce a "Lap 11/11"): il giro in corso e' x+1
+    if(lm){const cur=+lm[1],tt=+lm[2];if(!tot)tot=tt;if(led===null)led=apexFinished?Math.max(cur,tt):cur;}}catch(e){}
   if(tot&&led!==null&&led>=tot)fin=true;
   // sessione partita e quasi tutti rientrati = finita (Apex non sempre manda FINISH)
   try{const S=ltStaCounts();if(apexState.start&&S&&S.tot>3&&S.run===0&&S.inn>=S.tot*0.8)fin=true;}catch(e){}
@@ -5988,7 +5989,11 @@ window.openRemPanel=openRemPanel;
 function remSlotText(sl,d){return[d,sl.time,sl.cat,sl.label||'',slotFilterLabel(sl),[].concat(sl.filter||'').join('-')].join(' ');}
 function remRenderResults(){const el=document.getElementById('rem-res');if(!el)return;const q=String(_remQ||'').toLowerCase().replace(/[.:]/g,'.').trim();
   if(!q){el.innerHTML='';return;}const tk=q.split(/\s+/).filter(Boolean);const out=[];
-  (currentDays||[]).forEach(d=>(currentSchedule[d]||[]).forEach(sl=>{const t=remSlotText(sl,d).toLowerCase().replace(/[.:]/g,'.');if(tk.every(x=>t.indexOf(x)>=0))out.push({d,sl});}));
+  // 20/11/2026 (Andrea): solo turni che devono ancora esserci (giorni passati esclusi; oggi solo da adesso in poi, ritardo compreso)
+  let td=-1;try{const tn=autoDayName();td=(currentDays||[]).indexOf(tn);}catch(_){}
+  const nowMin=new Date().getHours()*60+new Date().getMinutes(),dl=parseInt(scheduleDelay)||0;
+  const future=(d,sl)=>{const di=(currentDays||[]).indexOf(d);if(td<0)return true;if(di<td)return false;if(di>td)return true;return hm2minRem(sl.time)+dl>=nowMin;};
+  (currentDays||[]).forEach(d=>(currentSchedule[d]||[]).forEach(sl=>{if(!future(d,sl))return;const t=remSlotText(sl,d).toLowerCase().replace(/[.:]/g,'.');if(tk.every(x=>t.indexOf(x)>=0))out.push({d,sl});}));
   el.innerHTML=out.length?'<div class="rem-list">'+out.slice(0,25).map(({d,sl})=>{const k=remSlotKey(sl,d),n=remOfSlot(sl,d).length;
     return'<div class="rem-res" onclick="openReminder(\''+k.replace(/'/g,"\\'")+'\')"><b>'+escapeHtmlSp(d.slice(0,3))+' '+escapeHtmlSp(sl.time)+'</b> <span class="'+catClass(sl.cat)+'">'+escapeHtmlSp(sl.label||sl.cat)+'</span> '+escapeHtmlSp(slotFilterLabel(sl))+(n?' <i>🔔 '+n+'</i>':'')+'</div>';}).join('')+'</div>'
     :'<div class="sp-sub">Nessun turno trovato.</div>';}
