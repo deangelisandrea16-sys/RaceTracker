@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-21-0840';
+var RT_JS_BUILD='2026-11-21-1035';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5200,7 +5200,32 @@ function pfForecast(cat){
     const q=Math.min(...Object.entries(e.result||{}).filter(([k])=>/^Q/.test(k)).map(([,v])=>parseInt(v)).filter(x=>!isNaN(x)),999);
     return{n,cnt,pts,avg:cnt?pts/cnt:999,q};}).filter(r=>r.cnt);
   rows.sort((a,b)=>a.avg-b.avg||a.q-b.q);
-  const out={total:rows.length,heats:done.length,pos:{}};rows.forEach((r,i)=>{out.pos[r.n]={rk:i+1,cnt:r.cnt,pts:r.pts};});return out;}
+  const out={total:rows.length,heats:done.length,pos:{}};rows.forEach((r,i)=>{out.pos[r.n]={rk:i+1,cnt:r.cnt,pts:r.pts};});
+  /* 21/11/2026 (Andrea): rischio eliminazione in %. Art. 11 WSK: oltre 72 piloti passano i primi 72, altrimenti entrano tutti.
+     Simulazione delle manche che mancano: ogni pilota ripete i suoi piazzamenti (±3 posizioni), classifica sui punti totali. */
+  try{
+    out.cut=rows.length>72?72:0;
+    if(out.cut){
+      const pen=(v,sz)=>v===1?0:v===2?5:v===3?8:v===4?9:v>sz?sz+6:v+5;
+      const sizes=Object.values(size),avgSz=Math.round(sizes.reduce((a,b)=>a+b,0)/sizes.length)||30;
+      const slots=[];Object.values(currentSchedule||{}).forEach(L=>[].concat(L||[]).forEach(x=>{if(x&&x.type==='group'&&canonCat(x.cat)===C){const f=(Array.isArray(x.filter)?x.filter:Object.values(x.filter||{})).map(y=>String(y).trim().toUpperCase()).sort().join('-');if(f&&!slots.includes(f))slots.push(f);}}));
+      const info=rows.map(r=>{const e=el[r.n]||{},g=normalizeGroup(e.group||'');const past=done.map(k=>parseInt((e.result||{})[k])).filter(v=>!isNaN(v));
+        const left=g?slots.filter(k=>!done.includes(k)&&k.split('-').includes(g)).length:-1;return{n:r.n,pts:r.pts,q:r.q,past,left,cnt:r.cnt};});
+      /* senza gruppo noto: manche che mancano = totale tipico degli altri meno quelle gia' corse (prima restavano a 0 e sembravano al sicuro) */
+      const tots=info.filter(x=>x.left>=0).map(x=>x.cnt+x.left).sort((a,b)=>a-b),typ=tots.length?tots[Math.floor(tots.length/2)]:0;
+      info.forEach(x=>{if(x.left<0)x.left=Math.max(0,typ-x.cnt);});
+      const N=400,bad={};info.forEach(x=>{bad[x.n]=0;});
+      if(info.some(x=>x.left)){
+        for(let it=0;it<N;it++){
+          const tot=info.map(x=>{let t=x.pts;for(let j=0;j<x.left;j++){const b=x.past.length?x.past[Math.floor(Math.random()*x.past.length)]:1+Math.floor(Math.random()*avgSz);
+            const v=Math.max(1,Math.min(avgSz+1,b+Math.floor(Math.random()*7)-3));t+=pen(v,avgSz);}return[x.n,t,x.q];});
+          tot.sort((a,b)=>a[1]-b[1]||a[2]-b[2]);tot.forEach((x,i)=>{if(i>=out.cut)bad[x[0]]++;});
+        }
+        info.forEach(x=>{out.pos[x.n].risk=Math.round(100*bad[x.n]/N);out.pos[x.n].left=x.left;});
+      }else info.forEach(x=>{out.pos[x.n].risk=out.pos[x.n].rk>out.cut?100:0;out.pos[x.n].left=0;});
+    }
+  }catch(e){}
+  return out;}
 function renderPfTab(){
   const esc=x=>String(x||'').replace(/</g,'&lt;');
   const cats=[...new Set(pilots.map(p=>p.cat).filter(Boolean))].sort();
@@ -5215,9 +5240,12 @@ function renderPfTab(){
     h.push('<div class="set-sec">'+esc(cat)+' <span style="font-weight:700;color:var(--text4)">· '+(rows.some(r=>r.st!=='wait')?nIn+'/'+rows.length+' in prefinale':FC?'previsione dopo '+FC.heats+' manche corse':'liste non ancora pubblicate')+'</span></div>');
     rows.forEach(r=>{let col={in:'#22c55e',out:'#ef4444',wait:'#6b7280'}[r.st];
       let t=r.st==='in'?'In <b>prefinale '+esc(r.g)+'</b> (ufficiale)':r.st==='out'?'Non ammesso in prefinale (ufficiale)':'In attesa delle liste prefinali';
-      if(r.st==='wait'&&r.f){const rk=r.f.rk,risk=rk>72;col=risk?'#f97316':'#3b82f6';
-        t='Previsione: <b>'+rk+'°</b> su '+FC.total+' in classifica intermedia → <b>Prefinale '+(rk%2?'A':'B')+'</b>'+(risk?' · <span style="color:#f97316">a rischio (oltre il 72°)</span>':'')
-          +'<br><span style="color:var(--text4);font-size:12px">'+r.f.pts+' penalità in '+r.f.cnt+' manche · stima, poi vale la lista ufficiale</span>';}
+      if(r.st==='wait'&&r.f){const rk=r.f.rk,pr=FC.cut?(r.f.risk??(rk>FC.cut?100:0)):0;
+        col=!FC.cut||pr<10?'#3b82f6':pr<50?'#f97316':'#ef4444';
+        const rTxt=!FC.cut?' · <span style="color:#22c55e">entrano tutti ('+FC.total+' piloti)</span>'
+          :' · <span style="color:'+(pr<10?'#22c55e':pr<50?'#f97316':'#ef4444')+';font-weight:900">rischio eliminazione '+pr+'%</span>';
+        t='Previsione: <b>'+rk+'°</b> su '+FC.total+' in classifica intermedia → <b>Prefinale '+(rk%2?'A':'B')+'</b>'+rTxt
+          +'<br><span style="color:var(--text4);font-size:12px">'+r.f.pts+' penalità in '+r.f.cnt+' manche'+(r.f.left?' · '+r.f.left+' da correre':'')+(FC.cut?' · passano i primi '+FC.cut:'')+' · stima, poi vale la lista ufficiale</span>';}
       h.push('<div class="card-inner al-row" style="border-left:4px solid '+col+'"><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(r.p.num)+' '+esc(r.p.name)+'</div><div style="font-size:13px;color:var(--text2);margin-top:2px">'+t+'</div></div></div>');});
   });
   return h.join('');
