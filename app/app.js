@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-21-0811';
+var RT_JS_BUILD='2026-11-21-0840';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5185,6 +5185,22 @@ function renderRiskTab(){
   return sw+(pf?renderPfTab():renderRiskList()+renderElimList());
 }
 function pfOf(p){const e=(currentEntryList||{})[p.num]||{};return String(e.prefinal||p.prefinal||'').trim().toUpperCase();}
+/* 21/11/2026 (Andrea): PREVISIONE prefinali finche' non escono le liste ufficiali.
+   Regolamento WSK 2026 art. 11: penalita' per manche 0/5/8/9/10 per i primi 5, poi +1 a posizione; non partito = partenti+6.
+   Confronto alla pari con la media penalita' per manche; a pari merito vale la qualifica.
+   Dal 37° verificato: i primi 72 vanno in prefinale, 1° in A, 2° in B, 3° in A... (dispari A, pari B). E' una stima. */
+function pfForecast(cat){
+  const el=currentEntryList||{},C=canonCat(cat),isH=k=>/^[A-H]-[A-H]$/.test(k);
+  const ents=Object.entries(el).filter(([n,e])=>e&&canonCat(e.cat)===C);
+  const size={};ents.forEach(([n,e])=>Object.keys(e.result||{}).filter(isH).forEach(k=>{size[k]=(size[k]||0)+1;}));
+  const done=Object.keys(size);if(!done.length)return null;
+  const rows=ents.map(([n,e])=>{const g=normalizeGroup(e.group||'');const hs=Array.isArray(e.heats)?e.heats:Object.values(e.heats||{});
+    let pts=0,cnt=0;done.forEach(k=>{const r=(e.result||{})[k];const mine=hs.includes(k)||(g&&k.split('-').includes(g));if(!mine&&!r)return;
+      const v=parseInt(r);pts+=isNaN(v)?size[k]+6:(v===1?0:v===2?5:v===3?8:v===4?9:v+5);cnt++;});
+    const q=Math.min(...Object.entries(e.result||{}).filter(([k])=>/^Q/.test(k)).map(([,v])=>parseInt(v)).filter(x=>!isNaN(x)),999);
+    return{n,cnt,pts,avg:cnt?pts/cnt:999,q};}).filter(r=>r.cnt);
+  rows.sort((a,b)=>a.avg-b.avg||a.q-b.q);
+  const out={total:rows.length,heats:done.length,pos:{}};rows.forEach((r,i)=>{out.pos[r.n]={rk:i+1,cnt:r.cnt,pts:r.pts};});return out;}
 function renderPfTab(){
   const esc=x=>String(x||'').replace(/</g,'&lt;');
   const cats=[...new Set(pilots.map(p=>p.cat).filter(Boolean))].sort();
@@ -5193,11 +5209,15 @@ function renderPfTab(){
   cats.forEach(cat=>{
     const ps=pilots.filter(p=>p.cat===cat);
     if(!catHasPF(cat)){h.push('<div class="set-sec">'+esc(cat)+' <span style="font-weight:700;color:var(--text4)">· nessuna prefinale nel programma</span></div>');return;}
-    const rows=ps.map(p=>{const g=pfOf(p);const st=g?'in':(p.eliminated?'out':'wait');return{p,g,st};}).sort((a,b)=>({out:0,wait:1,in:2}[a.st]-{out:0,wait:1,in:2}[b.st])||(+a.p.num)-(+b.p.num));
+    const FC=pfForecast(cat);
+    const rows=ps.map(p=>{const g=pfOf(p);const st=g?'in':(p.eliminated?'out':'wait');return{p,g,st,f:FC&&FC.pos[String(p.num)]};}).sort((a,b)=>({out:0,wait:1,in:2}[a.st]-{out:0,wait:1,in:2}[b.st])||((a.f?a.f.rk:999)-(b.f?b.f.rk:999))||(+a.p.num)-(+b.p.num));
     const nIn=rows.filter(r=>r.st==='in').length;
-    h.push('<div class="set-sec">'+esc(cat)+' <span style="font-weight:700;color:var(--text4)">· '+(rows.some(r=>r.st!=='wait')?nIn+'/'+rows.length+' in prefinale':'liste non ancora pubblicate')+'</span></div>');
-    rows.forEach(r=>{const col={in:'#22c55e',out:'#ef4444',wait:'#6b7280'}[r.st];
-      const t=r.st==='in'?'In <b>prefinale '+esc(r.g)+'</b> (ufficiale)':r.st==='out'?'Non ammesso in prefinale (ufficiale)':'In attesa delle liste prefinali';
+    h.push('<div class="set-sec">'+esc(cat)+' <span style="font-weight:700;color:var(--text4)">· '+(rows.some(r=>r.st!=='wait')?nIn+'/'+rows.length+' in prefinale':FC?'previsione dopo '+FC.heats+' manche corse':'liste non ancora pubblicate')+'</span></div>');
+    rows.forEach(r=>{let col={in:'#22c55e',out:'#ef4444',wait:'#6b7280'}[r.st];
+      let t=r.st==='in'?'In <b>prefinale '+esc(r.g)+'</b> (ufficiale)':r.st==='out'?'Non ammesso in prefinale (ufficiale)':'In attesa delle liste prefinali';
+      if(r.st==='wait'&&r.f){const rk=r.f.rk,risk=rk>72;col=risk?'#f97316':'#3b82f6';
+        t='Previsione: <b>'+rk+'°</b> su '+FC.total+' in classifica intermedia → <b>Prefinale '+(rk%2?'A':'B')+'</b>'+(risk?' · <span style="color:#f97316">a rischio (oltre il 72°)</span>':'')
+          +'<br><span style="color:var(--text4);font-size:12px">'+r.f.pts+' penalità in '+r.f.cnt+' manche · stima, poi vale la lista ufficiale</span>';}
       h.push('<div class="card-inner al-row" style="border-left:4px solid '+col+'"><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(r.p.num)+' '+esc(r.p.name)+'</div><div style="font-size:13px;color:var(--text2);margin-top:2px">'+t+'</div></div></div>');});
   });
   return h.join('');
