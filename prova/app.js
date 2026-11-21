@@ -4882,7 +4882,7 @@ function renderSettings(){
   const light=document.body.classList.contains('light');const lv=userSettings.liveDefault||'mine';
   b.innerHTML='<div class="set-opt" onclick="openLegend()" style="border:1px solid var(--accent);border-radius:10px;margin-bottom:6px"><i class="ic ic-note"></i> <b>GUIDA</b> · come funziona l\'app, simboli e notifiche</div>'
     +'<div class="set-opt" onclick="openRemPanel()" style="border:1px solid #fbbf24;border-radius:10px;margin-bottom:6px">🔔 <b>PROMEMORIA</b> · avvisi personali sui turni ('+Object.keys(reminders||{}).length+')</div>'
-    +(isDelayAdmin()?'<div class="set-opt" onclick="openAiChat()" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px">💬 <b>CHIEDI ALL\'AI</b> · orari, piloti, rischi</div>':'')
+    +(aiChatAllowed()?'<div class="set-opt" onclick="openAiChat()" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px">💬 <b>CHIEDI ALL\'AI</b> · orari, piloti, rischi</div>':'')
     +(isDelayAdmin()?'<div id="ai-usage-box" class="set-opt" onclick="openAiLog()" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px;display:block">🤖 <b>SPESA AI</b> · <span id="ai-usage-txt">…</span><br><span style="font-size:11px;color:var(--text4)">tocca per il registro degli interventi</span></div>':'')
     +'<div class="set-sec">PROFILO</div><div class="set-opt" onclick="closeModal();showUserPicker()"><i class="ic ic-user"></i> Cambia utente <span style="margin-left:auto;color:var(--text4)">'+currentUserId+'</span></div>'
     +'<div class="set-sec">ASPETTO (QUESTO TELEFONO)</div>'+opt(!light,'Tema scuro','setTheme(false)')+opt(light,'Tema chiaro','setTheme(true)')
@@ -6123,8 +6123,11 @@ window.openAiLog=openAiLog;
 /* 21/11/2026 (Andrea): chat AI in pista — per ora solo amministratore. La domanda va in races/<gara>/aiChat/<utente>; risponde il
    server (la chiave non e' mai nell'app). Un solo ascolto, attivo solo mentre la chat e' aperta. */
 let _aiChatOff=null,_aiChatMsgs={};
+/* 21/11/2026 (Andrea): chat anche per Riccardo; spesa e registro AI restano solo all'amministratore. Il controllo vero e' sul server. */
+const AI_CHAT_USERS=['riccardo'];
+function aiChatAllowed(){return isDelayAdmin()||AI_CHAT_USERS.includes(String(currentUserId||'').toLowerCase());}
 function openAiChat(){
-  if(!isDelayAdmin()||!activeRaceId)return;
+  if(!aiChatAllowed()||!activeRaceId)return;
   openModal('<button class="modal-close" onclick="closeAiChat()">✕</button><button class="rem-back" onclick="closeAiChat();openSettings()">← Impostazioni</button><div class="modal-title">💬 Chiedi all\'AI</div>'
     +'<div class="sp-sub">Risponde con i dati di questa gara: programma, ritardo, i tuoi piloti e quelli dei team. Non modifica niente.</div>'
     +'<div id="aic-list" style="display:flex;flex-direction:column;gap:8px;margin:10px 0;max-height:50vh;overflow:auto"></div>'
