@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-21-1035';
+var RT_JS_BUILD='2026-11-21-1055';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2849,10 +2849,19 @@ function noteLine(num){
 }
 function searchResultItem(m){
   const catCls=catClass(m.cat);const isMine=m.isMyPilot;
-  return'<div class="search-result-item" style="'+(isMine?'border-color:#22c55e;background:rgba(34,197,94,.06)':'')+'" onclick="openPilotDetail(\''+m.num+'\')">'
-    +'<span class="sr-num" style="'+(isMine?'color:#22c55e':'')+'">#'+m.num+'</span>'
+  /* 21/11/2026 (Andrea): nei risultati di ricerca stesse indicazioni del resto dell'app: FOTO/VIDEO/PRIORITA', durata reel, PERS, team seguito (contorno colore team) */
+  const p=isMine?pilots.find(x=>x.num===String(m.num)):null;let ft=null;try{ft=followedTeamOf(String(m.num),m.team||'');}catch(e){}
+  const tc=ft?teamColor(ft.key):'';let hl=p?p.highlight:null;if(typeof hl==='string')hl=[hl];if(hl&&!Array.isArray(hl))hl=Object.values(hl);hl=hl||[];
+  const prio=hl.includes('priority');
+  const bd=isMine?(prio?'border:2px solid #f59e0b;background:rgba(245,158,11,.08)':'border-color:#22c55e;background:rgba(34,197,94,.06)'):(ft?'border:2px solid '+tc+';background:rgba(255,255,255,.03)':'');
+  const badges=hl.map(h=>'<span class="hl-badge hl-'+h+' hl-mini"><i class="ic ic-hl-'+(h==='priority'?'prio':h)+'"></i></span>').join('');
+  return'<div class="search-result-item" style="'+bd+'" onclick="openPilotDetail(\''+m.num+'\')">'
+    +'<span class="sr-num" style="'+(isMine?'color:#22c55e':ft?'color:'+tc:'')+'">#'+m.num+'</span>'
     +'<div style="flex:1;min-width:0">'
-    +'<div class="sr-name">'+m.name+(isMine?' <span style="font-size:10px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i> TUO</span>':'')+'</div>'
+    +'<div class="sr-name" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span>'+m.name+'</span>'
+    +(isMine?'<span style="font-size:10px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i> TUO</span>':'')
+    +(ft&&!isMine?'<span style="font-size:10px;font-weight:800;color:'+tc+';border:1px solid '+tc+';border-radius:4px;padding:0 4px">TEAM</span>':'')
+    +badges+(p?reelChip(p)+fotoChips(p)+persChip(p):'')+'</div>'
     +'<div class="sr-team">'+m.team+'</div>'+noteLine(m.num)+'</div>'
     +'<span class="sr-cat '+catCls+'" style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800">'+m.cat+'</span></div>';
 }
