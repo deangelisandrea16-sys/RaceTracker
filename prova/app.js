@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-21-1525';
+var RT_JS_BUILD='2026-11-21-1615';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -4602,7 +4602,7 @@ const TEAM_PALETTE=['#a78bfa','#22d3ee','#f472b6','#34d399','#fb923c','#facc15',
 let userSettings={},userSettingsUser='';
 function watchUserSettings(){
   if(!currentUserId||userSettingsUser===currentUserId)return;userSettingsUser=currentUserId;userSettings={};
-  try{onValue(ref(db,'settings/'+currentUserId),s=>{userSettings=s.val()||{};applyUserSettings();try{document.body.classList.add('quiet');renderAll();}catch(e){}if(document.getElementById('settings-body'))renderSettings();});}catch(e){}
+  try{onValue(ref(db,'settings/'+currentUserId),s=>{userSettings=s.val()||{};applyUserSettings();try{spotsAttachVenue();}catch(_){}try{document.body.classList.add('quiet');renderAll();}catch(e){}if(document.getElementById('settings-body'))renderSettings();});}catch(e){}
 }
 let _liveDefDone=false;
 function applyUserSettings(){
@@ -4884,6 +4884,7 @@ function renderSettings(){
     +'<div class="set-opt" onclick="openRemPanel()" style="border:1px solid #fbbf24;border-radius:10px;margin-bottom:6px">🔔 <b>PROMEMORIA</b> · avvisi personali sui turni ('+Object.keys(reminders||{}).length+')</div>'
     +(aiChatAllowed()?'<div class="set-opt" onclick="openAiChat()" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px">💬 <b>CHIEDI ALL\'AI</b> · orari, piloti, rischi</div>':'')
     +(isDelayAdmin()?'<div id="ai-usage-box" class="set-opt" onclick="openAiLog()" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px;display:block">🤖 <b>SPESA AI</b> · <span id="ai-usage-txt">…</span><br><span style="font-size:11px;color:var(--text4)">tocca per il registro degli interventi</span></div>':'')
+    +'<div class="set-sec">PUNTI DI SCATTO</div>'+sw(!(userSettings&&userSettings.spotsPerRace),'Ritrova i punti sulla stessa pista anche nelle prossime gare','setSpotsScope(this.checked)')
     +'<div class="set-sec">PROFILO</div><div class="set-opt" onclick="closeModal();showUserPicker()"><i class="ic ic-user"></i> Cambia utente <span style="margin-left:auto;color:var(--text4)">'+currentUserId+'</span></div>'
     +'<div class="set-sec">ASPETTO (QUESTO TELEFONO)</div>'+opt(!light,'Tema scuro','setTheme(false)')+opt(light,'Tema chiaro','setTheme(true)')
     +'<div class="set-sec">LEGGIBILITÀ E AVVISI</div>'
@@ -6539,8 +6540,16 @@ function escapeHtmlSp(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;
    sulla stessa pista in un'altra gara si ritrovano. Le SPUNTE restano per gara. I punti della gara vengono copiati
    nel tracciato la prima volta (solo aggiunta, niente viene tolto dalla gara). */
 let _spVenueSpots=null,_spVenueKey='',_spRaceSpots={};
-function spotsVenuePath(){const v=venueMap();return v&&currentUserId?'userSpots/'+currentUserId+'/'+v.key:'';}
-function spotsAttachVenue(){try{spotsViewsAttach();}catch(_){}const p=spotsVenuePath();if(!p||p===_spVenueKey)return;_spVenueKey=p;_spVenueSpots=null;
+/* 21/11/2026 (Andrea): scelta per account in Impostazioni — punti ritrovati sulla stessa pista nelle gare successive (predefinito)
+   oppure solo per questa gara (userSettings.spotsPerRace). I punti del tracciato restano salvati: si ritrovano riattivando l'opzione. */
+function spotsVenuePath(){if(userSettings&&userSettings.spotsPerRace)return'';const v=venueMap();return v&&currentUserId?'userSpots/'+currentUserId+'/'+v.key:'';}
+function setSpotsScope(keep){userSettings.spotsPerRace=!keep;setUserSetting('spotsPerRace',!keep);
+  try{if(_spVenueKey){off(ref(db,_spVenueKey));}}catch(_){}_spVenueKey='';_spVenueSpots=null;
+  trackSpots=Object.assign({},_spRaceSpots||{});if(keep)spotsAttachVenue();window._rtRenderDirty=true;try{renderAll();}catch(_){}renderSettings();}
+window.setSpotsScope=setSpotsScope;
+function spotsAttachVenue(){try{spotsViewsAttach();}catch(_){}const p=spotsVenuePath();
+  if(!p&&_spVenueKey){try{off(ref(db,_spVenueKey));}catch(_){}_spVenueKey='';_spVenueSpots=null;trackSpots=Object.assign({},_spRaceSpots||{});window._rtRenderDirty=true;}
+  if(!p||p===_spVenueKey)return;_spVenueKey=p;_spVenueSpots=null;
   trackSpots=Object.assign({},_spRaceSpots||{});
   onValue(ref(db,p),sn=>{if(_spVenueKey!==p)return;_spVenueSpots=sn.val()||{};
     const miss={};Object.keys(_spRaceSpots||{}).forEach(id=>{if(!_spVenueSpots[id])miss[p+'/'+id]=_spRaceSpots[id];});
