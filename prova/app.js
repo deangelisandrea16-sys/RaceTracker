@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-21-1810';
+var RT_JS_BUILD='2026-11-21-1840';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -4906,6 +4906,7 @@ function renderSettings(){
     +'<div class="set-opt" onclick="openRemPanel()" style="border:1px solid #fbbf24;border-radius:10px;margin-bottom:6px">🔔 <b>PROMEMORIA</b> · avvisi personali sui turni ('+Object.keys(reminders||{}).length+')</div>'
     +(aiChatAllowed()?'<div class="set-opt" onclick="openAiChat()" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px">💬 <b>CHIEDI ALL\'AI</b> · orari, piloti, rischi</div>':'')
     +(isDelayAdmin()?'<div id="ai-usage-box" class="set-opt" onclick="openAiLog()" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px;display:block">🤖 <b>SPESA AI</b> · <span id="ai-usage-txt">…</span><br><span style="font-size:11px;color:var(--text4)">tocca per il registro degli interventi</span></div>':'')
+    +(isDelayAdmin()?'<div class="set-opt" onclick="openTtPhoto()" style="border:1px solid #ef4444;border-radius:10px;margin-bottom:6px;display:block">📷 <b>FOTO PROGRAMMA</b> · emergenza<br><span style="font-size:11px;color:var(--text4)">solo se il programma ufficiale non si trova o non si legge</span></div>':'')
     +'<div class="set-sec">PUNTI DI SCATTO</div>'+sw(!(userSettings&&userSettings.spotsPerRace),'Ritrova i punti sulla stessa pista anche nelle prossime gare','setSpotsScope(this.checked)')
     +'<div class="set-sec">PROFILO</div><div class="set-opt" onclick="closeModal();showUserPicker()"><i class="ic ic-user"></i> Cambia utente <span style="margin-left:auto;color:var(--text4)">'+currentUserId+'</span></div>'
     +'<div class="set-sec">ASPETTO (QUESTO TELEFONO)</div>'+opt(!light,'Tema scuro','setTheme(false)')+opt(light,'Tema chiaro','setTheme(true)')
@@ -6143,6 +6144,53 @@ async function openAiLog(){
   }catch(e){const el=document.getElementById('ailog-body');if(el)el.textContent='Registro non disponibile.';}
 }
 window.openAiLog=openAiLog;
+/* 21/11/2026 (Andrea): EMERGENZA "FOTO PROGRAMMA" (solo admin). Casi estremi: Timetable ufficiale introvabile o illeggibile.
+   Foto dal telefono → ttPhotoImg/<gara>/<id> (JPEG ridotte) + ttPhoto/<gara>/<id> {status:'nuovo'}. Il server le fa leggere a Sonnet
+   (due letture uguali + controlli) e scrive l'anteprima; qui si conferma con APPLICA. Si sostituiscono solo i giorni fotografati.
+   Il Timetable ufficiale, appena leggibile, prende il posto del programma da foto. Un solo ascolto, solo mentre la scheda e' aperta. */
+let _ttpRef=null,_ttpFiles=[];
+function ttpOff(){try{if(_ttpRef)_ttpRef.off();}catch(e){}_ttpRef=null;}
+function openTtPhoto(){
+  if(!isDelayAdmin()||!activeRaceId)return;ttpOff();_ttpFiles=[];
+  openModal('<button class="modal-close" onclick="ttpOff();closeModal()">✕</button><button class="rem-back" onclick="ttpOff();openSettings()">← Impostazioni</button><div class="modal-title">📷 Foto programma</div>'
+    +'<div class="sp-sub">Emergenza: fotografa il programma esposto in circuito (una foto per pagina, dritta, intera, con il nome del giorno visibile). Lo legge l\'AI due volte: se non è sicura non scrive niente.</div>'
+    +'<input id="ttp-in" type="file" accept="image/*" capture="environment" multiple style="display:none" onchange="ttpAdd(this.files)">'
+    +'<button class="btn-add-team" style="min-height:48px;width:100%;margin:10px 0;font-weight:900" onclick="document.getElementById(\'ttp-in\').click()">📷 SCATTA / AGGIUNGI FOTO</button>'
+    +'<div id="ttp-list" style="display:flex;gap:6px;flex-wrap:wrap"></div><div id="ttp-state" style="margin-top:10px"></div>');
+}
+function ttpAdd(fl){
+  [...(fl||[])].slice(0,8-_ttpFiles.length).forEach(f=>_ttpFiles.push(f));
+  const el=document.getElementById('ttp-list');if(!el)return;
+  el.innerHTML=_ttpFiles.map((f,i)=>'<img src="'+URL.createObjectURL(f)+'" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">').join('');
+  const st=document.getElementById('ttp-state');if(st&&_ttpFiles.length)st.innerHTML='<button class="btn-add-team" style="min-height:48px;width:100%;background:#ef4444;color:#fff;font-weight:900" onclick="ttpSend()">INVIA '+_ttpFiles.length+' FOTO</button>';
+}
+function ttpJpeg(f){return new Promise((res,rej)=>{const im=new Image();im.onload=()=>{const k=Math.min(1,1800/Math.max(im.width,im.height));const c=document.createElement('canvas');
+  c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',0.82).split(',')[1]);};im.onerror=rej;im.src=URL.createObjectURL(f);});}
+async function ttpSend(){
+  const st=document.getElementById('ttp-state');if(!_ttpFiles.length||!st)return;st.innerHTML='<div class="sp-sub">Preparo le foto…</div>';
+  try{const imgs=[];for(const f of _ttpFiles)imgs.push(await ttpJpeg(f));
+    const id=String(Date.now());
+    await _fbDb.ref('ttPhotoImg/'+activeRaceId+'/'+id).set(imgs);
+    await _fbDb.ref('ttPhoto/'+activeRaceId+'/'+id).set({user:currentUserId,at:Date.now(),status:'nuovo',n:imgs.length});
+    _ttpRef=_fbDb.ref('ttPhoto/'+activeRaceId+'/'+id);_ttpRef.on('value',sn=>ttpRender(id,sn.val()));
+  }catch(e){st.innerHTML='<div style="color:#ef4444;font-weight:800">Invio non riuscito: '+String(e.message||e).replace(/</g,'&lt;')+'</div>';}
+}
+function ttpRender(id,q){
+  const st=document.getElementById('ttp-state');if(!st){ttpOff();return;}if(!q)return;const esc=x=>String(x||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  if(q.status==='nuovo'||q.status==='in lettura'){st.innerHTML='<div class="sp-sub">⏳ L\'AI sta leggendo il programma (1–3 minuti)…</div>';return;}
+  if(q.status==='in scrittura'){st.innerHTML='<div class="sp-sub">⏳ Scrivo il programma…</div>';return;}
+  if(q.status==='errore'){ttpOff();st.innerHTML='<div style="color:#ef4444;font-weight:900">Non applicato</div><div class="sp-sub">'+esc(q.motivo)+'</div>';return;}
+  if(q.status==='applicato'){ttpOff();st.innerHTML='<div style="color:#22c55e;font-weight:900">✓ Programma aggiornato</div><div class="sp-sub">Copia del programma di prima salvata sul server. Appena il Timetable ufficiale si legge, prende il suo posto.</div>';return;}
+  if(q.status==='letto'){
+    const g=q.giorni||{},tt=q.tt||{};
+    const prev=(tt.days||[]).map(d=>'<div style="margin-top:8px;font-weight:900">'+esc(d)+' · '+(g[d]||0)+' turni</div>'
+      +((tt.schedule||{})[d]||[]).map(x=>'<div style="font-size:12px;font-family:monospace">'+esc(x.time)+' '+esc(x.cat)+' '+esc([].concat(x.filter||[]).length>6?(x.filter[0]+'–'+x.filter[x.filter.length-1]):[].concat(x.filter||[]).join(' '))+' '+esc(x.type||'')+'</div>').join('')).join('');
+    st.innerHTML='<div style="font-weight:900">Letto: '+(q.turni||0)+' turni'+(q.finali?' · '+q.finali+' finali':'')+'</div><div class="sp-sub">Controlla che corrisponda alla foto. Si sostituiscono solo i giorni qui sotto.</div>'+prev
+      +'<button class="btn-add-team" style="min-height:48px;width:100%;margin-top:10px;background:#22c55e;color:#000;font-weight:900" onclick="ttpApply(\''+id+'\')">APPLICA AL PROGRAMMA</button>';
+  }
+}
+function ttpApply(id){if(!isDelayAdmin())return;_fbDb.ref('ttPhoto/'+activeRaceId+'/'+id).update({apply:true,applyBy:currentUserId});}
+window.openTtPhoto=openTtPhoto;window.ttpAdd=ttpAdd;window.ttpSend=ttpSend;window.ttpApply=ttpApply;window.ttpOff=ttpOff;
 /* 21/11/2026 (Andrea): chat AI in pista — per ora solo amministratore. La domanda va in races/<gara>/aiChat/<utente>; risponde il
    server (la chiave non e' mai nell'app). Un solo ascolto, attivo solo mentre la chat e' aperta. */
 let _aiChatOff=null,_aiChatMsgs={};
