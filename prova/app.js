@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-21-1755';
+var RT_JS_BUILD='2026-11-21-1810';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3944,19 +3944,22 @@ function wxDayDate(day){const r=(typeof races!=='undefined'&&races&&races[active
 function wxLoad(){
   const g=wxGeo();if(!g)return;
   if(_wx.key!==g.key){_wx={key:g.key,at:0,ts:null,loading:false};
-    try{const c=JSON.parse(localStorage.getItem('rt_wx_'+g.key)||'null');if(c&&c.ts&&c.ts[0]&&c.ts[0].s!==undefined){_wx.at=c.at;_wx.ts=c.ts;}}catch(e){}}
+    try{const c=JSON.parse(localStorage.getItem('rt_wx_'+g.key)||'null');if(c&&c.v===2&&c.ts&&c.ts[0]&&c.ts[0].s!==undefined){_wx.at=c.at;_wx.ts=c.ts;}}catch(e){}}
   if(_wx.loading||Date.now()-_wx.at<3600000)return;
   _wx.loading=true;_wx.at=Date.now();   // anche se fallisce non si riprova prima di un'ora
-  fetch('https://api.met.no/weatherapi/locationforecast/2.0/compact?lat='+g.lat.toFixed(4)+'&lon='+g.lon.toFixed(4))
+  fetch('https://api.met.no/weatherapi/locationforecast/2.0/complete?lat='+g.lat.toFixed(4)+'&lon='+g.lon.toFixed(4))
     .then(r=>r.ok?r.json():null).then(j=>{_wx.loading=false;const ts=j&&j.properties&&j.properties.timeseries;if(!ts)return;
       const old=_wx.ts||[];
       _wx.ts=ts.map(x=>{const d=x.data||{},i=(d.instant||{}).details||{},h1=d.next_1_hours,h6=d.next_6_hours;
-        return{t:x.time,T:i.air_temperature,W:i.wind_speed,p:h1?(h1.details||{}).precipitation_amount:(h6?(h6.details||{}).precipitation_amount:null),n:h1?1:(h6?6:0),s:String(((h1||h6||{}).summary||{}).symbol_code||'')};});
+        // 21/11/2026 (Andrea): piu' dettaglio: raffiche, direzione del vento, probabilita' e massimo di pioggia (endpoint "complete")
+        const hd=((h1||h6||{}).details)||{};
+        return{t:x.time,T:i.air_temperature,W:i.wind_speed,G:i.wind_speed_of_gust,D:i.wind_from_direction,p:hd.precipitation_amount!=null?hd.precipitation_amount:null,
+          px:hd.precipitation_amount_max,P:hd.probability_of_precipitation,PT:hd.probability_of_thunder,n:h1?1:(h6?6:0),s:String(((h1||h6||{}).summary||{}).symbol_code||'')};});
       // 20/11/2026 (Andrea): la previsione parte da "adesso": si tengono le ore gia' passate (ultimi 3 giorni) cosi' il meteo resta
       // accanto a PROVE LIBERE, QUALIFICHE ecc. anche dopo che sono finite
       try{const first=_wx.ts.length?new Date(_wx.ts[0].t).getTime():Infinity,lim=Date.now()-3*864e5;
         const keep=old.filter(x=>{const t=new Date(x.t).getTime();return t<first&&t>lim&&x.n;});if(keep.length)_wx.ts=keep.concat(_wx.ts);}catch(e){}
-      try{localStorage.setItem('rt_wx_'+g.key,JSON.stringify({at:_wx.at,ts:_wx.ts}));}catch(e){}
+      try{localStorage.setItem('rt_wx_'+g.key,JSON.stringify({v:2,at:_wx.at,ts:_wx.ts}));}catch(e){}
       wxRender();}).catch(()=>{_wx.loading=false;});
 }
 function wxSummary(day){
@@ -3970,17 +3973,32 @@ function wxSummary(day){
   const half=(a,b)=>{const hs=[...wet].filter(h=>h>=a&&h<b).sort((x,y)=>x-y),bands=[];hs.forEach(h=>{const l=bands[bands.length-1];if(l&&h===l[1])l[1]=h+1;else bands.push([h,h+1]);});
     const rr=rows.filter(x=>x.h<b&&x.h+(x.n||1)>a);if(!rr.length)return null;
     if(bands.length){const wr=rr.filter(x=>x.p!=null&&((x.n===1&&x.p>=0.2)||(x.n===6&&x.p>=1)));
-      const k=wxWorst(wr.map(wxClass));return{k,wet:true,txt:WX_TXT[k]+' '+bands.map(v=>v[0]+'–'+v[1]).join(', ')};}
+      const k=wxWorst(wr.map(wxClass));
+      // 21/11/2026 (Andrea): intensita' (debole/moderata/forte, mm all'ora nel momento peggiore) e probabilita' massima
+      const mmh=Math.max.apply(null,wr.map(x=>Math.max(x.p||0,x.px||0)/(x.n||1)));
+      const adj=(k==='rain'||k==='showers'||k==='heavy')?wxRainAdj(mmh):'';
+      const pr=rr.map(x=>x.P).filter(v=>v!=null);const P=pr.length?Math.round(Math.max.apply(null,pr)):null;
+      return{k,wet:true,txt:(k==='heavy'?'pioggia':WX_TXT[k])+(adj?' '+adj:'')+' '+bands.map(v=>v[0]+'–'+v[1]).join(', '),
+        det:(mmh>=0.1?(mmh<10?mmh.toFixed(1).replace('.',','):Math.round(mmh))+' mm/h':'')+(P!=null?(mmh>=0.1?' · ':'')+P+'%':'')};}
     // asciutto: nuvolosita' media della fascia (sereno 0 ... coperto 3); nebbia se prevale
     const cl=rr.map(wxClass);if(cl.filter(x=>x==='fog').length*2>cl.length)return{k:'fog',txt:WX_TXT.fog};
     const sc={sun:0,fair:1,part:2,cloud:3};const v=cl.map(x=>sc[x]!=null?sc[x]:3);const m=Math.round(v.reduce((p,q)=>p+q,0)/v.length);
     const k=['sun','fair','part','cloud'][m];return{k,txt:WX_TXT[k]};};
-  return{tmin:Math.round(Math.min.apply(null,T)),tmax:Math.round(Math.max.apply(null,T)),wind:W.length?Math.round(Math.max.apply(null,W)*3.6):null,am:half(7,13),pm:half(13,19),coarse:rows.some(x=>x.n===6)};
+  // 21/11/2026 (Andrea): vento descritto (calmo ... molto forte), da dove soffia nel momento piu' ventoso, raffiche massime
+  let wr0=null;rows.forEach(x=>{if(x.W!=null&&(!wr0||x.W>wr0.W))wr0=x;});
+  const G=rows.map(x=>x.G).filter(v=>v!=null);
+  const wind=wr0?Math.round(wr0.W*3.6):null,gust=G.length?Math.round(Math.max.apply(null,G)*3.6):null;
+  return{tmin:Math.round(Math.min.apply(null,T)),tmax:Math.round(Math.max.apply(null,T)),wind,gust:gust!=null&&wind!=null&&gust>=wind+10?gust:null,
+    wdir:wr0&&wr0.D!=null?wxDir(wr0.D):'',wtxt:wind!=null?wxWindAdj(wind):'',am:half(7,13),pm:half(13,19),coarse:rows.some(x=>x.n===6)};
 }
 /* 19/11/2026 (Andrea): set di icone proprie (niente emoji) che segue il tempo previsto ora per ora:
    sereno, quasi sereno, poco nuvoloso, nuvoloso, nebbia, pioviggine, pioggia, pioggia forte, rovesci, temporale, nevischio, neve. */
 const WX_TXT={sun:'sereno',fair:'quasi sereno',part:'poco nuvoloso',cloud:'nuvoloso',fog:'nebbia',drizzle:'pioviggine',rain:'pioggia',heavy:'pioggia forte',
   showers:'rovesci',thunder:'temporale',sleet:'nevischio',snow:'neve'};
+// 21/11/2026 (Andrea): sfumature. Pioggia per mm/h (debole < 1, moderata < 4, forte >= 4); vento per km/h (scala Beaufort semplificata)
+function wxRainAdj(mmh){return mmh>=4?'forte':mmh>=1?'moderata':'debole';}
+function wxWindAdj(k){return k<6?'calmo':k<20?'debole':k<30?'moderato':k<40?'teso':k<60?'forte':'molto forte';}
+function wxDir(d){return['N','NE','E','SE','S','SO','O','NO'][Math.round(((Number(d)%360)+360)%360/45)%8];}
 const WX_RANK=['sun','fair','part','cloud','fog','drizzle','showers','rain','sleet','snow','heavy','thunder'];
 function wxWorst(list){let k='cloud',r=-1;list.forEach(x=>{const i=WX_RANK.indexOf(x);if(i>r){r=i;k=x;}});return k;}
 function wxClass(x){const y=String((x&&x.s)||'');const p=x&&x.p!=null?x.p/(x.n||1):0;
@@ -4013,15 +4031,19 @@ function wxSlotIcon(day,time){
   try{const date=wxDayDate(day);if(!date||!_wx.ts)return'';const z=n=>String(n).padStart(2,'0');const hh=parseInt(String(time).split('.')[0]);if(isNaN(hh))return'';
     const x=_wx.ts.find(r=>{const d=new Date(r.t);return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())===date&&d.getHours()<=hh&&hh<d.getHours()+(r.n||1);});
     if(!x||!x.n)return'';const k=wxClass(x);
-    return'<span title="'+WX_TXT[k]+'" style="order:2;display:inline-flex;align-items:center;font-style:normal;flex-shrink:0">'+wxIcon(k,24).replace('margin-right:4px','margin-right:0')+'</span>';}catch(e){return'';}
+    const mmh=x.p!=null?Math.max(x.p,x.px||0)/(x.n||1):0;
+    const tip=[(k==='heavy'?'pioggia':WX_TXT[k])+((k==='rain'||k==='showers'||k==='heavy')&&mmh>0?' '+wxRainAdj(mmh):''),x.P!=null?Math.round(x.P)+'% pioggia':'',
+      x.W!=null?'vento '+Math.round(x.W*3.6)+' km/h'+(x.D!=null?' da '+wxDir(x.D):'')+(x.G!=null&&x.G*3.6>=x.W*3.6+10?', raffiche '+Math.round(x.G*3.6):''):''].filter(Boolean).join(' · ');
+    return'<span title="'+tip+'" style="order:2;display:inline-flex;align-items:center;font-style:normal;flex-shrink:0">'+wxIcon(k,24).replace('margin-right:4px','margin-right:0')+'</span>';}catch(e){return'';}
 }
 function wxRender(){
   const el=document.getElementById('wx-bar');if(!el)return;
   const s=wxSummary(activeDay);if(!s||(!s.am&&!s.pm)){el.style.display='none';return;}
   const seg=(lab,h)=>h?'<span style="white-space:nowrap;margin-right:12px">'+wxIcon(h.k)+'<span style="color:var(--text4);font-size:10px;font-weight:800;letter-spacing:.06em;margin-right:4px">'+lab+'</span>'
-    +'<span style="font-weight:900;color:'+(h.wet?'#60a5fa':'var(--text)')+'">'+h.txt+'</span></span>':'';
+    +'<span style="font-weight:900;color:'+(h.wet?'#60a5fa':'var(--text)')+'">'+h.txt+'</span>'
+    +(h.det?'<span style="color:var(--text3);font-size:11px;margin-left:4px">('+h.det+')</span>':'')+'</span>':'';
   el.innerHTML='<div style="display:flex;flex-wrap:wrap;align-items:center;row-gap:4px">'+seg('MATTINA',s.am)+seg('POMERIGGIO',s.pm)
-    +'<span style="white-space:nowrap;color:var(--text3)">'+s.tmin+'–'+s.tmax+'°'+(s.wind!=null?' · vento '+s.wind+' km/h':'')
+    +'<span style="white-space:nowrap;color:var(--text3)">'+s.tmin+'–'+s.tmax+'°'+(s.wind!=null?' · vento '+s.wtxt+' '+s.wind+' km/h'+(s.wdir?' da '+s.wdir:'')+(s.gust?', raffiche '+s.gust:''):'')
     +' <span style="color:var(--text4);font-weight:600;font-size:10px">'+(s.coarse?'(a fasce di 6 ore, indicativo)':'(indicativo)')+'</span></span></div>';
   el.style.display='';
 }
