@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-21-1400';
+var RT_JS_BUILD='2026-11-21-1525';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -4883,7 +4883,7 @@ function renderSettings(){
   b.innerHTML='<div class="set-opt" onclick="openLegend()" style="border:1px solid var(--accent);border-radius:10px;margin-bottom:6px"><i class="ic ic-note"></i> <b>GUIDA</b> · come funziona l\'app, simboli e notifiche</div>'
     +'<div class="set-opt" onclick="openRemPanel()" style="border:1px solid #fbbf24;border-radius:10px;margin-bottom:6px">🔔 <b>PROMEMORIA</b> · avvisi personali sui turni ('+Object.keys(reminders||{}).length+')</div>'
     +(isDelayAdmin()?'<div class="set-opt" onclick="openAiChat()" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px">💬 <b>CHIEDI ALL\'AI</b> · orari, piloti, rischi</div>':'')
-    +(isDelayAdmin()?'<div id="ai-usage-box" class="set-opt" onclick="loadAiUsage(true)" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px;display:block">🤖 <b>SPESA AI</b> · <span id="ai-usage-txt">tocca per aggiornare</span></div>':'')
+    +(isDelayAdmin()?'<div id="ai-usage-box" class="set-opt" onclick="openAiLog()" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px;display:block">🤖 <b>SPESA AI</b> · <span id="ai-usage-txt">…</span><br><span style="font-size:11px;color:var(--text4)">tocca per il registro degli interventi</span></div>':'')
     +'<div class="set-sec">PROFILO</div><div class="set-opt" onclick="closeModal();showUserPicker()"><i class="ic ic-user"></i> Cambia utente <span style="margin-left:auto;color:var(--text4)">'+currentUserId+'</span></div>'
     +'<div class="set-sec">ASPETTO (QUESTO TELEFONO)</div>'+opt(!light,'Tema scuro','setTheme(false)')+opt(light,'Tema chiaro','setTheme(true)')
     +'<div class="set-sec">LEGGIBILITÀ E AVVISI</div>'
@@ -6106,6 +6106,20 @@ async function loadAiUsage(force){
   }catch(e){const el=document.getElementById('ai-usage-txt');if(el)el.textContent='non disponibile';}
 }
 window.loadAiUsage=loadAiUsage;
+/* 21/11/2026 (Andrea): REGISTRO INTERVENTI AI (aiUsage/eventi): quando l'AI interviene, su cosa e cosa decide. Solo admin, lettura singola. */
+async function openAiLog(){
+  if(!isDelayAdmin())return;const esc=x=>String(x||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  openModal('<button class="modal-close" onclick="closeModal()">✕</button><button class="rem-back" onclick="openSettings()">← Impostazioni</button><div class="modal-title">🤖 Registro AI</div><div id="ailog-body" class="sp-sub">Carico…</div>');
+  try{const d=await fetch('https://karting-tools-default-rtdb.firebaseio.com/aiUsage/eventi.json?orderBy=%22$key%22&limitToLast=40').then(r=>r.json());
+    const L=Object.values(d||{}).sort((a,b)=>b.at-a.at);const el=document.getElementById('ailog-body');if(!el)return;
+    const col=e=>/APPLICATO|riassunto|^ok|risposta/i.test(e)?'#22c55e':/riusato/i.test(e)?'#3b82f6':/diverso/i.test(e)?'#ef4444':'#f97316';
+    const ico={timetable:'🗓️',classifica:'📄',controllo:'🔎',decisione:'⚖️',chat:'💬'};
+    el.innerHTML=L.length?L.map(x=>'<div class="card-inner" style="border-left:4px solid '+col(x.esito)+';margin-bottom:6px"><div style="font-size:11px;color:var(--text4)">'+new Date(x.at).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+' · '+(ico[x.tipo]||'')+' '+esc(x.tipo)+'</div>'
+      +'<div style="font-size:13px;font-weight:800;color:'+col(x.esito)+'">'+esc(x.esito)+'</div><div style="font-size:12px;color:var(--text2)">'+esc(x.cosa)+'</div>'+(x.dettaglio?'<div style="font-size:11px;color:var(--text4)">→ '+esc(x.dettaglio)+'</div>':'')+'</div>').join('')
+      :'Nessun intervento registrato ancora.';
+  }catch(e){const el=document.getElementById('ailog-body');if(el)el.textContent='Registro non disponibile.';}
+}
+window.openAiLog=openAiLog;
 /* 21/11/2026 (Andrea): chat AI in pista — per ora solo amministratore. La domanda va in races/<gara>/aiChat/<utente>; risponde il
    server (la chiave non e' mai nell'app). Un solo ascolto, attivo solo mentre la chat e' aperta. */
 let _aiChatOff=null,_aiChatMsgs={};
