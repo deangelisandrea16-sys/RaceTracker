@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-21-1120';
+var RT_JS_BUILD='2026-11-21-1200';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -4882,6 +4882,7 @@ function renderSettings(){
   const light=document.body.classList.contains('light');const lv=userSettings.liveDefault||'mine';
   b.innerHTML='<div class="set-opt" onclick="openLegend()" style="border:1px solid var(--accent);border-radius:10px;margin-bottom:6px"><i class="ic ic-note"></i> <b>GUIDA</b> · come funziona l\'app, simboli e notifiche</div>'
     +'<div class="set-opt" onclick="openRemPanel()" style="border:1px solid #fbbf24;border-radius:10px;margin-bottom:6px">🔔 <b>PROMEMORIA</b> · avvisi personali sui turni ('+Object.keys(reminders||{}).length+')</div>'
+    +(isDelayAdmin()?'<div id="ai-usage-box" class="set-opt" onclick="loadAiUsage(true)" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px;display:block">🤖 <b>SPESA AI</b> · <span id="ai-usage-txt">tocca per aggiornare</span></div>':'')
     +'<div class="set-sec">PROFILO</div><div class="set-opt" onclick="closeModal();showUserPicker()"><i class="ic ic-user"></i> Cambia utente <span style="margin-left:auto;color:var(--text4)">'+currentUserId+'</span></div>'
     +'<div class="set-sec">ASPETTO (QUESTO TELEFONO)</div>'+opt(!light,'Tema scuro','setTheme(false)')+opt(light,'Tema chiaro','setTheme(true)')
     +'<div class="set-sec">LEGGIBILITÀ E AVVISI</div>'
@@ -4900,6 +4901,7 @@ function renderSettings(){
     +'<div class="set-sec">LE MIE NOTIFICHE</div><div id="notif-prefs-body"></div>'
     +'<div style="margin-top:10px;font-size:11px;color:var(--text4)">Impostazioni del profilo '+currentUserId+'.</div>';
   renderNotifPrefs();try{renderPushDevice();}catch(e){}
+  try{loadAiUsage();}catch(e){}
 }
 function openSettings(){
   if(!currentUserId){alert('Scegli prima il tuo utente.');return;}
@@ -6087,6 +6089,22 @@ function remSave(){const e=_remEdit;if(!e||!activeRaceId||!currentUserId)return;
 function remDelete(id){if(!confirm('Eliminare il promemoria?'))return;delete reminders[id];ref(db,'races/'+activeRaceId+'/reminders/'+currentUserId+'/'+id).remove();renderReminder();window._rtRenderDirty=true;}
 /* pannello unico (Impostazioni → PROMEMORIA): cerca il turno e vedi tutti i promemoria della gara */
 let _remQ='';
+/* 21/11/2026 (Andrea): contatore spesa AI del server (aiUsage/<mese>), visibile solo all'amministratore. Una lettura quando si apre/tocca, nessun listener. */
+async function loadAiUsage(force){
+  try{if(!isDelayAdmin())return;const el=document.getElementById('ai-usage-txt');if(!el)return;
+    const now=new Date(),mon=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+    const B='https://karting-tools-default-rtdb.firebaseio.com/aiUsage/';
+    const [m,lg,bu]=await Promise.all([fetch(B+mon+'.json').then(r=>r.json()),fetch(B+'log.json?orderBy=%22$key%22&limitToLast=3').then(r=>r.json()).catch(()=>null),fetch(B+'budgetUsd.json').then(r=>r.json()).catch(()=>null)]);
+    const bud=parseFloat(bu)||5;
+    const eur=x=>'≈ '+(x*0.93).toFixed(x<1?3:2).replace('.',',')+' €';
+    if(!m){el.textContent='questo mese: 0 € · nessuna chiamata · budget '+bud+' $';return;}
+    const last=Object.values(lg||{}).sort((a,b)=>b.at-a.at)[0];
+    const pc=Math.round(100*(m.usd||0)/bud);
+    el.innerHTML='questo mese <b>'+eur(m.usd||0)+'</b> <span style="color:'+(pc>=80?'#ef4444':pc>=50?'#f97316':'#22c55e')+';font-weight:800">('+pc+'% di '+bud+' $)</span> · '+(m.calls||0)+' chiamate · '+Math.round(((m.inTok||0)+(m.outTok||0))/1000)+'k token'
+      +(last?'<br><span style="font-size:11px;color:var(--text4)">ultima: '+new Date(last.at).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+' · '+String(last.what||'').replace(/</g,'&lt;')+'</span>':'');
+  }catch(e){const el=document.getElementById('ai-usage-txt');if(el)el.textContent='non disponibile';}
+}
+window.loadAiUsage=loadAiUsage;
 function openRemPanel(){try{remAttach();}catch(_){}_remEdit=null;
   openModal('<button class="modal-close" onclick="closeModal()">✕</button><button class="rem-back" onclick="openSettings()">← Impostazioni</button><div class="modal-title">🔔 Promemoria</div>'
     +'<div class="sp-sub">Cerca il turno (es. "ok-nj a-e", "16.40", "kz2 sabato") e scegli quando essere avvisato. L\'orario segue il ritardo live.</div>'

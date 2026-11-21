@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-21-1140';
+var RT_JS_BUILD='2026-11-21-1200';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -6094,11 +6094,13 @@ async function loadAiUsage(force){
   try{if(!isDelayAdmin())return;const el=document.getElementById('ai-usage-txt');if(!el)return;
     const now=new Date(),mon=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
     const B='https://karting-tools-default-rtdb.firebaseio.com/aiUsage/';
-    const [m,lg]=await Promise.all([fetch(B+mon+'.json').then(r=>r.json()),fetch(B+'log.json?orderBy=%22$key%22&limitToLast=3').then(r=>r.json()).catch(()=>null)]);
+    const [m,lg,bu]=await Promise.all([fetch(B+mon+'.json').then(r=>r.json()),fetch(B+'log.json?orderBy=%22$key%22&limitToLast=3').then(r=>r.json()).catch(()=>null),fetch(B+'budgetUsd.json').then(r=>r.json()).catch(()=>null)]);
+    const bud=parseFloat(bu)||5;
     const eur=x=>'≈ '+(x*0.93).toFixed(x<1?3:2).replace('.',',')+' €';
-    if(!m){el.textContent='questo mese: 0 € · nessuna chiamata';return;}
+    if(!m){el.textContent='questo mese: 0 € · nessuna chiamata · budget '+bud+' $';return;}
     const last=Object.values(lg||{}).sort((a,b)=>b.at-a.at)[0];
-    el.innerHTML='questo mese <b>'+eur(m.usd||0)+'</b> · '+(m.calls||0)+' chiamate · '+Math.round(((m.inTok||0)+(m.outTok||0))/1000)+'k token'
+    const pc=Math.round(100*(m.usd||0)/bud);
+    el.innerHTML='questo mese <b>'+eur(m.usd||0)+'</b> <span style="color:'+(pc>=80?'#ef4444':pc>=50?'#f97316':'#22c55e')+';font-weight:800">('+pc+'% di '+bud+' $)</span> · '+(m.calls||0)+' chiamate · '+Math.round(((m.inTok||0)+(m.outTok||0))/1000)+'k token'
       +(last?'<br><span style="font-size:11px;color:var(--text4)">ultima: '+new Date(last.at).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+' · '+String(last.what||'').replace(/</g,'&lt;')+'</span>':'');
   }catch(e){const el=document.getElementById('ai-usage-txt');if(el)el.textContent='non disponibile';}
 }
