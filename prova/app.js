@@ -6125,7 +6125,7 @@ window.openAiLog=openAiLog;
    server (la chiave non e' mai nell'app). Un solo ascolto, attivo solo mentre la chat e' aperta. */
 let _aiChatOff=null,_aiChatMsgs={};
 /* 21/11/2026 (Andrea): chat anche per Riccardo; spesa e registro AI restano solo all'amministratore. Il controllo vero e' sul server. */
-const AI_CHAT_USERS=['riccardo'];
+const AI_CHAT_USERS=['ricki'];
 function aiChatAllowed(){return isDelayAdmin()||AI_CHAT_USERS.includes(String(currentUserId||'').toLowerCase());}
 function openAiChat(){
   if(!aiChatAllowed()||!activeRaceId)return;
