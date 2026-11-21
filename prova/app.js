@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-21-1200';
+var RT_JS_BUILD='2026-11-21-1215';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -4882,6 +4882,7 @@ function renderSettings(){
   const light=document.body.classList.contains('light');const lv=userSettings.liveDefault||'mine';
   b.innerHTML='<div class="set-opt" onclick="openLegend()" style="border:1px solid var(--accent);border-radius:10px;margin-bottom:6px"><i class="ic ic-note"></i> <b>GUIDA</b> · come funziona l\'app, simboli e notifiche</div>'
     +'<div class="set-opt" onclick="openRemPanel()" style="border:1px solid #fbbf24;border-radius:10px;margin-bottom:6px">🔔 <b>PROMEMORIA</b> · avvisi personali sui turni ('+Object.keys(reminders||{}).length+')</div>'
+    +(isDelayAdmin()?'<div class="set-opt" onclick="openAiChat()" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px">💬 <b>CHIEDI ALL\'AI</b> · orari, piloti, rischi</div>':'')
     +(isDelayAdmin()?'<div id="ai-usage-box" class="set-opt" onclick="loadAiUsage(true)" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px;display:block">🤖 <b>SPESA AI</b> · <span id="ai-usage-txt">tocca per aggiornare</span></div>':'')
     +'<div class="set-sec">PROFILO</div><div class="set-opt" onclick="closeModal();showUserPicker()"><i class="ic ic-user"></i> Cambia utente <span style="margin-left:auto;color:var(--text4)">'+currentUserId+'</span></div>'
     +'<div class="set-sec">ASPETTO (QUESTO TELEFONO)</div>'+opt(!light,'Tema scuro','setTheme(false)')+opt(light,'Tema chiaro','setTheme(true)')
@@ -6105,6 +6106,31 @@ async function loadAiUsage(force){
   }catch(e){const el=document.getElementById('ai-usage-txt');if(el)el.textContent='non disponibile';}
 }
 window.loadAiUsage=loadAiUsage;
+/* 21/11/2026 (Andrea): chat AI in pista — per ora solo amministratore. La domanda va in races/<gara>/aiChat/<utente>; risponde il
+   server (la chiave non e' mai nell'app). Un solo ascolto, attivo solo mentre la chat e' aperta. */
+let _aiChatOff=null,_aiChatMsgs={};
+function openAiChat(){
+  if(!isDelayAdmin()||!activeRaceId)return;
+  openModal('<button class="modal-close" onclick="closeAiChat()">✕</button><button class="rem-back" onclick="closeAiChat();openSettings()">← Impostazioni</button><div class="modal-title">💬 Chiedi all\'AI</div>'
+    +'<div class="sp-sub">Risponde con i dati di questa gara: programma, ritardo, i tuoi piloti e quelli dei team. Non modifica niente.</div>'
+    +'<div id="aic-list" style="display:flex;flex-direction:column;gap:8px;margin:10px 0;max-height:50vh;overflow:auto"></div>'
+    +'<div style="display:flex;gap:8px"><input id="aic-q" class="add-input" style="flex:1;margin:0" placeholder="Es. chi dei miei corre dopo pranzo?" onkeydown="if(event.key===\'Enter\')aiChatSend()" autocomplete="off">'
+    +'<button onclick="aiChatSend()" style="min-width:64px;min-height:44px;border-radius:10px;border:none;background:#a78bfa;color:#111;font-weight:900;font-family:inherit">Invia</button></div>');
+  try{if(_aiChatOff)_aiChatOff();}catch(e){}
+  const qr=_fbDb.ref('races/'+activeRaceId+'/aiChat/'+currentUserId).limitToLast(10),cb=sn=>{_aiChatMsgs=sn.val()||{};aiChatRender();};
+  qr.on('value',cb);_aiChatOff=()=>qr.off('value',cb);
+  setTimeout(()=>{const q=document.getElementById('aic-q');if(q)q.focus();},50);
+}
+function closeAiChat(){try{if(_aiChatOff)_aiChatOff();}catch(e){}_aiChatOff=null;closeModal();}
+function aiChatRender(){const el=document.getElementById('aic-list');if(!el)return;const esc=x=>String(x||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>');
+  const L=Object.entries(_aiChatMsgs).sort((a,b)=>(a[1].at||0)-(b[1].at||0));
+  if(!L.length){el.innerHTML='<div style="font-size:13px;color:var(--text4)">Nessuna domanda ancora.</div>';return;}
+  el.innerHTML=L.map(([k,m])=>'<div style="align-self:flex-end;background:var(--bg3);border-radius:10px;padding:8px 10px;font-size:14px;max-width:90%">'+esc(m.q)+'</div>'
+    +'<div style="align-self:flex-start;border:1px solid #a78bfa;border-radius:10px;padding:8px 10px;font-size:14px;max-width:95%">'+(m.a?esc(m.a):m.err?'<span style="color:#f97316">'+esc(m.err)+'</span>':'<span style="color:var(--text4)">sta pensando…</span>')+'</div>').join('');
+  el.scrollTop=el.scrollHeight;}
+function aiChatSend(){const i=document.getElementById('aic-q');const q=(i&&i.value||'').trim();if(!q||!activeRaceId)return;i.value='';
+  _fbDb.ref('races/'+activeRaceId+'/aiChat/'+currentUserId).push({q:q.slice(0,500),at:Date.now()}).catch(()=>{});}
+window.openAiChat=openAiChat;window.closeAiChat=closeAiChat;window.aiChatSend=aiChatSend;
 function openRemPanel(){try{remAttach();}catch(_){}_remEdit=null;
   openModal('<button class="modal-close" onclick="closeModal()">✕</button><button class="rem-back" onclick="openSettings()">← Impostazioni</button><div class="modal-title">🔔 Promemoria</div>'
     +'<div class="sp-sub">Cerca il turno (es. "ok-nj a-e", "16.40", "kz2 sabato") e scegli quando essere avvisato. L\'orario segue il ritardo live.</div>'
