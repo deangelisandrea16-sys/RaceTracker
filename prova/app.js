@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-21-0725';
+var RT_JS_BUILD='2026-11-21-0730';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1169,7 +1169,7 @@ function listenRaceData(raceId){
   function mergeAndRender(){
     if(!sharedReady||!userReady)return;
     currentEntryList=sharedData.entryList||{};window._rtElSig=Date.now();
-    currentSchedule=sharedData.schedule||{};try{wskR2V3Fix();}catch(e){}
+    currentSchedule=sharedData.schedule||{};
     currentDays=sharedData.days||Object.keys(currentSchedule);
     if(!Array.isArray(currentDays))currentDays=typeof currentDays==='object'?Object.values(currentDays):[];
     currentFinals=sharedData.finals||[];
@@ -1397,27 +1397,6 @@ let _hpCache={k:'',m:null};
 function heatPublished(cat,key){try{const el=currentEntryList||{};const sig=Object.keys(el).length+'|'+(window._rtElSig||'');
   if(_hpCache.k!==sig||!_hpCache.m){const m={};Object.values(el).forEach(e=>{if(!e)return;const h=Array.isArray(e.heats)?e.heats:Object.values(e.heats||{});h.forEach(x=>{m[canonCat(e.cat)+'|'+String(x).trim().toUpperCase().split('-').map(y=>y.trim()).sort().join('-')]=1;});});_hpCache={k:sig,m};}
   return!!_hpCache.m[canonCat(cat)+'|'+key];}catch(e){return false;}}
-/* 21/11/2026 (Andrea): timetable WSK Final Cup R2 "Saturday V3" (manche MINI U10 A-E e C-D rinviate per nebbia alle 11.30/11.45,
-   KZ2 spostate a 12.00/12.20). Il server non l'ha letto (PDF nuovo con solo sabato e domenica): correzione una tantum,
-   fatta solo dal titolare, idempotente, con copia del sabato precedente in schedulePrevSabato. */
-function wskR2V3Fix(){
-  if(activeRaceId!=='race_1794582131232'||typeof SERVER_OWNER==='undefined'||currentUserId!==SERVER_OWNER)return;
-  const day=Object.keys(currentSchedule||{}).find(d=>/^SABATO$/i.test(d));if(!day)return;
-  const raw=currentSchedule[day],arr=(Array.isArray(raw)?raw:Object.values(raw||{})).filter(Boolean);
-  if(arr.some(x=>canonCat(x.cat)===canonCat('MINI U10')&&String(x.time)==='11.30'))return; // gia' fatto
-  const prev=JSON.parse(JSON.stringify(arr));
-  const out=arr.map(x=>{const y=Object.assign({},x);const f=[].concat(y.filter||[]).join('-');
-    if(canonCat(y.cat)===canonCat('KZ2')&&y.type==='group'&&f==='A-C'&&String(y.time)==='11.30')y.time='12.00';
-    if(canonCat(y.cat)===canonCat('KZ2')&&y.type==='group'&&f==='B-D'&&String(y.time)==='11.50')y.time='12.20';
-    return y;});
-  const tpl=out.find(x=>canonCat(x.cat)===canonCat('MINI U10')&&x.type==='group')||{};
-  const mk=(t,f)=>Object.assign({},tpl,{time:t,cat:tpl.cat||'MINI U10',label:tpl.label||'MINI U10',type:'group',filter:f,session:''});
-  out.push(mk('11.30',['A','E']),mk('11.45',['C','D']));
-  const mins=t=>{const q=String(t).split(/[.:]/);return(+q[0])*60+(+q[1]||0);};
-  out.sort((a,b)=>mins(a.time)-mins(b.time));
-  const u={};u['races/'+activeRaceId+'/schedule/'+day]=out;u['races/'+activeRaceId+'/schedulePrevSabato']=prev;
-  update(ref(db),u).then(()=>{currentSchedule[day]=out;dlog('Programma sabato aggiornato (WSK V3): +MINI U10 A-E 11.30, C-D 11.45, KZ2 12.00/12.20','info');try{renderAll();}catch(e){}}).catch(e=>dlog('Programma V3 non scritto: '+e.message,'warn'));
-}
 function pilotInGroup(pilot,filterArr){
   // NUOVO: se il pilota ha heats[], controlla se questa coppia di gruppi è nella lista
   // es. filterArr=['A','B'] → cerca 'A-B' in pilot.heats
