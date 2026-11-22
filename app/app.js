@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-22-1300';
+var RT_JS_BUILD='2026-11-22-1305';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2772,6 +2772,7 @@ function mediaChip(p){const x=p&&mediaOf(p.num);if(!x)return'';
   const t=[];if(showC)t.push('<i class="ic ic-video"></i>'+c);if(showF)t.push('<i class="ic ic-camera"></i>'+ff);
   return '<span class="rt-media" title="Materiale smistato'+(showC&&showF?': clip e foto':showC?': clip':': foto')+'">'+t.join('<span class="rt-media-sep">·</span>')+'</span>';}
 function persChip(p){return persChip0(p)+mediaChip(p);}
+function mediaChipSafe(p){try{return typeof mediaChip==='function'?mediaChip(p):'';}catch(e){return'';}}
 function persChip0(p){let ft=null;try{ft=p&&pilots.some(x=>x.num===String(p.num))?followedTeamOf(p.num,p.team||''):null;}catch(e){}
   return ft?'<span title="Pilota del team con acquisto personale" style="font-family:\'Chakra Petch\',sans-serif;font-size:9px;font-weight:700;letter-spacing:.06em;color:#4ade80;border:1px solid rgba(74,222,128,.45);border-radius:4px;padding:0 4px;flex-shrink:0;line-height:14px">PERS</span>':'';}
 /* 19/11/2026 (Andrea): la durata del reel vale solo per chi ha il VIDEO; con solo FOTO non compare da nessuna parte */
@@ -4248,6 +4249,16 @@ function renderSchedule(){
           +(notes[p.num]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+notes[p.num]+'</div>':'')+'</div>';
         _fItems.push({num:p.num,key:_ft?_ft.key:null,html});
       });
+      /* 22/11/2026 (Andrea): nelle finali mancavano i piloti dei team seguiti che non sono tra i miei piloti (es. AKM #842 #843 in finale OKN).
+         Si aggiungono come nei turni: finalisti ufficiali (inFinal), o prima della lista i non eliminati come possibili finalisti. */
+      try{const _mine=new Set(ps.map(p=>String(p.num)));teams.forEach(t=>{const c=teamColor(t.key);
+        const ents=teamEntrants(t).filter(p=>canonCat(p.cat)===canonCat(f.cat)&&!_mine.has(String(p.num)));
+        const anyFin=Object.values(currentEntryList||{}).some(e=>e&&canonCat(e.cat)===canonCat(f.cat)&&e.inFinal===true);
+        ents.filter(p=>{const e=(currentEntryList||{})[p.num]||{};return anyFin?e.inFinal===true:!e.eliminated;}).forEach(p=>{_mine.add(String(p.num));_fItems.push({num:p.num,key:t.key,html:'<div class="card-inner tglow'+(anyFin?'':' final-maybe')+'" style="margin-top:8px;--tc:'+c+'">'
+          +progHead({num:p.num,name:String(p.name).replace(/</g,'&lt;'),team:String(t.name).replace(/</g,'&lt;'),note:noteBtn(p.num),badges:gridBadge(p.num,{type:'final'}),chips:mediaChipSafe(p)})
+          +'<div class="tasks">'+TASKS.map(k=>teamPilotTaskBtn(p.num,k)).join('')+spotPill(p.num)+'</div>'
+          +(teamNotes[t.key]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+teamNotes[t.key]+'</div>':'')+noteLine(p.num)+'</div>'});});});}catch(e){}
+      if(!ps.length&&_fItems.length){const _nm='<div style="font-size:12px;color:var(--text4);padding:8px 2px 2px">Nessun tuo pilota in questa finale</div>',_i=html.lastIndexOf(_nm);if(_i>=0)html=html.slice(0,_i)+html.slice(_i+_nm.length);}
       html+=groupSlotItems(_fItems,true);
       html+='</div>';
     });
