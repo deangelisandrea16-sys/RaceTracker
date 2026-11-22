@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-22-1101';
+var RT_JS_BUILD='2026-11-22-1215';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2113,7 +2113,15 @@ function openCalendar(){
   calQ='';
   openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button><div class="modal-title">Gare disponibili</div><input id="cal-q" type="search" placeholder="Cerca gara, circuito, città…" oninput="calQ=this.value;renderCalendar()" autocomplete="off" style="width:100%;min-height:44px;margin:0 0 10px;padding:10px 12px;border-radius:10px;border:1px solid var(--border,#333);background:var(--bg2,#151518);color:var(--text,#eee);font-size:15px;box-sizing:border-box"><div id="cal-body"><div class="empty-state"><p>Caricamento…</p></div></div>');
   if(calData){renderCalendar();return;}
-  fetch('calendar.json',{cache:'no-cache'}).then(r=>r.json()).then(d=>{calData=d;renderCalendar();}).catch(()=>{
+  // 22/11/2026 (Andrea): calendario automatico. Alle gare di calendar.json si aggiungono quelle trovate dal server sui siti ufficiali
+  // (calendarAuto/events: solo gare nuove). Se il nodo non risponde si mostra comunque calendar.json.
+  const auto=new Promise(res=>{const t=setTimeout(()=>res(null),4000);try{_fbDb.ref('calendarAuto').once('value').then(s=>{clearTimeout(t);res(s.val());}).catch(()=>{clearTimeout(t);res(null);});}catch(e){clearTimeout(t);res(null);}});
+  fetch('calendar.json',{cache:'no-cache'}).then(r=>r.json()).then(d=>auto.then(a=>{
+    const ids=new Set((d.events||[]).map(e=>e.id));
+    const extra=Object.values((a&&a.events)||{}).filter(e=>e&&e.id&&!ids.has(e.id));
+    d.events=(d.events||[]).concat(extra);
+    if(a&&a.updated&&a.updated>d.updated)d.updated=a.updated;
+    calData=d;renderCalendar();})).catch(()=>{
     const el=document.getElementById('cal-body');if(el)el.innerHTML='<div class="empty-state"><p>Calendario non disponibile offline.</p></div>';
   });
 }
