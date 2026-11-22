@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-22-1245';
+var RT_JS_BUILD='2026-11-22-1250';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2771,8 +2771,14 @@ function reelText(v){return String(v||'')==='clip'?'Clip sfuse':'Reel '+reelLabe
    Arriva con i dati condivisi della gara (gia' in ascolto). Piccolo e grigio accanto al nome; nascosto se assente o 0/0.
    Si aggancia a persChip perche' persChip e' presente in tutte le righe pilota (lista, dettaglio, programma, griglie/arrivi, ricerca). */
 function mediaOf(num){try{const m=(window._rtMedia||{})[currentUserId]||{};const x=m[String(num)];return x&&typeof x==='object'&&((+x.c||0)+(+x.f||0))>0?x:null;}catch(e){return null;}}
+/* 22/11/2026 (Andrea): si mostra il dato che interessa per quel pilota: evidenziato VIDEO → solo clip, FOTO → solo foto,
+   entrambi o nessuno (o pilota non seguito) → clip e foto. Se il dato che interessa e' 0, il contatore non compare. */
 function mediaChip(p){const x=p&&mediaOf(p.num);if(!x)return'';
-  return '<span class="rt-media" title="Materiale smistato: clip e foto"><i class="ic ic-video"></i>'+(+x.c||0)+'<span class="rt-media-sep">·</span><i class="ic ic-camera"></i>'+(+x.f||0)+'</span>';}
+  const mp=(typeof pilots!=='undefined'&&pilots.find(y=>y.num===String(p.num)))||p;
+  const v=hasVideo(mp),f=hasFoto(mp),showC=v||!f,showF=f||!v,c=+x.c||0,ff=+x.f||0;
+  if(!((showC&&c)||(showF&&ff)))return'';
+  const t=[];if(showC)t.push('<i class="ic ic-video"></i>'+c);if(showF)t.push('<i class="ic ic-camera"></i>'+ff);
+  return '<span class="rt-media" title="Materiale smistato'+(showC&&showF?': clip e foto':showC?': clip':': foto')+'">'+t.join('<span class="rt-media-sep">·</span>')+'</span>';}
 function persChip(p){return persChip0(p)+mediaChip(p);}
 function persChip0(p){let ft=null;try{ft=p&&pilots.some(x=>x.num===String(p.num))?followedTeamOf(p.num,p.team||''):null;}catch(e){}
   return ft?'<span title="Pilota del team con acquisto personale" style="font-family:\'Chakra Petch\',sans-serif;font-size:9px;font-weight:700;letter-spacing:.06em;color:#4ade80;border:1px solid rgba(74,222,128,.45);border-radius:4px;padding:0 4px;flex-shrink:0;line-height:14px">PERS</span>':'';}
