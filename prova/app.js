@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-22-1331';
+var RT_JS_BUILD='2026-11-22-1846';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3724,14 +3724,15 @@ function renderPilots(){
     const hlCls=hlClassOf(hl);
     return'<div class="card '+hlCls+'">'
     +'<div class="pilot-header">'
-    +'<div style="display:flex;align-items:flex-start;gap:10px;">'
-    +'<span class="pilot-index">'+(i+1)+'.</span><div>'
+    +'<div style="display:flex;align-items:flex-start;gap:10px;min-width:0;flex:1">'
+    +'<span class="pilot-index">'+(i+1)+'.</span><div style="min-width:0">'
     +'<div class="pilot-cat '+catClass(p.cat)+'">'+p.cat+(isElim?' <span style="color:#ef4444;font-size:9px">ELIMINATO</span>':'')+'</div>'
-    +'<div style="display:flex;align-items:center;gap:8px;margin-top:3px">'
+    /* 22/11/2026 (Andrea): riga del nome a capo se non ci sta (con reel e contatore la colonna di destra usciva dallo schermo) */
+    +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;margin-top:3px">'
     +'<span class="pilot-num">#'+p.num+'</span>'+riskTri(p.num)
     +'<span class="pilot-name">'+p.name+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)+'</div>'
     +'<div class="pilot-team">'+p.team+'</div></div></div>'
-    +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">'
+    +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px;flex-shrink:0">'
     +(hl.length?'<div class="hl-badges">'+hl.map(function(h){return'<span class="hl-badge hl-'+h+'">'+(hlLabels[h]||h)+'</span>';}).join('')+'</div>':'')
     +'<span class="parity-badge">'+p.parity+'</span>'
     +'<span class="group-badge '+(pilotHasGroupData(p)?'set':'')+'">'
