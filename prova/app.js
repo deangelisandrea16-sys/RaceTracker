@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-22-0946';
+var RT_JS_BUILD='2026-11-22-1101';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -750,7 +750,7 @@ function showUserPicker(){
   if(savedUsers.length){
     usersHtml='<div style="margin-bottom:16px">'
       +savedUsers.map(u=>'<button style="width:100%;padding:14px;background:var(--bg3);border:1.5px solid '+(u===currentUserId?'#22c55e':'var(--border2)')+';border-radius:10px;font-family:inherit;font-size:16px;font-weight:900;color:'+(u===currentUserId?'#22c55e':'var(--text)')+';cursor:pointer;margin-bottom:8px;letter-spacing:2px;text-transform:uppercase" onclick="selectSavedUser(\''+u+'\')">'
-        +u+(u===currentUserId?' ✓':'')+'</button>').join('')
+        +u+(u===currentUserId?' <i class="ic ic-check"></i>':'')+'</button>').join('')
       +'</div>'
       +'<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">'
       +'<div style="font-size:10px;color:var(--text4);font-weight:700;letter-spacing:1px;margin-bottom:8px">NUOVO UTENTE</div>';
@@ -772,7 +772,7 @@ function rtSwitchHtml(){
   const h=['<div class="modal-title">Account</div>'];
   if(prova){h.push('<div style="font-size:13px;margin-bottom:14px">Sei nell\'<b>UTENTE PROVA</b> (dati di test).</div>');
     h.push(b('TORNA AL MIO ACCOUNT',false,"location.href=location.pathname"));return h.join('');}
-  h.push(b([String(me).toUpperCase(),' ✓'].join(''),true,'closeModal()'));
+  h.push(b([String(me).toUpperCase(),' <i class="ic ic-check"></i>'].join(''),true,'closeModal()'));
   h.push(rtAccountHtml().replace('<div class="modal-title">Account</div>',''));
   return h.join('');
 }
@@ -970,7 +970,7 @@ function rtAdminPanel(){
         '<input class="form-input adm-in" id="ad-name" placeholder="nome utente (es. ricky)" autocomplete="off"><button class="adm-btn ok" onclick="rtAdminAdd()">ABILITA</button></div>');
       emk.forEach(k=>{const n=String(em[k]),used=Object.values(mp).some(v=>v&&rtEmailKey(v.email)===k),lock=RT_ADMINS.includes(n)||rtEmailKey((_fbAuth.currentUser||{}).email)===k;
         h.push('<div class="adm-card"><div class="adm-row">',rtAvatar(n),'<div class="adm-who"><div class="adm-mail">',rtEsc(k.replace(/,/g,'.')),'</div><div class="adm-sub">→ <b>',rtEsc(n.toUpperCase()),'</b>',used?'':' · mai entrato','</div></div>',
-          lock?'<span class="adm-now">🔒</span>':['<button class="adm-btn sm no" onclick="rtUnlink(\'',rtEsc(k),'\')">SCOLLEGA</button>'].join(''),'</div></div>');});
+          lock?'<span class="adm-now"><i class="ic ic-lock"></i></span>':['<button class="adm-btn sm no" onclick="rtUnlink(\'',rtEsc(k),'\')">SCOLLEGA</button>'].join(''),'</div></div>');});
     }
     h.push('<button class="adm-btn ghost" onclick="rtLogout()">ESCI DA QUESTO TELEFONO</button></div>');
     openModal(h.join(''));
@@ -1142,7 +1142,7 @@ function listenRaces(){
       if(_live&&_live!==activeRaceId&&!window._rtAutoPicked){ window._rtAutoPicked=true; switchRace(_live); }
       else { window._rtAutoPicked=true; updateRaceHeader(); if(activeTab==='gare') renderGare(); if(initialized) bootTab(); }
     }
-  },err=>{setSyncStatus('err');dlog('❌ races_index: '+err.message,'err');console.error(err);});
+  },err=>{setSyncStatus('err');dlog('races_index: '+err.message,'err');console.error(err);});
 }
 
 /* copia dell'ultimo stato ricevuto dal server, base per salvare solo i campi cambiati (vedi rtDiff) */
@@ -1234,14 +1234,14 @@ function listenRaceData(raceId){
     dlog('Dati gara condivisi: entryList='+Object.keys(sharedData.entryList||{}).length+', days='+(sharedData.days||[]).length,'ok');
     sharedReady=true;
     mergeAndRender();
-  },err=>{setSyncStatus('err');dlog('❌ shared data: '+err.message,'err');});
+  },err=>{setSyncStatus('err');dlog('shared data: '+err.message,'err');});
 
   const unsub2=onValue(userRef,snap=>{
     userData=snap.val()||{};saveSnap();rtSetBase(null,userData);userLive=true;_rtUserLiveKey='';
     dlog('Dati utente ['+currentUserId+']: pilots='+Object.keys(userData.pilots||{}).length,'ok');
     userReady=true;
     mergeAndRender();
-  },err=>{setSyncStatus('err');dlog('❌ user data: '+err.message,'err');});
+  },err=>{setSyncStatus('err');dlog('user data: '+err.message,'err');});
 
   // Storico avvisi condiviso fra i dispositivi dello stesso utente (tel + PC)
   const alertsRef=ref(db,'alertsLog/'+raceId+'/'+currentUserId);
@@ -1317,7 +1317,7 @@ function rtWrite(u,what){
   const n=Object.keys(u).length;
   if(!n){dlog('Salvataggio '+(what||'')+': nessuna modifica','info');return Promise.resolve();}
   setSyncStatus('saving');dlog('Salvataggio '+(what||'')+': '+n+' campi','info');
-  return update(ref(db),u).then(()=>setSyncStatus('ok')).catch(e=>{setSyncStatus('err');console.error(e);dlog('❌ salvataggio: '+e.message,'err');});
+  return update(ref(db),u).then(()=>setSyncStatus('ok')).catch(e=>{setSyncStatus('err');console.error(e);dlog('salvataggio: '+e.message,'err');});
 }
 /* 15/11/2026 (bug #637 di Andrea): un pilota rimosso tornava indietro. Un dispositivo con dati vecchi in memoria
    (app riaperta dopo ore, cambio utente/gara prima che arrivino i dati nuovi) salvava di nuovo l'elenco vecchio.
@@ -1537,7 +1537,7 @@ function editPilotNote(num){
   const p=pilots.find(x=>x.num===num);const _e=(currentEntryList||{})[num]||{};
   const _nm=p?p.name:String((_e.lastName||'')+' '+(_e.firstName||'')).trim();
   const cur=(notes[num]||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
-  openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
+  openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button>'
     +'<div class="modal-title">Nota #'+num+(_nm?' · '+String(_nm).replace(/</g,'&lt;'):'')+'</div>'
     +'<div class="form-group"><textarea class="form-textarea" id="pn-text" style="min-height:120px" placeholder="Commento, appunti, cosa fare...">'+cur+'</textarea></div>'
     +'<button class="form-submit" onclick="savePilotNote(\''+num+'\')">SALVA</button>'
@@ -1593,8 +1593,8 @@ function importData(event){
       if(data.schedule)currentSchedule=data.schedule;
       if(data.days)currentDays=data.days;
       if(data.finals)currentFinals=data.finals;
-      saveAll();alert('✅ Dati importati!');
-    }catch(err){alert('❌ File non valido');}
+      saveAll();alert('Dati importati!');
+    }catch(err){alert('File non valido');}
   };
   reader.readAsText(file);event.target.value='';
 }
@@ -1717,40 +1717,40 @@ function reelMatches(p){if(!filterReel.size)return true;if(!hasVideo(p))return f
 // ══════════════════════════════════════
 async function runFirebaseTest(){
   debugLogs=[];
-  dlog('🚀 Inizio test Firebase...','info');
+  dlog('Inizio test Firebase...','info');
 
   // Step 1: REST API test on root
   dlog('Step 1: Test REST API root (shallow)...','info');
   try{
     const r=await fetch('https://karting-tools-default-rtdb.firebaseio.com/.json?shallow=true');
-    if(r.ok){const d=await r.json();dlog('✅ REST root OK — chiavi: '+Object.keys(d||{}).join(', '),'ok');}
-    else{dlog('❌ REST root HTTP '+r.status,'err');}
-  }catch(e){dlog('❌ REST root: '+e.message,'err');}
+    if(r.ok){const d=await r.json();dlog('REST root OK — chiavi: '+Object.keys(d||{}).join(', '),'ok');}
+    else{dlog('REST root HTTP '+r.status,'err');}
+  }catch(e){dlog('REST root: '+e.message,'err');}
 
   // Step 2: REST on /tracker (old path)
   dlog('Step 2: Test REST /tracker...','info');
   try{
     const r=await fetch('https://karting-tools-default-rtdb.firebaseio.com/tracker.json?shallow=true');
-    if(r.ok){const d=await r.json();dlog(d?'✅ /tracker esiste — chiavi: '+Object.keys(d).join(', '):'⚠️ /tracker è vuoto/null','ok');}
-    else{dlog('❌ /tracker HTTP '+r.status,'err');}
-  }catch(e){dlog('❌ /tracker: '+e.message,'err');}
+    if(r.ok){const d=await r.json();dlog(d?'/tracker esiste — chiavi: '+Object.keys(d).join(', '):'/tracker è vuoto/null','ok');}
+    else{dlog('/tracker HTTP '+r.status,'err');}
+  }catch(e){dlog('/tracker: '+e.message,'err');}
 
   // Step 3: REST on /races_index
   dlog('Step 3: Test REST /races_index...','info');
   try{
     const r=await fetch('https://karting-tools-default-rtdb.firebaseio.com/races_index.json');
-    if(r.ok){const d=await r.json();dlog(d?'✅ /races_index esiste — '+Object.keys(d).length+' gare':'⚠️ /races_index vuoto — nessuna gara creata','ok');}
-    else{dlog('❌ /races_index HTTP '+r.status,'err');}
-  }catch(e){dlog('❌ /races_index: '+e.message,'err');}
+    if(r.ok){const d=await r.json();dlog(d?'/races_index esiste — '+Object.keys(d).length+' gare':'/races_index vuoto — nessuna gara creata','ok');}
+    else{dlog('/races_index HTTP '+r.status,'err');}
+  }catch(e){dlog('/races_index: '+e.message,'err');}
 
   // Step 4: REST on active race
   if(activeRaceId){
     dlog('Step 4: Test REST /races/'+activeRaceId+'...','info');
     try{
       const r=await fetch('https://karting-tools-default-rtdb.firebaseio.com/races/'+activeRaceId+'.json?shallow=true');
-      if(r.ok){const d=await r.json();dlog(d?'✅ Gara attiva OK — chiavi: '+Object.keys(d).join(', '):'⚠️ Gara attiva vuota','ok');}
-      else{dlog('❌ Gara attiva HTTP '+r.status,'err');}
-    }catch(e){dlog('❌ Gara attiva: '+e.message,'err');}
+      if(r.ok){const d=await r.json();dlog(d?'Gara attiva OK — chiavi: '+Object.keys(d).join(', '):'Gara attiva vuota','ok');}
+      else{dlog('Gara attiva HTTP '+r.status,'err');}
+    }catch(e){dlog('Gara attiva: '+e.message,'err');}
   } else {
     dlog('Step 4: Nessuna gara attiva selezionata','warn');
   }
@@ -1758,18 +1758,18 @@ async function runFirebaseTest(){
   // Step 5: SDK WebSocket test
   dlog('Step 5: Test SDK .info/connected...','info');
   onValue(ref(db,'.info/connected'),snap=>{
-    if(snap.val()===true)dlog('✅ WebSocket CONNESSO','ok');
-    else dlog('⚠️ WebSocket non connesso','warn');
+    if(snap.val()===true)dlog('WebSocket CONNESSO','ok');
+    else dlog('WebSocket non connesso','warn');
   },{onlyOnce:true});
 
   // Step 6: SDK write test
   dlog('Step 6: Test SDK scrittura...','info');
   try{
     await set(ref(db,'_test_ping'),{t:Date.now()});
-    dlog('✅ Scrittura SDK OK','ok');
+    dlog('Scrittura SDK OK','ok');
     await set(ref(db,'_test_ping'),null); // cleanup
   }catch(e){
-    dlog('❌ Scrittura SDK fallita: '+e.message,'err');
+    dlog('Scrittura SDK fallita: '+e.message,'err');
     if(e.message.includes('PERMISSION_DENIED'))dlog('→ Le Firebase Rules bloccano la scrittura! Controlla le rules nella console Firebase.','err');
   }
 
@@ -1781,7 +1781,7 @@ async function runFirebaseTest(){
   dlog('Entry list: '+Object.keys(currentEntryList).length+' piloti','info');
   dlog('Schedule: '+currentDays.length+' giorni','info');
   dlog('URL: '+location.href,'info');
-  dlog('Test completato ✓','ok');
+  dlog('Test completato ','ok');
 }
 window.runFirebaseTest=runFirebaseTest;
 
@@ -1874,7 +1874,7 @@ function renderGare(){
         +'</div>'
         +'<div style="display:flex;gap:6px;margin-top:10px">'
         +'<button class="io-btn" style="font-size:10px;padding:8px" onclick="event.stopPropagation();openRaceSettings(\''+id+'\')"><i class="ic ic-gear"></i> IMPOSTAZIONI</button>'
-        +(isActive?'':'<button class="io-btn" style="font-size:10px;padding:8px;border-color:#ef4444;color:#ef4444" onclick="event.stopPropagation();deleteRace(\''+id+'\')">✕ ELIMINA</button>')
+        +(isActive?'':'<button class="io-btn" style="font-size:10px;padding:8px;border-color:#ef4444;color:#ef4444" onclick="event.stopPropagation();deleteRace(\''+id+'\')"><i class="ic ic-close"></i> ELIMINA</button>')
         +'</div></div>';
     });
 
@@ -1917,7 +1917,7 @@ function loadOrgCatalog(){
     try{localStorage.setItem('rt_orgs',JSON.stringify(d));}catch(e){}
     dlog('Catalogo organizzazioni: '+ORG_KEYS.length+' org, '+CIRCUIT_LIVE.length+' circuiti','ok');
     try{if(activeRaceId){setLiveTimingSrc();apexConnect();}}catch(e){}
-  }).catch(e=>dlog('❌ orgs.json: '+e.message,'err'));
+  }).catch(e=>dlog('orgs.json: '+e.message,'err'));
 }
 loadOrgCatalog();
 function orgOptions(sel){
@@ -1947,9 +1947,9 @@ function rtLiveCheck(){
   const r={liveTiming:v('rs-livetiming'),org:v('rs-org')||cur.org||'',circuit:cur.circuit||'',name:cur.name||''};
   const url=resolveLiveUrl(r);const m=url.match(/apex-timing\.com\/live-timing\/([a-z0-9\-]+)\//i);
   const name=m?m[1].toLowerCase():'',port=name?APEX_LIVE_PORTS[name]:0;
-  el.innerHTML=name&&port?['<span style="color:#22c55e">✓ Collegato al live <b>',name,'</b>',r.liveTiming?'':' (predefinito)','</span>'].join('')
-    :name?['<span style="color:#f59e0b">⚠ Live <b>',name,'</b> non ancora noto all\'app: niente orari automatici</span>'].join('')
-    :'<span style="color:#ef4444">⚠ Link non riconosciuto: niente live né orari automatici. Usa il link Apex (apex-timing.com/live-timing/…)</span>';
+  el.innerHTML=name&&port?['<span style="color:#22c55e"><i class="ic ic-check"></i> Collegato al live <b>',name,'</b>',r.liveTiming?'':' (predefinito)','</span>'].join('')
+    :name?['<span style="color:#f59e0b"><i class="ic ic-warn"></i> Live <b>',name,'</b> non ancora noto all\'app: niente orari automatici</span>'].join('')
+    :'<span style="color:#ef4444"><i class="ic ic-warn"></i> Link non riconosciuto: niente live né orari automatici. Usa il link Apex (apex-timing.com/live-timing/…)</span>';
 }
 window.rtLiveCheck=rtLiveCheck;
 // Embed live timing per-gara: usa l'URL della gara, fallback al default dell'organizzazione
@@ -2043,7 +2043,7 @@ function renderLtMyNums(){
 window.renderLtMyNums=renderLtMyNums;
 function copyNum(n,btn){
   try{navigator.clipboard.writeText(n);}catch(e){}
-  if(btn){const o=btn.innerHTML;btn.innerHTML='✓';setTimeout(function(){btn.innerHTML=o;},900);}
+  if(btn){const o=btn.innerHTML;btn.innerHTML='<i class="ic ic-check"></i>';setTimeout(function(){btn.innerHTML=o;},900);}
 }
 window.copyNum=copyNum;
 function openLiveTimingTab(){
@@ -2111,7 +2111,7 @@ function calAdded(ev){
 }
 function openCalendar(){
   calQ='';
-  openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Gare disponibili</div><input id="cal-q" type="search" placeholder="Cerca gara, circuito, città…" oninput="calQ=this.value;renderCalendar()" autocomplete="off" style="width:100%;min-height:44px;margin:0 0 10px;padding:10px 12px;border-radius:10px;border:1px solid var(--border,#333);background:var(--bg2,#151518);color:var(--text,#eee);font-size:15px;box-sizing:border-box"><div id="cal-body"><div class="empty-state"><p>Caricamento…</p></div></div>');
+  openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button><div class="modal-title">Gare disponibili</div><input id="cal-q" type="search" placeholder="Cerca gara, circuito, città…" oninput="calQ=this.value;renderCalendar()" autocomplete="off" style="width:100%;min-height:44px;margin:0 0 10px;padding:10px 12px;border-radius:10px;border:1px solid var(--border,#333);background:var(--bg2,#151518);color:var(--text,#eee);font-size:15px;box-sizing:border-box"><div id="cal-body"><div class="empty-state"><p>Caricamento…</p></div></div>');
   if(calData){renderCalendar();return;}
   fetch('calendar.json',{cache:'no-cache'}).then(r=>r.json()).then(d=>{calData=d;renderCalendar();}).catch(()=>{
     const el=document.getElementById('cal-body');if(el)el.innerHTML='<div class="empty-state"><p>Calendario non disponibile offline.</p></div>';
@@ -2181,7 +2181,7 @@ function addFromCalendar(id){
 }
 window.openCalendar=openCalendar;window.setCalOrg=setCalOrg;window.setCalSer=setCalSer;window.addFromCalendar=addFromCalendar;
 function openNewRace(){
-  openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
+  openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button>'
     +'<div class="modal-title">Nuova Gara</div>'
     +'<div class="form-group"><label class="form-label">Nome Gara</label>'
     +'<input class="form-input" id="nr-name" placeholder="es. WSK Super Master R1"></div>'
@@ -2231,7 +2231,7 @@ window.createRace=createRace;
 
 function openRaceSettings(raceId){
   const r=races[raceId];if(!r)return;
-  openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
+  openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button>'
     +'<div class="modal-title"><i class="ic ic-gear"></i> '+r.name+'</div>'
     +'<div class="form-group"><label class="form-label">Nome Gara</label>'
     +'<input class="form-input" id="rs-name" value="'+r.name+'"></div>'
@@ -2291,7 +2291,7 @@ window.openRaceSettings=openRaceSettings;
 
 // ── WSK HEATS: paste modal + bookmarklet ──
 function openWSKPasteModal(raceId){
-  openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
+  openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button>'
     +'<div class="modal-title"><i class="ic ic-download"></i> Incolla Heats da WSK</div>'
     +'<div style="font-size:11px;color:var(--text4);margin-bottom:14px;line-height:1.6">'
     +'1. Vai su <strong style="color:var(--text)">wskarting.it/results/results.asp</strong><br>'
@@ -2299,7 +2299,7 @@ function openWSKPasteModal(raceId){
     +'3. Aspetta qualche secondo, poi incolla qui sotto</div>'
     +'<div class="form-group"><label class="form-label">JSON copiato dal bookmarklet</label>'
     +'<textarea class="form-textarea" id="wsk-paste-input" placeholder=\'[{"num":"563","heats":["B-C","B-D"]}, ...]\' style="min-height:120px;font-size:11px"></textarea></div>'
-    +'<button class="form-submit" onclick="applyWSKHeats(\''+raceId+'\')">✅ APPLICA</button>');
+    +'<button class="form-submit" onclick="applyWSKHeats(\''+raceId+'\')">APPLICA</button>');
   // Prova a leggere dagli appunti automaticamente
   navigator.clipboard.readText().then(text=>{
     if(text&&text.trim().startsWith('[')){
@@ -2345,9 +2345,9 @@ function applyWSKHeats(raceId){
     });
     if(Object.keys(entryUpdates).length)update(ref(db),entryUpdates);
     saveAll();
-    alert('✅ Heats aggiornate!\n'+updated+' tuoi piloti aggiornati'+(notFound?' ('+notFound+' non trovati tra i tuoi piloti)':''));
+    alert('Heats aggiornate!\n'+updated+' tuoi piloti aggiornati'+(notFound?' ('+notFound+' non trovati tra i tuoi piloti)':''));
     closeModal();
-  }catch(e){alert('❌ JSON non valido: '+e.message);}
+  }catch(e){alert('JSON non valido: '+e.message);}
 }
 window.applyWSKHeats=applyWSKHeats;
 
@@ -2392,12 +2392,12 @@ function showWSKBookmarklet(){
     +'}'
     +'const result=Object.entries(ph).map(([num,d])=>{const o={num};if(d.heats.length)o.heats=d.heats.sort();if(d.prefinal)o.prefinal=d.prefinal;if(d.inFinal)o.inFinal=true;return o;}).sort((a,b)=>parseInt(a.num)-parseInt(b.num));'
     +'const json=JSON.stringify(result);'
-    +'navigator.clipboard.writeText(json).then(()=>alert(\'✅ \'+Object.keys(ph).length+\' piloti. Torna nell\\\'app e incolla.\')).catch(()=>{prompt(\'Copia:\',json);});'
+    +'navigator.clipboard.writeText(json).then(()=>alert(\'\'+Object.keys(ph).length+\' piloti. Torna nell\\\'app e incolla.\')).catch(()=>{prompt(\'Copia:\',json);});'
     +'})();;';
 
   const bookmarklet='javascript:'+encodeURIComponent(script);
 
-  openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
+  openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button>'
     +'<div class="modal-title"><i class="ic ic-bookmark"></i> Bookmarklet WSK Heats</div>'
     +'<div style="font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.7">'
     +'<strong style="color:var(--text)">Setup una tantum:</strong><br>'
@@ -2466,8 +2466,8 @@ function uploadEntryList(event,raceId){
       const u={};
       u['races/'+raceId+'/entryList']=entryList;
       u['races_index/'+raceId+'/entryCount']=count;
-      update(ref(db),u).then(()=>{alert('✅ Entry list caricata: '+count+' piloti');closeModal();});
-    }catch(err){alert('❌ File non valido');}
+      update(ref(db),u).then(()=>{alert('Entry list caricata: '+count+' piloti');closeModal();});
+    }catch(err){alert('File non valido');}
   };
   reader.readAsText(file);event.target.value='';
 }
@@ -2511,9 +2511,9 @@ function uploadMyPilots(event,raceId){
           u['races/'+raceId+'/users/'+currentUserId+'/notes']=newNotes;
           u['races/'+raceId+'/users/'+currentUserId+'/trackStatus']=newTrack;
           u['races_index/'+raceId+'/pilotCount']=count;
-          update(ref(db),u).then(()=>{alert('✅ '+count+' piloti caricati');closeModal();});
+          update(ref(db),u).then(()=>{alert(''+count+' piloti caricati');closeModal();});
         });
-    }catch(err){alert('❌ File non valido');}
+    }catch(err){alert('File non valido');}
   };
   reader.readAsText(file);event.target.value='';
 }
@@ -2538,8 +2538,8 @@ function uploadSchedule(event,raceId){
       u['races/'+raceId+'/schedule']=schedule;
       u['races/'+raceId+'/days']=days;
       u['races/'+raceId+'/finals']=finals;
-      update(ref(db),u).then(()=>{alert('✅ Programma caricato: '+days.length+' giorni');closeModal();});
-    }catch(err){alert('❌ File non valido');}
+      update(ref(db),u).then(()=>{alert('Programma caricato: '+days.length+' giorni');closeModal();});
+    }catch(err){alert('File non valido');}
   };
   reader.readAsText(file);event.target.value='';
 }
@@ -2623,14 +2623,14 @@ function uploadAssignments(event,raceId){
       if(Object.keys(entryUpdates).length)update(ref(db),entryUpdates);
 
       saveAll();
-      let msg='✅ Assegnazioni aggiornate!\n'+updated+' piloti aggiornati';
+      let msg='Assegnazioni aggiornate!\n'+updated+' piloti aggiornati';
       if(hasHeats)msg+='\n(formato heats[] — corrispondenza slot precisa)';
       else if(hasGroup)msg+='\n(formato group legacy)';
       if(eliminated)msg+='\n'+eliminated+' piloti eliminati (non in lista)';
       if(reactivated)msg+='\n'+reactivated+' piloti riattivati';
       alert(msg);
       closeModal();
-    }catch(err){alert('❌ File non valido: '+err.message);}
+    }catch(err){alert('File non valido: '+err.message);}
   };
   reader.readAsText(file);event.target.value='';
 }
@@ -2644,7 +2644,7 @@ function loadDefaultWSK(raceId){
   u['races/'+raceId+'/days']=DAYS;
   u['races/'+raceId+'/finals']=FINALS;
   u['races_index/'+raceId+'/entryCount']=Object.keys(ENTRY_LIST).length;
-  update(ref(db),u).then(()=>{alert('✅ Dati WSK caricati');closeModal();});
+  update(ref(db),u).then(()=>{alert('Dati WSK caricati');closeModal();});
 }
 window.loadDefaultWSK=loadDefaultWSK;
 
@@ -2734,7 +2734,7 @@ function gridBadge(num,slot){
       const last=same.sort((a,b)=>slotMins(b.time)-slotMins(a.time))[0];if(last&&last.time===slot.time)r=old;}}catch(x){}}
   const _out=(e.out&&e.out[k])||/^(X|DNF|DNS|RIT|AB|NC|RET|DSQ|SQ)/i.test(String(r||''));
   if(r!==undefined&&r!==null&&r!==''&&slotHasRun(slot)&&_out)
-    return'<span title="Uscito: posizione in classifica" style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:900;color:#fff;background:#dc2626;border-radius:5px;padding:1px 7px;flex-shrink:0">✕'+(/^\d+$/.test(String(r))?' '+r+'°':/DSQ|SQ/i.test(String(r))?' SQ':'')+'</span>';
+    return'<span title="Uscito: posizione in classifica" style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:900;color:#fff;background:#dc2626;border-radius:5px;padding:1px 7px;flex-shrink:0"><i class="ic ic-close"></i>'+(/^\d+$/.test(String(r))?' '+r+'°':/DSQ|SQ/i.test(String(r))?' SQ':'')+'</span>';
   if(r!==undefined&&r!==null&&r!==''&&slotHasRun(slot)){const t=/^\d+$/.test(String(r))?String(r)+'°':String(r).toUpperCase();
     const rs=resStatusOf(e.cat,k),uff=!!(rs&&rs.st==='ufficiale'),cor=!!(rs&&rs.corr);
     const tip=(uff?'Arrivo ufficiale':'Arrivo provvisorio'+(rs?' (classifica non ancora ufficiale)':' (dal live)'))+(cor?' · corretto dopo la pubblicazione':'');
@@ -2882,7 +2882,7 @@ function openPilotDetail(num){
   const existingNote=notes[num]||'';
   _addHl=[defaultHl()];_addReel='30';   // 19/11/2026: stessi predefiniti di "Aggiungi pilota"
 
-  openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
+  openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button>'
     +'<div class="detail-sheet">'
     +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
     +'<span style="font-size:28px;font-weight:900">#'+num+'</span>'
@@ -2959,7 +2959,7 @@ function loadPilotHistory(name){
 
 function saveDetailNote(num){
   const el=document.getElementById('detail-note');
-  if(el){notes[num]=el.value;saveUserField('notes',notes);alert('✅ Note salvate');}
+  if(el){notes[num]=el.value;saveUserField('notes',notes);alert('Note salvate');}
 }
 window.saveDetailNote=saveDetailNote;
 
@@ -3151,7 +3151,7 @@ function renderTeams(){
       +'<div class="pilot-team">'+ents.length+' piloti iscritti</div>'
       +'<div class="team-nums">'+ents.map(p=>'<span class="team-num'+(pilots.some(x=>x.num===p.num)?' mine':'')+'" onclick="openPilotDetail(\''+p.num+'\')">#'+p.num+'</span>').join('')+'</div>'
       +'</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">'
-      +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="removeTeam(\''+escAttr(t.key)+'\')">✕ rimuovi</button></div></div>'
+      +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="removeTeam(\''+escAttr(t.key)+'\')"><i class="ic ic-close"></i> rimuovi</button></div></div>'
       +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,false)).join('')+'</div>'
       +teamWorkRowHtml(t)
       +'<div class="note-wrap"><span class="note-label">Note</span>'
@@ -3165,7 +3165,7 @@ function renderTeams(){
 let ovShowAll=false;
 function slotMins(t){const p=String(t).split('.');return parseInt(p[0])*60+parseInt(p[1]||'0');}
 function openOverview(){
-  openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
+  openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button>'
     +'<div style="font-size:14px;font-weight:900;margin-bottom:4px"><i class="ic ic-list"></i> '+activeDay+'</div>'
     +'<div style="font-size:10px;color:var(--text4);font-weight:700;margin-bottom:10px">Colore = pillola PISTA · tocca un numero per la scheda</div>'
     +'<button class="pv-btn" id="ov-all" style="width:100%;margin-bottom:10px" onclick="ovShowAll=!ovShowAll;renderOverviewBody()"></button>'
@@ -3224,7 +3224,7 @@ function autoDayName(){
    Chiede: copia negli appunti (testo per l'editor) oppure PDF con tutti i dati (stampa -> "Salva come PDF"). */
 function openExportPilots(){
   if(!pilots.length&&!teams.length){alert('Nessun pilota da esportare');return;}
-  openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Esporta piloti</div>'
+  openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button><div class="modal-title">Esporta piloti</div>'
     +'<button class="form-submit" style="margin-bottom:10px" onclick="closeModal();copyAllForEditor()"><i class="ic ic-list"></i> COPIA NEGLI APPUNTI</button>'
     +'<button class="form-submit" style="background:none;border:1.5px solid var(--border2,#444);color:var(--text)" onclick="closeModal();exportPilotsPdf()"><i class="ic ic-download"></i> PDF CON TUTTI I DATI</button>'
     +'<button class="form-submit" style="margin-top:10px;background:none;border:1.5px solid var(--border2,#444);color:var(--text)" onclick="closeModal();exportPilotsJson()"><i class="ic ic-download"></i> JSON (PILOTI E TEAM)</button>');
@@ -3321,7 +3321,7 @@ function copyAllForEditor(){
     if(g.length)parts.push('#'+String(t.name||t.key).toUpperCase()+(function(){const w=teamWork(t);return' · '+w.highlight.map(x=>x==='foto'?'Foto':'Video').join(' + ')+(w.reel?' · '+reelText(w.reel):'');})()+'\n\n'+g.map(p=>fmt(p).replace(/^(#\S+ [^\n]*)/,p._pers?'$1 (anche personale)':'$1')).join('\n\n'));});
   const text=parts.join('\n\n\n');
   navigator.clipboard.writeText(text)
-    .then(()=>alert('✅ Copiato! '+all.length+' piloti negli appunti.'))
+    .then(()=>alert('Copiato! '+all.length+' piloti negli appunti.'))
     .catch(()=>{prompt('Copia questo testo:',text);});
 }
 window.copyAllForEditor=copyAllForEditor;
@@ -3715,7 +3715,7 @@ function renderPilots(){
     +(p.heats&&p.heats.length?heatsLabel(p.heats):(p.group?'GRP '+p.group:'GRP ?'))
     +'</span>'
     +'<button class="pilot-edit-btn" onclick="openEditPilot(\''+p.num+'\')"><i class="ic ic-note"></i> modifica</button>'
-    +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="deletePilot(\''+p.num+'\')">✕ rimuovi</button>'
+    +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="deletePilot(\''+p.num+'\')"><i class="ic ic-close"></i> rimuovi</button>'
     +'</div></div>'
     +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,false,isElim)).join('')+spotPill(p.num)+'</div>'
     +reelRowHtml(p)+fotoRowHtml(p,true)
@@ -4575,7 +4575,7 @@ function checkEliminations(){
   const k='rt_elim_'+activeRaceId+'_'+currentUserId;
   let prev=null;try{prev=JSON.parse(localStorage.getItem(k)||'null');}catch(e){}
   const now={};pilots.forEach(p=>{now[p.num]=!!p.eliminated;});
-  if(prev){pilots.forEach(p=>{if(now[p.num]&&prev[p.num]===false)rtAlert('elim|'+activeRaceId+'|'+p.num,'❌ ELIMINATO: #'+p.num+' '+p.name+' ('+p.cat+')','Da classifica ufficiale caricata · verifica eventuali reclami','');});}
+  if(prev){pilots.forEach(p=>{if(now[p.num]&&prev[p.num]===false)rtAlert('elim|'+activeRaceId+'|'+p.num,'ELIMINATO: #'+p.num+' '+p.name+' ('+p.cat+')','Da classifica ufficiale caricata · verifica eventuali reclami','');});}
   try{localStorage.setItem(k,JSON.stringify(now));}catch(e){}
 }
 // Gli avvisi di prova della versione precedente ('test|') non sono avvisi di gara: esclusi
@@ -4615,7 +4615,7 @@ function setNotifPref(k,on){if(!currentUserId)return;notifPrefs[k]=!!on;const u=
 function openNotifPrefs(){
   if(!currentUserId){alert('Scegli prima il tuo utente.');return;}
   watchNotifPrefs();
-  openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Le mie notifiche</div><div id="notif-prefs-body"></div>');
+  openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button><div class="modal-title">Le mie notifiche</div><div id="notif-prefs-body"></div>');
   renderNotifPrefs();
 }
 window.openNotifPrefs=openNotifPrefs;window.setNotifPref=setNotifPref;
@@ -4664,7 +4664,7 @@ function openLegend(){
   const badgeUff='<span style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:700;color:#0d0d0f;background:#4fd69c;border:1px solid #4fd69c;border-radius:5px;padding:0 6px"><i class="ic ic-flag"></i> 3°</span>';
   const badgeProv='<span style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:700;color:#4fd69c;border:1px dashed #4fd69c;border-radius:5px;padding:0 6px"><i class="ic ic-flag"></i> 3°</span>';
   const badgeCorr='<span style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:700;color:#0d0d0f;background:#4fd69c;border:1px solid #4fd69c;border-radius:5px;padding:0 6px"><i class="ic ic-flag"></i> 3° <span style="color:#facc15">●</span></span>';
-  const badgeOut='<span style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:900;color:#fff;background:#dc2626;border-radius:5px;padding:1px 7px">✕ 12°</span>';
+  const badgeOut='<span style="font-family:\'Chakra Petch\',sans-serif;font-size:12px;font-weight:900;color:#fff;background:#dc2626;border-radius:5px;padding:1px 7px"><i class="ic ic-close"></i> 12°</span>';
   const pencil='<span style="display:inline-flex;align-items:center;color:var(--text3);font-size:18px"><i class="ic ic-note"></i></span>';
   const tasks=(st)=>'<div class="tasks">'+TASKS.map((t,i)=>'<button class="task-btn '+(st[i]||'red')+'" style="padding:4px 8px;font-size:10px;pointer-events:none">'+t+'</button>').join('')+'</div>';
   const h=[];
@@ -4761,12 +4761,12 @@ function openLegend(){
     +'<div style="flex:1;min-width:0"><div><span class="num">#404</span>'+tri('#ef4444')+' <span class="nm">ROSSI MARIO</span> <span class="lt-ret box">AI BOX</span>'+N(2)+'</div>'
     +'<div class="tm">TEAM ESEMPIO · +1.234 · best 48.512</div>'+N(3)
     +tasks(['green','green','red','red','red'])+'</div></div>'
-    +'<div class="ltbig" style="margin-top:8px"><div class="pos"><span class="lt-x">✕</span></div>'+N(4)+'<div style="flex:1"><div><span class="num">#212</span> <span class="nm">BIANCHI LUCA</span></div></div></div>'));
+    +'<div class="ltbig" style="margin-top:8px"><div class="pos"><span class="lt-x"><i class="ic ic-close"></i></span></div>'+N(4)+'<div style="flex:1"><div><span class="num">#212</span> <span class="nm">BIANCHI LUCA</span></div></div></div>'));
   h.push(ex([
     'Posizione attuale; sotto, <b style="color:#4fd69c">▲3</b> / <b style="color:#ef6a7a">▼2</b> = posizioni guadagnate o perse (non è il triangolo di rischio).',
     '<b>AI BOX</b> = rientrato ai box; <b>FERMO IN PISTA</b> = fermo sul tracciato (prove e qualifiche).',
     'Team, distacco e giro migliore.',
-    '<b>✕ rossa</b> al posto della posizione: ritirato in gara.'
+    '<b><i class="ic ic-close"></i> rossa</b> al posto della posizione: ritirato in gara.'
   ]));
 
   // LAVORI
@@ -4816,11 +4816,11 @@ function openLegend(){
   h.push(sec('PUNTI DI SCATTO IN PISTA','la pillola <i class="ic ic-camera"></i> dopo PISTA, sotto ogni pilota (solo nei circuiti con la mappa del tracciato)'));
   h.push(shot('<div class="tasks" style="max-width:340px">'+['REPORTAGE','PISTA'].map(t=>'<button class="task-btn green" style="pointer-events:none">'+t+'</button>').join('')+'<button class="task-btn spot-pill orange" style="pointer-events:none"><i class="ic ic-camera"></i><span>2/4</span></button></div>'+N(1)
     +'<div class="sp-map noimg" style="margin-top:10px">'
-    +[[18,30,1],[52,22,0],[80,55,1],[40,75,0]].map((d,i)=>'<span class="sp-dot'+(d[2]?' on':'')+'" style="left:'+d[0]+'%;top:'+d[1]+'%"><span>'+(d[2]?'✓':(i+1))+'</span></span>').join('')+'</div>'+N(2)
+    +[[18,30,1],[52,22,0],[80,55,1],[40,75,0]].map((d,i)=>'<span class="sp-dot'+(d[2]?' on':'')+'" style="left:'+d[0]+'%;top:'+d[1]+'%"><span>'+(d[2]?'<i class="ic ic-check"></i>':(i+1))+'</span></span>').join('')+'</div>'+N(2)
     +'<div class="sp-tools"><span class="sp-btn">⟲</span><span class="sp-btn">⟳</span><span class="sp-btn">＋</span><span class="sp-btn">－</span><span class="sp-btn">⤢</span></div>'+N(3)));
   h.push(ex([
     'Quanti punti hai fatto con quel pilota sul totale dei tuoi punti (2 su 4). Tocca per aprire il tracciato.',
-    'Tocca il tracciato dove hai scattato: nasce un punto già spuntato <b style="color:#4fd69c">✓</b> per questo pilota; negli altri piloti compare col suo numero, da spuntare. Tocca un punto per spuntarlo o togliere la spunta; <b>tienilo premuto</b> e trascinalo per spostarlo.',
+    'Tocca il tracciato dove hai scattato: nasce un punto già spuntato <b style="color:#4fd69c"><i class="ic ic-check"></i></b> per questo pilota; negli altri piloti compare col suo numero, da spuntare. Tocca un punto per spuntarlo o togliere la spunta; <b>tienilo premuto</b> e trascinalo per spostarlo.',
     'Ruota, ingrandisci, riduci e ricentra. Con due dita ingrandisci e ruoti, con un dito sposti.'
   ]));
   // NOTIFICHE
@@ -4867,7 +4867,7 @@ function openLegend(){
   h.push('</div>');
 
   const tocH='<div class="gd-toc">'+toc.map(([n,t])=>n?'<a href="#" onclick="guideGo('+n+');return false">'+t+'</a>':'<div class="gd-toc-c">'+t+'</div>').join('')+'</div>';
-  openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Guida</div><div id="gd-body" style="max-height:78vh;overflow-y:auto;overflow-x:hidden;padding-right:2px">'+h.join('').replace('<div id="gd-toc-slot"></div>','<div id="gd-toc">'+tocH+'</div>')+'</div>');
+  openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button><div class="modal-title">Guida</div><div id="gd-body" style="max-height:78vh;overflow-y:auto;overflow-x:hidden;padding-right:2px">'+h.join('').replace('<div id="gd-toc-slot"></div>','<div id="gd-toc">'+tocH+'</div>')+'</div>');
 }
 window.openLegend=openLegend;
 function guideGo(n){const b=document.getElementById('gd-body'),e=document.getElementById('gd-s'+n);if(!b||!e)return;b.scrollTop=b.scrollTop+e.getBoundingClientRect().top-b.getBoundingClientRect().top-6;}
@@ -4881,12 +4881,12 @@ window.guideSearch=guideSearch;
 const NOTIF_GUIDE={
   programma:{closed:true,ex:[['Griglia cambiata · OKN Prefinale A','3 tuoi piloti spostati · apri l\'app'],['Prefinali cambiate · OKN','2 tuoi piloti cambiano gruppo · apri l\'app'],['Programma ufficiale aggiornato','Controlla orari e turni nell\'app']],when:'Cambia la griglia con tuoi piloti spostati, un tuo pilota cambia gruppo di prefinale, o esce un nuovo programma.'},
   top3:{closed:true,ex:[['P1 Prefinal A OKN: #404 ROSSI MARIO','PROVVISORIO da live timing, verifica reclami']],when:'Un tuo pilota chiude nei primi 3 una manche o prefinale: subito a fine gara, poi la conferma ufficiale.'},
-  qualifiche:{closed:true,ex:[['🏆 POLE qualifiche OKN: #404 ROSSI MARIO','Classifica combinata S1+S2 · PROVVISORIO, verifica reclami']],when:'Un tuo pilota fa la pole o entra nei primi 3 in qualifica.'},
-  finali:{closed:true,ex:[['🏁 FINALE P2 OKN Final: #404 ROSSI MARIO','PROVVISORIO da live timing, verifica reclami']],when:'Un tuo pilota chiude la finale nei primi 5: subito a fine gara, poi la conferma ufficiale.'},
-  eliminati:{closed:true,ex:[['⚠️ Rischio finale OK-NJ','2 a rischio, 1 fuori zona finale · apri l\'app']],when:'Tuoi piloti a rischio di non entrare in finale, o risultati eliminati.'},
-  prefinali:{closed:true,ex:[['✅ Prefinali uscite · OKN','3 tuoi passano · nessun tuo eliminato · apri l\'app'],['🏁 Finale OKN adesso disponibile','2 tuoi in finale · #250 eliminato · apri l\'app']],when:'Escono le liste di prefinale e finale: un solo avviso con quanti passano e se ci sono tuoi eliminati.'},
-  riepilogo:{closed:true,ex:[['🌙 Domani (domenica): 6 piloti in pista','Prima uscita 8.30 · orari nell\'app']],when:'La sera prima di ogni giorno di gara.'},
-  entrylist:{closed:true,ex:[['📋 Entry list OKN cambiata','#404 non più iscritto · apri l\'app']],when:'Cambia la lista iscritti per i tuoi piloti o team.'},
+  qualifiche:{closed:true,ex:[['POLE qualifiche OKN: #404 ROSSI MARIO','Classifica combinata S1+S2 · PROVVISORIO, verifica reclami']],when:'Un tuo pilota fa la pole o entra nei primi 3 in qualifica.'},
+  finali:{closed:true,ex:[['FINALE P2 OKN Final: #404 ROSSI MARIO','PROVVISORIO da live timing, verifica reclami']],when:'Un tuo pilota chiude la finale nei primi 5: subito a fine gara, poi la conferma ufficiale.'},
+  eliminati:{closed:true,ex:[['Rischio finale OK-NJ','2 a rischio, 1 fuori zona finale · apri l\'app']],when:'Tuoi piloti a rischio di non entrare in finale, o risultati eliminati.'},
+  prefinali:{closed:true,ex:[['Prefinali uscite · OKN','3 tuoi passano · nessun tuo eliminato · apri l\'app'],['Finale OKN adesso disponibile','2 tuoi in finale · #250 eliminato · apri l\'app']],when:'Escono le liste di prefinale e finale: un solo avviso con quanti passano e se ci sono tuoi eliminati.'},
+  riepilogo:{closed:true,ex:[['Domani (domenica): 6 piloti in pista','Prima uscita 8.30 · orari nell\'app']],when:'La sera prima di ogni giorno di gara.'},
+  entrylist:{closed:true,ex:[['Entry list OKN cambiata','#404 non più iscritto · apri l\'app']],when:'Cambia la lista iscritti per i tuoi piloti o team.'},
   ritiri:{closed:true,ex:[['#404 ROSSI MARIO USCITO','OKN · Prefinal A']],when:'Un tuo pilota esce in gara, rientra ai box o si ferma in pista.'},
   rossa:{closed:true,ex:[['BANDIERA ROSSA OKN','Prefinal A · in pista: #404 #212']],when:'Bandiera rossa durante una sessione con tuoi piloti in pista.'},
   partenza:{closed:true,ex:[['PARTITA OKN · Prefinal A','alle 11.20 · in pista: #404, #212']],when:'Parte una sessione con tuoi piloti in pista.'},
@@ -4903,10 +4903,10 @@ function renderSettings(){
   const sw=(on,lbl,fn)=>'<label class="set-opt" style="justify-content:space-between"><span>'+lbl+'</span><input type="checkbox" '+(on?'checked':'')+' onchange="'+fn+'" style="width:24px;height:24px"></label>';
   const light=document.body.classList.contains('light');const lv=userSettings.liveDefault||'mine';
   b.innerHTML='<div class="set-opt" onclick="openLegend()" style="border:1px solid var(--accent);border-radius:10px;margin-bottom:6px"><i class="ic ic-note"></i> <b>GUIDA</b> · come funziona l\'app, simboli e notifiche</div>'
-    +'<div class="set-opt" onclick="openRemPanel()" style="border:1px solid #fbbf24;border-radius:10px;margin-bottom:6px">🔔 <b>PROMEMORIA</b> · avvisi personali sui turni ('+Object.keys(reminders||{}).length+')</div>'
-    +(aiChatAllowed()?'<div class="set-opt" onclick="openAiChat()" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px">💬 <b>CHIEDI ALL\'AI</b> · orari, piloti, rischi</div>':'')
-    +(isDelayAdmin()?'<div id="ai-usage-box" class="set-opt" onclick="openAiLog()" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px;display:block">🤖 <b>SPESA AI</b> · <span id="ai-usage-txt">…</span><br><span style="font-size:11px;color:var(--text4)">tocca per il registro degli interventi</span></div>':'')
-    +(isDelayAdmin()?'<div class="set-opt" onclick="openTtPhoto()" style="border:1px solid #ef4444;border-radius:10px;margin-bottom:6px;display:block">📷 <b>FOTO PROGRAMMA</b> · emergenza<br><span style="font-size:11px;color:var(--text4)">solo se il programma ufficiale non si trova o non si legge</span></div>':'')
+    +'<div class="set-opt" onclick="openRemPanel()" style="border:1px solid #fbbf24;border-radius:10px;margin-bottom:6px"><i class="ic ic-bell"></i> <b>PROMEMORIA</b> · avvisi personali sui turni ('+Object.keys(reminders||{}).length+')</div>'
+    +(aiChatAllowed()?'<div class="set-opt" onclick="openAiChat()" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px"><i class="ic ic-chat"></i> <b>CHIEDI ALL\'AI</b> · orari, piloti, rischi</div>':'')
+    +(isDelayAdmin()?'<div id="ai-usage-box" class="set-opt" onclick="openAiLog()" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px;display:block"><i class="ic ic-chip"></i> <b>SPESA AI</b> · <span id="ai-usage-txt">…</span><br><span style="font-size:11px;color:var(--text4)">tocca per il registro degli interventi</span></div>':'')
+    +(isDelayAdmin()?'<div class="set-opt" onclick="openTtPhoto()" style="border:1px solid #ef4444;border-radius:10px;margin-bottom:6px;display:block"><i class="ic ic-camera"></i> <b>FOTO PROGRAMMA</b> · emergenza<br><span style="font-size:11px;color:var(--text4)">solo se il programma ufficiale non si trova o non si legge</span></div>':'')
     +'<div class="set-sec">PUNTI DI SCATTO</div>'+sw(!(userSettings&&userSettings.spotsPerRace),'Ritrova i punti sulla stessa pista anche nelle prossime gare','setSpotsScope(this.checked)')
     +'<div class="set-sec">PROFILO</div><div class="set-opt" onclick="closeModal();showUserPicker()"><i class="ic ic-user"></i> Cambia utente <span style="margin-left:auto;color:var(--text4)">'+currentUserId+'</span></div>'
     +'<div class="set-sec">ASPETTO (QUESTO TELEFONO)</div>'+opt(!light,'Tema scuro','setTheme(false)')+opt(light,'Tema chiaro','setTheme(true)')
@@ -4931,7 +4931,7 @@ function renderSettings(){
 function openSettings(){
   if(!currentUserId){alert('Scegli prima il tuo utente.');return;}
   watchNotifPrefs();watchUserSettings();
-  openModal('<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">Impostazioni</div><div id="settings-body"></div>');
+  openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button><div class="modal-title">Impostazioni</div><div id="settings-body"></div>');
   renderSettings();
 }
 window.openSettings=openSettings;
@@ -5030,7 +5030,7 @@ function rtAlert(id,title,sub,kind){
   let wrap=document.getElementById('rt-alerts');
   if(!wrap){wrap=document.createElement('div');wrap.id='rt-alerts';wrap.className='rt-alerts';document.body.appendChild(wrap);}
   const el=document.createElement('div');el.className='rt-alert '+(kind||'');
-  el.innerHTML='<div style="flex:1">'+title+'<small>'+sub+' · '+hm+'</small></div><span style="cursor:pointer;font-size:16px">✕</span>';
+  el.innerHTML='<div style="flex:1">'+title+'<small>'+sub+' · '+hm+'</small></div><span style="cursor:pointer;font-size:16px"><i class="ic ic-close"></i></span>';
   el.onclick=()=>el.remove();wrap.prepend(el);
   setTimeout(()=>{if(el.parentNode)el.remove();},kind==='final'||kind==='gold'?60000:25000);
   try{if(userSettings.vibra!==false&&navigator.vibrate)navigator.vibrate(kind?[300,150,300,150,300]:[200,100,200]);}catch(e){}
@@ -5276,7 +5276,7 @@ function renderPfTab(){
     h.push('<div class="set-sec">'+esc(cat)+' <span style="font-weight:700;color:var(--text4)">· '+(rows.some(r=>r.st!=='wait')?nIn+'/'+rows.length+' in prefinale':FC?'previsione dopo '+FC.heats+' manche corse':'liste non ancora pubblicate')+'</span></div>');
     /* 21/11/2026 (Andrea): come la scheda finale — numero grande a sinistra, colore del rischio, piu' a rischio in cima,
        i sicuri (0%, gia' in prefinale o categoria senza eliminazioni) tutti insieme in fondo, chiusi */
-    const card=r=>{let col={in:'#22c55e',out:'#ef4444',wait:'#6b7280'}[r.st],big=r.st==='in'?esc(r.g):r.st==='out'?'✕':'–';
+    const card=r=>{let col={in:'#22c55e',out:'#ef4444',wait:'#6b7280'}[r.st],big=r.st==='in'?esc(r.g):r.st==='out'?'<i class="ic ic-close"></i>':'–';
       let t=r.st==='in'?'In <b>prefinale '+esc(r.g)+'</b> (ufficiale)':r.st==='out'?'Non ammesso in prefinale (ufficiale)':'In attesa delle liste prefinali',sub='';
       if(r.st==='wait'&&r.f){const rk=r.f.rk,pr=FC.cut?(r.f.risk??(rk>FC.cut?100:0)):0;big=rk+'°';
         col=FC.cut?riskColor(pr):'#22c55e';
@@ -5287,7 +5287,7 @@ function renderPfTab(){
     const risky=rows.filter(r=>!isSafe(r)),safe=rows.filter(isSafe);
     risky.forEach(r=>h.push(card(r)));
     if(!risky.length&&safe.length)h.push('<div style="font-size:12px;color:var(--text4);padding:4px 0 6px">Nessun tuo pilota a rischio.</div>');
-    if(safe.length)h.push('<details style="margin:4px 0 10px"><summary style="cursor:pointer;min-height:44px;display:flex;align-items:center;font-size:13px;font-weight:800;color:#22c55e">✓ '+safe.length+(safe.length===1?' pilota al sicuro':' piloti al sicuro')+'</summary>'+safe.map(card).join('')+'</details>');
+    if(safe.length)h.push('<details style="margin:4px 0 10px"><summary style="cursor:pointer;min-height:44px;display:flex;align-items:center;font-size:13px;font-weight:800;color:#22c55e"><i class="ic ic-check"></i> '+safe.length+(safe.length===1?' pilota al sicuro':' piloti al sicuro')+'</summary>'+safe.map(card).join('')+'</details>');
   });
   return h.join('');
 }
@@ -5399,7 +5399,7 @@ function ltStaCounts(){
 }
 function ltMineNums(){return new Set(pilots.map(p=>String(p.num)));}
 function ltNameOf(no){const p=pilots.find(x=>String(x.num)===String(no));return p?p.name:'';}
-function ltXSpan(r){return'<span class="lt-x'+(r&&r.t==='so'?' so':'')+'">✕</span>';}
+function ltXSpan(r){return'<span class="lt-x'+(r&&r.t==='so'?' so':'')+'"><i class="ic ic-close"></i></span>';}
 function ltRetOf(no,sk){return ltRet[(sk||(apexState.cat+'|'+apexState.sess))+'|'+no]||null;}
 function ltRetAlert(no,t){try{if(!ltMineNums().has(String(no)))return;if(String(apexWsKey).split(':')[0]!==apexLiveName())return; /* live di un'altra gara: nessun avviso */const sk=apexState.cat+'|'+apexState.sess;
   rtAlert('ritiri|'+activeRaceId+'|'+sk+'|'+no,'<i class="ic ic-redflag"></i> #'+no+' '+ltNameOf(no)+' '+(ltIsRace()?'USCITO':(t==='ss'?'FERMO IN PISTA':'AI BOX')),apexState.cat+' · '+apexState.sess);}catch(e){}}
@@ -5441,7 +5441,7 @@ function renderLtFull(){
   const sess=((apexState.cat||'')+' · '+(apexState.sess||'')).replace(/</g,'&lt;');
   const now=Date.now();const sk=apexState.cat+'|'+apexState.sess;
   const out=[];
-  if(!el.querySelector('.ltf-list')){el.innerHTML='<div class="ltf-top"><div class="ltf-sess"></div><div class="ltf-lap"></div><button class="ltf-close" onclick="closeLtFull()" aria-label="Chiudi">✕</button></div><div class="ltf-list"></div>';}
+  if(!el.querySelector('.ltf-list')){el.innerHTML='<div class="ltf-top"><div class="ltf-sess"></div><div class="ltf-lap"></div><button class="ltf-close" onclick="closeLtFull()" aria-label="Chiudi"><i class="ic ic-close"></i></button></div><div class="ltf-list"></div>';}
   el.querySelector('.ltf-sess').innerHTML=lightHtml(false)+' '+sess;
   el.querySelector('.ltf-lap').innerHTML=lap?'<i class="ic ic-timer"></i> '+lap.replace(/</g,'&lt;'):'';
   if(!rows.length)out.push('<div class="ltf-empty">In attesa dei dati live…</div>');
@@ -5916,7 +5916,7 @@ function renderApexDelay(){
   box.innerHTML=head+'<div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">'
     +(jump&&!same?'<div style="width:100%;color:#fbbf24;font-weight:800"><i class="ic ic-wait"></i> Salto di '+Math.abs(d-(scheduleDelay||0))+' min: sessione ripetuta o fuori programma? Non applicato in automatico</div>':'')
     +'<span>Previsto '+m.slot.time+' → <b style="color:'+(d>0?'#f87171':d<0?'#60a5fa':'#4ade80')+'">'+(d===0?'in orario':lbl)+'</b></span>'
-    +(same?'<span style="color:#4ade80">✓ applicato</span>':(isDelayAdmin()?'<button onclick="setDelay('+d+')" style="padding:5px 10px;border-radius:7px;border:none;background:#22c55e;color:#000;font-weight:900;font-size:11px;cursor:pointer;font-family:inherit">APPLICA '+lbl+'</button>':''))
+    +(same?'<span style="color:#4ade80"><i class="ic ic-check"></i> applicato</span>':(isDelayAdmin()?'<button onclick="setDelay('+d+')" style="padding:5px 10px;border-radius:7px;border:none;background:#22c55e;color:#000;font-weight:900;font-size:11px;cursor:pointer;font-family:inherit">APPLICA '+lbl+'</button>':''))
     +(isDelayAdmin()&&!apexAuto
       ?'<button onclick="toggleApexAuto()" style="margin-left:auto;padding:5px 8px;border-radius:7px;border:1px solid '+(apexAuto?'#22c55e':'var(--border2)')+';background:none;color:'+(apexAuto?'#22c55e':'var(--text4)')+';font-weight:800;font-size:10px;cursor:pointer;font-family:inherit">AUTO '+(apexAuto?'ON':'OFF')+'</button>'
       :'<span style="margin-left:auto;font-size:10px;font-weight:800;color:'+(apexAuto?'#22c55e':'var(--text4)')+'">AUTO '+(apexAuto?'ON':'OFF')+'</span>')
@@ -6044,7 +6044,7 @@ window.showPistaView=showPistaView;
 function renderPista(){
   const sl=document.getElementById('sections-list');
   if(sl)sl.innerHTML=trackSections.map((s,i)=>'<div class="section-chip" ondblclick="editSectionInline('+i+')">'
-    +'<span>'+s+'</span><span class="del" onclick="deleteSection('+i+')">✕</span></div>').join('');
+    +'<span>'+s+'</span><span class="del" onclick="deleteSection('+i+')"><i class="ic ic-close"></i></span></div>').join('');
   const el=document.getElementById('pista-content');
   if(!pilots.length){el.innerHTML='<div class="empty-state"><p>Nessun pilota</p></div>';return;}
   if(pistaView==='pilota'){
@@ -6091,7 +6091,7 @@ function remOfSlot(slot,day){try{remAttach();}catch(_){}const k=remSlotKey(slot,
 function remFindSlot(k){for(const d of currentDays||[]){const sl=(currentSchedule[d]||[]).find(x=>remSlotKey(x,d)===k);if(sl)return{day:d,slot:sl};}return null;}
 function remBeforeTxt(b){return b?b+'′ prima':'all\'ora';}
 function remLine(slot){const l=remOfSlot(slot);if(!l.length)return'';
-  return l.map(([id,r])=>'<div class="rem-line" onclick="event.stopPropagation();openReminder(\''+remSlotKey(slot).replace(/'/g,"\\'")+'\')">🔔 '+(r.num?'<b>#'+escAttr(r.num)+'</b> ':'')+escapeHtmlSp(r.text||'Promemoria')+' <span>· '+[].concat(r.before||[]).sort((a,b)=>b-a).map(remBeforeTxt).join(', ')+'</span></div>').join('');}
+  return l.map(([id,r])=>'<div class="rem-line" onclick="event.stopPropagation();openReminder(\''+remSlotKey(slot).replace(/'/g,"\\'")+'\')"><i class="ic ic-bell"></i> '+(r.num?'<b>#'+escAttr(r.num)+'</b> ':'')+escapeHtmlSp(r.text||'Promemoria')+' <span>· '+[].concat(r.before||[]).sort((a,b)=>b-a).map(remBeforeTxt).join(', ')+'</span></div>').join('');}
 let _remEdit=null;
 function openReminder(k){const f=remFindSlot(k);if(!f)return;
   _remEdit={k,slot:f.slot,day:f.day,before:new Set([10]),num:'',text:''};renderReminder();}
@@ -6100,12 +6100,12 @@ function renderReminder(){const e=_remEdit;if(!e)return;const sl=e.slot;
   let ps=[];try{ps=pilotsForSlot(sl).map(p=>({num:String(p.num),name:p.name}));teamsForSlot(sl).forEach(x=>x.inSlot.concat(x.waiting||[]).forEach(p=>{if(!ps.some(q=>q.num===String(p.num)))ps.push({num:String(p.num),name:p.name});}));}catch(_){}
   ps.sort((a,b)=>(parseInt(a.num)||0)-(parseInt(b.num)||0));
   const d=parseInt(scheduleDelay)||0,h=[];
-  h.push('<button class="modal-close" onclick="closeModal()">✕</button>');
+  h.push('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button>');
   h.push('<button class="rem-back" onclick="openRemPanel()">← Tutti i promemoria</button>');
-  h.push('<div class="modal-title">🔔 Promemoria · '+escapeHtmlSp(e.day.slice(0,3))+' '+escapeHtmlSp(sl.time)+' '+escapeHtmlSp(sl.label||sl.cat)+' '+escapeHtmlSp(slotFilterLabel(sl))+'</div>');
+  h.push('<div class="modal-title"><i class="ic ic-bell"></i> Promemoria · '+escapeHtmlSp(e.day.slice(0,3))+' '+escapeHtmlSp(sl.time)+' '+escapeHtmlSp(sl.label||sl.cat)+' '+escapeHtmlSp(slotFilterLabel(sl))+'</div>');
   h.push('<div class="sp-sub">Orario turno '+sl.time+(d?' + ritardo live '+d+'′':'')+'. Arriva come notifica, anche con l\'app chiusa.</div>');
   const ex=remOfSlot(sl,e.day);
-  if(ex.length)h.push('<div class="rem-list">'+ex.map(([id,r])=>'<div class="rem-item"><div>'+(r.num?'<b>#'+escapeHtmlSp(r.num)+'</b> ':'')+escapeHtmlSp(r.text||'Promemoria')+'<br><span>'+[].concat(r.before||[]).sort((a,b)=>b-a).map(remBeforeTxt).join(', ')+'</span></div><button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="remDelete(\''+id+'\')">✕</button></div>').join('')+'</div>');
+  if(ex.length)h.push('<div class="rem-list">'+ex.map(([id,r])=>'<div class="rem-item"><div>'+(r.num?'<b>#'+escapeHtmlSp(r.num)+'</b> ':'')+escapeHtmlSp(r.text||'Promemoria')+'<br><span>'+[].concat(r.before||[]).sort((a,b)=>b-a).map(remBeforeTxt).join(', ')+'</span></div><button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="remDelete(\''+id+'\')"><i class="ic ic-close"></i></button></div>').join('')+'</div>');
   h.push('<div class="rem-lbl">Pilota (facoltativo)</div><select id="rem-num" class="add-input" onchange="_remEdit.num=this.value"><option value="">— nessuno —</option>'+ps.map(p=>'<option value="'+p.num+'"'+(e.num===p.num?' selected':'')+'>#'+p.num+' '+escapeHtmlSp(p.name||'')+'</option>').join('')+'</select>');
   h.push('<div class="rem-lbl">Cosa fare</div><input id="rem-text" class="add-input" maxlength="80" placeholder="es. clip pregriglia, bilancia, gara" value="'+escapeHtmlSp(e.text)+'" oninput="_remEdit.text=this.value">');
   h.push('<div class="rem-lbl">Avvisami</div><div class="rem-chips">'+REM_BEFORE.map(b=>'<button class="rem-chip'+(e.before.has(b)?' on':'')+'" onclick="remToggleBefore('+b+')">'+remBeforeTxt(b)+'</button>').join('')+'</div>');
@@ -6139,11 +6139,11 @@ window.loadAiUsage=loadAiUsage;
 /* 21/11/2026 (Andrea): REGISTRO INTERVENTI AI (aiUsage/eventi): quando l'AI interviene, su cosa e cosa decide. Solo admin, lettura singola. */
 async function openAiLog(){
   if(!isDelayAdmin())return;const esc=x=>String(x||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
-  openModal('<button class="modal-close" onclick="closeModal()">✕</button><button class="rem-back" onclick="openSettings()">← Impostazioni</button><div class="modal-title">🤖 Registro AI</div><div id="ailog-body" class="sp-sub">Carico…</div>');
+  openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button><button class="rem-back" onclick="openSettings()">← Impostazioni</button><div class="modal-title"><i class="ic ic-chip"></i> Registro AI</div><div id="ailog-body" class="sp-sub">Carico…</div>');
   try{const d=await fetch('https://karting-tools-default-rtdb.firebaseio.com/aiUsage/eventi.json?orderBy=%22$key%22&limitToLast=40').then(r=>r.json());
     const L=Object.values(d||{}).sort((a,b)=>b.at-a.at);const el=document.getElementById('ailog-body');if(!el)return;
     const col=e=>/APPLICATO|riassunto|^ok|risposta/i.test(e)?'#22c55e':/riusato/i.test(e)?'#3b82f6':/diverso/i.test(e)?'#ef4444':'#f97316';
-    const ico={timetable:'🗓️',classifica:'📄',controllo:'🔎',decisione:'⚖️',chat:'💬'};
+    const ico={timetable:'<i class="ic ic-calendar"></i>',classifica:'<i class="ic ic-note"></i>',controllo:'<i class="ic ic-search"></i>',decisione:'<i class="ic ic-flag"></i>',chat:'<i class="ic ic-chat"></i>'};
     el.innerHTML=L.length?L.map(x=>'<div class="card-inner" style="border-left:4px solid '+col(x.esito)+';margin-bottom:6px"><div style="font-size:11px;color:var(--text4)">'+new Date(x.at).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+' · '+(ico[x.tipo]||'')+' '+esc(x.tipo)+'</div>'
       +'<div style="font-size:13px;font-weight:800;color:'+col(x.esito)+'">'+esc(x.esito)+'</div><div style="font-size:12px;color:var(--text2)">'+esc(x.cosa)+'</div>'+(x.dettaglio?'<div style="font-size:11px;color:var(--text4)">→ '+esc(x.dettaglio)+'</div>':'')+'</div>').join('')
       :'Nessun intervento registrato ancora.';
@@ -6158,10 +6158,10 @@ let _ttpRef=null,_ttpFiles=[];
 function ttpOff(){try{if(_ttpRef)_ttpRef.off();}catch(e){}_ttpRef=null;}
 function openTtPhoto(){
   if(!isDelayAdmin()||!activeRaceId)return;ttpOff();_ttpFiles=[];
-  openModal('<button class="modal-close" onclick="ttpOff();closeModal()">✕</button><button class="rem-back" onclick="ttpOff();openSettings()">← Impostazioni</button><div class="modal-title">📷 Foto programma</div>'
+  openModal('<button class="modal-close" onclick="ttpOff();closeModal()"><i class="ic ic-close"></i></button><button class="rem-back" onclick="ttpOff();openSettings()">← Impostazioni</button><div class="modal-title"><i class="ic ic-camera"></i> Foto programma</div>'
     +'<div class="sp-sub">Emergenza: fotografa il programma esposto in circuito (una foto per pagina, dritta, intera, con il nome del giorno visibile). Lo legge l\'AI due volte: se non è sicura non scrive niente.</div>'
     +'<input id="ttp-in" type="file" accept="image/*" capture="environment" multiple style="display:none" onchange="ttpAdd(this.files)">'
-    +'<button class="btn-add-team" style="min-height:48px;width:100%;margin:10px 0;font-weight:900" onclick="document.getElementById(\'ttp-in\').click()">📷 SCATTA / AGGIUNGI FOTO</button>'
+    +'<button class="btn-add-team" style="min-height:48px;width:100%;margin:10px 0;font-weight:900" onclick="document.getElementById(\'ttp-in\').click()"><i class="ic ic-camera"></i> SCATTA / AGGIUNGI FOTO</button>'
     +'<div id="ttp-list" style="display:flex;gap:6px;flex-wrap:wrap"></div><div id="ttp-state" style="margin-top:10px"></div>');
 }
 function ttpAdd(fl){
@@ -6183,10 +6183,10 @@ async function ttpSend(){
 }
 function ttpRender(id,q){
   const st=document.getElementById('ttp-state');if(!st){ttpOff();return;}if(!q)return;const esc=x=>String(x||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
-  if(q.status==='nuovo'||q.status==='in lettura'){st.innerHTML='<div class="sp-sub">⏳ L\'AI sta leggendo il programma (1–3 minuti)…</div>';return;}
-  if(q.status==='in scrittura'){st.innerHTML='<div class="sp-sub">⏳ Scrivo il programma…</div>';return;}
+  if(q.status==='nuovo'||q.status==='in lettura'){st.innerHTML='<div class="sp-sub"><i class="ic ic-wait"></i> L\'AI sta leggendo il programma (1–3 minuti)…</div>';return;}
+  if(q.status==='in scrittura'){st.innerHTML='<div class="sp-sub"><i class="ic ic-wait"></i> Scrivo il programma…</div>';return;}
   if(q.status==='errore'){ttpOff();st.innerHTML='<div style="color:#ef4444;font-weight:900">Non applicato</div><div class="sp-sub">'+esc(q.motivo)+'</div>';return;}
-  if(q.status==='applicato'){ttpOff();st.innerHTML='<div style="color:#22c55e;font-weight:900">✓ Programma aggiornato</div><div class="sp-sub">Copia del programma di prima salvata sul server. Appena il Timetable ufficiale si legge, prende il suo posto.</div>';return;}
+  if(q.status==='applicato'){ttpOff();st.innerHTML='<div style="color:#22c55e;font-weight:900"><i class="ic ic-check"></i> Programma aggiornato</div><div class="sp-sub">Copia del programma di prima salvata sul server. Appena il Timetable ufficiale si legge, prende il suo posto.</div>';return;}
   if(q.status==='letto'){
     const g=q.giorni||{},tt=q.tt||{};
     const prev=(tt.days||[]).map(d=>'<div style="margin-top:8px;font-weight:900">'+esc(d)+' · '+(g[d]||0)+' turni</div>'
@@ -6205,7 +6205,7 @@ const AI_CHAT_USERS=['ricki'];
 function aiChatAllowed(){return isDelayAdmin()||AI_CHAT_USERS.includes(String(currentUserId||'').toLowerCase());}
 function openAiChat(){
   if(!aiChatAllowed()||!activeRaceId)return;
-  openModal('<button class="modal-close" onclick="closeAiChat()">✕</button><button class="rem-back" onclick="closeAiChat();openSettings()">← Impostazioni</button><div class="modal-title">💬 Chiedi all\'AI</div>'
+  openModal('<button class="modal-close" onclick="closeAiChat()"><i class="ic ic-close"></i></button><button class="rem-back" onclick="closeAiChat();openSettings()">← Impostazioni</button><div class="modal-title"><i class="ic ic-chat"></i> Chiedi all\'AI</div>'
     +'<div class="sp-sub">Risponde con i dati di questa gara: programma, ritardo, i tuoi piloti e quelli dei team. Non modifica niente.</div>'
     +'<div id="aic-list" style="display:flex;flex-direction:column;gap:8px;margin:10px 0;max-height:50vh;overflow:auto"></div>'
     +'<div style="display:flex;gap:8px"><input id="aic-q" class="add-input" style="flex:1;margin:0" placeholder="Es. chi dei miei corre dopo pranzo?" onkeydown="if(event.key===\'Enter\')aiChatSend()" autocomplete="off">'
@@ -6226,7 +6226,7 @@ function aiChatSend(){const i=document.getElementById('aic-q');const q=(i&&i.val
   _fbDb.ref('races/'+activeRaceId+'/aiChat/'+currentUserId).push({q:q.slice(0,500),at:Date.now()}).catch(()=>{});}
 window.openAiChat=openAiChat;window.closeAiChat=closeAiChat;window.aiChatSend=aiChatSend;
 function openRemPanel(){try{remAttach();}catch(_){}_remEdit=null;
-  openModal('<button class="modal-close" onclick="closeModal()">✕</button><button class="rem-back" onclick="openSettings()">← Impostazioni</button><div class="modal-title">🔔 Promemoria</div>'
+  openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button><button class="rem-back" onclick="openSettings()">← Impostazioni</button><div class="modal-title"><i class="ic ic-bell"></i> Promemoria</div>'
     +'<div class="sp-sub">Cerca il turno (es. "ok-nj a-e", "16.40", "kz2 sabato") e scegli quando essere avvisato. L\'orario segue il ritardo live.</div>'
     +'<input id="rem-q" class="add-input" type="search" placeholder="Cerca turno…" value="'+escapeHtmlSp(_remQ)+'" oninput="_remQ=this.value;remRenderResults()" autocomplete="off">'
     +'<div id="rem-res"></div><div class="rem-lbl">I tuoi promemoria</div><div id="rem-mine"></div>');
@@ -6241,7 +6241,7 @@ function remRenderResults(){const el=document.getElementById('rem-res');if(!el)r
   const future=(d,sl)=>{const di=(currentDays||[]).indexOf(d);if(td<0)return true;if(di<td)return false;if(di>td)return true;return hm2minRem(sl.time)+dl>=nowMin;};
   (currentDays||[]).forEach(d=>(currentSchedule[d]||[]).forEach(sl=>{if(!future(d,sl))return;const t=remSlotText(sl,d).toLowerCase().replace(/[.:]/g,'.');if(tk.every(x=>t.indexOf(x)>=0))out.push({d,sl});}));
   el.innerHTML=out.length?'<div class="rem-list">'+out.slice(0,25).map(({d,sl})=>{const k=remSlotKey(sl,d),n=remOfSlot(sl,d).length;
-    return'<div class="rem-res" onclick="openReminder(\''+k.replace(/'/g,"\\'")+'\')"><b>'+escapeHtmlSp(d.slice(0,3))+' '+escapeHtmlSp(sl.time)+'</b> <span class="'+catClass(sl.cat)+'">'+escapeHtmlSp(sl.label||sl.cat)+'</span> '+escapeHtmlSp(slotFilterLabel(sl))+(n?' <i>🔔 '+n+'</i>':'')+'</div>';}).join('')+'</div>'
+    return'<div class="rem-res" onclick="openReminder(\''+k.replace(/'/g,"\\'")+'\')"><b>'+escapeHtmlSp(d.slice(0,3))+' '+escapeHtmlSp(sl.time)+'</b> <span class="'+catClass(sl.cat)+'">'+escapeHtmlSp(sl.label||sl.cat)+'</span> '+escapeHtmlSp(slotFilterLabel(sl))+(n?' <i><i class="ic ic-bell"></i> '+n+'</i>':'')+'</div>';}).join('')+'</div>'
     :'<div class="sp-sub">Nessun turno trovato.</div>';}
 function remRenderMine(){const el=document.getElementById('rem-mine');if(!el)return;const l=Object.entries(reminders||{}).filter(([,r])=>r);
   const ord=d=>(currentDays||[]).indexOf(d);l.sort((a,b)=>ord(a[1].day)-ord(b[1].day)||hm2minRem(a[1].time)-hm2minRem(b[1].time));
@@ -6276,7 +6276,7 @@ window.toggleAddHl=toggleAddHl;
 function openAddPilot(){
   if(!activeRaceId){alert('Seleziona prima una gara dalla tab GARE');return;}
   _addHl=[defaultHl()];_addReel='30';
-  openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
+  openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button>'
     +'<div class="modal-title">Aggiungi Pilota</div>'
     +'<div class="form-group"><label class="form-label">Numero Kart</label>'
     +'<input class="form-input" id="f-num" placeholder="es. 342" type="number" oninput="previewFromNum(this.value)" autocomplete="off" style="font-size:22px;font-weight:900"></div>'
@@ -6284,7 +6284,7 @@ function openAddPilot(){
     +'<div class="form-group"><label class="form-label">Lavoro</label><div class="hl-picker" id="f-hl">'+addHlHtml()+'</div></div>'
     +'<div class="form-group" id="f-reel-wrap"'+(_addHl.includes('video')?'':' style="display:none"')+'><label class="form-label">Reel</label><div id="f-reel" style="display:flex;gap:8px">'+addReelHtml()+'</div></div>'
     +'<div id="f-preview" style="display:none;background:var(--bg3);border:2px solid #22c55e;border-radius:10px;padding:12px;margin-bottom:12px">'
-    +'<div style="font-size:10px;color:#22c55e;letter-spacing:2px;font-weight:700;margin-bottom:8px">✓ TROVATO IN ENTRY LIST</div>'
+    +'<div style="font-size:10px;color:#22c55e;letter-spacing:2px;font-weight:700;margin-bottom:8px"><i class="ic ic-check"></i> TROVATO IN ENTRY LIST</div>'
     +'<div id="f-preview-content"></div>'
     +'<div class="form-group" style="margin-top:10px;margin-bottom:10px"><label class="form-label">Note — opzionale</label>'
     +'<textarea class="form-textarea" id="f-note" placeholder="Note opzionali..."></textarea></div>'
@@ -6357,7 +6357,7 @@ function openEditPilot(num){
   /* FIX 16/10/2026 (ROK Superfinal): categorie dalla gara attiva + categoria attuale del pilota, cosi' SALVA non la sovrascrive con KZ2 */
   const cats=[...new Set([p.cat].concat(Object.values(currentEntryList||{}).map(e=>e&&e.cat),pilots.map(x=>x.cat),['KZ2','OK','OKN','OKJ','MINI GR3','MINI U10','OK-NJ']).filter(Boolean))];
   const hl=p.highlight||[];
-  openModal('<button class="modal-close" onclick="closeModal()">✕</button>'
+  openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button>'
     +'<div class="modal-title">Modifica #'+p.num+'</div>'
     +(p.eliminated?'<div style="background:#1c0303;border:1px solid #dc2626;border-radius:8px;padding:10px;margin-bottom:14px;font-size:11px;font-weight:700;color:#f87171;letter-spacing:1px;display:flex;justify-content:space-between;align-items:center"><span><i class="ic ic-ban"></i> ELIMINATO</span><button style="font-size:10px;color:#f87171;background:none;border:1px solid #dc2626;border-radius:6px;padding:4px 10px;cursor:pointer;font-family:inherit;font-weight:700" onclick="toggleEliminated(\''+num+'\')">RIATTIVA</button></div>':'')
     +'<div class="form-group"><label class="form-label">Nome</label><input class="form-input" id="ef-name" value="'+p.name+'"></div>'
@@ -6456,7 +6456,7 @@ function renderSpots(){
   const p=spotPilotOf(_spNum);const v=venueMap();if(!p||!v){closeModal();return;}
   const d=(spotDone[_spNum])||{},ids=spotIds(),[f,t]=spotCount(_spNum);
   const h=[];
-  h.push('<button class="modal-close" onclick="closeModal()">✕</button>');
+  h.push('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button>');
   h.push('<button class="sp-trash'+(_spTrash?' on':'')+'" onclick="spotsToggleTrash()" aria-label="Modalità cestino: elimina punti" aria-pressed="'+_spTrash+'"><i class="ic ic-trash"></i></button>');
   h.push('<div class="modal-title">#'+p.num+' '+escapeHtmlSp(p.name||'')+'</div>');
   h.push('<div class="sp-sub">'+(_spMarkMode?'<b style="color:#38bdf8">RIFERIMENTO</b> · tocca il punto del circuito (es. ingresso pregriglia) e dagli un nome':_spTrash?'<b style="color:#ef4444">CESTINO</b> · tocca un punto per eliminarlo per tutti i piloti':(t?'Fatti <b>'+f+'/'+t+'</b> · ':'')+'tocca la pista dove hai scattato')+'</div>');
@@ -6470,9 +6470,9 @@ function renderSpots(){
     +'<path d="'+dd+'" class="sp-track-line" style="stroke-width:'+Math.max(.6,w/14)+'"/>'+spotsSectorsSvg(v)+'</svg>');
   h.push('</div><button class="sp-back" onclick="event.stopPropagation();spotsBackAll()" onpointerdown="event.stopPropagation()" aria-label="Torna a tutte le curve">← CURVE</button><div class="sp-secl" id="sp-secl">'+spotsSectorsLbl(v)+'</div><div class="sp-marks" id="sp-marks">'+spotsMarksHtml(v)+'</div><div class="sp-dots" id="sp-dots">');
   ids.forEach(id=>{const on=!!d[id],n=spotNo(id);
-    h.push('<button class="sp-dot'+(on?' on':'')+'" data-id="'+id+'" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'✓':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>');});
+    h.push('<button class="sp-dot'+(on?' on':'')+'" data-id="'+id+'" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'<i class="ic ic-check"></i>':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>');});
   h.push('</div></div>');
-  h.push('<div class="sp-tools"><button class="sp-btn" onclick="spotsRotate(-30)" aria-label="Ruota a sinistra">⟲</button><button class="sp-btn" onclick="spotsRotate(30)" aria-label="Ruota a destra">⟳</button><button class="sp-btn" onclick="spotsZoom(1.4)" aria-label="Ingrandisci">＋</button><button class="sp-btn" onclick="spotsZoom(1/1.4)" aria-label="Riduci">－</button><button class="sp-btn" onclick="spotsResetView()" aria-label="Centra">⤢</button>'+(currentUserId===SERVER_OWNER?'<button class="sp-btn'+(_spMarkMode?' on':'')+'" onclick="spotsToggleMark()" aria-label="Aggiungi riferimento del circuito">📍</button>':'')+'</div>');
+  h.push('<div class="sp-tools"><button class="sp-btn" onclick="spotsRotate(-30)" aria-label="Ruota a sinistra">⟲</button><button class="sp-btn" onclick="spotsRotate(30)" aria-label="Ruota a destra">⟳</button><button class="sp-btn" onclick="spotsZoom(1.4)" aria-label="Ingrandisci">＋</button><button class="sp-btn" onclick="spotsZoom(1/1.4)" aria-label="Riduci">－</button><button class="sp-btn" onclick="spotsResetView()" aria-label="Centra">⤢</button>'+(currentUserId===SERVER_OWNER?'<button class="sp-btn'+(_spMarkMode?' on':'')+'" onclick="spotsToggleMark()" aria-label="Aggiungi riferimento del circuito"><i class="ic ic-pin"></i></button>':'')+'</div>');
   h.push('<div class="sp-hint sp-hint-over">Tocca una curva per ingrandirla. ⤢ torna alla vista intera.</div>');
   if(t&&!_spTrash)h.push('<div class="sp-hint sp-hint-zoom">I numeri sono punti da spuntare. Tieni premuto un punto per spostarlo. Due dita: zoom e rotazione.</div>');
   openModal(h.join(''));
@@ -6644,10 +6644,10 @@ function spotsRefresh(){
   const d=(spotDone[_spNum])||{},[f,t]=spotCount(_spNum);
   if(sub)sub.innerHTML=_spTrash?'<b style="color:#ef4444">CESTINO</b> · tocca un punto per eliminarlo per tutti i piloti':(t?'Fatti <b>'+f+'/'+t+'</b> · ':'')+'tocca la pista dove hai scattato';
   {const os=document.querySelector('#sp-stage .sp-secs'),sl=document.getElementById('sp-secl'),v=venueMap();if(os&&v){os.insertAdjacentHTML('afterend',spotsSectorsSvg(v));os.remove();}if(sl&&v)sl.innerHTML=spotsSectorsLbl(v);}
-  dl.innerHTML=spotIds().map(id=>{const on=!!d[id],n=spotNo(id);return'<button class="sp-dot'+(on?' on':'')+'" data-id="'+id+'" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'✓':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>';}).join('');
+  dl.innerHTML=spotIds().map(id=>{const on=!!d[id],n=spotNo(id);return'<button class="sp-dot'+(on?' on':'')+'" data-id="'+id+'" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'<i class="ic ic-check"></i>':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>';}).join('');
   spotsLayout(false);
 }
-function spotsMarksHtml(v){const mk=(v&&v.marks)||{};return Object.keys(mk).map(k=>'<span class="sp-mark" data-mid="'+k+'"><i>📍</i>'+escapeHtmlSp(mk[k].n||'')+'</span>').join('');}
+function spotsMarksHtml(v){const mk=(v&&v.marks)||{};return Object.keys(mk).map(k=>'<span class="sp-mark" data-mid="'+k+'"><i><i class="ic ic-pin"></i></i>'+escapeHtmlSp(mk[k].n||'')+'</span>').join('');}
 function spotsToggleMark(){_spMarkMode=!_spMarkMode;renderSpots();}
 window.spotsToggleMark=spotsToggleMark;
 function spotsAddMark(cx,cy){const v=venueMap();if(!v)return;const q=spotsToMap(cx,cy);const n=prompt('Nome del riferimento (es. Ingresso pregriglia). Vuoto = annulla');

@@ -127,7 +127,7 @@ var t=q('meta[name="apple-mobile-web-app-title"]');if(t)t.content='RT Prova';})(
       <div id="el-search-text-wrap">
         <div class="search-bar-container">
           <input class="search-bar" id="el-search-input" placeholder="Numero, cognome o nome..." oninput="renderEntryList()" autocomplete="off">
-          <button class="search-clear" id="el-search-clear" onclick="clearElSearch()" style="display:none">✕</button>
+          <button class="search-clear" id="el-search-clear" onclick="clearElSearch()" style="display:none"><i class="ic ic-close"></i></button>
         </div>
       </div>
       <div id="el-search-team-wrap" style="display:none">
@@ -197,7 +197,7 @@ var t=q('meta[name="apple-mobile-web-app-title"]');if(t)t.content='RT Prova';})(
       <div id="p-search-text-wrap">
         <div class="search-bar-container">
           <input class="search-bar" id="pilots-search" placeholder="Cerca numero, nome o team..." oninput="filterPilots(this.value)" autocomplete="off">
-          <button class="search-clear" id="search-clear-btn" onclick="clearPilotsSearch()" style="display:none">✕</button>
+          <button class="search-clear" id="search-clear-btn" onclick="clearPilotsSearch()" style="display:none"><i class="ic ic-close"></i></button>
         </div>
       </div>
       <div id="p-search-team-wrap" style="display:none">
@@ -245,7 +245,7 @@ var t=q('meta[name="apple-mobile-web-app-title"]');if(t)t.content='RT Prova';})(
       <div id="prog-search-text-wrap">
         <div class="search-bar-container">
           <input class="search-bar" id="prog-search" placeholder="Cerca pilota nel programma..." oninput="filterProgramma(this.value)" autocomplete="off">
-          <button class="search-clear" id="prog-search-clear" onclick="clearProgSearch()" style="display:none">✕</button>
+          <button class="search-clear" id="prog-search-clear" onclick="clearProgSearch()" style="display:none"><i class="ic ic-close"></i></button>
         </div>
       </div>
       <div id="prog-search-team-wrap" style="display:none">
@@ -326,7 +326,7 @@ var t=q('meta[name="apple-mobile-web-app-title"]');if(t)t.content='RT Prova';})(
 <script src="vendor/firebase-app-compat.js"></script>
 <script src="vendor/firebase-database-compat.js"></script>
 <script src="vendor/firebase-auth-compat.js"></script>
-<script>const APP_BUILD='2026-11-22-0945';</script>
+<script>const APP_BUILD='2026-11-22-1100';</script>
 <script src="app/app.js"></script>
 <script>/* file dello script vecchio rimasto in cache: lo riscarica una volta e ricarica la pagina */
 if(window.RT_JS_BUILD!==APP_BUILD){try{if(sessionStorage.getItem('rt_jsfix')!==APP_BUILD){sessionStorage.setItem('rt_jsfix',APP_BUILD);Promise.all(['app/app.js','app/app.css'].map(function(u){return fetch(u,{cache:'reload'});})).then(function(){location.reload();});}}catch(e){}}</script>
