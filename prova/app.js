@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-22-1235';
+var RT_JS_BUILD='2026-11-22-1240';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2877,7 +2877,7 @@ function searchResultItem(m){
     +'<div class="sr-name" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span>'+m.name+'</span>'
     +(isMine?'<span style="font-size:10px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i> TUO</span>':'')
     +(ft&&!isMine?'<span style="font-size:10px;font-weight:800;color:'+tc+';border:1px solid '+tc+';border-radius:4px;padding:0 4px">TEAM</span>':'')
-    +badges+(p?reelChip(p)+fotoChips(p)+persChip(p):'')+'</div>'
+    +badges+(p?reelChip(p)+fotoChips(p)+persChip(p):mediaChip({num:m.num}))+'</div>'
     +'<div class="sr-team">'+m.team+'</div>'+noteLine(m.num)+'</div>'
     +'<span class="sr-cat '+catCls+'" style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800">'+m.cat+'</span></div>';
 }
@@ -2904,7 +2904,7 @@ function openPilotDetail(num){
     +'<span style="font-size:28px;font-weight:900">#'+num+'</span>'
     +(isMine?'<span style="font-size:11px;color:#22c55e;font-weight:800;border:1px solid #22c55e;padding:2px 8px;border-radius:4px"><i class="ic ic-star"></i> TUO PILOTA</span>':'')
     +'</div>'
-    +'<div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">'+name+'</div>'
+    +'<div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">'+name+mediaChip({num:num})+'</div>'
     +'<div style="font-size:15px;font-weight:700;color:var(--text3);margin-bottom:8px">'+team+'</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:16px">'
     +'<span class="'+catCls+'" style="font-size:12px;padding:3px 10px;border-radius:6px;font-weight:800;border:1px solid">'+cat+'</span>'
@@ -3680,7 +3680,7 @@ function renderEntryList(){
       html+='<div class="entry-item'+(isMine?' is-mine':'')+'" onclick="openPilotDetail(\''+p.num+'\')">'
         +'<span class="entry-num" style="'+(isMine?'color:#22c55e':'')+'">#'+p.num+'</span>'
         +'<div style="flex:1;min-width:0">'
-        +'<div class="entry-name">'+(p.lastName||'')+' '+(p.firstName||'')+(isMine?' <span style="font-size:9px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i> TUO</span>':'')+'</div>'
+        +'<div class="entry-name">'+(p.lastName||'')+' '+(p.firstName||'')+(isMine?' <span style="font-size:9px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i> TUO</span>':'')+mediaChip({num:p.num})+'</div>'
         +'<div class="entry-team">'+( p.team||'')+(p.source==='ocr'?' <span title="Letto dal PDF scansionato: verra\' sostituito dai dati ufficiali" style="font-size:9px;font-weight:800;color:#facc15;border:1px dashed #facc15;border-radius:4px;padding:0 5px">DA CONFERMARE</span>':'')+'</div>'+noteLine(p.num)+'</div>'
         +'<div class="entry-badges">'
         +'<span style="font-size:9px;font-weight:700;color:var(--text4);padding:2px 6px;border:1px solid var(--border);border-radius:4px">'+( p.parity||autoParity(p.num))+'</span>'
