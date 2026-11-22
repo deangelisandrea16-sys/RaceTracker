@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-22-0843';
+var RT_JS_BUILD='2026-11-22-0851';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -4487,7 +4487,7 @@ function apexSnapshot(){
 function qualiStore(){try{return JSON.parse(localStorage.getItem('rt_quali_'+activeRaceId)||'{}');}catch(e){return{};}}
 function apexEvaluate(why){
   clearTimeout(apexEvalT);
-  const cat=apexCat(apexState.cat);const ss=String(apexState.sess||'').toUpperCase();
+  const cat=apexCat(apexState.cat);const ss=rtPfNorm(apexState.sess);
   if(!cat||!ss||!apexState.start)return;
   const key=activeRaceId+'|'+cat+'|'+ss+'|'+apexState.start;
   if(apexEvaluatedKey===key)return;
@@ -4527,7 +4527,7 @@ function apexEvaluate(why){
         if(!e.result[qk]){e.result[qk]=String(x.pos);u['races/'+activeRaceId+'/entryList/'+x.num+'/result/'+qk]=String(x.pos);}});
       if(Object.keys(u).length){update(ref(db),u);if(activeTab==='programma')renderSchedule();}}
     // Prefinali e finale: arrivo provvisorio dal live (il server lo sostituisce con l'ufficiale), solo a gara conclusa
-    const mpf=ss.match(/PREFINAL[E]?\s+([AB])\b/),mfi=/FINAL/.test(ss)&&!/PREFINAL/.test(ss);
+    const mpf=rtPfGroup(ss)?[0,rtPfGroup(ss)]:null,mfi=/FINAL/.test(ss)&&!/PREFINAL/.test(ss);
     if((mpf||mfi)&&activeRaceId&&_done){const fk=mpf?'PF-'+mpf[1]:'FIN';const u={};
       snap.forEach(x=>{if(!x.pos||x.pos>=999)return;const e=currentEntryList[x.num];if(!e||apexCat(e.cat)!==cat)return;e.result=e.result||{};
         const v=String(x.pos);if(ltRetOf(x.num)){e.out=e.out||{};e.out[fk]=true;u['races/'+activeRaceId+'/entryList/'+x.num+'/out/'+fk]=true;}if(!e.result[fk]){e.result[fk]=v;u['races/'+activeRaceId+'/entryList/'+x.num+'/result/'+fk]=v;}});
@@ -5860,8 +5860,12 @@ function apexCat(t){
    (prima valeva solo l'orario: con il ritardo restava sulla finale precedente mentre l'altra era gia' al giro di ricognizione) */
 function liveFinalCat(){try{if(!apexWs||apexWs.readyState!==1)return null;const ss=String(apexState.sess||'').toUpperCase();if(!/FINAL/.test(ss)||/PRE/.test(ss))return null;const c=apexCat(apexState.cat);return c?canonCat(c):null;}catch(e){return null;}}
 function apexMatchSlot(){return apexMatchFor(apexState.cat,apexState.sess,apexState.start);}
+// 22/11/2026 (Andrea): prefinali con qualsiasi nome, tutti i campionati: "Prefinal(e)", "Pre-Final", "Pre Final";
+// lettera A/B, numero 1/2 (= A/B) o unica (senza lettera = la prefinale della categoria)
+function rtPfNorm(t){return String(t||'').toUpperCase().replace(/PRE[\s\-_]*FINAL/g,'PREFINAL');}
+function rtPfGroup(ss){const m=rtPfNorm(ss).match(/PREFINALE?\s*([A-D]|[1-4])\b/);return !m?'':/\d/.test(m[1])?'ABCD'[Number(m[1])-1]:m[1];}
 function apexMatchFor(catTxt,sessTxt,startTxt){
-  const cat=apexCat(catTxt);const ss=String(sessTxt||'').toUpperCase();
+  const cat=apexCat(catTxt);const ss=rtPfNorm(sessTxt);
   if(!cat||!ss)return null;
   const today=typeof autoDayName==='function'?autoDayName():activeDay;
   let arr=currentSchedule[today]||[];arr=Array.isArray(arr)?arr:Object.values(arr);
@@ -5879,9 +5883,9 @@ function apexMatchFor(catTxt,sessTxt,startTxt){
     // 19/11/2026: prove senza pari/dispari (KZ2, OKN "All", liste di numeri)
     if(/(FREE|PRACT|WARM)/.test(ss)&&!/QUALIF/.test(ss))return x.type==='all'||x.type==='list';
     if(/HEAT|MANCHE/.test(ss)&&(m=ss.match(/\b([A-H])\s*-\s*([A-H])\b/)))return x.type==='group'&&f.toUpperCase().replace(/\s/g,'')===(m[1]+'-'+m[2]);
-    if(/PREFINAL/.test(ss)&&(m=ss.match(/PREFINAL[E]?\s+([AB])\b/)))return x.type==='prefinal'&&f.toUpperCase()===m[1];
-    // 22/11/2026: prefinale unica (OKN "Prefinal", senza A/B) = qualsiasi prefinale della categoria
-    if(/PREFINAL/.test(ss))return x.type==='prefinal'||/PREFINAL/i.test((x.session||'')+' '+(x.label||'')+' '+(x.wsk||''));
+    // 22/11/2026: prefinale con lettera/numero = quella del gruppo; unica (OKN "Prefinal") = la prefinale della categoria
+    if(/PREFINAL/.test(ss)){const isPf=x.type==='prefinal'||/PREFINAL/.test(rtPfNorm((x.session||'')+' '+(x.label||'')+' '+(x.wsk||'')));
+      const g=rtPfGroup(ss);return isPf&&(!g||!f||f.toUpperCase()===g);}
     return false;
   };
   // tra gli slot compatibili prende quello con orario più vicino alla partenza reale
