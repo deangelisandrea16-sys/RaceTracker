@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-22-0850';
+var RT_JS_BUILD='2026-11-22-0945';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3019,7 +3019,7 @@ function teamEntrants(t){
   Object.entries(currentEntryList).forEach(([num,e])=>{
     if(!e||!(teamKey(e.team)===t.key||sameTeam(e.team,teamOfKey(t))))return;
     let h=e.heats||[];if(!Array.isArray(h))h=typeof h==='object'?Object.values(h):[];
-    out.push({num,cat:e.cat||'',parity:e.parity||autoParity(num),serie:e.serie||'',group:e.group||'',prefinal:e.prefinal||'',heats:h,name:(e.lastName||'')+' '+(e.firstName||'')});
+    out.push({num,cat:e.cat||'',parity:e.parity||autoParity(num),serie:e.serie||'',group:e.group||'',prefinal:e.prefinal||'',eliminated:!!e.eliminated,heats:h,name:(e.lastName||'')+' '+(e.firstName||'')});
   });
   return out.sort((a,b)=>parseInt(a.num)-parseInt(b.num));
 }
@@ -3043,7 +3043,7 @@ function teamsForSlot(slot){
     let waiting=[];
     if(slot.type==='serie')waiting=ents.filter(p=>!pSerie(p));
     if(slot.type==='group')waiting=ents.filter(p=>!pilotHasGroupData(p));
-    if(slot.type==='prefinal')waiting=ents.filter(p=>!String(p.prefinal||'').trim());
+    if(slot.type==='prefinal')waiting=ents.filter(p=>!String(p.prefinal||'').trim()&&!p.eliminated); // 22/11: eliminato = non in attesa
     if(inSlot.length||waiting.length)res.push({t,inSlot,waiting});
   });
   return res;
