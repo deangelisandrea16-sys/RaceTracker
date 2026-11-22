@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-22-1310';
+var RT_JS_BUILD='2026-11-22-1330';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2114,15 +2114,7 @@ function openCalendar(){
   calQ='';
   openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button><div class="modal-title">Gare disponibili</div><input id="cal-q" type="search" placeholder="Cerca gara, circuito, città…" oninput="calQ=this.value;renderCalendar()" autocomplete="off" style="width:100%;min-height:44px;margin:0 0 10px;padding:10px 12px;border-radius:10px;border:1px solid var(--border,#333);background:var(--bg2,#151518);color:var(--text,#eee);font-size:15px;box-sizing:border-box"><div id="cal-body"><div class="empty-state"><p>Caricamento…</p></div></div>');
   if(calData){renderCalendar();return;}
-  // 22/11/2026 (Andrea): calendario automatico. Alle gare di calendar.json si aggiungono quelle trovate dal server sui siti ufficiali
-  // (calendarAuto/events: solo gare nuove). Se il nodo non risponde si mostra comunque calendar.json.
-  const auto=new Promise(res=>{const t=setTimeout(()=>res(null),4000);try{_fbDb.ref('calendarAuto').once('value').then(s=>{clearTimeout(t);res(s.val());}).catch(()=>{clearTimeout(t);res(null);});}catch(e){clearTimeout(t);res(null);}});
-  fetch('calendar.json',{cache:'no-cache'}).then(r=>r.json()).then(d=>auto.then(a=>{
-    const ids=new Set((d.events||[]).map(e=>e.id));
-    const extra=Object.values((a&&a.events)||{}).filter(e=>e&&e.id&&!ids.has(e.id));
-    d.events=(d.events||[]).concat(extra);
-    if(a&&a.updated&&a.updated>d.updated)d.updated=a.updated;
-    calData=d;renderCalendar();})).catch(()=>{
+  fetch('calendar.json',{cache:'no-cache'}).then(r=>r.json()).then(d=>{calData=d;renderCalendar();}).catch(()=>{
     const el=document.getElementById('cal-body');if(el)el.innerHTML='<div class="empty-state"><p>Calendario non disponibile offline.</p></div>';
   });
 }
@@ -3967,22 +3959,19 @@ function wxDayDate(day){const r=(typeof races!=='undefined'&&races&&races[active
 function wxLoad(){
   const g=wxGeo();if(!g)return;
   if(_wx.key!==g.key){_wx={key:g.key,at:0,ts:null,loading:false};
-    try{const c=JSON.parse(localStorage.getItem('rt_wx_'+g.key)||'null');if(c&&c.v===2&&c.ts&&c.ts[0]&&c.ts[0].s!==undefined){_wx.at=c.at;_wx.ts=c.ts;}}catch(e){}}
+    try{const c=JSON.parse(localStorage.getItem('rt_wx_'+g.key)||'null');if(c&&c.ts&&c.ts[0]&&c.ts[0].s!==undefined){_wx.at=c.at;_wx.ts=c.ts;}}catch(e){}}
   if(_wx.loading||Date.now()-_wx.at<3600000)return;
   _wx.loading=true;_wx.at=Date.now();   // anche se fallisce non si riprova prima di un'ora
-  fetch('https://api.met.no/weatherapi/locationforecast/2.0/complete?lat='+g.lat.toFixed(4)+'&lon='+g.lon.toFixed(4))
+  fetch('https://api.met.no/weatherapi/locationforecast/2.0/compact?lat='+g.lat.toFixed(4)+'&lon='+g.lon.toFixed(4))
     .then(r=>r.ok?r.json():null).then(j=>{_wx.loading=false;const ts=j&&j.properties&&j.properties.timeseries;if(!ts)return;
       const old=_wx.ts||[];
       _wx.ts=ts.map(x=>{const d=x.data||{},i=(d.instant||{}).details||{},h1=d.next_1_hours,h6=d.next_6_hours;
-        // 21/11/2026 (Andrea): piu' dettaglio: raffiche, direzione del vento, probabilita' e massimo di pioggia (endpoint "complete")
-        const hd=((h1||h6||{}).details)||{};
-        return{t:x.time,T:i.air_temperature,W:i.wind_speed,G:i.wind_speed_of_gust,D:i.wind_from_direction,p:hd.precipitation_amount!=null?hd.precipitation_amount:null,
-          px:hd.precipitation_amount_max,P:hd.probability_of_precipitation,PT:hd.probability_of_thunder,n:h1?1:(h6?6:0),s:String(((h1||h6||{}).summary||{}).symbol_code||'')};});
+        return{t:x.time,T:i.air_temperature,W:i.wind_speed,p:h1?(h1.details||{}).precipitation_amount:(h6?(h6.details||{}).precipitation_amount:null),n:h1?1:(h6?6:0),s:String(((h1||h6||{}).summary||{}).symbol_code||'')};});
       // 20/11/2026 (Andrea): la previsione parte da "adesso": si tengono le ore gia' passate (ultimi 3 giorni) cosi' il meteo resta
       // accanto a PROVE LIBERE, QUALIFICHE ecc. anche dopo che sono finite
       try{const first=_wx.ts.length?new Date(_wx.ts[0].t).getTime():Infinity,lim=Date.now()-3*864e5;
         const keep=old.filter(x=>{const t=new Date(x.t).getTime();return t<first&&t>lim&&x.n;});if(keep.length)_wx.ts=keep.concat(_wx.ts);}catch(e){}
-      try{localStorage.setItem('rt_wx_'+g.key,JSON.stringify({v:2,at:_wx.at,ts:_wx.ts}));}catch(e){}
+      try{localStorage.setItem('rt_wx_'+g.key,JSON.stringify({at:_wx.at,ts:_wx.ts}));}catch(e){}
       wxRender();}).catch(()=>{_wx.loading=false;});
 }
 function wxSummary(day){
@@ -3996,32 +3985,17 @@ function wxSummary(day){
   const half=(a,b)=>{const hs=[...wet].filter(h=>h>=a&&h<b).sort((x,y)=>x-y),bands=[];hs.forEach(h=>{const l=bands[bands.length-1];if(l&&h===l[1])l[1]=h+1;else bands.push([h,h+1]);});
     const rr=rows.filter(x=>x.h<b&&x.h+(x.n||1)>a);if(!rr.length)return null;
     if(bands.length){const wr=rr.filter(x=>x.p!=null&&((x.n===1&&x.p>=0.2)||(x.n===6&&x.p>=1)));
-      const k=wxWorst(wr.map(wxClass));
-      // 21/11/2026 (Andrea): intensita' (debole/moderata/forte, mm all'ora nel momento peggiore) e probabilita' massima
-      const mmh=Math.max.apply(null,wr.map(x=>Math.max(x.p||0,x.px||0)/(x.n||1)));
-      const adj=(k==='rain'||k==='showers'||k==='heavy')?wxRainAdj(mmh):'';
-      const pr=rr.map(x=>x.P).filter(v=>v!=null);const P=pr.length?Math.round(Math.max.apply(null,pr)):null;
-      return{k,wet:true,txt:(k==='heavy'?'pioggia':WX_TXT[k])+(adj?' '+adj:'')+' '+bands.map(v=>v[0]+'–'+v[1]).join(', '),
-        det:(mmh>=0.1?(mmh<10?mmh.toFixed(1).replace('.',','):Math.round(mmh))+' mm/h':'')+(P!=null?(mmh>=0.1?' · ':'')+P+'%':'')};}
+      const k=wxWorst(wr.map(wxClass));return{k,wet:true,txt:WX_TXT[k]+' '+bands.map(v=>v[0]+'–'+v[1]).join(', ')};}
     // asciutto: nuvolosita' media della fascia (sereno 0 ... coperto 3); nebbia se prevale
     const cl=rr.map(wxClass);if(cl.filter(x=>x==='fog').length*2>cl.length)return{k:'fog',txt:WX_TXT.fog};
     const sc={sun:0,fair:1,part:2,cloud:3};const v=cl.map(x=>sc[x]!=null?sc[x]:3);const m=Math.round(v.reduce((p,q)=>p+q,0)/v.length);
     const k=['sun','fair','part','cloud'][m];return{k,txt:WX_TXT[k]};};
-  // 21/11/2026 (Andrea): vento descritto (calmo ... molto forte), da dove soffia nel momento piu' ventoso, raffiche massime
-  let wr0=null;rows.forEach(x=>{if(x.W!=null&&(!wr0||x.W>wr0.W))wr0=x;});
-  const G=rows.map(x=>x.G).filter(v=>v!=null);
-  const wind=wr0?Math.round(wr0.W*3.6):null,gust=G.length?Math.round(Math.max.apply(null,G)*3.6):null;
-  return{tmin:Math.round(Math.min.apply(null,T)),tmax:Math.round(Math.max.apply(null,T)),wind,gust:gust!=null&&wind!=null&&gust>=wind+10?gust:null,
-    wdir:wr0&&wr0.D!=null?wxDir(wr0.D):'',wtxt:wind!=null?wxWindAdj(wind):'',am:half(7,13),pm:half(13,19),coarse:rows.some(x=>x.n===6)};
+  return{tmin:Math.round(Math.min.apply(null,T)),tmax:Math.round(Math.max.apply(null,T)),wind:W.length?Math.round(Math.max.apply(null,W)*3.6):null,am:half(7,13),pm:half(13,19),coarse:rows.some(x=>x.n===6)};
 }
 /* 19/11/2026 (Andrea): set di icone proprie (niente emoji) che segue il tempo previsto ora per ora:
    sereno, quasi sereno, poco nuvoloso, nuvoloso, nebbia, pioviggine, pioggia, pioggia forte, rovesci, temporale, nevischio, neve. */
 const WX_TXT={sun:'sereno',fair:'quasi sereno',part:'poco nuvoloso',cloud:'nuvoloso',fog:'nebbia',drizzle:'pioviggine',rain:'pioggia',heavy:'pioggia forte',
   showers:'rovesci',thunder:'temporale',sleet:'nevischio',snow:'neve'};
-// 21/11/2026 (Andrea): sfumature. Pioggia per mm/h (debole < 1, moderata < 4, forte >= 4); vento per km/h (scala Beaufort semplificata)
-function wxRainAdj(mmh){return mmh>=4?'forte':mmh>=1?'moderata':'debole';}
-function wxWindAdj(k){return k<6?'calmo':k<20?'debole':k<30?'moderato':k<40?'teso':k<60?'forte':'molto forte';}
-function wxDir(d){return['N','NE','E','SE','S','SO','O','NO'][Math.round(((Number(d)%360)+360)%360/45)%8];}
 const WX_RANK=['sun','fair','part','cloud','fog','drizzle','showers','rain','sleet','snow','heavy','thunder'];
 function wxWorst(list){let k='cloud',r=-1;list.forEach(x=>{const i=WX_RANK.indexOf(x);if(i>r){r=i;k=x;}});return k;}
 function wxClass(x){const y=String((x&&x.s)||'');const p=x&&x.p!=null?x.p/(x.n||1):0;
@@ -4054,19 +4028,15 @@ function wxSlotIcon(day,time){
   try{const date=wxDayDate(day);if(!date||!_wx.ts)return'';const z=n=>String(n).padStart(2,'0');const hh=parseInt(String(time).split('.')[0]);if(isNaN(hh))return'';
     const x=_wx.ts.find(r=>{const d=new Date(r.t);return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())===date&&d.getHours()<=hh&&hh<d.getHours()+(r.n||1);});
     if(!x||!x.n)return'';const k=wxClass(x);
-    const mmh=x.p!=null?Math.max(x.p,x.px||0)/(x.n||1):0;
-    const tip=[(k==='heavy'?'pioggia':WX_TXT[k])+((k==='rain'||k==='showers'||k==='heavy')&&mmh>0?' '+wxRainAdj(mmh):''),x.P!=null?Math.round(x.P)+'% pioggia':'',
-      x.W!=null?'vento '+Math.round(x.W*3.6)+' km/h'+(x.D!=null?' da '+wxDir(x.D):'')+(x.G!=null&&x.G*3.6>=x.W*3.6+10?', raffiche '+Math.round(x.G*3.6):''):''].filter(Boolean).join(' · ');
-    return'<span title="'+tip+'" style="order:2;display:inline-flex;align-items:center;font-style:normal;flex-shrink:0">'+wxIcon(k,24).replace('margin-right:4px','margin-right:0')+'</span>';}catch(e){return'';}
+    return'<span title="'+WX_TXT[k]+'" style="order:2;display:inline-flex;align-items:center;font-style:normal;flex-shrink:0">'+wxIcon(k,24).replace('margin-right:4px','margin-right:0')+'</span>';}catch(e){return'';}
 }
 function wxRender(){
   const el=document.getElementById('wx-bar');if(!el)return;
   const s=wxSummary(activeDay);if(!s||(!s.am&&!s.pm)){el.style.display='none';return;}
   const seg=(lab,h)=>h?'<span style="white-space:nowrap;margin-right:12px">'+wxIcon(h.k)+'<span style="color:var(--text4);font-size:10px;font-weight:800;letter-spacing:.06em;margin-right:4px">'+lab+'</span>'
-    +'<span style="font-weight:900;color:'+(h.wet?'#60a5fa':'var(--text)')+'">'+h.txt+'</span>'
-    +(h.det?'<span style="color:var(--text3);font-size:11px;margin-left:4px">('+h.det+')</span>':'')+'</span>':'';
+    +'<span style="font-weight:900;color:'+(h.wet?'#60a5fa':'var(--text)')+'">'+h.txt+'</span></span>':'';
   el.innerHTML='<div style="display:flex;flex-wrap:wrap;align-items:center;row-gap:4px">'+seg('MATTINA',s.am)+seg('POMERIGGIO',s.pm)
-    +'<span style="white-space:nowrap;color:var(--text3)">'+s.tmin+'–'+s.tmax+'°'+(s.wind!=null?' · vento '+s.wtxt+' '+s.wind+' km/h'+(s.wdir?' da '+s.wdir:'')+(s.gust?', raffiche '+s.gust:''):'')
+    +'<span style="white-space:nowrap;color:var(--text3)">'+s.tmin+'–'+s.tmax+'°'+(s.wind!=null?' · vento '+s.wind+' km/h':'')
     +' <span style="color:var(--text4);font-weight:600;font-size:10px">'+(s.coarse?'(a fasce di 6 ore, indicativo)':'(indicativo)')+'</span></span></div>';
   el.style.display='';
 }
@@ -4617,9 +4587,9 @@ function alertLog(){try{return JSON.parse(localStorage.getItem(alertKey())||'[]'
 // Preferenze notifiche per utente (Firebase notifPrefs/<utente>/<tipo> = false spegne; default acceso).
 // Le stesse chiavi le rispetta il server push.
 const NOTIF_TYPES=[['materiale','Materiale smistato: quante clip e foto sono state divise per pilota dopo ogni smistamento'],['programma','Cambi di programma: griglia ufficiale cambiata (miei piloti) e programma ufficiale aggiornato'],['top3','Mio pilota nei primi 3 in manche e prefinale: subito dal live (provvisorio) e quando diventa ufficiale'],['qualifiche','Pole e top 3 in qualifica'],['finali','P1–P5 in finale: dal live (provvisorio) e quando diventa ufficiale'],['eliminati','Eliminati e rischio finale'],['prefinali','Passati a prefinali e finale'],['riepilogo','Riepilogo serale (orari di domani)'],['entrylist','Cambi entry list (miei piloti e team)'],
-  ['ritiri','Mio pilota uscito o fermo in pista'],['rossa','Bandiera rossa con i miei piloti in pista'],['partenza','Partita una sessione con i miei piloti'],['prossima','Mio pilota in pista tra 10 minuti'],['ritardo','Ritardo cambiato di 5 minuti o più'],['correzioni','Posizioni cambiate in classifica ufficiale sui miei piloti, con il motivo (penalità, squalifiche)'],['comunicati','Comunicati e documenti ufficiali nuovi'],['promozioni','Mio pilota promosso dopo le verifiche: pole in qualifica o podio in finale']];
+  ['ritiri','Mio pilota uscito o fermo in pista'],['rossa','Bandiera rossa con i miei piloti in pista'],['partenza','Partita una sessione con i miei piloti'],['prossima','Mio pilota in pista tra 10 minuti'],['ritardo','Ritardo cambiato di 5 minuti o più'],['correzioni','Correzioni ufficiali sui miei piloti (reclami, penalità)'],['comunicati','Comunicati e documenti ufficiali nuovi'],['promozioni','Mio pilota promosso dopo le verifiche: pole in qualifica o podio in finale']];
 // nuove (dal 14/11): spente finché l'utente non le accende
-const NOTIF_DEF_OFF=new Set(['top3','ritiri','rossa','partenza','prossima','ritardo','comunicati','promozioni']);   /* 21/11/2026: 'correzioni' (posizioni cambiate) acceso di default */
+const NOTIF_DEF_OFF=new Set(['top3','ritiri','rossa','partenza','prossima','ritardo','correzioni','comunicati','promozioni']);
 function notifTypeOn(k){if(notifPrefs.tutte===false)return false;return NOTIF_DEF_OFF.has(k)?notifPrefs[k]===true:notifPrefs[k]!==false;}
 const NOTIF_OF={quali:'qualifiche',res:'finali',elim:'eliminati',pref:'prefinali',ritiri:'ritiri',rossa:'rossa',partenza:'partenza',prossima:'prossima',ritardo:'ritardo'};
 let notifPrefs={},notifPrefsUser='';
@@ -4657,7 +4627,7 @@ const TEAM_PALETTE=['#a78bfa','#22d3ee','#f472b6','#34d399','#fb923c','#facc15',
 let userSettings={},userSettingsUser='';
 function watchUserSettings(){
   if(!currentUserId||userSettingsUser===currentUserId)return;userSettingsUser=currentUserId;userSettings={};
-  try{onValue(ref(db,'settings/'+currentUserId),s=>{userSettings=s.val()||{};applyUserSettings();try{spotsAttachVenue();}catch(_){}try{document.body.classList.add('quiet');renderAll();}catch(e){}if(document.getElementById('settings-body'))renderSettings();});}catch(e){}
+  try{onValue(ref(db,'settings/'+currentUserId),s=>{userSettings=s.val()||{};applyUserSettings();try{document.body.classList.add('quiet');renderAll();}catch(e){}if(document.getElementById('settings-body'))renderSettings();});}catch(e){}
 }
 let _liveDefDone=false;
 function applyUserSettings(){
@@ -4938,10 +4908,8 @@ function renderSettings(){
   const light=document.body.classList.contains('light');const lv=userSettings.liveDefault||'mine';
   b.innerHTML='<div class="set-opt" onclick="openLegend()" style="border:1px solid var(--accent);border-radius:10px;margin-bottom:6px"><i class="ic ic-note"></i> <b>GUIDA</b> · come funziona l\'app, simboli e notifiche</div>'
     +'<div class="set-opt" onclick="openRemPanel()" style="border:1px solid #fbbf24;border-radius:10px;margin-bottom:6px"><i class="ic ic-bell"></i> <b>PROMEMORIA</b> · avvisi personali sui turni ('+Object.keys(reminders||{}).length+')</div>'
-    +(aiChatAllowed()?'<div class="set-opt" onclick="openAiChat()" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px"><i class="ic ic-chat"></i> <b>CHIEDI ALL\'AI</b> · orari, piloti, rischi</div>':'')
+    +(isDelayAdmin()?'<div class="set-opt" onclick="openAiChat()" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px"><i class="ic ic-chat"></i> <b>CHIEDI ALL\'AI</b> · orari, piloti, rischi</div>':'')
     +(isDelayAdmin()?'<div id="ai-usage-box" class="set-opt" onclick="openAiLog()" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px;display:block"><i class="ic ic-chip"></i> <b>SPESA AI</b> · <span id="ai-usage-txt">…</span><br><span style="font-size:11px;color:var(--text4)">tocca per il registro degli interventi</span></div>':'')
-    +(isDelayAdmin()?'<div class="set-opt" onclick="openTtPhoto()" style="border:1px solid #ef4444;border-radius:10px;margin-bottom:6px;display:block"><i class="ic ic-camera"></i> <b>FOTO PROGRAMMA</b> · emergenza<br><span style="font-size:11px;color:var(--text4)">solo se il programma ufficiale non si trova o non si legge</span></div>':'')
-    +'<div class="set-sec">PUNTI DI SCATTO</div>'+sw(!(userSettings&&userSettings.spotsPerRace),'Ritrova i punti sulla stessa pista anche nelle prossime gare','setSpotsScope(this.checked)')
     +'<div class="set-sec">PROFILO</div><div class="set-opt" onclick="closeModal();showUserPicker()"><i class="ic ic-user"></i> Cambia utente <span style="margin-left:auto;color:var(--text4)">'+currentUserId+'</span></div>'
     +'<div class="set-sec">ASPETTO (QUESTO TELEFONO)</div>'+opt(!light,'Tema scuro','setTheme(false)')+opt(light,'Tema chiaro','setTheme(true)')
     +'<div class="set-sec">LEGGIBILITÀ E AVVISI</div>'
@@ -6184,61 +6152,11 @@ async function openAiLog(){
   }catch(e){const el=document.getElementById('ailog-body');if(el)el.textContent='Registro non disponibile.';}
 }
 window.openAiLog=openAiLog;
-/* 21/11/2026 (Andrea): EMERGENZA "FOTO PROGRAMMA" (solo admin). Casi estremi: Timetable ufficiale introvabile o illeggibile.
-   Foto dal telefono → ttPhotoImg/<gara>/<id> (JPEG ridotte) + ttPhoto/<gara>/<id> {status:'nuovo'}. Il server le fa leggere a Sonnet
-   (due letture uguali + controlli) e scrive l'anteprima; qui si conferma con APPLICA. Si sostituiscono solo i giorni fotografati.
-   Il Timetable ufficiale, appena leggibile, prende il posto del programma da foto. Un solo ascolto, solo mentre la scheda e' aperta. */
-let _ttpRef=null,_ttpFiles=[];
-function ttpOff(){try{if(_ttpRef)_ttpRef.off();}catch(e){}_ttpRef=null;}
-function openTtPhoto(){
-  if(!isDelayAdmin()||!activeRaceId)return;ttpOff();_ttpFiles=[];
-  openModal('<button class="modal-close" onclick="ttpOff();closeModal()"><i class="ic ic-close"></i></button><button class="rem-back" onclick="ttpOff();openSettings()">← Impostazioni</button><div class="modal-title"><i class="ic ic-camera"></i> Foto programma</div>'
-    +'<div class="sp-sub">Emergenza: fotografa il programma esposto in circuito (una foto per pagina, dritta, intera, con il nome del giorno visibile). Lo legge l\'AI due volte: se non è sicura non scrive niente.</div>'
-    +'<input id="ttp-in" type="file" accept="image/*" capture="environment" multiple style="display:none" onchange="ttpAdd(this.files)">'
-    +'<button class="btn-add-team" style="min-height:48px;width:100%;margin:10px 0;font-weight:900" onclick="document.getElementById(\'ttp-in\').click()"><i class="ic ic-camera"></i> SCATTA / AGGIUNGI FOTO</button>'
-    +'<div id="ttp-list" style="display:flex;gap:6px;flex-wrap:wrap"></div><div id="ttp-state" style="margin-top:10px"></div>');
-}
-function ttpAdd(fl){
-  [...(fl||[])].slice(0,8-_ttpFiles.length).forEach(f=>_ttpFiles.push(f));
-  const el=document.getElementById('ttp-list');if(!el)return;
-  el.innerHTML=_ttpFiles.map((f,i)=>'<img src="'+URL.createObjectURL(f)+'" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">').join('');
-  const st=document.getElementById('ttp-state');if(st&&_ttpFiles.length)st.innerHTML='<button class="btn-add-team" style="min-height:48px;width:100%;background:#ef4444;color:#fff;font-weight:900" onclick="ttpSend()">INVIA '+_ttpFiles.length+' FOTO</button>';
-}
-function ttpJpeg(f){return new Promise((res,rej)=>{const im=new Image();im.onload=()=>{const k=Math.min(1,1800/Math.max(im.width,im.height));const c=document.createElement('canvas');
-  c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',0.82).split(',')[1]);};im.onerror=rej;im.src=URL.createObjectURL(f);});}
-async function ttpSend(){
-  const st=document.getElementById('ttp-state');if(!_ttpFiles.length||!st)return;st.innerHTML='<div class="sp-sub">Preparo le foto…</div>';
-  try{const imgs=[];for(const f of _ttpFiles)imgs.push(await ttpJpeg(f));
-    const id=String(Date.now());
-    await _fbDb.ref('ttPhotoImg/'+activeRaceId+'/'+id).set(imgs);
-    await _fbDb.ref('ttPhoto/'+activeRaceId+'/'+id).set({user:currentUserId,at:Date.now(),status:'nuovo',n:imgs.length});
-    _ttpRef=_fbDb.ref('ttPhoto/'+activeRaceId+'/'+id);_ttpRef.on('value',sn=>ttpRender(id,sn.val()));
-  }catch(e){st.innerHTML='<div style="color:#ef4444;font-weight:800">Invio non riuscito: '+String(e.message||e).replace(/</g,'&lt;')+'</div>';}
-}
-function ttpRender(id,q){
-  const st=document.getElementById('ttp-state');if(!st){ttpOff();return;}if(!q)return;const esc=x=>String(x||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
-  if(q.status==='nuovo'||q.status==='in lettura'){st.innerHTML='<div class="sp-sub"><i class="ic ic-wait"></i> L\'AI sta leggendo il programma (1–3 minuti)…</div>';return;}
-  if(q.status==='in scrittura'){st.innerHTML='<div class="sp-sub"><i class="ic ic-wait"></i> Scrivo il programma…</div>';return;}
-  if(q.status==='errore'){ttpOff();st.innerHTML='<div style="color:#ef4444;font-weight:900">Non applicato</div><div class="sp-sub">'+esc(q.motivo)+'</div>';return;}
-  if(q.status==='applicato'){ttpOff();st.innerHTML='<div style="color:#22c55e;font-weight:900"><i class="ic ic-check"></i> Programma aggiornato</div><div class="sp-sub">Copia del programma di prima salvata sul server. Appena il Timetable ufficiale si legge, prende il suo posto.</div>';return;}
-  if(q.status==='letto'){
-    const g=q.giorni||{},tt=q.tt||{};
-    const prev=(tt.days||[]).map(d=>'<div style="margin-top:8px;font-weight:900">'+esc(d)+' · '+(g[d]||0)+' turni</div>'
-      +((tt.schedule||{})[d]||[]).map(x=>'<div style="font-size:12px;font-family:monospace">'+esc(x.time)+' '+esc(x.cat)+' '+esc([].concat(x.filter||[]).length>6?(x.filter[0]+'–'+x.filter[x.filter.length-1]):[].concat(x.filter||[]).join(' '))+' '+esc(x.type||'')+'</div>').join('')).join('');
-    st.innerHTML='<div style="font-weight:900">Letto: '+(q.turni||0)+' turni'+(q.finali?' · '+q.finali+' finali':'')+'</div><div class="sp-sub">Controlla che corrisponda alla foto. Si sostituiscono solo i giorni qui sotto.</div>'+prev
-      +'<button class="btn-add-team" style="min-height:48px;width:100%;margin-top:10px;background:#22c55e;color:#000;font-weight:900" onclick="ttpApply(\''+id+'\')">APPLICA AL PROGRAMMA</button>';
-  }
-}
-function ttpApply(id){if(!isDelayAdmin())return;_fbDb.ref('ttPhoto/'+activeRaceId+'/'+id).update({apply:true,applyBy:currentUserId});}
-window.openTtPhoto=openTtPhoto;window.ttpAdd=ttpAdd;window.ttpSend=ttpSend;window.ttpApply=ttpApply;window.ttpOff=ttpOff;
 /* 21/11/2026 (Andrea): chat AI in pista — per ora solo amministratore. La domanda va in races/<gara>/aiChat/<utente>; risponde il
    server (la chiave non e' mai nell'app). Un solo ascolto, attivo solo mentre la chat e' aperta. */
 let _aiChatOff=null,_aiChatMsgs={};
-/* 21/11/2026 (Andrea): chat anche per Riccardo; spesa e registro AI restano solo all'amministratore. Il controllo vero e' sul server. */
-const AI_CHAT_USERS=['ricki'];
-function aiChatAllowed(){return isDelayAdmin()||AI_CHAT_USERS.includes(String(currentUserId||'').toLowerCase());}
 function openAiChat(){
-  if(!aiChatAllowed()||!activeRaceId)return;
+  if(!isDelayAdmin()||!activeRaceId)return;
   openModal('<button class="modal-close" onclick="closeAiChat()"><i class="ic ic-close"></i></button><button class="rem-back" onclick="closeAiChat();openSettings()">← Impostazioni</button><div class="modal-title"><i class="ic ic-chat"></i> Chiedi all\'AI</div>'
     +'<div class="sp-sub">Risponde con i dati di questa gara: programma, ritardo, i tuoi piloti e quelli dei team. Non modifica niente.</div>'
     +'<div id="aic-list" style="display:flex;flex-direction:column;gap:8px;margin:10px 0;max-height:50vh;overflow:auto"></div>'
@@ -6650,16 +6568,8 @@ function escapeHtmlSp(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;
    sulla stessa pista in un'altra gara si ritrovano. Le SPUNTE restano per gara. I punti della gara vengono copiati
    nel tracciato la prima volta (solo aggiunta, niente viene tolto dalla gara). */
 let _spVenueSpots=null,_spVenueKey='',_spRaceSpots={};
-/* 21/11/2026 (Andrea): scelta per account in Impostazioni — punti ritrovati sulla stessa pista nelle gare successive (predefinito)
-   oppure solo per questa gara (userSettings.spotsPerRace). I punti del tracciato restano salvati: si ritrovano riattivando l'opzione. */
-function spotsVenuePath(){if(userSettings&&userSettings.spotsPerRace)return'';const v=venueMap();return v&&currentUserId?'userSpots/'+currentUserId+'/'+v.key:'';}
-function setSpotsScope(keep){userSettings.spotsPerRace=!keep;setUserSetting('spotsPerRace',!keep);
-  try{if(_spVenueKey){off(ref(db,_spVenueKey));}}catch(_){}_spVenueKey='';_spVenueSpots=null;
-  trackSpots=Object.assign({},_spRaceSpots||{});if(keep)spotsAttachVenue();window._rtRenderDirty=true;try{renderAll();}catch(_){}renderSettings();}
-window.setSpotsScope=setSpotsScope;
-function spotsAttachVenue(){try{spotsViewsAttach();}catch(_){}const p=spotsVenuePath();
-  if(!p&&_spVenueKey){try{off(ref(db,_spVenueKey));}catch(_){}_spVenueKey='';_spVenueSpots=null;trackSpots=Object.assign({},_spRaceSpots||{});window._rtRenderDirty=true;}
-  if(!p||p===_spVenueKey)return;_spVenueKey=p;_spVenueSpots=null;
+function spotsVenuePath(){const v=venueMap();return v&&currentUserId?'userSpots/'+currentUserId+'/'+v.key:'';}
+function spotsAttachVenue(){try{spotsViewsAttach();}catch(_){}const p=spotsVenuePath();if(!p||p===_spVenueKey)return;_spVenueKey=p;_spVenueSpots=null;
   trackSpots=Object.assign({},_spRaceSpots||{});
   onValue(ref(db,p),sn=>{if(_spVenueKey!==p)return;_spVenueSpots=sn.val()||{};
     const miss={};Object.keys(_spRaceSpots||{}).forEach(id=>{if(!_spVenueSpots[id])miss[p+'/'+id]=_spRaceSpots[id];});
