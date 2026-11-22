@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-22-1100';
+var RT_JS_BUILD='2026-11-22-1300';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1169,6 +1169,7 @@ function listenRaceData(raceId){
   function mergeAndRender(){
     if(!sharedReady||!userReady)return;
     currentEntryList=sharedData.entryList||{};window._rtElSig=Date.now();
+    window._rtMedia=sharedData.media||{}; // 22/11/2026: contatori ClipSorter (mediaChip)
     currentSchedule=sharedData.schedule||{};
     currentDays=sharedData.days||Object.keys(currentSchedule);
     if(!Array.isArray(currentDays))currentDays=typeof currentDays==='object'?Object.values(currentDays):[];
@@ -2758,7 +2759,20 @@ function reelLabel(v){const o=REEL_OPTS.concat([['45','45"']]).find(x=>x[0]===St
 function reelText(v){return String(v||'')==='clip'?'Clip sfuse':'Reel '+reelLabel(v);}   // testo per copia editor / PDF
 /* 18/11/2026 (Andrea): un mio pilota che fa parte di un team seguito = acquisto personale oltre al team -> "PERS" ovunque compare
    (programma, lista piloti, finali, ricerca), sia se segnato dalla matita sia se aggiunto a mano. */
-function persChip(p){let ft=null;try{ft=p&&pilots.some(x=>x.num===String(p.num))?followedTeamOf(p.num,p.team||''):null;}catch(e){}
+/* 22/11/2026 (Andrea): contatore del materiale gia' smistato dal ClipSorter per il pilota (races/<gara>/media/<utente>/<num> = {c,f,at}).
+   Arriva con i dati condivisi della gara (gia' in ascolto). Piccolo e grigio accanto al nome; nascosto se assente o 0/0.
+   Si aggancia a persChip perche' persChip e' presente in tutte le righe pilota (lista, dettaglio, programma, griglie/arrivi, ricerca). */
+function mediaOf(num){try{const m=(window._rtMedia||{})[currentUserId]||{};const x=m[String(num)];return x&&typeof x==='object'&&((+x.c||0)+(+x.f||0))>0?x:null;}catch(e){return null;}}
+/* 22/11/2026 (Andrea): si mostra il dato che interessa per quel pilota: evidenziato VIDEO → solo clip, FOTO → solo foto,
+   entrambi o nessuno (o pilota non seguito) → clip e foto. Se il dato che interessa e' 0, il contatore non compare. */
+function mediaChip(p){const x=p&&mediaOf(p.num);if(!x)return'';
+  const mp=(typeof pilots!=='undefined'&&pilots.find(y=>y.num===String(p.num)))||p;
+  const v=hasVideo(mp),f=hasFoto(mp),showC=v||!f,showF=f||!v,c=+x.c||0,ff=+x.f||0;
+  if(!((showC&&c)||(showF&&ff)))return'';
+  const t=[];if(showC)t.push('<i class="ic ic-video"></i>'+c);if(showF)t.push('<i class="ic ic-camera"></i>'+ff);
+  return '<span class="rt-media" title="Materiale smistato'+(showC&&showF?': clip e foto':showC?': clip':': foto')+'">'+t.join('<span class="rt-media-sep">·</span>')+'</span>';}
+function persChip(p){return persChip0(p)+mediaChip(p);}
+function persChip0(p){let ft=null;try{ft=p&&pilots.some(x=>x.num===String(p.num))?followedTeamOf(p.num,p.team||''):null;}catch(e){}
   return ft?'<span title="Pilota del team con acquisto personale" style="font-family:\'Chakra Petch\',sans-serif;font-size:9px;font-weight:700;letter-spacing:.06em;color:#4ade80;border:1px solid rgba(74,222,128,.45);border-radius:4px;padding:0 4px;flex-shrink:0;line-height:14px">PERS</span>':'';}
 /* 19/11/2026 (Andrea): la durata del reel vale solo per chi ha il VIDEO; con solo FOTO non compare da nessuna parte */
 /* 19/11/2026 (Andrea): PREDISPOSTO — etichette opzionali per chi ha FOTO (es. 'in posa'). Oggi l'elenco e' vuoto:
@@ -2861,7 +2875,7 @@ function searchResultItem(m){
     +'<div class="sr-name" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span>'+m.name+'</span>'
     +(isMine?'<span style="font-size:10px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i> TUO</span>':'')
     +(ft&&!isMine?'<span style="font-size:10px;font-weight:800;color:'+tc+';border:1px solid '+tc+';border-radius:4px;padding:0 4px">TEAM</span>':'')
-    +badges+(p?reelChip(p)+fotoChips(p)+persChip(p):'')+'</div>'
+    +badges+(p?reelChip(p)+fotoChips(p)+persChip(p):mediaChip({num:m.num}))+'</div>'
     +'<div class="sr-team">'+m.team+'</div>'+noteLine(m.num)+'</div>'
     +'<span class="sr-cat '+catCls+'" style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800">'+m.cat+'</span></div>';
 }
@@ -2888,7 +2902,7 @@ function openPilotDetail(num){
     +'<span style="font-size:28px;font-weight:900">#'+num+'</span>'
     +(isMine?'<span style="font-size:11px;color:#22c55e;font-weight:800;border:1px solid #22c55e;padding:2px 8px;border-radius:4px"><i class="ic ic-star"></i> TUO PILOTA</span>':'')
     +'</div>'
-    +'<div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">'+name+'</div>'
+    +'<div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">'+name+mediaChip({num:num})+'</div>'
     +'<div style="font-size:15px;font-weight:700;color:var(--text3);margin-bottom:8px">'+team+'</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:16px">'
     +'<span class="'+catCls+'" style="font-size:12px;padding:3px 10px;border-radius:6px;font-weight:800;border:1px solid">'+cat+'</span>'
@@ -3664,7 +3678,7 @@ function renderEntryList(){
       html+='<div class="entry-item'+(isMine?' is-mine':'')+'" onclick="openPilotDetail(\''+p.num+'\')">'
         +'<span class="entry-num" style="'+(isMine?'color:#22c55e':'')+'">#'+p.num+'</span>'
         +'<div style="flex:1;min-width:0">'
-        +'<div class="entry-name">'+(p.lastName||'')+' '+(p.firstName||'')+(isMine?' <span style="font-size:9px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i> TUO</span>':'')+'</div>'
+        +'<div class="entry-name">'+(p.lastName||'')+' '+(p.firstName||'')+(isMine?' <span style="font-size:9px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i> TUO</span>':'')+mediaChip({num:p.num})+'</div>'
         +'<div class="entry-team">'+( p.team||'')+(p.source==='ocr'?' <span title="Letto dal PDF scansionato: verra\' sostituito dai dati ufficiali" style="font-size:9px;font-weight:800;color:#facc15;border:1px dashed #facc15;border-radius:4px;padding:0 5px">DA CONFERMARE</span>':'')+'</div>'+noteLine(p.num)+'</div>'
         +'<div class="entry-badges">'
         +'<span style="font-size:9px;font-weight:700;color:var(--text4);padding:2px 6px;border:1px solid var(--border);border-radius:4px">'+( p.parity||autoParity(p.num))+'</span>'
@@ -4561,7 +4575,7 @@ function alertKey(r){return['rt_alerts_',r||activeRaceId,'_',currentUserId||''].
 function alertLog(){try{return JSON.parse(localStorage.getItem(alertKey())||'[]').filter(a=>a&&a.id&&!a.id.startsWith('test|'));}catch(e){return[];}}
 // Preferenze notifiche per utente (Firebase notifPrefs/<utente>/<tipo> = false spegne; default acceso).
 // Le stesse chiavi le rispetta il server push.
-const NOTIF_TYPES=[['programma','Cambi di programma: griglia ufficiale cambiata (miei piloti) e programma ufficiale aggiornato'],['top3','Mio pilota nei primi 3 in manche e prefinale: subito dal live (provvisorio) e quando diventa ufficiale'],['qualifiche','Pole e top 3 in qualifica'],['finali','P1–P5 in finale: dal live (provvisorio) e quando diventa ufficiale'],['eliminati','Eliminati e rischio finale'],['prefinali','Passati a prefinali e finale'],['riepilogo','Riepilogo serale (orari di domani)'],['entrylist','Cambi entry list (miei piloti e team)'],
+const NOTIF_TYPES=[['materiale','Materiale smistato: quante clip e foto sono state divise per pilota dopo ogni smistamento'],['programma','Cambi di programma: griglia ufficiale cambiata (miei piloti) e programma ufficiale aggiornato'],['top3','Mio pilota nei primi 3 in manche e prefinale: subito dal live (provvisorio) e quando diventa ufficiale'],['qualifiche','Pole e top 3 in qualifica'],['finali','P1–P5 in finale: dal live (provvisorio) e quando diventa ufficiale'],['eliminati','Eliminati e rischio finale'],['prefinali','Passati a prefinali e finale'],['riepilogo','Riepilogo serale (orari di domani)'],['entrylist','Cambi entry list (miei piloti e team)'],
   ['ritiri','Mio pilota uscito o fermo in pista'],['rossa','Bandiera rossa con i miei piloti in pista'],['partenza','Partita una sessione con i miei piloti'],['prossima','Mio pilota in pista tra 10 minuti'],['ritardo','Ritardo cambiato di 5 minuti o più'],['correzioni','Correzioni ufficiali sui miei piloti (reclami, penalità)'],['comunicati','Comunicati e documenti ufficiali nuovi'],['promozioni','Mio pilota promosso dopo le verifiche: pole in qualifica o podio in finale']];
 // nuove (dal 14/11): spente finché l'utente non le accende
 const NOTIF_DEF_OFF=new Set(['top3','ritiri','rossa','partenza','prossima','ritardo','correzioni','comunicati','promozioni']);
@@ -4863,6 +4877,7 @@ const NOTIF_GUIDE={
   finali:{closed:true,ex:[['FINALE P2 OKN Final: #404 ROSSI MARIO','PROVVISORIO da live timing, verifica reclami']],when:'Un tuo pilota chiude la finale nei primi 5: subito a fine gara, poi la conferma ufficiale.'},
   eliminati:{closed:true,ex:[['Rischio finale OK-NJ','2 a rischio, 1 fuori zona finale · apri l\'app']],when:'Tuoi piloti a rischio di non entrare in finale, o risultati eliminati.'},
   prefinali:{closed:true,ex:[['Prefinali uscite · OKN','3 tuoi passano · nessun tuo eliminato · apri l\'app'],['Finale OKN adesso disponibile','2 tuoi in finale · #250 eliminato · apri l\'app']],when:'Escono le liste di prefinale e finale: un solo avviso con quanti passano e se ci sono tuoi eliminati.'},
+  materiale:{closed:true,ex:[['Materiale smistato','Smistate 84 clip e 120 foto, 6 da verificare · apri l\'app']],when:'Dopo ogni smistamento di foto e clip. Nella scheda di ogni pilota trovi quante clip e foto ha.'},
   riepilogo:{closed:true,ex:[['Domani (domenica): 6 piloti in pista','Prima uscita 8.30 · orari nell\'app']],when:'La sera prima di ogni giorno di gara.'},
   entrylist:{closed:true,ex:[['Entry list OKN cambiata','#404 non più iscritto · apri l\'app']],when:'Cambia la lista iscritti per i tuoi piloti o team.'},
   ritiri:{closed:true,ex:[['#404 ROSSI MARIO USCITO','OKN · Prefinal A']],when:'Un tuo pilota esce in gara, rientra ai box o si ferma in pista.'},
