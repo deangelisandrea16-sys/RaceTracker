@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-24-1601';
+var RT_JS_BUILD='2026-11-24-1630';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -4478,24 +4478,23 @@ function apexLiveName(){
   const m=url.match(/apex-timing\.com\/live-timing\/([a-z0-9\-]+)\//i);
   return m?m[1].toLowerCase():'';
 }
-/* 24/11/2026 (Andrea): FINESTRA DEL LIVE di ogni gara (stessa regola del server, watcher.js checkLiveEnd).
-   Il live si mostra da 3 ore prima del primo turno del primo giorno a 2 ore dopo la finale (ultimo giorno, ritardo compreso).
-   Fuori finestra l'app non si collega e non mostra il live: con piu' organizzatori in contemporanea (WSK, IAME, ROK, Rotax)
-   ogni gara vede solo il suo live, mai la fotografia vecchia di un'altra gara. Senza programma: 06:00 primo giorno - 22:00 ultimo. */
+/* 24/11/2026 (Andrea): FINESTRA DEL LIVE di ogni gara. La calcola SOLO il server (races.js → races_index/<id>/liveWin =
+   {open, close, tz}: fuso del circuito, primo giorno con turni, 3 ore prima del primo turno → 2 ore dopo la finale, ritardo
+   compreso). L'app la legge e basta: una regola sola. Fuori finestra niente live (con piu' organizzatori in contemporanea ogni
+   gara vede solo il suo). Se il dato manca ancora: dalle 06:00 del giorno di inizio alle 22:00 dell'ultimo. */
 function liveWindow(){
   const r=(typeof races!=='undefined'&&races[activeRaceId])||{};
   if(r.demo===true||!r.startDate||!r.endDate)return{open:true};
-  const DN=['DOMENICA','LUNEDÌ','MARTEDÌ','MERCOLEDÌ','GIOVEDÌ','VENERDÌ','SABATO'];
-  const wd=d=>DN[new Date(d+'T12:00:00').getDay()];
-  const tm=a=>[].concat(a||[]).map(x=>x&&x.time).filter(x=>/^\d{1,2}[.:]\d{2}$/.test(String(x||''))).map(t=>{const p=String(t).replace(':','.').split('.');return parseInt(p[0])*60+parseInt(p[1]);});
-  const sch=(typeof currentSchedule!=='undefined'&&currentSchedule)||{};
-  const first=tm(sch[wd(r.startDate)]),last=tm(typeof currentFinals!=='undefined'?currentFinals:[]).concat(tm(sch[wd(r.endDate)]));
-  const dl=typeof scheduleDelay==='number'?scheduleDelay:0;
-  const startMin=first.length?Math.min(...first)-180:360,endMin=last.length?Math.max(...last)+dl+120:1320;
-  const n=new Date(),z=x=>String(x).padStart(2,'0'),t=n.getFullYear()+'-'+z(n.getMonth()+1)+'-'+z(n.getDate()),m=n.getHours()*60+n.getMinutes();
-  const hm=x=>z(Math.floor(x/60))+':'+z(((x%60)+60)%60);
-  if(t<r.startDate||(t===r.startDate&&m<startMin))return{open:false,when:(t===r.startDate?'oggi':'il '+r.startDate.split('-').reverse().slice(0,2).join('/'))+' alle '+hm(Math.max(0,startMin))};
-  if(t>r.endDate||(t===r.endDate&&m>=endMin))return{open:false,ended:true};
+  const w=r.liveWin,now=Date.now(),tz=(w&&w.tz)||'Europe/Rome';
+  const fmt=x=>{try{return new Date(x).toLocaleString('it-IT',{timeZone:tz,day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(',',' alle');}catch(e){return'';}};
+  if(w&&w.open&&w.close){
+    if(now<w.open)return{open:false,when:'il '+fmt(w.open)};
+    if(now>=w.close)return{open:false,ended:true};
+    return{open:true};
+  }
+  const n=new Date(),z=x=>String(x).padStart(2,'0'),t=n.getFullYear()+'-'+z(n.getMonth()+1)+'-'+z(n.getDate()),h=n.getHours();
+  if(t<r.startDate||(t===r.startDate&&h<6))return{open:false,when:'il '+r.startDate.split('-').reverse().slice(0,2).join('/')+' alle 06:00'};
+  if(t>r.endDate||(t===r.endDate&&h>=22))return{open:false,ended:true};
   return{open:true};
 }
 window.liveWindow=liveWindow;
