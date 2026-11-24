@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-24-1600';
+var RT_JS_BUILD='2026-11-24-1601';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -4494,7 +4494,7 @@ function liveWindow(){
   const startMin=first.length?Math.min(...first)-180:360,endMin=last.length?Math.max(...last)+dl+120:1320;
   const n=new Date(),z=x=>String(x).padStart(2,'0'),t=n.getFullYear()+'-'+z(n.getMonth()+1)+'-'+z(n.getDate()),m=n.getHours()*60+n.getMinutes();
   const hm=x=>z(Math.floor(x/60))+':'+z(((x%60)+60)%60);
-  if(t<r.startDate||(t===r.startDate&&m<startMin))return{open:false,when:'da '+(t===r.startDate?'oggi':r.startDate.split('-').reverse().slice(0,2).join('/'))+' alle '+hm(Math.max(0,startMin))};
+  if(t<r.startDate||(t===r.startDate&&m<startMin))return{open:false,when:(t===r.startDate?'oggi':'il '+r.startDate.split('-').reverse().slice(0,2).join('/'))+' alle '+hm(Math.max(0,startMin))};
   if(t>r.endDate||(t===r.endDate&&m>=endMin))return{open:false,ended:true};
   return{open:true};
 }
