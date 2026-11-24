@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-22-1846';
+var RT_JS_BUILD='2026-11-24-1600';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -4478,7 +4478,41 @@ function apexLiveName(){
   const m=url.match(/apex-timing\.com\/live-timing\/([a-z0-9\-]+)\//i);
   return m?m[1].toLowerCase():'';
 }
+/* 24/11/2026 (Andrea): FINESTRA DEL LIVE di ogni gara (stessa regola del server, watcher.js checkLiveEnd).
+   Il live si mostra da 3 ore prima del primo turno del primo giorno a 2 ore dopo la finale (ultimo giorno, ritardo compreso).
+   Fuori finestra l'app non si collega e non mostra il live: con piu' organizzatori in contemporanea (WSK, IAME, ROK, Rotax)
+   ogni gara vede solo il suo live, mai la fotografia vecchia di un'altra gara. Senza programma: 06:00 primo giorno - 22:00 ultimo. */
+function liveWindow(){
+  const r=(typeof races!=='undefined'&&races[activeRaceId])||{};
+  if(r.demo===true||!r.startDate||!r.endDate)return{open:true};
+  const DN=['DOMENICA','LUNEDÌ','MARTEDÌ','MERCOLEDÌ','GIOVEDÌ','VENERDÌ','SABATO'];
+  const wd=d=>DN[new Date(d+'T12:00:00').getDay()];
+  const tm=a=>[].concat(a||[]).map(x=>x&&x.time).filter(x=>/^\d{1,2}[.:]\d{2}$/.test(String(x||''))).map(t=>{const p=String(t).replace(':','.').split('.');return parseInt(p[0])*60+parseInt(p[1]);});
+  const sch=(typeof currentSchedule!=='undefined'&&currentSchedule)||{};
+  const first=tm(sch[wd(r.startDate)]),last=tm(typeof currentFinals!=='undefined'?currentFinals:[]).concat(tm(sch[wd(r.endDate)]));
+  const dl=typeof scheduleDelay==='number'?scheduleDelay:0;
+  const startMin=first.length?Math.min(...first)-180:360,endMin=last.length?Math.max(...last)+dl+120:1320;
+  const n=new Date(),z=x=>String(x).padStart(2,'0'),t=n.getFullYear()+'-'+z(n.getMonth()+1)+'-'+z(n.getDate()),m=n.getHours()*60+n.getMinutes();
+  const hm=x=>z(Math.floor(x/60))+':'+z(((x%60)+60)%60);
+  if(t<r.startDate||(t===r.startDate&&m<startMin))return{open:false,when:'da '+(t===r.startDate?'oggi':r.startDate.split('-').reverse().slice(0,2).join('/'))+' alle '+hm(Math.max(0,startMin))};
+  if(t>r.endDate||(t===r.endDate&&m>=endMin))return{open:false,ended:true};
+  return{open:true};
+}
+window.liveWindow=liveWindow;
+function renderLiveClosed(w){
+  const box=document.getElementById('lt-closed'),tab=document.getElementById('tab-livetiming');if(!box||!tab)return;
+  tab.classList.toggle('lt-closed-on',!w.open);
+  box.innerHTML=w.open?'':['<div style="padding:28px 12px;text-align:center;color:var(--text3);font-size:14px;font-weight:700">',
+    w.ended?'Live chiuso: gara conclusa':'Live non ancora attivo per questa gara','</div>',
+    w.ended?'':['<div style="text-align:center;color:var(--text4);font-size:12px">Si apre ',w.when,'</div>'].join('')].join('');
+}
 function apexConnect(){
+  const lw=liveWindow();
+  if(!lw.open){
+    if(apexWs||apexWsKey){clearTimeout(apexRetry);try{if(apexWs)apexWs.close();}catch(e){}apexWs=null;apexWsKey='';apexState={cat:'',sess:'',start:'',red:'',at:0};apexNext=null;apexGrid.innerHTML='';}
+    renderLiveClosed(lw);try{renderApexDelay();}catch(e){}return;
+  }
+  renderLiveClosed(lw);
   const name=apexLiveName();
   if(name==='demo'){
     const key='demo:'+activeRaceId;if(key===apexWsKey&&demoLiveUnsub)return;
@@ -4499,7 +4533,7 @@ function apexConnect(){
   try{
     apexWs=new WebSocket('wss://live-data.apex-timing.com:'+(port+3)+'/');
     apexWs.onmessage=ev=>{const was=liveAlive();apexLastMsgAt=Date.now();if(!was)try{applyDelayPerms();}catch(e){}apexParse(String(ev.data));};
-    apexWs.onclose=()=>{apexWs=null;clearTimeout(apexRetry);apexRetry=setTimeout(()=>{if(!document.hidden){apexWsKey='';apexConnect();}},15000);};
+    apexWs.onclose=()=>{apexWs=null;clearTimeout(apexRetry);apexRetry=setTimeout(()=>{if(!document.hidden&&liveWindow().open){apexWsKey='';apexConnect();}},15000);};
     apexWs.onerror=()=>{};
   }catch(e){}
 }
