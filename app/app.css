@@ -935,3 +935,7 @@ body.light .sp-vp.td .sp-track{stroke:#4a4e57}
 .rt-media{display:inline-flex;align-items:center;gap:2px;margin-left:6px;font-size:10px;font-weight:600;line-height:1;color:var(--text4);white-space:nowrap;vertical-align:middle;font-variant-numeric:tabular-nums}
 .rt-media .ic{width:11px;height:11px;vertical-align:0;opacity:.85}
 .rt-media-sep{margin:0 3px;opacity:.6}
+
+/* 24/11/2026: live fuori dalla finestra della gara (liveWindow): resta solo il messaggio */
+#tab-livetiming.lt-closed-on #lt-mynums,#tab-livetiming.lt-closed-on .pv-switch,#tab-livetiming.lt-closed-on .lt-full-btn,#tab-livetiming.lt-closed-on #lt-mytable,#tab-livetiming.lt-closed-on #lt-wrap,#tab-livetiming.lt-closed-on #lt-adjust{display:none!important}
+#tab-livetiming:not(.lt-closed-on) #lt-closed{display:none}
