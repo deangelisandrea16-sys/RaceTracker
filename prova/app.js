@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-24-1630';
+var RT_JS_BUILD='2026-11-25-1700';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1987,8 +1987,11 @@ let _ltTimer=null,_ltPaused=false;
 function renderLtMyNums(){
   const box=document.getElementById('lt-mynums');if(!box)return;
   let slotsArr=[];let currentIdx=0;
+  /* 25/11/2026: la striscia "ORA / prossimi" del live riguarda OGGI, non il giorno aperto nel Programma; un giorno senza turni = niente */
+  const _today=typeof autoDayName==='function'?autoDayName():'';
+  if(!_today){box.style.display='none';box.innerHTML='';return;}
   try{
-    const slots=(typeof currentSchedule!=='undefined'&&currentSchedule)?currentSchedule[activeDay]:null;
+    const slots=(typeof currentSchedule!=='undefined'&&currentSchedule)?currentSchedule[_today]:null;
     slotsArr=Array.isArray(slots)?slots:(slots&&typeof slots==='object'?Object.values(slots):[]);
     currentIdx=getCurrentSlotIndex(slotsArr);
   }catch(e){slotsArr=[];}
@@ -1997,7 +2000,7 @@ function renderLtMyNums(){
   const toM=t=>{const pr=String(t||'').split('.');return parseInt(pr[0])*60+parseInt(pr[1]||0);};
   const nowM=new Date().getHours()*60+new Date().getMinutes()-(scheduleDelay||0);
   const all=slotsArr.map(sl=>({time:sl.time,label:sl.label||sl.cat||'',ps:pilotsForSlot(sl)}));
-  if(activeDay===currentDays[currentDays.length-1])[].concat(currentFinals||[]).filter(Boolean).forEach(f=>{
+  if(_today===currentDays[currentDays.length-1])[].concat(currentFinals||[]).filter(Boolean).forEach(f=>{
     const ac=pilots.filter(p=>canonCat(p.cat)===canonCat(f.cat));const fin=ac.filter(p=>p.inFinal);
     all.push({time:f.time,label:'FINALE '+(f.cat||''),fc:canonCat(f.cat),ps:fin.length?fin:ac.filter(p=>!p.eliminated)});});
   all.sort((a,b)=>toM(a.time)-toM(b.time));
@@ -5926,8 +5929,19 @@ function apexCat(t){
 }
 /* 15/11/2026 (Andrea): se il live dice che in pista c'e' la finale di una categoria, quella e' la finale "ORA"
    (prima valeva solo l'orario: con il ritardo restava sulla finale precedente mentre l'altra era gia' al giro di ricognizione) */
-function liveFinalCat(){try{if(!apexWs||apexWs.readyState!==1)return null;const ss=String(apexState.sess||'').toUpperCase();if(!/FINAL/.test(ss)||/PRE/.test(ss))return null;const c=apexCat(apexState.cat);return c?canonCat(c):null;}catch(e){return null;}}
-function apexMatchSlot(){return apexMatchFor(apexState.cat,apexState.sess,apexState.start);}
+function liveFinalCat(){try{if(!apexWs||apexWs.readyState!==1||apexLiveStale())return null;const ss=String(apexState.sess||'').toUpperCase();if(!/FINAL/.test(ss)||/PRE/.test(ss))return null;const c=apexCat(apexState.cat);return c?canonCat(c):null;}catch(e){return null;}}
+/* 25/11/2026 (WSK R3): alla connessione il live mostra l'ULTIMA sessione corsa, anche di giorni prima (KZ2 FINAL 15:41 di Lonato):
+   l'app la prendeva per il turno "ORA". Regola generale (uguale al server): una sessione con partenza non avvenuta negli
+   ultimi 30 minuti (ora del circuito) non e' in corso. Una sessione caricata e non ancora partita resta valida. */
+function apexNowMinTz(){const tz=((races[activeRaceId]||{}).liveWin||{}).tz||'Europe/Rome';
+  try{const p=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:tz,hourCycle:'h23',hour:'2-digit',minute:'2-digit'}).formatToParts(new Date()).map(x=>[x.type,x.value]));return +p.hour*60+ +p.minute;}catch(e){const n=new Date();return n.getHours()*60+n.getMinutes();}}
+function apexLiveStale(){
+  const st=String(apexState.start||'');if(!/^\d{1,2}[.:]\d{2}/.test(st))return false;
+  const x=st.replace(':','.').split('.'),sm=parseInt(x[0])*60+parseInt(x[1]),m=apexNowMinTz();
+  return !(sm<=m+1&&sm>=m-30);
+}
+window.apexLiveStale=apexLiveStale;
+function apexMatchSlot(){if(apexLiveStale())return null;return apexMatchFor(apexState.cat,apexState.sess,apexState.start);}
 // 22/11/2026 (Andrea): prefinali con qualsiasi nome, tutti i campionati: "Prefinal(e)", "Pre-Final", "Pre Final";
 // lettera A/B, numero 1/2 (= A/B) o unica (senza lettera = la prefinale della categoria)
 function rtPfNorm(t){return String(t||'').toUpperCase().replace(/PRE[\s\-_]*FINAL/g,'PREFINAL');}
@@ -5968,7 +5982,7 @@ function apexMatchFor(catTxt,sessTxt,startTxt){
 function renderApexDelay(){
   try{applyDelayPerms();}catch(e){}
   const box=document.getElementById('apex-delay-box');if(!box)return;
-  if(!apexWsKey||!apexState.sess){box.style.display='none';return;}
+  if(!apexWsKey||!apexState.sess||apexLiveStale()){box.style.display='none';return;}
   const m=apexMatchSlot();
   box.style.display='';
   const head='<div style="font-size:11px;font-weight:800;color:var(--text3);padding:8px 10px;border:1px solid var(--border2);border-radius:10px;background:var(--bg2)">'
