@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-25-1706';
+var RT_JS_BUILD='2026-11-26-1535';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5739,7 +5739,12 @@ function apexNextInfo(){
     if(!nm||!nm.slot){out.warn='non trovata nel programma di oggi';return out;}
     out.mine=pilotsForSlot(nm.slot).map(p=>p.num);
     const cur=apexMatchSlot();const ci=cur&&cur.slot?arr.findIndex(x=>same(x,cur.slot)):-1;
-    if(ci>=0){const exp=arr[ci+1];if(exp&&!same(exp,nm.slot))out.warn='nel programma dopo questa c\'era '+(exp.label||exp.cat||'')+' ('+exp.time+')';}
+    // 26/11/2026 (WSK R3, prove: il live trasmette solo alcuni turni): se l'orario del turno "atteso" e' gia' passato
+    // (ritardo compreso) senza che sia comparso nel live, non e' un cambio d'ordine: turno non trasmesso o saltato. Niente avviso.
+    // E si avvisa solo se la categoria attesa e' gia' passata dal live oggi (se non e' mai trasmessa, la sua assenza non dice nulla).
+    const hm=t=>{const m=String(t||'').match(/(\d{1,2})[.:](\d{2})/);return m?+m[1]*60+ +m[2]:NaN;};
+    const nowM=apexNowMinTz()-(parseInt(scheduleDelay)||0);
+    if(ci>=0){const exp=arr[ci+1];if(exp&&!same(exp,nm.slot)&&!(nowM>=hm(exp.time)+5)&&((window._ltSeen||{}).c||{})[canonCat(exp.cat)])out.warn='dopo questa c\'era '+(exp.cat||exp.label||'')+' '+String(exp.time||'');}
   }catch(e){}
   return out;
 }
@@ -5753,7 +5758,7 @@ function renderApexNext(){
   const esc=x=>String(x||'').replace(/</g,'&lt;');
   const h='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:10px;letter-spacing:1px;color:var(--text4)">PROSSIMA</span><span style="color:var(--text);text-transform:uppercase">'+esc(n.cat)+' · '+esc(n.sess)+'</span>'
     +(n.mine.length?'<span style="color:var(--rt-orange)">'+n.mine.map(x=>'#'+esc(x)).join(' ')+'</span>':'')+'</div>'
-    +(n.warn?'<div style="margin-top:4px;color:#facc15"><i class="ic ic-bell"></i> Ordine diverso dal programma: '+esc(n.warn)+'</div>':'');
+    +(n.warn?'<div style="margin-top:4px;color:#facc15"><i class="ic ic-bell"></i> Ordine cambiato? '+esc(n.warn)+'</div>':'');
   if(el.innerHTML!==h)el.innerHTML=h;el.style.display='block';
 }
 setInterval(()=>{if(activeTab==='livetiming'&&(apexDyn.dyn1||apexDyn.dyn2||apexState.sess||apexNext)){renderApexDyn();renderApexNext();}},500);
@@ -5869,7 +5874,7 @@ function apexParse(txt){
     const mc=k.match(/^r(\d+)c(\d+)$/);
     if(mc){const el=apexGrid.querySelector('[data-id="'+k+'"]');if(el){el.className=p[1]||'';el.innerHTML=v;apexGridDirty();}return;}
     if(/^r\d+$/.test(k)&&p[1]==='#'){const row=apexGrid.querySelector('tr[data-id="'+k+'"]');if(row){row.setAttribute('data-pos',p[2]);apexGridDirty();}return;}
-    if(k==='title1'){if(apexState.cat!==v){const _rg=ltOnTitle();if(apexState.sess&&apexState.start){apexEvaluate('change');apexState.start='';}apexState.cat=v;ltTitleAt=Date.now();if(_rg||apexGridSess==='')apexGridSess=apexState.cat+'|'+apexState.sess;changed=true;}}
+    if(k==='title1'){if(apexState.cat!==v){const _rg=ltOnTitle();if(apexState.sess&&apexState.start){apexEvaluate('change');apexState.start='';}apexState.cat=v;try{const _d=new Date().toDateString();if(!window._ltSeen||window._ltSeen.d!==_d)window._ltSeen={d:_d,c:{}};window._ltSeen.c[canonCat(v)]=1;}catch(_){}ltTitleAt=Date.now();if(_rg||apexGridSess==='')apexGridSess=apexState.cat+'|'+apexState.sess;changed=true;}}
     else if(k==='title2'){if(apexState.sess!==v){const _rg2=ltOnTitle();
       // cambio sessione: le partenze già viste appartengono alla sessione precedente
       if(apexState.sess){apexEvaluate('change');apexIgnore=new Set(apexSeen);}
