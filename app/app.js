@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-26-1535';
+var RT_JS_BUILD='2026-11-26-1600';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5720,6 +5720,10 @@ function renderApexDyn(){
     +(t.length&&!fin?'<span style="font-size:16px;color:var(--text2)"><i class="ic ic-timer" style="color:var(--rt-orange)"></i> '+t.join(' · ').replace(/</g,'&lt;')+'</span>':'')+'</span>';
 }
 /* 14/11/2026: riga PROSSIMA dal "Next" di Apex + controllo sul programma (se l'ordine e' diverso lo segnala) */
+/* 26/11/2026: categorie viste nel live in questa gara (tutti i giorni), per non avvisare su categorie mai trasmesse */
+function ltSeenKey(){return 'rt_ltSeen_'+(activeRaceId||'');}
+function ltSeenAdd(c){try{const k=ltSeenKey(),o=JSON.parse(localStorage.getItem(k)||'{}');const x=canonCat(c);if(!o[x]){o[x]=1;localStorage.setItem(k,JSON.stringify(o));}}catch(_){}}
+function ltSeenHas(c){try{return !!JSON.parse(localStorage.getItem(ltSeenKey())||'{}')[canonCat(c)];}catch(_){return false;}}
 function apexNextInfo(){
   if(!apexNext||!apexWsKey)return null;
   // 15/11 (Andrea): dopo l'ultima gara il live annuncia documenti ("Results booklet", premiazioni): non sono sessioni, niente riquadro
@@ -5739,12 +5743,11 @@ function apexNextInfo(){
     if(!nm||!nm.slot){out.warn='non trovata nel programma di oggi';return out;}
     out.mine=pilotsForSlot(nm.slot).map(p=>p.num);
     const cur=apexMatchSlot();const ci=cur&&cur.slot?arr.findIndex(x=>same(x,cur.slot)):-1;
-    // 26/11/2026 (WSK R3, prove: il live trasmette solo alcuni turni): se l'orario del turno "atteso" e' gia' passato
-    // (ritardo compreso) senza che sia comparso nel live, non e' un cambio d'ordine: turno non trasmesso o saltato. Niente avviso.
-    // E si avvisa solo se la categoria attesa e' gia' passata dal live oggi (se non e' mai trasmessa, la sua assenza non dice nulla).
+    // 26/11/2026 (WSK R3, prove: il live trasmette solo alcuni turni): si avvisa solo se la categoria attesa e' gia' passata dal
+    // live in questa gara (se non e' mai trasmessa, la sua assenza non dice nulla). Se il suo orario e' passato: "(non si e' vista)".
     const hm=t=>{const m=String(t||'').match(/(\d{1,2})[.:](\d{2})/);return m?+m[1]*60+ +m[2]:NaN;};
     const nowM=apexNowMinTz()-(parseInt(scheduleDelay)||0);
-    if(ci>=0){const exp=arr[ci+1];if(exp&&!same(exp,nm.slot)&&!(nowM>=hm(exp.time)+5)&&((window._ltSeen||{}).c||{})[canonCat(exp.cat)])out.warn='dopo questa c\'era '+(exp.cat||exp.label||'')+' '+String(exp.time||'');}
+    if(ci>=0){const exp=arr[ci+1];if(exp&&!same(exp,nm.slot)&&ltSeenHas(exp.cat))out.warn='dopo questa c\'era '+(exp.cat||exp.label||'')+' '+String(exp.time||'')+(nowM>=hm(exp.time)+5?' (non si e\' vista)':'');}
   }catch(e){}
   return out;
 }
@@ -5874,7 +5877,7 @@ function apexParse(txt){
     const mc=k.match(/^r(\d+)c(\d+)$/);
     if(mc){const el=apexGrid.querySelector('[data-id="'+k+'"]');if(el){el.className=p[1]||'';el.innerHTML=v;apexGridDirty();}return;}
     if(/^r\d+$/.test(k)&&p[1]==='#'){const row=apexGrid.querySelector('tr[data-id="'+k+'"]');if(row){row.setAttribute('data-pos',p[2]);apexGridDirty();}return;}
-    if(k==='title1'){if(apexState.cat!==v){const _rg=ltOnTitle();if(apexState.sess&&apexState.start){apexEvaluate('change');apexState.start='';}apexState.cat=v;try{const _d=new Date().toDateString();if(!window._ltSeen||window._ltSeen.d!==_d)window._ltSeen={d:_d,c:{}};window._ltSeen.c[canonCat(v)]=1;}catch(_){}ltTitleAt=Date.now();if(_rg||apexGridSess==='')apexGridSess=apexState.cat+'|'+apexState.sess;changed=true;}}
+    if(k==='title1'){if(apexState.cat!==v){const _rg=ltOnTitle();if(apexState.sess&&apexState.start){apexEvaluate('change');apexState.start='';}apexState.cat=v;ltSeenAdd(v);ltTitleAt=Date.now();if(_rg||apexGridSess==='')apexGridSess=apexState.cat+'|'+apexState.sess;changed=true;}}
     else if(k==='title2'){if(apexState.sess!==v){const _rg2=ltOnTitle();
       // cambio sessione: le partenze già viste appartengono alla sessione precedente
       if(apexState.sess){apexEvaluate('change');apexIgnore=new Set(apexSeen);}
