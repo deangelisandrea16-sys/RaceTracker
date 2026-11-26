@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-26-1600';
+var RT_JS_BUILD='2026-11-26-1625';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -4528,16 +4528,41 @@ function apexConnect(){
   try{if(demoLiveUnsub)demoLiveUnsub();}catch(e){}
   const port=APEX_LIVE_PORTS[name];
   const key=name&&port?name+':'+port:'';
-  if(key===apexWsKey&&apexWs&&apexWs.readyState<=1)return;
+  if(key===apexWsKey&&((apexWs&&apexWs.readyState<=1)||apexPollKey===key))return;
   try{if(apexWs)apexWs.close();}catch(e){}
   apexWs=null;apexWsKey=key;apexState={cat:'',sess:'',start:'',red:'',at:0};apexNext=null;apexSeen=new Set();apexIgnore=new Set();
   if(!key){renderApexDelay();return;}
   try{
+    apexPollKey='';let got=false;
     apexWs=new WebSocket('wss://live-data.apex-timing.com:'+(port+3)+'/');
-    apexWs.onmessage=ev=>{const was=liveAlive();apexLastMsgAt=Date.now();if(!was)try{applyDelayPerms();}catch(e){}apexParse(String(ev.data));};
-    apexWs.onclose=()=>{apexWs=null;clearTimeout(apexRetry);apexRetry=setTimeout(()=>{if(!document.hidden&&liveWindow().open){apexWsKey='';apexConnect();}},15000);};
+    apexWs.onmessage=ev=>{got=true;const was=liveAlive();apexLastMsgAt=Date.now();if(!was)try{applyDelayPerms();}catch(e){}apexParse(String(ev.data));};
+    // 26/11/2026 (WSK R3): il collegamento diretto del live a volte non risponde (anche il sito ufficiale passa alla lettura a
+    // richieste). Se si chiude senza aver ricevuto nulla, si passa alla lettura a richieste ogni secondo, come il sito ufficiale.
+    apexWs.onclose=()=>{apexWs=null;clearTimeout(apexRetry);
+      if(!got&&apexWsKey===key&&liveWindow().open){apexPollStart(key,port);return;}
+      apexRetry=setTimeout(()=>{if(!document.hidden&&liveWindow().open){apexWsKey='';apexConnect();}},15000);};
     apexWs.onerror=()=>{};
   }catch(e){}
+}
+let apexPollKey='';
+function apexPollStart(key,port){
+  if(apexPollKey===key)return;apexPollKey=key;
+  const id=Math.floor(Math.random()*1e9);let init=0,index=0,n=0,fails=0;
+  const tick=async()=>{
+    if(apexPollKey!==key||apexWsKey!==key||!liveWindow().open){if(apexPollKey===key)apexPollKey='';return;}
+    if(document.hidden){setTimeout(tick,3000);return;}
+    try{
+      const r=await fetch('https://live-data.apex-timing.com/live-timing/commonv2/functions/live_ajax.php?version=1.0.0&init='+init+'&index='+index+'&port='+(port+4)+'&counter='+(n++)+'&duration=1000&id='+id+'&ignored=0',{cache:'no-store'});
+      const t=await r.text();const m=t.match(/^(\d+)@(\d+)@/);
+      if(m){init=m[1];index=m[2];fails=0;const body=t.slice(m[0].length);
+        if(body.trim()&&apexPollKey===key){const was=liveAlive();apexLastMsgAt=Date.now();if(!was)try{applyDelayPerms();}catch(e){}apexParse(body);}}
+      else fails++;
+    }catch(e){fails++;}
+    // dopo molti errori di fila si riprova da capo (anche il collegamento diretto)
+    if(fails>=30){apexPollKey='';apexWsKey='';setTimeout(()=>{if(!document.hidden&&liveWindow().open)apexConnect();},15000);return;}
+    setTimeout(tick,fails?3000:1000);
+  };
+  tick();
 }
 const apexGrid=document.createElement('tbody');
 // ══════════════════════════════════════
