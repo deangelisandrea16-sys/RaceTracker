@@ -959,3 +959,5 @@ body.light .card:not(.slot-now):not(.final-card):not(.team-card):not(.hl-foto):n
 /* 27/11/2026 (Andrea): ogni pilota dentro la scheda del turno su un fondo un po' piu' chiaro della scheda */
 .card .card-inner:not(.team-inner){background:var(--bg3);border-top:none;border-radius:12px;padding:10px 12px;margin:0 0 8px}
 body.light .card .card-inner:not(.team-inner){background:#eef1f6}
+/* 27/11/2026 (Andrea): i tasti attivita' spenti hanno anche un bordo sottile, cosi' non si perdono su nessun fondo */
+.task-btn:not(.green):not(.orange):not(.red){box-shadow:inset 0 0 0 1px var(--border2)}
