@@ -1267,7 +1267,9 @@ function listenRaceData(raceId){
     onValue(r,snap=>{
       const v=snap.val();
       if(!_shGot.has(k)){_shGot.add(k);if(v!==null&&v!==undefined)_shFresh[k]=v;if(_shGot.size<SHARED_LISTEN.length)return;sharedData=_shFresh;_shFresh=null;}
-      else{if(v===null||v===undefined)delete sharedData[k];else sharedData[k]=v;}
+      // 27/11/2026 (revisione-2): un dato che cambia di nuovo prima che arrivino tutti gli altri va nella copia in costruzione
+      // (prima finiva nella copia vecchia, poi sostituita: si vedeva il valore precedente fino alla modifica successiva)
+      else{const t=_shFresh||sharedData;if(v===null||v===undefined)delete t[k];else t[k]=v;if(_shFresh)return;}
       window._rtLiveSeen=true;saveSnap();rtSetBase(sharedData,null);
       if(k==='entryList'||!sharedReady)dlog('Dati gara condivisi: entryList='+Object.keys(sharedData.entryList||{}).length+', days='+(sharedData.days||[]).length,'ok');
       sharedReady=true;
