@@ -962,3 +962,6 @@ body.light .card .card-inner:not(.team-inner){background:#eef1f6}
 /* 27/11/2026 (Andrea): tasti attivita' spenti staccati solo per colore (niente bordo): piu' chiari del fondo pilota in scuro, bianchi in chiaro */
 body:not(.light) .task-btn:not(.green):not(.orange):not(.red){background:#4a4a55;color:#e4e0da}
 body.light .task-btn:not(.green):not(.orange):not(.red){background:#ffffff;color:#3a4150;box-shadow:0 1px 2px rgba(20,30,60,.12)}
+/* 27/11/2026 (Andrea): tasti non attivi (stato 'red' = da fare) rossi tono su tono, staccati dal fondo pilota */
+body:not(.light) .task-btn.red{background:#4a1d22!important;color:#ff9ba3!important}
+body.light .task-btn.red{background:#fde0e3!important;color:#b4232f!important}
