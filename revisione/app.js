@@ -15,6 +15,22 @@ function set(r,data){return r.set(data);}
 function off(r){r.off();}
 // db variable used throughout the code — point to the compat database instance
 var db=_fbDb;
+/* 27/11/2026 (revisione): sola lettura VERA quando l'amministratore guarda un altro utente. Prima la protezione era solo
+   in rtWrite: impostazioni, punti di scatto, viste della pista e conteggi scrivevano diretti nei dati dell'altro utente.
+   Ora ogni scrittura (set/update/remove/push/transaction) su un percorso che contiene il nome dell'utente guardato viene fermata qui. */
+(function(){try{
+  const P=firebase.database.Reference.prototype;
+  const pathOf=r=>{try{return decodeURIComponent(String(r.toString()).replace(/^[a-z]+:\/\/[^/]+\/?/i,''));}catch(_){return'';}};
+  const hit=(path,v)=>String(path||'').split('/').indexOf(v)>=0;
+  const stop=(path)=>{try{dlog('Sola lettura: scrittura su '+path+' fermata','warn');}catch(_){}try{if(!window._rtVaT||Date.now()-window._rtVaT>4000){window._rtVaT=Date.now();showToast&&showToast('Sola lettura: stai guardando '+String(window._rtViewAs).toUpperCase());}}catch(_){}return Promise.resolve();};
+  ['set','remove','setWithPriority','setPriority','transaction'].forEach(m=>{const o=P[m];if(typeof o!=='function')return;
+    P[m]=function(){const v=window._rtViewAs,pa=pathOf(this);if(v&&hit(pa,v))return stop(pa);return o.apply(this,arguments);};});
+  const ou=P.update;if(typeof ou==='function')P.update=function(d){const v=window._rtViewAs;
+    if(v&&d&&typeof d==='object'){const b=pathOf(this);if(hit(b,v)||Object.keys(d).some(k=>hit(b+'/'+k,v)))return stop(b||'/');}
+    return ou.apply(this,arguments);};
+  const op=P.push;if(typeof op==='function')P.push=function(val){const v=window._rtViewAs,pa=pathOf(this);
+    if(v&&hit(pa,v)&&arguments.length&&val!==undefined){stop(pa);return op.call(this);}return op.apply(this,arguments);};
+}catch(_){}})();
 // Override ref so ref(db,'path') works: db is ignored, path is used
 var _origRef=ref;
 ref=function(dbOrPath,path){
@@ -731,7 +747,7 @@ let currentUserId=getUserId();
 
 let _upHl='foto';
 function upHlHtml(){return[['foto','<i class="ic ic-hl-foto"></i><span>FOTO</span>'],['video','<i class="ic ic-hl-video"></i><span>VIDEO</span>']]
-  .map(([k,h])=>'<div class="hl-option hl-'+k+(_upHl===k?' active':'')+'" onclick="setUpHl(\''+k+'\')">'+h+'</div>').join('');}
+  .map(([k,h])=>'<div class="hl-option hl-'+k+(_upHl===k?' active':'')+'" onclick="setUpHl('+rtJsArg(k)+')">'+h+'</div>').join('');}
 function setUpHl(k){_upHl=k;const el=document.getElementById('up-hl');if(el)el.innerHTML=upHlHtml();}
 window.setUpHl=setUpHl;
 function showUserPicker(){
@@ -749,7 +765,7 @@ function showUserPicker(){
   let usersHtml='';
   if(savedUsers.length){
     usersHtml='<div style="margin-bottom:16px">'
-      +savedUsers.map(u=>'<button style="width:100%;padding:14px;background:var(--bg3);border:1.5px solid '+(u===currentUserId?'#22c55e':'var(--border2)')+';border-radius:10px;font-family:inherit;font-size:16px;font-weight:900;color:'+(u===currentUserId?'#22c55e':'var(--text)')+';cursor:pointer;margin-bottom:8px;letter-spacing:2px;text-transform:uppercase" onclick="selectSavedUser(\''+u+'\')">'
+      +savedUsers.map(u=>'<button style="width:100%;padding:14px;background:var(--bg3);border:1.5px solid '+(u===currentUserId?'#22c55e':'var(--border2)')+';border-radius:10px;font-family:inherit;font-size:16px;font-weight:900;color:'+(u===currentUserId?'#22c55e':'var(--text)')+';cursor:pointer;margin-bottom:8px;letter-spacing:2px;text-transform:uppercase" onclick="selectSavedUser('+rtJsArg(u)+')">'
         +u+(u===currentUserId?' <i class="ic ic-check"></i>':'')+'</button>').join('')
       +'</div>'
       +'<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">'
@@ -1007,8 +1023,10 @@ function rtUnlink(k){
 }
 function rtViewAs(n){
   if(!rtIsAdmin())return;
-  currentUserId=n;try{localStorage.setItem('rt_user',n);}catch(e){}
-  window._rtViewAs=(n!==_rtAuthUser)?n:'';   // 27/11/2026 (revisione): guardare un altro utente = sola lettura
+  currentUserId=n;
+  window._rtViewAs=(n!==_rtAuthUser)?n:'';
+  // 27/11/2026 (revisione): l'utente guardato non resta salvato: alla riapertura l'app riparte dal proprio nome
+  try{if(!window._rtViewAs)localStorage.setItem('rt_user',n);}catch(e){}   // 27/11/2026 (revisione): guardare un altro utente = sola lettura
   closeModal();updateUserHeader();if(activeRaceId)listenRaceData(activeRaceId);
 }
 window.rtApprove=rtApprove;window.rtReject=rtReject;window.rtAdminAdd=rtAdminAdd;window.rtUnlink=rtUnlink;window.rtViewAs=rtViewAs;window.rtAdminPanel=rtAdminPanel;
@@ -1501,7 +1519,7 @@ function taskBtn(num,task,small,readonly){
   const base=small?'padding:4px 8px;font-size:10px;':'';
   if(readonly)return'<button class="task-btn '+s+'" style="'+base+'cursor:default;pointer-events:none">'+task+'</button>';
   const sz=base?'style="'+base+'"':'';
-  return'<button class="task-btn '+s+'" '+sz+' onclick="toggleTask(\''+num+'\',\''+task+'\')">'+task+'</button>';
+  return'<button class="task-btn '+s+'" '+sz+' onclick="toggleTask('+rtJsArg(num)+','+rtJsArg(task)+')">'+task+'</button>';
 }
 
 // ── TOGGLE ──
@@ -1574,7 +1592,7 @@ function editPilotNote(num){
   openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button>'
     +'<div class="modal-title">Nota #'+num+(_nm?' · '+String(_nm).replace(/</g,'&lt;'):'')+'</div>'
     +'<div class="form-group"><textarea class="form-textarea" id="pn-text" style="min-height:120px" placeholder="Commento, appunti, cosa fare...">'+cur+'</textarea></div>'
-    +'<button class="form-submit" onclick="savePilotNote(\''+num+'\')">SALVA</button>'
+    +'<button class="form-submit" onclick="savePilotNote('+rtJsArg(num)+')">SALVA</button>'
     +reelPickerHtml(num)+(function(){const _p=pilots.find(x=>x.num===String(num));return _p?fotoRowHtml(_p,false):'';})()+persToggleHtml(num));
 }
 window.editPilotNote=editPilotNote;
@@ -1899,7 +1917,7 @@ function renderGare(){
       // Is this race ongoing?
       const isOngoing=startD&&startD<=today&&(endD>=today||!endD);
 
-      html+='<div class="race-card'+(isActive?' active-race':'')+'" id="race-card-'+idx+'" onclick="switchRaceAndRender(\''+id+'\')">'
+      html+='<div class="race-card'+(isActive?' active-race':'')+'" id="race-card-'+idx+'" onclick="switchRaceAndRender('+rtJsArg(id)+')">'
         +'<div style="display:flex;justify-content:space-between;align-items:flex-start">'
         +'<div style="display:flex;gap:10px;align-items:flex-start;min-width:0">'+circuitMapHtml(r,isActive)+'<div><div class="race-name">'+r.name+(isActive?'<span class="race-badge">ATTIVA</span>':'')+'</div>'
         +'<div class="race-meta">'+(r.circuit||'')+(dateStr?' · '+dateStr:'')+'</div>'
@@ -1907,8 +1925,8 @@ function renderGare(){
         +(isOngoing?'<span style="font-size:9px;font-weight:800;color:#22c55e;border:1px solid #22c55e;padding:2px 8px;border-radius:4px;white-space:nowrap">IN CORSO</span>':'')
         +'</div>'
         +'<div style="display:flex;gap:6px;margin-top:10px">'
-        +'<button class="io-btn" style="font-size:10px;padding:8px" onclick="event.stopPropagation();openRaceSettings(\''+id+'\')"><i class="ic ic-gear"></i> IMPOSTAZIONI</button>'
-        +(isActive?'':'<button class="io-btn" style="font-size:10px;padding:8px;border-color:#ef4444;color:#ef4444" onclick="event.stopPropagation();deleteRace(\''+id+'\')"><i class="ic ic-close"></i> ELIMINA</button>')
+        +'<button class="io-btn" style="font-size:10px;padding:8px" onclick="event.stopPropagation();openRaceSettings('+rtJsArg(id)+')"><i class="ic ic-gear"></i> IMPOSTAZIONI</button>'
+        +(isActive?'':'<button class="io-btn" style="font-size:10px;padding:8px;border-color:#ef4444;color:#ef4444" onclick="event.stopPropagation();deleteRace('+rtJsArg(id)+')"><i class="ic ic-close"></i> ELIMINA</button>')
         +'</div></div>';
     });
 
@@ -2305,26 +2323,26 @@ function openRaceSettings(raceId){
     +'<div class="form-group"><label class="form-label">Premiazione finali</label>'
     +'<input class="form-input" id="rs-aw-final" type="datetime-local" value="'+((((r.awards||{}).final)||'')==='dopo'?'':(((r.awards||{}).final)||''))+'">'
     +'<label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;color:var(--text2)"><input type="checkbox" id="rs-aw-dopo"'+((((r.awards||{}).final)||'')==='dopo'?' checked':'')+'> Subito dopo la finale di ogni categoria</label></div>'
-    +'<button class="form-submit" onclick="saveRaceSettings(\''+raceId+'\')">SALVA</button>'
+    +'<button class="form-submit" onclick="saveRaceSettings('+rtJsArg(raceId)+')">SALVA</button>'
     +'<div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">'
     +'<div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:12px;letter-spacing:1px">CARICA DATI</div>'
     +'<div class="upload-zone" onclick="document.getElementById(\'ul-entry\').click()">'
     +'<div class="upload-zone-label"><i class="ic ic-list"></i> ENTRY LIST</div>'
     +'<div class="upload-zone-hint">JSON con tutti i piloti iscritti</div>'
-    +'<input type="file" id="ul-entry" accept=".json" style="display:none" onchange="uploadEntryList(event,\''+raceId+'\')"></div>'
+    +'<input type="file" id="ul-entry" accept=".json" style="display:none" onchange="uploadEntryList(event,'+rtJsArg(raceId)+')"></div>'
     +'<div class="upload-zone" onclick="document.getElementById(\'ul-mypilots\').click()">'
     +'<div class="upload-zone-label"><i class="ic ic-star"></i> I MIEI PILOTI</div>'
     +'<div class="upload-zone-hint">JSON con la lista dei tuoi piloti da seguire</div>'
-    +'<input type="file" id="ul-mypilots" accept=".json" style="display:none" onchange="uploadMyPilots(event,\''+raceId+'\')"></div>'
+    +'<input type="file" id="ul-mypilots" accept=".json" style="display:none" onchange="uploadMyPilots(event,'+rtJsArg(raceId)+')"></div>'
     +'<div class="upload-zone" onclick="document.getElementById(\'ul-schedule\').click()">'
     +'<div class="upload-zone-label"><i class="ic ic-calendar"></i> PROGRAMMA</div>'
     +'<div class="upload-zone-hint">JSON con orari e sessioni per giorno</div>'
-    +'<input type="file" id="ul-schedule" accept=".json" style="display:none" onchange="uploadSchedule(event,\''+raceId+'\')"></div>'
+    +'<input type="file" id="ul-schedule" accept=".json" style="display:none" onchange="uploadSchedule(event,'+rtJsArg(raceId)+')"></div>'
     +'<div class="upload-zone" onclick="document.getElementById(\'ul-assign\').click()" style="border-color:#fbbf24">'
     +'<div class="upload-zone-label" style="color:#fbbf24"><i class="ic ic-refresh"></i> AGGIORNA ASSEGNAZIONI</div>'
     +'<div class="upload-zone-hint">Gruppi, serie, prefinal dai risultati ufficiali.<br>Piloti assenti = eliminati automaticamente.</div>'
-    +'<input type="file" id="ul-assign" accept=".json" style="display:none" onchange="uploadAssignments(event,\''+raceId+'\')"></div>'
-    +'<div class="upload-zone" style="border-color:#a78bfa;cursor:pointer" onclick="openWSKPasteModal(\''+raceId+'\')">'
+    +'<input type="file" id="ul-assign" accept=".json" style="display:none" onchange="uploadAssignments(event,'+rtJsArg(raceId)+')"></div>'
+    +'<div class="upload-zone" style="border-color:#a78bfa;cursor:pointer" onclick="openWSKPasteModal('+rtJsArg(raceId)+')">'
     +'<div class="upload-zone-label" style="color:#a78bfa"><i class="ic ic-download"></i> INCOLLA HEATS DA WSK</div>'
     +'<div class="upload-zone-hint">Incolla il JSON generato dal bookmarklet WSK.<br>Aggiorna automaticamente le heat di tutti i piloti.</div>'
     +'</div>'
@@ -2344,7 +2362,7 @@ function openWSKPasteModal(raceId){
     +'3. Aspetta qualche secondo, poi incolla qui sotto</div>'
     +'<div class="form-group"><label class="form-label">JSON copiato dal bookmarklet</label>'
     +'<textarea class="form-textarea" id="wsk-paste-input" placeholder=\'[{"num":"563","heats":["B-C","B-D"]}, ...]\' style="min-height:120px;font-size:11px"></textarea></div>'
-    +'<button class="form-submit" onclick="applyWSKHeats(\''+raceId+'\')">APPLICA</button>');
+    +'<button class="form-submit" onclick="applyWSKHeats('+rtJsArg(raceId)+')">APPLICA</button>');
   // Prova a leggere dagli appunti automaticamente
   navigator.clipboard.readText().then(text=>{
     if(text&&text.trim().startsWith('[')){
@@ -2790,7 +2808,7 @@ function gridBadge(num,slot){
 }
 /* 15/11/2026 (Andrea): matita delle note sempre visibile (non solo se c'e' gia' una nota), area di tocco 44px */
 function noteBtn(num){const n=String(num).replace(/[^0-9A-Za-z_-]/g,'');
-  return'<button onclick="event.stopPropagation();editPilotNote(\''+n+'\')" aria-label="Nota" style="margin:-12px -10px -12px 0;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0;flex-shrink:0;touch-action:manipulation;-webkit-tap-highlight-color:rgba(255,255,255,.15)"><i class="ic ic-note"></i></button>';}
+  return'<button onclick="event.stopPropagation();editPilotNote('+rtJsArg(n)+')" aria-label="Nota" style="margin:-12px -10px -12px 0;min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0;flex-shrink:0;touch-action:manipulation;-webkit-tap-highlight-color:rgba(255,255,255,.15)"><i class="ic ic-note"></i></button>';}
 /* 18/11/2026 (Andrea): pilota di un team seguito che compra anche il pacchetto personale -> diventa anche mio pilota
    (pillole e note sue), resta nel riquadro del team con l'etichetta "PERS". La nota gia' scritta sul pilota resta.
    Si segna e si toglie dalla finestra della nota (matita), solo per i piloti dei team seguiti. */
@@ -2830,7 +2848,7 @@ function fotoChips(p){if(!FOTO_OPTS.length||!hasFoto(p))return'';
   return fotoTagsOf(p).map(v=>'<span title="Foto" style="font-family:\'Chakra Petch\',sans-serif;font-size:9px;font-weight:700;color:#7dd3fc;border:1px solid rgba(125,211,252,.45);border-radius:4px;padding:0 4px;flex-shrink:0;line-height:14px"><i class="ic ic-hl-foto"></i> '+FOTO_OPTS.find(o=>o[0]===v)[1]+'</span>').join('');}
 function fotoRowHtml(p,quick){if(!FOTO_OPTS.length||!hasFoto(p))return'';const on=fotoTagsOf(p);
   return'<div style="display:flex;align-items:center;gap:6px;margin:8px 0 2px;flex-wrap:wrap"><span class="note-label" style="margin:0 4px 0 0">Foto</span>'
-    +FOTO_OPTS.map(([v,l])=>'<button onclick="togglePilotFotoTag(\''+p.num+'\',\''+v+'\','+(quick?1:0)+')" style="min-height:36px;padding:0 10px;border-radius:7px;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;touch-action:manipulation;'
+    +FOTO_OPTS.map(([v,l])=>'<button onclick="togglePilotFotoTag('+rtJsArg(p.num)+','+rtJsArg(v)+','+(quick?1:0)+')" style="min-height:36px;padding:0 10px;border-radius:7px;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;touch-action:manipulation;'
       +(on.includes(v)?'background:#7dd3fc;color:#0b1220;border:1px solid #7dd3fc':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>').join('')+'</div>';}
 function togglePilotFotoTag(num,v,quick){
   const p=pilots.find(x=>x.num===String(num));if(!p)return;
@@ -2846,7 +2864,7 @@ function reelPickerHtml(num){
   const p=pilots.find(x=>x.num===String(num));if(!p||!hasVideo(p))return'';
   return'<div style="margin-top:12px;font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--text4)">REEL</div><div style="display:flex;gap:8px;margin-top:6px">'
     +REEL_OPTS.map(([v,l])=>{const on=String(p.reel||'30')===v;
-      return'<button onclick="setPilotReel(\''+p.num+'\',\''+v+'\')" style="flex:1;min-height:44px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
+      return'<button onclick="setPilotReel('+rtJsArg(p.num)+','+rtJsArg(v)+')" style="flex:1;min-height:44px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
         +(on?'background:#e9d5a8;color:#1a160e;border:1px solid #e9d5a8':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>';}).join('')+'</div>';
 }
 /* 19/11/2026 (Andrea): durata reel cambiabile direttamente dalla scheda nella lista Piloti */
@@ -2854,7 +2872,7 @@ function reelRowHtml(p){
   if(!hasVideo(p))return'';
   return'<div style="display:flex;align-items:center;gap:6px;margin:8px 0 2px"><span class="note-label" style="margin:0 4px 0 0">Reel</span>'
     +REEL_OPTS.map(([v,l])=>{const on=String(p.reel||'30')===v;
-      return'<button onclick="setPilotReelQuick(\''+p.num+'\',\''+v+'\')" style="min-width:52px;min-height:36px;border-radius:7px;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;touch-action:manipulation;'
+      return'<button onclick="setPilotReelQuick('+rtJsArg(p.num)+','+rtJsArg(v)+')" style="min-width:52px;min-height:36px;border-radius:7px;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;touch-action:manipulation;'
         +(on?'background:#e9d5a8;color:#1a160e;border:1px solid #e9d5a8':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>';}).join('')+'</div>';
 }
 function setPilotReelQuick(num,v){
@@ -2877,8 +2895,8 @@ function persToggleHtml(num){
   if(!ft)return'';
   const st='width:100%;margin-top:10px;min-height:44px;border-radius:8px;background:none;font-family:inherit;font-weight:800;font-size:12px;letter-spacing:.05em;cursor:pointer;';
   return mine
-    ?'<button style="'+st+'border:1px solid var(--border2,#444);color:var(--text3)" onclick="removeTeamPilotPersonal(\''+num+'\')">TOGLI DAL PERSONALE (resta nel team)</button>'
-    :'<button style="'+st+'border:1px solid rgba(74,222,128,.5);color:#4ade80" onclick="savePilotNote(\''+num+'\');addTeamPilotPersonal(\''+num+'\',true)">SEGNA ANCHE PERSONALE</button>';
+    ?'<button style="'+st+'border:1px solid var(--border2,#444);color:var(--text3)" onclick="removeTeamPilotPersonal('+rtJsArg(num)+')">TOGLI DAL PERSONALE (resta nel team)</button>'
+    :'<button style="'+st+'border:1px solid rgba(74,222,128,.5);color:#4ade80" onclick="savePilotNote('+rtJsArg(num)+');addTeamPilotPersonal('+rtJsArg(num)+',true)">SEGNA ANCHE PERSONALE</button>';
 }
 function removeTeamPilotPersonal(num){
   num=String(num);const p=pilots.find(x=>x.num===num);if(!p)return;
@@ -2889,7 +2907,7 @@ function removeTeamPilotPersonal(num){
 }
 window.removeTeamPilotPersonal=removeTeamPilotPersonal;
 function persBtn(num){const n=String(num).replace(/[^0-9A-Za-z_-]/g,'');
-  return'<button onclick="event.stopPropagation();addTeamPilotPersonal(\''+n+'\')" aria-label="Anche personale" title="Anche personale" style="min-height:32px;padding:0 8px;border-radius:6px;border:1px solid var(--border2,#333);background:none;color:var(--text3);font-family:\'Chakra Petch\',sans-serif;font-size:10px;font-weight:800;cursor:pointer;flex-shrink:0;touch-action:manipulation">+ PERS.</button>';}
+  return'<button onclick="event.stopPropagation();addTeamPilotPersonal('+rtJsArg(n)+')" aria-label="Anche personale" title="Anche personale" style="min-height:32px;padding:0 8px;border-radius:6px;border:1px solid var(--border2,#333);background:none;color:var(--text3);font-family:\'Chakra Petch\',sans-serif;font-size:10px;font-weight:800;cursor:pointer;flex-shrink:0;touch-action:manipulation">+ PERS.</button>';}
 function addTeamPilotPersonal(num,noAsk){
   num=String(num);if(pilots.find(p=>p.num===num))return;
   const e=(currentEntryList||{})[num];if(!e){alert('Pilota non trovato nella entry list');return;}
@@ -2914,7 +2932,7 @@ function searchResultItem(m){
   const prio=hl.includes('priority');
   const bd=isMine?(prio?'border:2px solid #f59e0b;background:rgba(245,158,11,.08)':'border-color:#22c55e;background:rgba(34,197,94,.06)'):(ft?'border:2px solid '+tc+';background:rgba(255,255,255,.03)':'');
   const badges=hl.map(h=>'<span class="hl-badge hl-'+h+' hl-mini"><i class="ic ic-hl-'+(h==='priority'?'prio':h)+'"></i></span>').join('');
-  return'<div class="search-result-item" style="'+bd+'" onclick="openPilotDetail(\''+m.num+'\')">'
+  return'<div class="search-result-item" style="'+bd+'" onclick="openPilotDetail('+rtJsArg(m.num)+')">'
     +'<span class="sr-num" style="'+(isMine?'color:#22c55e':ft?'color:'+tc:'')+'">#'+m.num+'</span>'
     +'<div style="flex:1;min-width:0">'
     +'<div class="sr-name" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span>'+m.name+'</span>'
@@ -2958,10 +2976,10 @@ function openPilotDetail(num){
     +(isMine?'':'<div class="form-group"><label class="form-label">Lavoro</label><div class="hl-picker" id="f-hl">'+addHlHtml()+'</div></div>'
       +'<div class="form-group" id="f-reel-wrap"'+(_addHl.includes('video')?'':' style="display:none"')+'><label class="form-label">Reel</label><div id="f-reel" style="display:flex;gap:8px">'+addReelHtml()+'</div></div>')
     +'<div class="detail-actions">'
-    +'<button class="btn-note-pilot" onclick="saveDetailNote(\''+num+'\')"><i class="ic ic-save"></i> SALVA NOTE</button>'
-    +(isMine?'':'<button class="btn-add-pilot" onclick="addPilotFromDetail(\''+num+'\')">+ AGGIUNGI AI MIEI</button>')
+    +'<button class="btn-note-pilot" onclick="saveDetailNote('+rtJsArg(num)+')"><i class="ic ic-save"></i> SALVA NOTE</button>'
+    +(isMine?'':'<button class="btn-add-pilot" onclick="addPilotFromDetail('+rtJsArg(num)+')">+ AGGIUNGI AI MIEI</button>')
     +'</div>'
-    +(isMine?'<div style="margin-top:10px"><button class="pilot-edit-btn" style="width:100%;padding:10px;text-align:center" onclick="closeModal();openEditPilot(\''+num+'\')"><i class="ic ic-note"></i> MODIFICA PILOTA</button></div>':'')
+    +(isMine?'<div style="margin-top:10px"><button class="pilot-edit-btn" style="width:100%;padding:10px;text-align:center" onclick="closeModal();openEditPilot('+rtJsArg(num)+')"><i class="ic ic-note"></i> MODIFICA PILOTA</button></div>':'')
     +'</div>');
   loadPilotHistory(String(name).trim());
 }
@@ -3112,12 +3130,12 @@ function teamsForSlot(slot){
    Stato salvato per numero in statuses/<num> come per i miei piloti; senza dato = rosso. */
 function teamPilotTaskBtn(num,task){
   const s=(statuses[num]||{})[task]||'red';
-  return'<button class="task-btn '+s+'" style="padding:4px 8px;font-size:10px" onclick="toggleTask(\''+num+'\',\''+task+'\')">'+task+'</button>';
+  return'<button class="task-btn '+s+'" style="padding:4px 8px;font-size:10px" onclick="toggleTask('+rtJsArg(num)+','+rtJsArg(task)+')">'+task+'</button>';
 }
 function teamTaskBtn(key,task,small){
   const s=(teamStatuses[key]||{})[task]||'red';
   const sz=small?'style="padding:4px 8px;font-size:10px"':'';
-  return'<button class="task-btn '+s+'" '+sz+' onclick="toggleTeamTask(\''+escAttr(key)+'\',\''+task+'\')">'+task+'</button>';
+  return'<button class="task-btn '+s+'" '+sz+' onclick="toggleTeamTask(\''+escAttr(key)+'\','+rtJsArg(task)+')">'+task+'</button>';
 }
 /* 20/11/2026 (Andrea): punti di scatto dei piloti del team in pista, uno per pilota */
 function teamSpotsRow(list){if(!venueMap()||!list||!list.length)return'';
@@ -3209,7 +3227,7 @@ function renderTeams(){
       +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+cats.map(c=>'<span class="pilot-cat '+catClass(c)+'">'+c+'</span>').join('')+'</div>'
       +'<div style="display:flex;align-items:center;gap:8px;margin-top:3px"><span class="pilot-num"><i class="ic ic-team"></i></span><span class="pilot-name">'+t.name+'</span></div>'
       +'<div class="pilot-team">'+ents.length+' piloti iscritti</div>'
-      +'<div class="team-nums">'+ents.map(p=>'<span class="team-num'+(pilots.some(x=>x.num===p.num)?' mine':'')+'" onclick="openPilotDetail(\''+p.num+'\')">#'+p.num+'</span>').join('')+'</div>'
+      +'<div class="team-nums">'+ents.map(p=>'<span class="team-num'+(pilots.some(x=>x.num===p.num)?' mine':'')+'" onclick="openPilotDetail('+rtJsArg(p.num)+')">#'+p.num+'</span>').join('')+'</div>'
       +'</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">'
       +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="removeTeam(\''+escAttr(t.key)+'\')"><i class="ic ic-close"></i> rimuovi</button></div></div>'
       +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,false)).join('')+'</div>'
@@ -3260,7 +3278,7 @@ function renderOverviewBody(){
     if(r.si!=null){const b=_ob[r.si];if(b&&b.ses&&b.id!==_ol){pre+=['<div class="session-divider ov-div">',blkLabel(b,_oc),'</div>'].join('');_ol=b.id;}}
     else if(!_ofin){pre+='<div class="session-divider ov-div">FINALI</div>';_ofin=true;}
     const cls=i===nowIdx?' now':(isToday&&i<nowIdx?' past':'');
-    const nums=r.ps.map(p=>{const st=(statuses[p.num]||{}).PISTA||'red';return'<span class="ov-n '+st+'" onclick="ovOpenPilot(\''+p.num+'\')">'+p.num+'</span>';}).join('')
+    const nums=r.ps.map(p=>{const st=(statuses[p.num]||{}).PISTA||'red';return'<span class="ov-n '+st+'" onclick="ovOpenPilot('+rtJsArg(p.num)+')">'+p.num+'</span>';}).join('')
       +(r.aw.length?'<span class="ov-n" style="opacity:.5;border-style:dashed"><i class="ic ic-wait"></i>'+r.aw.length+'</span>':'')
       +r.ts.map(({t})=>{const st=(teamStatuses[t.key]||{}).PISTA||'red';return'<span class="ov-t '+st+'" onclick="toggleTeamTask(\''+escAttr(t.key)+'\',\'PISTA\')"><i class="ic ic-team"></i> '+t.name+'</span>';}).join('');
     return pre+'<div class="ov-row'+cls+'"><span class="ov-time">'+r.time+'</span><span class="ov-cat '+catClass(r.cat)+'">'+r.label+'<br><span style="color:var(--text4);font-size:9px">'+r.sub+'</span></span>'
@@ -3417,7 +3435,7 @@ function buildCatGrid(containerId,onClickFn,activeCat){
   if(!list.length){el.innerHTML='<div style="font-size:12px;color:var(--text4);padding:8px">Nessuna categoria</div>';return;}
   el.innerHTML=list.map(c=>{
     const cls=catClass(c);const isActive=activeCat===c;
-    return'<button class="adv-cat-btn '+cls+(isActive?' active':'')+'" onclick="'+onClickFn+'(\''+c+'\')">'+c+'</button>';
+    return'<button class="adv-cat-btn '+cls+(isActive?' active':'')+'" onclick="'+onClickFn+'('+rtJsArg(c)+')">'+rtEsc(c)+'</button>';
   }).join('');
 }
 
@@ -3448,14 +3466,14 @@ function renderPilotTeamList(){
   // 18/11/2026 (Andrea): cercando un team che non e' tra quelli dei miei piloti (es. "akm") compaiono i team della gara con "SEGUI TEAM"
   const mineT=new Set(teams.map(([t])=>teamNorm(t)));
   const others=q.length>=2?getTeamsFromEntryList().filter(([t])=>t.toUpperCase().includes(q)&&!mineT.has(teamNorm(t))):[];
-  const esc=t=>t.replace(/'/g,"\\'");
+  const esc=t=>rtJsArg(t);
   const followed=t=>teams_isFollowed(t);
-  let html=teams.map(([t,cnt])=>'<div class="scuderia-item'+(pilotSearchTeam===t?' selected':'')+'" onclick="selectPilotTeam(\''+esc(t)+'\')">'
-    +'<span style="flex:1">'+t+'</span><span style="font-size:10px;color:var(--text4);font-weight:700;margin-left:8px">'+cnt+'</span></div>').join('');
+  let html=teams.map(([t,cnt])=>'<div class="scuderia-item'+(pilotSearchTeam===t?' selected':'')+'" onclick="selectPilotTeam('+esc(t)+')">'
+    +'<span style="flex:1">'+rtEsc(t)+'</span><span style="font-size:10px;color:var(--text4);font-weight:700;margin-left:8px">'+cnt+'</span></div>').join('');
   if(others.length)html+='<div style="padding:10px 4px 4px;font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--text4)">TEAM IN GARA</div>'
-    +others.map(([t,cnt])=>'<div class="scuderia-item" style="cursor:default"><span style="flex:1">'+t+'</span><span style="font-size:10px;color:var(--text4);font-weight:700;margin:0 8px">'+cnt+' piloti</span>'
+    +others.map(([t,cnt])=>'<div class="scuderia-item" style="cursor:default"><span style="flex:1">'+rtEsc(t)+'</span><span style="font-size:10px;color:var(--text4);font-weight:700;margin:0 8px">'+cnt+' piloti</span>'
       +(followed(t)?'<button class="btn-add-team done" style="min-height:36px;width:auto;margin:0;padding:0 12px" onclick="setPilotsView(\'team\')">SEGUITO</button>'
-        :'<button class="btn-add-team" style="min-height:36px;width:auto;margin:0;padding:0 12px" onclick="followTeamFromSearch(\''+esc(t)+'\')">+ SEGUI TEAM</button>')+'</div>').join('');
+        :'<button class="btn-add-team" style="min-height:36px;width:auto;margin:0;padding:0 12px" onclick="followTeamFromSearch('+esc(t)+')">+ SEGUI TEAM</button>')+'</div>').join('');
   el.innerHTML=html||'<div style="padding:14px;font-size:12px;color:var(--text4);text-align:center">Nessun team'+(q.length<2?'':' con questo nome nella gara')+'</div>';
 }
 function teams_isFollowed(name){try{const k=teamKey(name);return teams.some(t=>t.key===k||sameTeam(name,teamOfKey(t)));}catch(e){return false;}}
@@ -3503,7 +3521,7 @@ function renderPilotSearchResults(){
   if(pilotSearchMode==='team'&&pilotSearchTeam){
     const has=teams_isFollowed(pilotSearchTeam);
     html=(has?'<button class="btn-add-team done" onclick="setPilotsView(\'team\')"><i class="ic ic-star"></i> TEAM GIÀ SEGUITO — APRI TEAM</button>'
-      :'<button class="btn-add-team" onclick="addTeam(\''+pilotSearchTeam.replace(/'/g,"\\'")+'\')"><i class="ic ic-plus"></i> AGGIUNGI TEAM</button>')+html;
+      :'<button class="btn-add-team" onclick="addTeam('+rtJsArg(pilotSearchTeam)+')"><i class="ic ic-plus"></i> AGGIUNGI TEAM</button>')+html;
   }
   if(myP.length){html+='<div class="search-group-label" style="color:#22c55e"><i class="ic ic-star"></i> I MIEI PILOTI ('+myP.length+')</div>';myP.forEach(m=>{html+=searchResultItem(m);});}
   if(others.length){html+='<div class="search-group-label">TUTTI GLI ALTRI ('+others.length+')</div>';others.forEach(m=>{html+=searchResultItem(m);});}
@@ -3536,8 +3554,8 @@ function renderProgTeamList(){
   const teams=getMyTeams().filter(([t])=>t.toUpperCase().includes(q));
   const el=document.getElementById('prog-team-list');if(!el)return;
   if(!teams.length){el.innerHTML='<div style="padding:14px;font-size:12px;color:var(--text4);text-align:center">Nessun team</div>';return;}
-  el.innerHTML=teams.map(([t,cnt])=>'<div class="scuderia-item'+(progSearchTeam===t?' selected':'')+'" onclick="selectProgTeam(\''+t.replace(/'/g,"\\'")+'\')">'
-    +'<span style="flex:1">'+t+'</span><span style="font-size:10px;color:var(--text4);font-weight:700;margin-left:8px">'+cnt+'</span></div>').join('');
+  el.innerHTML=teams.map(([t,cnt])=>'<div class="scuderia-item'+(progSearchTeam===t?' selected':'')+'" onclick="selectProgTeam('+rtJsArg(t)+')">'
+    +'<span style="flex:1">'+rtEsc(t)+'</span><span style="font-size:10px;color:var(--text4);font-weight:700;margin-left:8px">'+cnt+'</span></div>').join('');
 }
 window.renderProgTeamList=renderProgTeamList;
 
@@ -3634,8 +3652,8 @@ function renderElTeamList(){
   const teams=getTeamsFromEntryList().filter(([t])=>t.toUpperCase().includes(q));
   const el=document.getElementById('el-team-list');if(!el)return;
   if(!teams.length){el.innerHTML='<div style="padding:14px;font-size:12px;color:var(--text4);text-align:center">Nessun team</div>';return;}
-  el.innerHTML=teams.map(([t,cnt])=>'<div class="scuderia-item'+(elSearchTeam===t?' selected':'')+'" onclick="selectElTeam(\''+t.replace(/'/g,"\\'")+'\')">'
-    +'<span style="flex:1">'+t+'</span><span style="font-size:10px;color:var(--text4);font-weight:700;margin-left:8px">'+cnt+'</span></div>').join('');
+  el.innerHTML=teams.map(([t,cnt])=>'<div class="scuderia-item'+(elSearchTeam===t?' selected':'')+'" onclick="selectElTeam('+rtJsArg(t)+')">'
+    +'<span style="flex:1">'+rtEsc(t)+'</span><span style="font-size:10px;color:var(--text4);font-weight:700;margin-left:8px">'+cnt+'</span></div>').join('');
 }
 window.renderElTeamList=renderElTeamList;
 
@@ -3721,7 +3739,7 @@ function renderEntryList(){
       +' <span style="font-size:11px;font-weight:600;color:var(--text4)">'+members.length+'</span></div>';
     members.forEach(p=>{
       const isMine=!!pilots.find(x=>x.num===p.num);
-      html+='<div class="entry-item'+(isMine?' is-mine':'')+'" onclick="openPilotDetail(\''+p.num+'\')">'
+      html+='<div class="entry-item'+(isMine?' is-mine':'')+'" onclick="openPilotDetail('+rtJsArg(p.num)+')">'
         +'<span class="entry-num" style="'+(isMine?'color:#22c55e':'')+'">#'+p.num+'</span>'
         +'<div style="flex:1;min-width:0">'
         +'<div class="entry-name">'+(p.lastName||'')+' '+(p.firstName||'')+(isMine?' <span style="font-size:9px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i> TUO</span>':'')+mediaChip({num:p.num})+'</div>'
@@ -3775,13 +3793,13 @@ function renderPilots(){
     +'<span class="group-badge '+(pilotHasGroupData(p)?'set':'')+'">'
     +(p.heats&&p.heats.length?heatsLabel(p.heats):(p.group?'GRP '+p.group:'GRP ?'))
     +'</span>'
-    +'<button class="pilot-edit-btn" onclick="openEditPilot(\''+p.num+'\')"><i class="ic ic-note"></i> modifica</button>'
-    +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="deletePilot(\''+p.num+'\')"><i class="ic ic-close"></i> rimuovi</button>'
+    +'<button class="pilot-edit-btn" onclick="openEditPilot('+rtJsArg(p.num)+')"><i class="ic ic-note"></i> modifica</button>'
+    +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="deletePilot('+rtJsArg(p.num)+')"><i class="ic ic-close"></i> rimuovi</button>'
     +'</div></div>'
     +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,false,isElim)).join('')+spotPill(p.num)+'</div>'
     +reelRowHtml(p)+fotoRowHtml(p,true)
     +'<div class="note-wrap"><span class="note-label">Note</span>'
-    +'<textarea class="note-area" id="note-'+p.num+'" placeholder="Aggiungi una nota..." onblur="saveNote(\''+p.num+'\')">'+(notes[p.num]||'')+'</textarea></div></div>';
+    +'<textarea class="note-area" id="note-'+p.num+'" placeholder="Aggiungi una nota..." onblur="saveNote('+rtJsArg(p.num)+')">'+rtEsc(notes[p.num]||'')+'</textarea></div></div>';
   }).join('')+missingDashHtml();
 }
 
@@ -3996,7 +4014,9 @@ const WX_GEO={lonato:[45.4329,10.4853],franciacorta:[45.513,9.985],cremona:[45.0
   lemans:[47.939,0.218],ala:[45.760,11.000],zuera:[41.870,-0.800],genk:[50.990,5.560],wackersdorf:[49.320,12.190]};
 let _wx={key:'',at:0,ts:null,loading:false};
 function wxGeo(){let v=null;try{v=raceVenue();}catch(e){}if(!v)return null;const g=v.geo||WX_GEO[v.key];
-  return g?{key:v.key,lat:Number(g.lat!=null?g.lat:g[0]),lon:Number(g.lon!=null?g.lon:g[1])}:null;}
+  if(!g)return null;const lat=Number(g.lat!=null?g.lat:g[0]),lon=Number(g.lon!=null?g.lon:g[1]);
+  // 27/11/2026 (revisione): coordinate scritte male nel database = niente richiesta (prima partiva "lat=NaN" ogni ora)
+  return isFinite(lat)&&isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180?{key:v.key,lat,lon}:null;}
 function wxDayDate(day){const r=(typeof races!=='undefined'&&races&&races[activeRaceId])||{};if(!r.startDate)return'';
   const N=['DOMENICA','LUNEDÌ','MARTEDÌ','MERCOLEDÌ','GIOVEDÌ','VENERDÌ','SABATO'];const z=n=>String(n).padStart(2,'0');
   const d=new Date(r.startDate+'T12:00:00'),end=new Date((r.endDate||r.startDate)+'T12:00:00');
@@ -4027,7 +4047,7 @@ function wxSummary(day){
   const date=wxDayDate(day);if(!date||!_wx.ts)return null;const z=n=>String(n).padStart(2,'0');
   const rows=_wx.ts.map(x=>{const d=new Date(x.t);return Object.assign({h:d.getHours(),ds:d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())},x);}).filter(x=>x.ds===date&&x.h+(x.n||1)>7&&x.h<19);
   if(!rows.length)return null;
-  const T=rows.map(x=>x.T).filter(v=>v!=null),W=rows.map(x=>x.W).filter(v=>v!=null);
+  const T=rows.map(x=>x.T).filter(v=>v!=null&&isFinite(v)),W=rows.map(x=>x.W).filter(v=>v!=null);
   // ore di pioggia (07-19): almeno 0,2 mm nell'ora; con dati a 6 ore, la fascia intera se >= 1 mm
   const wet=new Set();rows.forEach(x=>{if(x.p==null)return;if(x.n===1&&x.p>=0.2)wet.add(x.h);if(x.n===6&&x.p>=1)for(let k=x.h;k<x.h+6;k++)if(k>=7&&k<19)wet.add(k);});
   // 19/11/2026 (Andrea): mattina (7-13) e pomeriggio (13-19) separati, ognuno con la sua icona, cosi' si capisce a colpo d'occhio
@@ -4049,7 +4069,7 @@ function wxSummary(day){
   let wr0=null;rows.forEach(x=>{if(x.W!=null&&(!wr0||x.W>wr0.W))wr0=x;});
   const G=rows.map(x=>x.G).filter(v=>v!=null);
   const wind=wr0?Math.round(wr0.W*3.6):null,gust=G.length?Math.round(Math.max.apply(null,G)*3.6):null;
-  return{tmin:Math.round(Math.min.apply(null,T)),tmax:Math.round(Math.max.apply(null,T)),wind,gust:gust!=null&&wind!=null&&gust>=wind+10?gust:null,
+  return{tmin:T.length?Math.round(Math.min.apply(null,T)):null,tmax:T.length?Math.round(Math.max.apply(null,T)):null,wind,gust:gust!=null&&wind!=null&&gust>=wind+10?gust:null,
     wdir:wr0&&wr0.D!=null?wxDir(wr0.D):'',wtxt:wind!=null?wxWindAdj(wind):'',am:half(7,13),pm:half(13,19),coarse:rows.some(x=>x.n===6)};
 }
 /* 19/11/2026 (Andrea): set di icone proprie (niente emoji) che segue il tempo previsto ora per ora:
@@ -4104,7 +4124,7 @@ function wxRender(){
     +'<span style="font-weight:900;color:'+(h.wet?'#60a5fa':'var(--text)')+'">'+h.txt+'</span>'
     +(h.det?'<span style="color:var(--text3);font-size:11px;margin-left:4px">('+h.det+')</span>':'')+'</span>':'';
   el.innerHTML='<div style="display:flex;flex-wrap:wrap;align-items:center;row-gap:4px">'+seg('MATTINA',s.am)+seg('POMERIGGIO',s.pm)
-    +'<span style="white-space:nowrap;color:var(--text3)">'+s.tmin+'–'+s.tmax+'°'+(s.wind!=null?' · vento '+s.wtxt+' '+s.wind+' km/h'+(s.wdir?' da '+s.wdir:'')+(s.gust?', raffiche '+s.gust:''):'')
+    +'<span style="white-space:nowrap;color:var(--text3)">'+(s.tmin!=null?s.tmin+'–'+s.tmax+'°':'')+(s.wind!=null?(s.tmin!=null?' · ':'')+'vento '+s.wtxt+' '+s.wind+' km/h'+(s.wdir?' da '+s.wdir:'')+(s.gust?', raffiche '+s.gust:''):'')
     +' <span style="color:var(--text4);font-weight:600;font-size:10px">'+(s.coarse?'(a fasce di 6 ore, indicativo)':'(indicativo)')+'</span></span></div>';
   el.style.display='';
 }
@@ -4165,7 +4185,7 @@ function lunchHtml(slotsArr,idx,ov){
 function renderSchedule(){
   try{wxLoad();wxRender();}catch(e){}
   const dt=document.getElementById('day-tabs');
-  dt.innerHTML=currentDays.map(d=>'<button class="day-tab '+(d===activeDay?'active':'')+'" onclick="setDay(\''+d+'\')">'+d+'</button>').join('');
+  dt.innerHTML=currentDays.map(d=>'<button class="day-tab '+(d===activeDay?'active':'')+'" onclick="setDay('+rtJsArg(d)+')">'+rtEsc(d)+'</button>').join('');
   const el=document.getElementById('schedule-content');
   if(!initialized){el.innerHTML='<div class="loading">Caricamento…</div>';return;}
   if(!currentDays.length){el.innerHTML='<div class="empty-state"><p>Nessun programma caricato.<br>Vai in GARE → Impostazioni per caricare il programma.</p></div>';return;}
@@ -4340,7 +4360,7 @@ function renderSchedule(){
     html+='<button onclick="toggleEliminati()" style="width:100%;text-align:left;background:none;border:none;color:var(--text3);font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.5px;cursor:pointer;padding:4px 2px">'+(showEliminati?'\u25bc':'\u25b6')+' '+_elim.length+' piloti fuori dai giochi</button>';
     if(showEliminati){
       _elim.slice().sort((a,b)=>parseInt(a.num)-parseInt(b.num)).forEach(p=>{
-        html+='<div class="card-inner" style="opacity:.55;border-style:dashed;cursor:pointer;margin-top:6px" onclick="openEditPilot(\''+p.num+'\')"><div style="display:flex;align-items:center;gap:8px">'
+        html+='<div class="card-inner" style="opacity:.55;border-style:dashed;cursor:pointer;margin-top:6px" onclick="openEditPilot('+rtJsArg(p.num)+')"><div style="display:flex;align-items:center;gap:8px">'
           +'<span class="inner-num" style="color:var(--text4)">#'+p.num+'</span>'
           +'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)
           +'<span class="'+catClass(p.cat)+'" style="font-size:9px;font-weight:800;margin-left:auto">'+p.cat+'</span>'
@@ -5043,7 +5063,7 @@ function renderSettings(){
     +'<div class="set-opt'+(v==='highlight'?' on':'')+'" onclick="setTeamView(\'highlight\')"><input type="radio" '+(v==='highlight'?'checked':'')+' style="width:20px;height:20px"> Piloti del team evidenziati col colore del team</div>'
     +'<div class="set-opt'+(v==='both'?' on':'')+'" onclick="setTeamView(\'both\')"><input type="radio" '+(v==='both'?'checked':'')+' style="width:20px;height:20px"> Entrambi: scheda del team e piloti evidenziati</div>'
     +(teams.length?'<div class="set-sec">COLORI DEI TEAM</div>'+teams.map(t=>'<div style="margin-bottom:10px"><div style="font-size:13px;font-weight:800;margin-bottom:6px"><span class="tchip" style="--tc:'+teamColor(t.key)+'">'+String(t.name).replace(/</g,'&lt;')+'</span></div><div class="sw-row">'
-      +TEAM_PALETTE.map(c=>'<span class="sw-dot'+(teamColor(t.key)===c?' on':'')+'" style="background:'+c+'" onclick="setTeamColor(\''+escAttr(t.key)+'\',\''+c+'\')"></span>').join('')+'</div></div>').join(''):'<div style="font-size:12px;color:var(--text4)">Nessun team aggiunto in questa gara.</div>')
+      +TEAM_PALETTE.map(c=>'<span class="sw-dot'+(teamColor(t.key)===c?' on':'')+'" style="background:'+c+'" onclick="setTeamColor(\''+escAttr(t.key)+'\','+rtJsArg(c)+')"></span>').join('')+'</div></div>').join(''):'<div style="font-size:12px;color:var(--text4)">Nessun team aggiunto in questa gara.</div>')
     +'<div class="set-sec">LE MIE NOTIFICHE</div><div id="notif-prefs-body"></div>'
     +'<div style="margin-top:10px;font-size:11px;color:var(--text4)">Impostazioni del profilo '+currentUserId+'.</div>';
   renderNotifPrefs();try{renderPushDevice();}catch(e){}
@@ -5890,7 +5910,7 @@ function renderLtMyTable(){
       // 20/11/2026 (Andrea): pilota di un team seguito = trattato come i tuoi (stesso aspetto), con contorno colore team
       const ft=tm?followedTeamOf(no,ent.team):null;const as=!tm||ft;
       const hc=tm?(ft?hlClassOf(ft.highlight||[]):''):hlOfNum(no);
-      return'<div class="ltbig '+hc+(tm&&!ft?' team':'')+(ft?' tglow':'')+(rt?' ret':'')+(mv>0?' up':mv<0?' down':'')+'"'+(ft?' style="--tc:'+teamColor(ft.key)+'"':'')+' data-no="'+no+'"'+(as?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
+      return'<div class="ltbig '+hc+(tm&&!ft?' team':'')+(ft?' tglow':'')+(rt?' ret':'')+(mv>0?' up':mv<0?' down':'')+'"'+(ft?' style="--tc:'+teamColor(ft.key)+'"':'')+' data-no="'+rtEsc(no)+'"'+(as?' onclick="openPilotDetail('+rtJsArg(no)+')"':'')+'>'
         +'<div class="pos">'+(rt?ltXSpan(rt):(txt(r,C('rk','3'))||'–'))+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>'
         +'<div style="flex:1;min-width:0"><div><span class="num">#'+no+'</span>'+(as?riskTri(no):'')+' <span class="nm">'+nm+'</span>'+ltRetBadge(rt)+(as?'<span onclick="event.stopPropagation()" style="float:right">'+noteBtn(no)+'</span>':'')+'</div>'
         +'<div class="tm">'+team+'</div>'
@@ -5907,7 +5927,7 @@ function renderLtMyTable(){
       const llc=cls(r,C('llp','10'));
       // 20/11/2026 (Andrea): piloti dei team seguiti = riga come i tuoi, con il colore del team a sinistra e sopra/sotto
       const ftr=tm?followedTeamOf(no,((currentEntryList||{})[no]||{}).team):null;
-      return'<tr data-no="'+no+'" class="'+(mine?'mine '+hlOfNum(no):ftr?'mine tglow':tm?'team':'')+'"'+(ftr?' style="--tc:'+teamColor(ftr.key)+'"':'')+(mine||ftr?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
+      return'<tr data-no="'+rtEsc(no)+'" class="'+(mine?'mine '+hlOfNum(no):ftr?'mine tglow':tm?'team':'')+'"'+(ftr?' style="--tc:'+teamColor(ftr.key)+'"':'')+(mine||ftr?' onclick="openPilotDetail('+rtJsArg(no)+')"':'')+'>'
         +'<td>'+(ltRetOf(no)?ltXSpan(ltRetOf(no)):txt(r,C('rk','3')))+'</td><td class="n">'+no+(mine?riskTri(no):'')+'</td><td class="d">'+txt(r,C('dr','5'))+ltRetBadge(ltRetOf(no))+'</td><td class="d" style="color:var(--text3)">'+(((pilots.find(x=>String(x.num)===no)||{}).team)||((currentEntryList&&currentEntryList[no])||{}).team||'')+'</td></tr>'
         +(mine&&String((notes&&notes[no])||'').trim()?'<tr class="mine"><td></td><td colspan="6" class="note-txt" style="white-space:normal"><i class="ic ic-note"></i> '+String(notes[no]).replace(/</g,'&lt;')+'</td></tr>':'');
     }).join('')+'</table>'
@@ -6164,7 +6184,7 @@ function filterProgramma(q){
     const subj=p||{num:m.num,cat:m.cat,group:e.group||'',serie:e.serie||'',prefinal:e.prefinal||'',heats:Array.isArray(e.heats)?e.heats:[],parity:autoParity(m.num)};
     const turni=_slots.filter(sl=>sl&&sl.cat&&_progSlotMatch(subj,sl));
     html+='<div class="search-result-item" style="flex-direction:column;align-items:stretch;'+(m.isMine?'border-color:#22c55e;background:rgba(34,197,94,.06)':'')+'">'
-      +'<div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="openPilotDetail(\''+m.num+'\')">'
+      +'<div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="openPilotDetail('+rtJsArg(m.num)+')">'
       +'<span class="sr-num" style="'+(m.isMine?'color:#22c55e':'')+'">#'+m.num+'</span>'
       +'<div style="flex:1;min-width:0">'
       +'<div class="sr-name">'+m.name+(m.isMine?' <span style="font-size:10px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i></span>':'')+(m.eliminated?' <span style="font-size:9px;color:#ef4444">ELIM</span>':'')+'</div>'
@@ -6173,7 +6193,7 @@ function filterProgramma(q){
       +'<div style="margin-top:8px;font-size:12px;font-weight:800;color:var(--text2)">'
       +(turni.length?turni.map(sl=>'<span style="display:inline-block;margin:0 6px 4px 0;padding:3px 8px;border-radius:8px;border:1px solid var(--border2)"><b style="color:#fbbf24">'+sl.time+'</b> '+(sl.session?sl.session+' · ':'')+slotFilterLabel(sl)+'</span>').join(''):'<span style="color:var(--text4)">Nessun turno oggi</span>')
       +'</div>'
-      +(p?'<div class="tasks" style="margin-top:6px">'+TASKS.map(t=>'<button class="task-btn '+((statuses[p.num]&&statuses[p.num][t])||'red')+'" style="padding:4px 8px;font-size:10px" onclick="progToggleTask(\''+p.num+'\',\''+t+'\')">'+t+'</button>').join('')+'</div>':'')
+      +(p?'<div class="tasks" style="margin-top:6px">'+TASKS.map(t=>'<button class="task-btn '+((statuses[p.num]&&statuses[p.num][t])||'red')+'" style="padding:4px 8px;font-size:10px" onclick="progToggleTask('+rtJsArg(p.num)+','+rtJsArg(t)+')">'+t+'</button>').join('')+'</div>':'')
       +'</div>';
   });
   resultsEl.innerHTML=html;
@@ -6260,7 +6280,7 @@ function remOfSlot(slot,day){try{remAttach();}catch(_){}const k=remSlotKey(slot,
 function remFindSlot(k){for(const d of currentDays||[]){const sl=(currentSchedule[d]||[]).find(x=>remSlotKey(x,d)===k);if(sl)return{day:d,slot:sl};}return null;}
 function remBeforeTxt(b){return b?b+'′ prima':'all\'ora';}
 function remLine(slot){const l=remOfSlot(slot);if(!l.length)return'';
-  return l.map(([id,r])=>'<div class="rem-line" onclick="event.stopPropagation();openReminder(\''+remSlotKey(slot).replace(/'/g,"\\'")+'\')"><i class="ic ic-bell"></i> '+(r.num?'<b>#'+escAttr(r.num)+'</b> ':'')+escapeHtmlSp(r.text||'Promemoria')+' <span>· '+[].concat(r.before||[]).sort((a,b)=>b-a).map(remBeforeTxt).join(', ')+'</span></div>').join('');}
+  return l.map(([id,r])=>'<div class="rem-line" onclick="event.stopPropagation();openReminder('+rtJsArg(remSlotKey(slot))+')"><i class="ic ic-bell"></i> '+(r.num?'<b>#'+escapeHtmlSp(r.num)+'</b> ':'')+escapeHtmlSp(r.text||'Promemoria')+' <span>· '+[].concat(r.before||[]).sort((a,b)=>b-a).map(remBeforeTxt).join(', ')+'</span></div>').join('');}
 let _remEdit=null;
 function openReminder(k){const f=remFindSlot(k);if(!f)return;
   _remEdit={k,slot:f.slot,day:f.day,before:new Set([10]),num:'',text:''};renderReminder();}
@@ -6272,10 +6292,10 @@ function renderReminder(){const e=_remEdit;if(!e)return;const sl=e.slot;
   h.push('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button>');
   h.push('<button class="rem-back" onclick="openRemPanel()">← Tutti i promemoria</button>');
   h.push('<div class="modal-title"><i class="ic ic-bell"></i> Promemoria · '+escapeHtmlSp(e.day.slice(0,3))+' '+escapeHtmlSp(sl.time)+' '+escapeHtmlSp(sl.label||sl.cat)+' '+escapeHtmlSp(slotFilterLabel(sl))+'</div>');
-  h.push('<div class="sp-sub">Orario turno '+sl.time+(d?' + ritardo live '+d+'′':'')+'. Arriva come notifica, anche con l\'app chiusa.</div>');
+  h.push('<div class="sp-sub">Orario turno '+escapeHtmlSp(sl.time)+(d?' + ritardo live '+d+'′':'')+'. Arriva come notifica, anche con l\'app chiusa.</div>');
   const ex=remOfSlot(sl,e.day);
-  if(ex.length)h.push('<div class="rem-list">'+ex.map(([id,r])=>'<div class="rem-item"><div>'+(r.num?'<b>#'+escapeHtmlSp(r.num)+'</b> ':'')+escapeHtmlSp(r.text||'Promemoria')+'<br><span>'+[].concat(r.before||[]).sort((a,b)=>b-a).map(remBeforeTxt).join(', ')+'</span></div><button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="remDelete(\''+id+'\')"><i class="ic ic-close"></i></button></div>').join('')+'</div>');
-  h.push('<div class="rem-lbl">Pilota (facoltativo)</div><select id="rem-num" class="add-input" onchange="_remEdit.num=this.value"><option value="">— nessuno —</option>'+ps.map(p=>'<option value="'+p.num+'"'+(e.num===p.num?' selected':'')+'>#'+p.num+' '+escapeHtmlSp(p.name||'')+'</option>').join('')+'</select>');
+  if(ex.length)h.push('<div class="rem-list">'+ex.map(([id,r])=>'<div class="rem-item"><div>'+(r.num?'<b>#'+escapeHtmlSp(r.num)+'</b> ':'')+escapeHtmlSp(r.text||'Promemoria')+'<br><span>'+[].concat(r.before||[]).sort((a,b)=>b-a).map(remBeforeTxt).join(', ')+'</span></div><button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="remDelete('+rtJsArg(id)+')"><i class="ic ic-close"></i></button></div>').join('')+'</div>');
+  h.push('<div class="rem-lbl">Pilota (facoltativo)</div><select id="rem-num" class="add-input" onchange="_remEdit.num=this.value"><option value="">— nessuno —</option>'+ps.map(p=>'<option value="'+escapeHtmlSp(p.num)+'"'+(e.num===p.num?' selected':'')+'>#'+escapeHtmlSp(p.num)+' '+escapeHtmlSp(p.name||'')+'</option>').join('')+'</select>');
   h.push('<div class="rem-lbl">Cosa fare</div><input id="rem-text" class="add-input" maxlength="80" placeholder="es. clip pregriglia, bilancia, gara" value="'+escapeHtmlSp(e.text)+'" oninput="_remEdit.text=this.value">');
   h.push('<div class="rem-lbl">Avvisami</div><div class="rem-chips">'+REM_BEFORE.map(b=>'<button class="rem-chip'+(e.before.has(b)?' on':'')+'" onclick="remToggleBefore('+b+')">'+remBeforeTxt(b)+'</button>').join('')+'</div>');
   h.push('<button class="btn-add-pilot" style="width:100%;min-height:48px;margin-top:12px;border-radius:12px;font-weight:900" onclick="remSave()">SALVA PROMEMORIA</button>');
@@ -6361,7 +6381,7 @@ function ttpRender(id,q){
     const prev=(tt.days||[]).map(d=>'<div style="margin-top:8px;font-weight:900">'+esc(d)+' · '+(g[d]||0)+' turni</div>'
       +((tt.schedule||{})[d]||[]).map(x=>'<div style="font-size:12px;font-family:monospace">'+esc(x.time)+' '+esc(x.cat)+' '+esc([].concat(x.filter||[]).length>6?(x.filter[0]+'–'+x.filter[x.filter.length-1]):[].concat(x.filter||[]).join(' '))+' '+esc(x.type||'')+'</div>').join('')).join('');
     st.innerHTML='<div style="font-weight:900">Letto: '+(q.turni||0)+' turni'+(q.finali?' · '+q.finali+' finali':'')+'</div><div class="sp-sub">Controlla che corrisponda alla foto. Si sostituiscono solo i giorni qui sotto.</div>'+prev
-      +'<button class="btn-add-team" style="min-height:48px;width:100%;margin-top:10px;background:#22c55e;color:#000;font-weight:900" onclick="ttpApply(\''+id+'\')">APPLICA AL PROGRAMMA</button>';
+      +'<button class="btn-add-team" style="min-height:48px;width:100%;margin-top:10px;background:#22c55e;color:#000;font-weight:900" onclick="ttpApply('+rtJsArg(id)+')">APPLICA AL PROGRAMMA</button>';
   }
 }
 function ttpApply(id){if(!isDelayAdmin())return;_fbDb.ref('ttPhoto/'+activeRaceId+'/'+id).update({apply:true,applyBy:currentUserId});}
@@ -6410,11 +6430,11 @@ function remRenderResults(){const el=document.getElementById('rem-res');if(!el)r
   const future=(d,sl)=>{const di=(currentDays||[]).indexOf(d);if(td<0)return true;if(di<td)return false;if(di>td)return true;return hm2minRem(sl.time)+dl>=nowMin;};
   (currentDays||[]).forEach(d=>(currentSchedule[d]||[]).forEach(sl=>{if(!future(d,sl))return;const t=remSlotText(sl,d).toLowerCase().replace(/[.:]/g,'.');if(tk.every(x=>t.indexOf(x)>=0))out.push({d,sl});}));
   el.innerHTML=out.length?'<div class="rem-list">'+out.slice(0,25).map(({d,sl})=>{const k=remSlotKey(sl,d),n=remOfSlot(sl,d).length;
-    return'<div class="rem-res" onclick="openReminder(\''+k.replace(/'/g,"\\'")+'\')"><b>'+escapeHtmlSp(d.slice(0,3))+' '+escapeHtmlSp(sl.time)+'</b> <span class="'+catClass(sl.cat)+'">'+escapeHtmlSp(sl.label||sl.cat)+'</span> '+escapeHtmlSp(slotFilterLabel(sl))+(n?' <i><i class="ic ic-bell"></i> '+n+'</i>':'')+'</div>';}).join('')+'</div>'
+    return'<div class="rem-res" onclick="openReminder('+rtJsArg(k)+')"><b>'+escapeHtmlSp(d.slice(0,3))+' '+escapeHtmlSp(sl.time)+'</b> <span class="'+catClass(sl.cat)+'">'+escapeHtmlSp(sl.label||sl.cat)+'</span> '+escapeHtmlSp(slotFilterLabel(sl))+(n?' <i><i class="ic ic-bell"></i> '+n+'</i>':'')+'</div>';}).join('')+'</div>'
     :'<div class="sp-sub">Nessun turno trovato.</div>';}
 function remRenderMine(){const el=document.getElementById('rem-mine');if(!el)return;const l=Object.entries(reminders||{}).filter(([,r])=>r);
   const ord=d=>(currentDays||[]).indexOf(d);l.sort((a,b)=>ord(a[1].day)-ord(b[1].day)||hm2minRem(a[1].time)-hm2minRem(b[1].time));
-  el.innerHTML=l.length?'<div class="rem-list">'+l.map(([id,r])=>'<div class="rem-item" onclick="openReminder(\''+String(r.slot).replace(/'/g,"\\'")+'\')"><div><b>'+escapeHtmlSp(String(r.day||'').slice(0,3))+' '+escapeHtmlSp(r.time)+'</b> '+escapeHtmlSp(r.label||r.cat||'')+'<br>'+(r.num?'#'+escapeHtmlSp(r.num)+' ':'')+escapeHtmlSp(r.text||'')+' <span>· '+[].concat(r.before||[]).map(remBeforeTxt).join(', ')+'</span></div><span style="font-size:18px">›</span></div>').join('')+'</div>'
+  el.innerHTML=l.length?'<div class="rem-list">'+l.map(([id,r])=>'<div class="rem-item" onclick="openReminder('+rtJsArg(String(r.slot))+')"><div><b>'+escapeHtmlSp(String(r.day||'').slice(0,3))+' '+escapeHtmlSp(r.time)+'</b> '+escapeHtmlSp(r.label||r.cat||'')+'<br>'+(r.num?'#'+escapeHtmlSp(r.num)+' ':'')+escapeHtmlSp(r.text||'')+' <span>· '+[].concat(r.before||[]).map(remBeforeTxt).join(', ')+'</span></div><span style="font-size:18px">›</span></div>').join('')+'</div>'
     :'<div class="sp-sub">Nessun promemoria per questa gara.</div>';}
 function hm2minRem(t){const p=String(t||'').split(/[.:]/);return(parseInt(p[0])||0)*60+(parseInt(p[1])||0);}
 window.remToggleBefore=remToggleBefore;window.remSave=remSave;window.remDelete=remDelete;
@@ -6429,11 +6449,11 @@ let _entryPreview=null;
 function defaultHl(){const v=(typeof userSettings!=='undefined'&&userSettings&&userSettings.defaultHl)||'';return v==='video'||v==='foto'?v:(currentUserId==='andrea'?'video':'foto');}
 let _addHl=[],_addReel='30';
 function addHlHtml(){return[['foto','<i class="ic ic-hl-foto"></i><span>FOTO</span>'],['video','<i class="ic ic-hl-video"></i><span>VIDEO</span>'],['priority','<i class="ic ic-hl-prio"></i><span>PRIORITÀ</span>']]
-  .map(([k,h])=>'<div class="hl-option hl-'+k+(_addHl.includes(k)?' active':'')+'" onclick="toggleAddHl(\''+k+'\')">'+h+'</div>').join('');}
+  .map(([k,h])=>'<div class="hl-option hl-'+k+(_addHl.includes(k)?' active':'')+'" onclick="toggleAddHl('+rtJsArg(k)+')">'+h+'</div>').join('');}
 function toggleAddHl(k){if(_addHl.includes(k)){if(_addHl.length===1)return;_addHl=_addHl.filter(x=>x!==k);}else _addHl=_addHl.concat(k);   // mai vuoto
   const el=document.getElementById('f-hl');if(el)el.innerHTML=addHlHtml();
   const w=document.getElementById('f-reel-wrap');if(w)w.style.display=_addHl.includes('video')?'':'none';}
-function addReelHtml(){return REEL_OPTS.map(([v,l])=>'<button type="button" onclick="setAddReel(\''+v+'\')" style="flex:1;min-height:44px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
+function addReelHtml(){return REEL_OPTS.map(([v,l])=>'<button type="button" onclick="setAddReel('+rtJsArg(v)+')" style="flex:1;min-height:44px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
   +(_addReel===v?'background:#e9d5a8;color:#1a160e;border:1px solid #e9d5a8':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>').join('');}
 function setAddReel(v){_addReel=v;const el=document.getElementById('f-reel');if(el)el.innerHTML=addReelHtml();
   // 20/11/2026 (Andrea): video da 1' = priorita' automatica (si puo' togliere a mano)
@@ -6522,34 +6542,37 @@ function savePilotManual(){
 window.savePilotManual=savePilotManual;
 
 function openEditPilot(num){
-  const p=pilots.find(x=>x.num===num);if(!p)return;
+  const p=pilots.find(x=>String(x.num)===String(num));if(!p)return;num=String(p.num);
+  /* 27/11/2026 (revisione): elenchi con il valore attuale sempre presente: prima SALVA cancellava gruppo F-H, prefinale C/D o serie 4+ */
+  const opts=(base,cur)=>{cur=String(cur||'');return cur&&base.indexOf(cur)<0?base.concat(cur):base;};
+  const J=rtJsArg(num);
   /* FIX 16/10/2026 (ROK Superfinal): categorie dalla gara attiva + categoria attuale del pilota, cosi' SALVA non la sovrascrive con KZ2 */
   const cats=[...new Set([p.cat].concat(Object.values(currentEntryList||{}).map(e=>e&&e.cat),pilots.map(x=>x.cat),['KZ2','OK','OKN','OKJ','MINI GR3','MINI U10','OK-NJ']).filter(Boolean))];
   const hl=p.highlight||[];
   openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button>'
-    +'<div class="modal-title">Modifica #'+p.num+'</div>'
-    +(p.eliminated?'<div style="background:#1c0303;border:1px solid #dc2626;border-radius:8px;padding:10px;margin-bottom:14px;font-size:11px;font-weight:700;color:#f87171;letter-spacing:1px;display:flex;justify-content:space-between;align-items:center"><span><i class="ic ic-ban"></i> ELIMINATO</span><button style="font-size:10px;color:#f87171;background:none;border:1px solid #dc2626;border-radius:6px;padding:4px 10px;cursor:pointer;font-family:inherit;font-weight:700" onclick="toggleEliminated(\''+num+'\')">RIATTIVA</button></div>':'')
-    +'<div class="form-group"><label class="form-label">Nome</label><input class="form-input" id="ef-name" value="'+p.name+'"></div>'
-    +'<div class="form-group"><label class="form-label">Team</label><input class="form-input" id="ef-team" value="'+p.team+'"></div>'
+    +'<div class="modal-title">Modifica #'+rtEsc(p.num)+'</div>'
+    +(p.eliminated?'<div style="background:#1c0303;border:1px solid #dc2626;border-radius:8px;padding:10px;margin-bottom:14px;font-size:11px;font-weight:700;color:#f87171;letter-spacing:1px;display:flex;justify-content:space-between;align-items:center"><span><i class="ic ic-ban"></i> ELIMINATO</span><button style="font-size:10px;color:#f87171;background:none;border:1px solid #dc2626;border-radius:6px;padding:4px 10px;cursor:pointer;font-family:inherit;font-weight:700" onclick="toggleEliminated('+J+')">RIATTIVA</button></div>':'')
+    +'<div class="form-group"><label class="form-label">Nome</label><input class="form-input" id="ef-name" value="'+rtEsc(p.name)+'"></div>'
+    +'<div class="form-group"><label class="form-label">Team</label><input class="form-input" id="ef-team" value="'+rtEsc(p.team)+'"></div>'
     +'<div class="form-group"><label class="form-label">Categoria</label>'
-    +'<select class="form-select" id="ef-cat">'+cats.map(c=>'<option'+(c===p.cat?' selected':'')+'>'+c+'</option>').join('')+'</select></div>'
-    +'<div style="font-size:11px;color:var(--text4);margin-bottom:14px;padding:8px 12px;background:var(--bg3);border-radius:6px">Parità: <strong style="color:var(--text)">'+p.parity+'</strong> <span style="font-size:9px">(auto da #'+p.num+')</span></div>'
-    +'<div class="form-group"><label class="form-label">Gruppo (A-E)</label>'
-    +'<select class="form-select" id="ef-group"><option value=""'+(!p.group?' selected':'')+'>—</option>'+['A','B','C','D','E'].map(g=>'<option'+(p.group===g?' selected':'')+'>'+g+'</option>').join('')+'</select></div>'
-    +'<div class="form-group"><label class="form-label">Prefinal (A/B)</label>'
-    +'<select class="form-select" id="ef-prefinal"><option value=""'+(!p.prefinal?' selected':'')+'>—</option>'+['A','B'].map(g=>'<option'+(p.prefinal===g?' selected':'')+'>'+g+'</option>').join('')+'</select></div>'
-    +'<div class="form-group"><label class="form-label">Serie (1/2/3)</label>'
-    +'<select class="form-select" id="ef-serie"><option value=""'+(!p.serie?' selected':'')+'>—</option>'+['1','2','3'].map(g=>'<option'+(p.serie===g?' selected':'')+'>'+g+'</option>').join('')+'</select></div>'
+    +'<select class="form-select" id="ef-cat">'+cats.map(c=>'<option value="'+rtEsc(c)+'"'+(c===p.cat?' selected':'')+'>'+rtEsc(c)+'</option>').join('')+'</select></div>'
+    +'<div style="font-size:11px;color:var(--text4);margin-bottom:14px;padding:8px 12px;background:var(--bg3);border-radius:6px">Parità: <strong style="color:var(--text)">'+rtEsc(p.parity)+'</strong> <span style="font-size:9px">(auto da #'+rtEsc(p.num)+')</span></div>'
+    +'<div class="form-group"><label class="form-label">Gruppo</label>'
+    +'<select class="form-select" id="ef-group"><option value=""'+(!p.group?' selected':'')+'>—</option>'+opts(VALID_GROUPS.slice(),p.group).map(g=>'<option value="'+rtEsc(g)+'"'+(p.group===g?' selected':'')+'>'+rtEsc(g)+'</option>').join('')+'</select></div>'
+    +'<div class="form-group"><label class="form-label">Prefinale</label>'
+    +'<select class="form-select" id="ef-prefinal"><option value=""'+(!p.prefinal?' selected':'')+'>—</option>'+opts(['A','B','C','D'],p.prefinal).map(g=>'<option value="'+rtEsc(g)+'"'+(String(p.prefinal)===g?' selected':'')+'>'+rtEsc(g)+'</option>').join('')+'</select></div>'
+    +'<div class="form-group"><label class="form-label">Serie</label>'
+    +'<select class="form-select" id="ef-serie"><option value=""'+(!p.serie?' selected':'')+'>—</option>'+opts(['1','2','3','4','5','6'],p.serie).map(g=>'<option value="'+rtEsc(g)+'"'+(String(p.serie)===g?' selected':'')+'>'+rtEsc(g)+'</option>').join('')+'</select></div>'
     +'<div class="form-group"><label class="form-label">Evidenzia pilota</label>'
     +'<div style="font-size:10px;color:var(--text4);margin-bottom:8px">Puoi selezionare più opzioni · si salva subito, senza SALVA</div>'
     +'<div id="ef-hl-saved" style="font-size:11px;font-weight:800;color:#4fd69c;opacity:0;transition:opacity .3s;height:14px"></div>'+'<div class="hl-picker" id="ef-hl-picker">'
-    +'<button type="button" class="hl-option hl-foto'+(hl.indexOf("foto")>=0?' active':'')+'" data-hl="foto" aria-pressed="'+(hl.indexOf("foto")>=0)+'" onclick="toggleHL(this,\''+p.num+'\')"><i class="ic ic-hl-foto"></i><span>FOTO</span></button>'
-    +'<button type="button" class="hl-option hl-video'+(hl.indexOf("video")>=0?' active':'')+'" data-hl="video" aria-pressed="'+(hl.indexOf("video")>=0)+'" onclick="toggleHL(this,\''+p.num+'\')"><i class="ic ic-hl-video"></i><span>VIDEO</span></button>'
-    +'<button type="button" class="hl-option hl-priority'+(hl.indexOf("priority")>=0?' active':'')+'" data-hl="priority" aria-pressed="'+(hl.indexOf("priority")>=0)+'" onclick="toggleHL(this,\''+p.num+'\')"><i class="ic ic-hl-prio"></i><span>PRIORITÀ</span></button>'
+    +'<button type="button" class="hl-option hl-foto'+(hl.indexOf("foto")>=0?' active':'')+'" data-hl="foto" aria-pressed="'+(hl.indexOf("foto")>=0)+'" onclick="toggleHL(this,'+J+')"><i class="ic ic-hl-foto"></i><span>FOTO</span></button>'
+    +'<button type="button" class="hl-option hl-video'+(hl.indexOf("video")>=0?' active':'')+'" data-hl="video" aria-pressed="'+(hl.indexOf("video")>=0)+'" onclick="toggleHL(this,'+J+')"><i class="ic ic-hl-video"></i><span>VIDEO</span></button>'
+    +'<button type="button" class="hl-option hl-priority'+(hl.indexOf("priority")>=0?' active':'')+'" data-hl="priority" aria-pressed="'+(hl.indexOf("priority")>=0)+'" onclick="toggleHL(this,'+J+')"><i class="ic ic-hl-prio"></i><span>PRIORITÀ</span></button>'
     +'</div></div>'
     +'<div id="ef-extras">'+efExtrasHtml(p)+'</div>'
-    +'<button class="form-submit" onclick="updatePilot(\''+num+'\')">SALVA</button>'
-    +'<button class="form-delete" onclick="deletePilot(\''+num+'\')">Elimina pilota</button>');
+    +'<button class="form-submit" onclick="updatePilot('+J+')">SALVA</button>'
+    +'<button class="form-delete" onclick="deletePilot('+J+')">Elimina pilota</button>');
 }
 window.openEditPilot=openEditPilot;
 
@@ -6560,10 +6583,10 @@ function efExtrasHtml(p){
   let h='';
   if(hasVideo(p))h+='<div class="form-group"><label class="form-label">Durata reel</label><div style="display:flex;gap:8px">'
     +REEL_OPTS.map(([v,l])=>{const on=String(p.reel||'30')===v;
-      return'<button type="button" onclick="setPilotReelEdit(\''+p.num+'\',\''+v+'\')" style="flex:1;min-height:44px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
+      return'<button type="button" onclick="setPilotReelEdit('+rtJsArg(p.num)+','+rtJsArg(v)+')" style="flex:1;min-height:44px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
         +(on?'background:#e9d5a8;color:#1a160e;border:1px solid #e9d5a8':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>';}).join('')+'</div></div>';
   if(FOTO_OPTS.length&&hasFoto(p))h+='<div class="form-group"><label class="form-label">Foto</label><div style="display:flex;gap:8px;flex-wrap:wrap">'
-    +FOTO_OPTS.map(([v,l])=>'<button type="button" onclick="toggleFotoTagEdit(\''+p.num+'\',\''+v+'\')" style="min-height:44px;padding:0 12px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
+    +FOTO_OPTS.map(([v,l])=>'<button type="button" onclick="toggleFotoTagEdit('+rtJsArg(p.num)+','+rtJsArg(v)+')" style="min-height:44px;padding:0 12px;border-radius:8px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;'
       +(fotoTagsOf(p).includes(v)?'background:#7dd3fc;color:#0b1220;border:1px solid #7dd3fc':'background:none;color:var(--text3);border:1px solid var(--border2,#444)')+'">'+l+'</button>').join('')+'</div></div>';
   return h+persToggleHtml(p.num);
 }
@@ -6596,7 +6619,7 @@ function spotPill(num){
   if(!venueMap())return'';
   if(!spotPilotOf(num))return'';
   const[f,t]=spotCount(num),cls=!t?'none':f===t?'green':f?'orange':'red';
-  return'<button class="task-btn spot-pill '+cls+'" data-sp="'+String(num).replace(/"/g,'')+'" aria-label="Punti di scatto in pista" onclick="event.stopPropagation();openSpots(\''+num+'\')"><i class="ic ic-camera"></i>'+(t?'<span>'+f+'/'+t+'</span>':'')+'</button>';
+  return'<button class="task-btn spot-pill '+cls+'" data-sp="'+String(num).replace(/"/g,'')+'" aria-label="Punti di scatto in pista" onclick="event.stopPropagation();openSpots('+rtJsArg(num)+')"><i class="ic ic-camera"></i>'+(t?'<span>'+f+'/'+t+'</span>':'')+'</button>';
 }
 /* 20/11/2026 (Andrea): il conteggio sulla fotocamera si aggiorna subito in tutte le schermate, senza aspettare il ridisegno */
 function spotPillsRefresh(num){const sel=num!=null?'.spot-pill[data-sp="'+String(num).replace(/"/g,'')+'"]':'.spot-pill[data-sp]';
@@ -6607,7 +6630,9 @@ let _spNum=null,_spTrash=false,_spMarkMode=false;
    venues/<chiave> = {name, aliases[], map:{vb,d,w}}: la sede si riconosce dal circuito della gara.
    Senza mappa per la sede la pillola dei punti di scatto non compare. */
 let _venues=null,_spBg=null;
-function loadSpBg(){if(_spBg!==null)return;_spBg='';ref(db,'appAssets/mapBg/img').once('value').then(sn=>{_spBg=sn.val()||'';const vp=document.getElementById('sp-vp');if(vp&&_spBg){vp.style.setProperty('--spbg','url("'+_spBg+'")');vp.classList.add('hasbg');}}).catch(()=>{});}
+/* 27/11/2026 (revisione): lo sfondo arriva dal database e finisce dentro style="...": si accetta solo un'immagine vera */
+function spBgSafe(u){u=String(u||'');return /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(u)||/^https:\/\/[^\s"'()<>\\]+$/.test(u)?u:'';}
+function loadSpBg(){if(_spBg!==null)return;_spBg='';ref(db,'appAssets/mapBg/img').once('value').then(sn=>{_spBg=spBgSafe(sn.val());const vp=document.getElementById('sp-vp');if(vp&&_spBg){vp.style.setProperty('--spbg','url("'+_spBg+'")');vp.classList.add('hasbg');}}).catch(()=>{});}
 function loadVenues(){if(_venues!==null)return;_venues={};ref(db,'venues').once('value').then(sn=>{_venues=sn.val()||{};try{spotsAttachVenue();}catch(_){}try{renderAll();}catch(_){}}).catch(()=>{_venues={};});}
 function raceVenue(){
   const r=(typeof races!=='undefined'&&races&&races[activeRaceId])||{};const c=String(r.circuit||r.name||'').toLowerCase();
@@ -6615,7 +6640,9 @@ function raceVenue(){
   for(const k of Object.keys(_venues)){const v=_venues[k]||{};const al=[].concat(v.aliases||[]).map(a=>String(a).toLowerCase());if(al.some(a=>a&&c.indexOf(a)>=0))return Object.assign({key:k},v);}
   return null;
 }
-function venueMap(){if(_venues===null){loadVenues();return null;}const v=raceVenue();return v&&v.map&&v.map.d?v:null;}
+/* 27/11/2026 (revisione): tracciato e riquadro della mappa finiscono dentro l'SVG: solo comandi e numeri, altrimenti niente mappa */
+function spMapOk(m){return !!(m&&typeof m.d==='string'&&/^[MmLlHhVvCcSsQqTtAaZz0-9.,\s+eE-]+$/.test(m.d)&&/^\s*-?[\d.]+([\s,]+-?[\d.]+){3}\s*$/.test(String(m.vb||''))&&(m.w==null||isFinite(+m.w)));}
+function venueMap(){if(_venues===null){loadVenues();return null;}const v=raceVenue();return v&&spMapOk(v.map)?v:null;}
 let _spView={r:0,z:1,x:0,y:0,t:0};
 function spViewKey(){const v=venueMap();return'rt_spview_'+(v?v.key:'');}
 /* 27/11/2026 (Andrea): la pista si riapre dove era stata lasciata (zoom, rotazione, posizione), per pista e telefono.
@@ -6645,7 +6672,7 @@ function renderSpots(){
     +'<path d="'+dd+'" class="sp-track-line" style="stroke-width:'+Math.max(.6,w/14)+'"/>'+spotsSectorsSvg(v)+'</svg>');
   h.push('</div><button class="sp-back" onclick="event.stopPropagation();spotsBackAll()" onpointerdown="event.stopPropagation()" aria-label="Torna a tutte le curve">← CURVE</button><div class="sp-secl" id="sp-secl">'+spotsSectorsLbl(v)+'</div><div class="sp-marks" id="sp-marks">'+spotsMarksHtml(v)+'</div><div class="sp-dots" id="sp-dots">');
   ids.forEach(id=>{const on=!!d[id],n=spotNo(id);
-    h.push('<button class="sp-dot'+(on?' on':'')+'" data-id="'+id+'" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'<i class="ic ic-check"></i>':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>');});
+    h.push('<button class="sp-dot'+(on?' on':'')+'" data-id="'+escapeHtmlSp(id)+'" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'<i class="ic ic-check"></i>':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>');});
   h.push('</div></div>');
   h.push('<div class="sp-tools"><button class="sp-btn" onclick="spotsRotate(-30)" aria-label="Ruota a sinistra">⟲</button><button class="sp-btn" onclick="spotsRotate(30)" aria-label="Ruota a destra">⟳</button><button class="sp-btn" onclick="spotsZoom(1.4)" aria-label="Ingrandisci">＋</button><button class="sp-btn" onclick="spotsZoom(1/1.4)" aria-label="Riduci">－</button><button class="sp-btn" onclick="spotsResetView()" aria-label="Centra">⤢</button>'+(currentUserId===SERVER_OWNER?'<button class="sp-btn'+(_spMarkMode?' on':'')+'" onclick="spotsToggleMark()" aria-label="Aggiungi riferimento del circuito"><i class="ic ic-pin"></i></button>':'')+'</div>');
   h.push('<div class="sp-hint sp-hint-over">Tocca una curva per ingrandirla. ⤢ torna alla vista intera.</div>');
@@ -6667,7 +6694,7 @@ function spotsLayout(anim){
   const vp=document.getElementById('sp-vp'),st=document.getElementById('sp-stage'),v=venueMap();if(!vp||!st||!v)return;
   const W=vp.clientWidth,H=vp.clientHeight;
   if(!_spSize||_spSize.W!==W||_spSize.H!==H){
-    const vb=String(v.map.vb).split(/\s+/).map(Number),a=vb[2]/vb[3],Wf=W-16,Hf=H-16;
+    const vb=String(v.map.vb).trim().split(/[\s,]+/).map(Number),a=vb[2]/vb[3],Wf=W-16,Hf=H-16;
     const rot=((Math.round(_spView.r/90)*90)%180+180)%180===90;
     let Sw=rot?Math.min(Hf,Wf*a):Math.min(Wf,Hf*a);let Sh=Sw/a;if(!rot&&Sh>Hf){Sh=Hf;Sw=Sh*a;}if(rot&&Sh>Wf){Sh=Wf;Sw=Sh*a;}
     if(_spView.t){const k=1.02;Sw*=k;Sh*=k;}
@@ -6694,7 +6721,7 @@ function spotsOverview(){return _spView.z<SP_SEC_ZOOM;}
 let _spCurves=null;
 function spotsCurves(v){
   if(_spCurves&&_spCurves.k===v.key)return _spCurves;
-  const vb=String(v.map.vb).split(/\s+/).map(Number),[x0,y0,VW,VH]=vb,out={k:v.key,vb,list:[]};
+  const vb=String(v.map.vb).trim().split(/[\s,]+/).map(Number),[x0,y0,VW,VH]=vb,out={k:v.key,vb,list:[]};
   try{const ns='http://www.w3.org/2000/svg',sv=document.createElementNS(ns,'svg'),pa=document.createElementNS(ns,'path');
     pa.setAttribute('d',v.map.d);sv.appendChild(pa);sv.style.cssText='position:absolute;width:0;height:0;visibility:hidden';document.body.appendChild(sv);
     const L=pa.getTotalLength(),N=Math.max(60,Math.round(L/3)),pts=[];for(let i=0;i<N;i++){const q=pa.getPointAtLength(L*i/N);pts.push([q.x,q.y]);}sv.remove();
@@ -6727,7 +6754,7 @@ function spotsCurveKey(){return'rt_spcurve_'+(activeRaceId||'');}
 /* 20/11/2026 (Andrea): ogni curva ricorda come l'hai girata (rotazione, 3D, zoom, spostamento), per account e tracciato,
    di gara in gara: userSpotViews/<utente>/<sede>/<curva> */
 let _spViews={},_spViewsKey='',_spCurCurve=null,_spViewT=0;
-function spotsViewsAttach(){const v=venueMap();if(!v||!currentUserId)return;const p='userSpotViews/'+currentUserId+'/'+v.key;if(p===_spViewsKey)return;_spViewsKey=p;_spViews={};
+function spotsViewsAttach(){const v=venueMap();if(!v||!currentUserId)return;const p='userSpotViews/'+currentUserId+'/'+v.key;if(p===_spViewsKey)return;try{if(_spViewsKey)off(ref(db,_spViewsKey));}catch(_){}_spViewsKey=p;_spViews={};
   onValue(ref(db,p),sn=>{if(_spViewsKey===p)_spViews=sn.val()||{};});}
 function spotsCurveCenter(i){const v=venueMap(),cv=spotsCurves(v),c=cv.list[i];if(!c||!_spSize)return null;const[x0,y0,VW,VH]=cv.vb;const sx=_spView.x,sy=_spView.y;_spView.x=0;_spView.y=0;
   const m=spotsMatrix(_spSize.Sw,_spSize.Sh,_spSize.W,_spSize.H),q=m.transformPoint(new DOMPoint((c.cx-x0)/VW*_spSize.Sw,(c.cy-y0)/VH*_spSize.Sh,0,1));_spView.x=sx;_spView.y=sy;
@@ -6819,10 +6846,10 @@ function spotsRefresh(){
   const d=(spotDone[_spNum])||{},[f,t]=spotCount(_spNum);
   if(sub)sub.innerHTML=_spTrash?'<b style="color:#ef4444">CESTINO</b> · tocca un punto per eliminarlo per tutti i piloti':(t?'Fatti <b>'+f+'/'+t+'</b> · ':'')+'tocca la pista dove hai scattato';
   {const os=document.querySelector('#sp-stage .sp-secs'),sl=document.getElementById('sp-secl'),v=venueMap();if(os&&v){os.insertAdjacentHTML('afterend',spotsSectorsSvg(v));os.remove();}if(sl&&v)sl.innerHTML=spotsSectorsLbl(v);}
-  dl.innerHTML=spotIds().map(id=>{const on=!!d[id],n=spotNo(id);return'<button class="sp-dot'+(on?' on':'')+'" data-id="'+id+'" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'<i class="ic ic-check"></i>':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>';}).join('');
+  dl.innerHTML=spotIds().map(id=>{const on=!!d[id],n=spotNo(id);return'<button class="sp-dot'+(on?' on':'')+'" data-id="'+escapeHtmlSp(id)+'" aria-label="Punto '+n+(on?' fatto':' da fare')+'"><span>'+(on?'<i class="ic ic-check"></i>':n)+'</span>'+(on?'<em>'+n+'</em>':'')+'</button>';}).join('');
   spotsLayout(false);
 }
-function spotsMarksHtml(v){const mk=(v&&v.marks)||{};return Object.keys(mk).map(k=>'<span class="sp-mark" data-mid="'+k+'"><i><i class="ic ic-pin"></i></i>'+escapeHtmlSp(mk[k].n||'')+'</span>').join('');}
+function spotsMarksHtml(v){const mk=(v&&v.marks)||{};return Object.keys(mk).map(k=>'<span class="sp-mark" data-mid="'+escapeHtmlSp(k)+'"><i><i class="ic ic-pin"></i></i>'+escapeHtmlSp(mk[k].n||'')+'</span>').join('');}
 function spotsToggleMark(){_spMarkMode=!_spMarkMode;renderSpots();}
 window.spotsToggleMark=spotsToggleMark;
 function spotsAddMark(cx,cy){const v=venueMap();if(!v)return;const q=spotsToMap(cx,cy);const n=prompt('Nome del riferimento (es. Ingresso pregriglia). Vuoto = annulla');
@@ -6871,7 +6898,7 @@ function hlClassOf(hl){hl=Array.isArray(hl)?hl:[];const f=hl.indexOf('foto')>=0,
 window.toggleHL=toggleHL;
 
 function toggleEliminated(num){
-  const p=pilots.find(x=>x.num===num);if(!p)return;
+  const p=pilots.find(x=>String(x.num)===String(num));if(!p)return;
   p.eliminated=!p.eliminated;
   saveAll();
   openEditPilot(num);
@@ -6879,7 +6906,7 @@ function toggleEliminated(num){
 window.toggleEliminated=toggleEliminated;
 
 function updatePilot(num){
-  const p=pilots.find(x=>x.num===num);if(!p)return;
+  const p=pilots.find(x=>String(x.num)===String(num));if(!p)return;
   p.name=document.getElementById('ef-name').value.trim().toUpperCase();
   p.team=document.getElementById('ef-team').value.trim().toUpperCase();
   p.cat=document.getElementById('ef-cat').value;
@@ -6894,8 +6921,10 @@ function updatePilot(num){
 window.updatePilot=updatePilot;
 
 function deletePilot(num){
+  // 27/11/2026 (revisione): guardando un altro utente non si rimuove niente (prima spariva solo in locale e cambiava il conteggio della gara)
+  if(window._rtViewAs){try{showToast('Sola lettura: stai guardando '+String(window._rtViewAs).toUpperCase());}catch(_){}return;}
   if(!confirm('Eliminare?'))return;
-  pilots=pilots.filter(p=>p.num!==num);
+  num=String(num);pilots=pilots.filter(p=>String(p.num)!==num);
   delete statuses[num];delete trackStatus[num];delete notes[num];
   const u={};u['races_index/'+activeRaceId+'/pilotCount']=pilots.length;update(ref(db),u);
   saveAll();closeModal();
