@@ -4500,7 +4500,15 @@ startScheduleAutoRefresh();
 // la abbina allo slot del programma e propone (o applica, se AUTO) il ritardo.
 // ══════════════════════════════════════
 let apexWs=null,apexWsKey='',apexState={cat:'',sess:'',start:'',red:'',at:0},apexRetry=null;
-let apexSeen=new Set(),apexIgnore=new Set();
+/* 27/11/2026 (revisione, stesso difetto trovato nel server col banco di prova): prima si scartavano tutti gli orari visti in
+   qualsiasi messaggio precedente (anche di altri giorni e della fotografia vecchia del live). Ora si scarta solo cio' che non e'
+   dopo la partenza della sessione precedente di oggi. */
+let apexSeen=new Set(),apexIgnore=new Set(),apexPrevStart=null;
+function apexDayKey(){try{return new Date().toLocaleDateString('en-CA',{timeZone:((races[activeRaceId]||{}).liveWin||{}).tz||'Europe/Rome'});}catch(e){return new Date().toDateString();}}
+/* sessione nuova (cambia categoria O nome della sessione: le finali hanno tutte lo stesso nome "FINAL") */
+function apexNewSession(){if(apexState.sess&&apexState.start)apexEvaluate('change');
+  if(apexState.start&&!apexState.startOld)apexPrevStart={day:apexDayKey(),min:slotMins(apexState.start.replace(':','.'))};
+  apexFinished='';clearTimeout(apexEvalT);apexState.start='';apexState.startOld=false;apexState.red='';}
 let apexAuto=true;
 let apexLastApplied='';
 /* 15/11/2026 (Andrea): EVENTO TEST per la demo. La gara con demo:true non usa Apex: il live arriva dal database
@@ -4555,7 +4563,7 @@ function apexConnect(){
   if(name==='demo'){
     const key='demo:'+activeRaceId;if(key===apexWsKey&&demoLiveUnsub)return;
     try{if(apexWs)apexWs.close();}catch(e){}apexWs=null;try{if(demoLiveUnsub)demoLiveUnsub();}catch(e){}
-    apexWsKey=key;apexState={cat:'',sess:'',start:'',red:'',at:0};apexNext=null;apexSeen=new Set();apexIgnore=new Set();demoLiveSeq=null;
+    apexWsKey=key;apexState={cat:'',sess:'',start:'',red:'',at:0};apexNext=null;apexSeen=new Set();apexIgnore=new Set();apexPrevStart=null;demoLiveSeq=null;
     const r=ref(db,'races/'+activeRaceId+'/demoLive');
     onValue(r,snap=>{const v=snap.val();if(!v||!v.frame||v.seq===demoLiveSeq)return;demoLiveSeq=v.seq;try{apexParse(String(v.frame));}catch(e){console.warn('demo live',e);}});
     demoLiveUnsub=()=>{try{off(r);}catch(e){}demoLiveUnsub=null;};
@@ -4567,7 +4575,7 @@ function apexConnect(){
   if(key===apexWsKey&&((apexWs&&apexWs.readyState<=1)||apexPollKey===key||relayKey===key))return;
   try{if(relayOff)relayOff();}catch(e){}
   try{if(apexWs)apexWs.close();}catch(e){}
-  apexWs=null;apexWsKey=key;apexState={cat:'',sess:'',start:'',red:'',at:0};apexNext=null;apexSeen=new Set();apexIgnore=new Set();
+  apexWs=null;apexWsKey=key;apexState={cat:'',sess:'',start:'',red:'',at:0};apexNext=null;apexSeen=new Set();apexIgnore=new Set();apexPrevStart=null;
   if(!key){renderApexDelay();return;}
   // 27/11/2026 (nuova architettura, solo prova): il live arriva dal NOSTRO server (una sola lettura della fonte per tutti),
   // passato dal database. Se il nostro server tace per 45 s si torna da soli alla fonte; il server si riprova dopo 5 min.
@@ -4642,6 +4650,7 @@ function apexEvaluate(why){
   clearTimeout(apexEvalT);
   const cat=apexCat(apexState.cat);const ss=rtPfNorm(apexState.sess);
   if(!cat||!ss||!apexState.start)return;
+  if(apexState.startOld)return;   // 27/11/2026 (revisione): sessione vecchia (fotografia del live): nessun avviso di piazzamento
   const key=activeRaceId+'|'+cat+'|'+ss+'|'+apexState.start;
   if(apexEvaluatedKey===key)return;
   if(apexGridSess!==apexState.cat+'|'+apexState.sess)return; // griglia non di questa sessione
@@ -5919,36 +5928,37 @@ function apexParse(txt){
     const mc=k.match(/^r(\d+)c(\d+)$/);
     if(mc){const el=apexGrid.querySelector('[data-id="'+k+'"]');if(el){el.className=p[1]||'';el.innerHTML=v;apexGridDirty();}return;}
     if(/^r\d+$/.test(k)&&p[1]==='#'){const row=apexGrid.querySelector('tr[data-id="'+k+'"]');if(row){row.setAttribute('data-pos',p[2]);apexGridDirty();}return;}
-    if(k==='title1'){if(apexState.cat!==v){const _rg=ltOnTitle();if(apexState.sess&&apexState.start){apexEvaluate('change');apexState.start='';}apexState.cat=v;ltSeenAdd(v);ltTitleAt=Date.now();if(_rg||apexGridSess==='')apexGridSess=apexState.cat+'|'+apexState.sess;changed=true;}}
+    if(k==='title1'){if(apexState.cat!==v){const _rg=ltOnTitle();apexNewSession();apexState.cat=v;ltSeenAdd(v);ltTitleAt=Date.now();if(_rg||apexGridSess==='')apexGridSess=apexState.cat+'|'+apexState.sess;changed=true;}}
     else if(k==='title2'){if(apexState.sess!==v){const _rg2=ltOnTitle();
       // cambio sessione: le partenze già viste appartengono alla sessione precedente
-      if(apexState.sess){apexEvaluate('change');apexIgnore=new Set(apexSeen);}
-      apexState.sess=v;ltTitleAt=Date.now();setTimeout(()=>{try{refreshNowHighlight(true);}catch(e){}},50);if(_rg2||apexGridSess===''||(ltGridNew&&apexGridSess.split('|')[1]!==v))apexGridSess=apexState.cat+'|'+apexState.sess;apexFinished='';clearTimeout(apexEvalT);apexState.start='';apexState.red='';changed=true;}}
+      apexNewSession();
+      apexState.sess=v;ltTitleAt=Date.now();setTimeout(()=>{try{refreshNowHighlight(true);}catch(e){}},50);if(_rg2||apexGridSess===''||(ltGridNew&&apexGridSess.split('|')[1]!==v))apexGridSess=apexState.cat+'|'+apexState.sess;changed=true;}}
     else if(k==='com'){
       // ultima partenza registrata: <b>10:43</b><span data-flag="green"></span>START
-      const all=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*data-flag="green"[^>]*><\/span>\s*START/gi)].map(x=>x[1]).filter(t=>!apexIgnore.has(t));
-      [...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>/g)].forEach(x=>apexSeen.add(x[1]));
+      const all=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*data-flag="green"[^>]*><\/span>\s*START/gi)].map(x=>x[1]).filter(t=>!(apexPrevStart&&apexPrevStart.day===apexDayKey()&&slotMins(t.replace(':','.'))<=apexPrevStart.min));
       // PRIMA partenza della sessione: le ripartenze dopo una bandiera rossa non falsano il ritardo
       if(all.length){
         const first=all.sort((a,b)=>slotMins(a.replace(':','.'))-slotMins(b.replace(':','.')))[0];
         if(apexState.start!==first){apexState.start=first;ltCurLabel=apexState.cat+'|'+apexState.sess;changed=true;
-          try{const mine=[...ltGridNums(apexGrid)].filter(n=>ltMineNums().has(n));if(mine.length)rtAlert('partenza|'+activeRaceId+'|'+ltCurLabel+'|'+first,'<i class="ic ic-flag"></i> PARTITA '+apexState.cat+' · '+apexState.sess,'alle '+first+' · in pista: '+mine.map(n=>'#'+n+' '+ltNameOf(n)).join(', '));}catch(e){}}
+          // 27/11/2026 (revisione): partenza non recente (fotografia vecchia del live, es. finale KZ2 di R2 vista il 24/11): niente avviso ne' arrivi
+          {const fm=slotMins(first.replace(':','.')),nm=apexNowMinTz();apexState.startOld=!(fm<=nm+1&&fm>=nm-30);}
+          if(!apexState.startOld)try{const mine=[...ltGridNums(apexGrid)].filter(n=>ltMineNums().has(n));if(mine.length)rtAlert('partenza|'+activeRaceId+'|'+ltCurLabel+'|'+first,'<i class="ic ic-flag"></i> PARTITA '+apexState.cat+' · '+apexState.sess,'alle '+first+' · in pista: '+mine.map(n=>'#'+n+' '+ltNameOf(n)).join(', '));}catch(e){}}
       }
-      const fins=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*><\/span>\s*FINISH/gi)].map(x=>x[1]).filter(t=>!apexIgnore.has(t));
+      const fins=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*><\/span>\s*FINISH/gi)].map(x=>x[1]).filter(t=>apexState.start&&slotMins(t.replace(':','.'))>=slotMins(apexState.start.replace(':','.')));   // 27/11 (revisione): solo dopo la partenza
       if(fins.length&&apexState.start&&!apexFinished){
         apexFinished=fins[0];clearTimeout(apexEvalT);
         // aspetta che tutti passino sotto la bandiera a scacchi, poi valuta
         apexEvalT=setTimeout(()=>apexEvaluate('finish'),isDemoRace()?5000:75000);
       }
       const reds=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*data-flag="([^"]*)"[^>]*><\/span>\s*([^<]*)/gi)]
-        .filter(x=>!apexIgnore.has(x[1])&&(/red|rouge|rossa/i.test(x[2])||/RED|ROSSA|ROUGE/i.test(x[3])))
+        .filter(x=>(/red|rouge|rossa/i.test(x[2])||/RED|ROSSA|ROUGE/i.test(x[3])))
         .map(x=>x[1])
         // la bandiera rossa conta solo a sessione in corso: quella data dopo l'arrivo è la chiusura della pista
         .filter(t=>{const tm=slotMins(t.replace(':','.'));const st=apexState.start?slotMins(apexState.start.replace(':','.')):-1;
           const fin=fins.length?Math.min(...fins.map(f=>slotMins(f.replace(':','.')))):Infinity;return tm>=st&&tm<fin;});
       const lastRed=reds.length?reds.sort((a,b)=>slotMins(b.replace(':','.'))-slotMins(a.replace(':','.')))[0]:'';
       if(apexState.red!==lastRed){apexState.red=lastRed;changed=true;
-        try{if(lastRed){const mine=[...ltGridNums(apexGrid)].filter(n=>ltMineNums().has(n));if(mine.length)rtAlert('rossa|'+activeRaceId+'|'+apexState.cat+'|'+apexState.sess+'|'+lastRed,'<i class="ic ic-redflag"></i> BANDIERA ROSSA '+apexState.cat,apexState.sess+' · in pista: '+mine.map(n=>'#'+n).join(' '));}}catch(e){}}
+        try{if(lastRed&&!apexState.startOld){const mine=[...ltGridNums(apexGrid)].filter(n=>ltMineNums().has(n));if(mine.length)rtAlert('rossa|'+activeRaceId+'|'+apexState.cat+'|'+apexState.sess+'|'+lastRed,'<i class="ic ic-redflag"></i> BANDIERA ROSSA '+apexState.cat,apexState.sess+' · in pista: '+mine.map(n=>'#'+n).join(' '));}}catch(e){}}
     }
   });
   if(changed){apexState.at=Date.now();renderApexDelay();try{renderLtMyNums();if(activeTab==='programma')renderSchedule();}catch(e){}}
