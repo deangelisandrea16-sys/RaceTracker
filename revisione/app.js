@@ -766,7 +766,7 @@ function showUserPicker(){
   if(savedUsers.length){
     usersHtml='<div style="margin-bottom:16px">'
       +savedUsers.map(u=>'<button style="width:100%;padding:14px;background:var(--bg3);border:1.5px solid '+(u===currentUserId?'#22c55e':'var(--border2)')+';border-radius:10px;font-family:inherit;font-size:16px;font-weight:900;color:'+(u===currentUserId?'#22c55e':'var(--text)')+';cursor:pointer;margin-bottom:8px;letter-spacing:2px;text-transform:uppercase" onclick="selectSavedUser('+rtJsArg(u)+')">'
-        +u+(u===currentUserId?' <i class="ic ic-check"></i>':'')+'</button>').join('')
+        +rtEsc(u)+(u===currentUserId?' <i class="ic ic-check"></i>':'')+'</button>').join('')
       +'</div>'
       +'<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">'
       +'<div style="font-size:10px;color:var(--text4);font-weight:700;letter-spacing:1px;margin-bottom:8px">NUOVO UTENTE</div>';
@@ -4731,8 +4731,11 @@ function notifTypeOn(k){if(notifPrefs.tutte===false)return false;return NOTIF_DE
 const NOTIF_OF={quali:'qualifiche',res:'finali',elim:'eliminati',pref:'prefinali',ritiri:'ritiri',rossa:'rossa',partenza:'partenza',prossima:'prossima',ritardo:'ritardo'};
 let notifPrefs={},notifPrefsUser='';
 function watchNotifPrefs(){
-  if(!currentUserId||notifPrefsUser===currentUserId)return;notifPrefsUser=currentUserId;
-  try{onValue(ref(db,'notifPrefs/'+currentUserId),s=>{notifPrefs=s.val()||{};const m=document.getElementById('notif-prefs-body');if(m)renderNotifPrefs();});}catch(e){}
+  if(!currentUserId||notifPrefsUser===currentUserId)return;
+  // 27/11/2026 (revisione): cambiando utente l'ascolto del precedente restava attivo e ne rimetteva le preferenze
+  try{if(notifPrefsUser)off(ref(db,'notifPrefs/'+notifPrefsUser));}catch(_){}
+  const me=currentUserId;notifPrefsUser=me;notifPrefs={};
+  try{onValue(ref(db,'notifPrefs/'+me),s=>{if(notifPrefsUser!==me)return;notifPrefs=s.val()||{};const m=document.getElementById('notif-prefs-body');if(m)renderNotifPrefs();});}catch(e){}
 }
 function notifOn(id){if(notifPrefs.tutte===false)return false;const k=NOTIF_OF[String(id).split('|')[0]];return!k||notifTypeOn(k);}
 function renderNotifPrefs(){
@@ -4741,7 +4744,7 @@ function renderNotifPrefs(){
   const row=(lbl,chk,on,dis,big)=>'<label style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;padding:6px 2px;border-bottom:1px solid var(--border,#2a2a2e);cursor:pointer;'+(dis?'opacity:.4;pointer-events:none;':'')+'"><span style="font-size:'+(big?'16px;font-weight:900':'15px')+'">'+lbl+'</span><input type="checkbox" '+(on?'checked':'')+' onchange="'+chk+'" style="width:24px;height:24px;flex-shrink:0"></label>';
   b.innerHTML=row('Notifiche attive','setAllNotif(this.checked)',all,false,true)
     +NOTIF_TYPES.map(([k,l])=>row(l,"setNotifPref('"+k+"',this.checked)",all?notifTypeOn(k):false,!all,false)).join('')
-    +'<div style="margin-top:10px;font-size:11px;color:var(--text4)">Valgono solo per il tuo profilo ('+currentUserId+'). Ritiro, bandiera rossa, partenza, tra 10 minuti e ritardo per ora arrivano con l\'app aperta.</div>';
+    +'<div style="margin-top:10px;font-size:11px;color:var(--text4)">Valgono solo per il tuo profilo ('+rtEsc(currentUserId)+'). Ritiro, bandiera rossa, partenza, tra 10 minuti e ritardo per ora arrivano con l\'app aperta.</div>';
 }
 function setAllNotif(on){
   if(!currentUserId)return;const u={};const base='notifPrefs/'+currentUserId+'/';
@@ -4763,8 +4766,10 @@ window.openNotifPrefs=openNotifPrefs;window.setNotifPref=setNotifPref;
 const TEAM_PALETTE=['#a78bfa','#22d3ee','#f472b6','#34d399','#fb923c','#facc15','#60a5fa','#f87171','#ff1a1a','#ffffff','#ff6a00','#22c55e','#2563eb','#d946ef','#a3e635','#14b8a6','#eab308','#ec4899','#7c3aed','#06b6d4','#84cc16','#f59e0b','#be123c','#94a3b8'];
 let userSettings={},userSettingsUser='';
 function watchUserSettings(){
-  if(!currentUserId||userSettingsUser===currentUserId)return;userSettingsUser=currentUserId;userSettings={};
-  try{onValue(ref(db,'settings/'+currentUserId),s=>{userSettings=s.val()||{};applyUserSettings();try{spotsAttachVenue();}catch(_){}try{document.body.classList.add('quiet');renderAll();}catch(e){}if(document.getElementById('settings-body'))renderSettings();});}catch(e){}
+  if(!currentUserId||userSettingsUser===currentUserId)return;
+  try{if(userSettingsUser)off(ref(db,'settings/'+userSettingsUser));}catch(_){}   // 27/11/2026 (revisione): vedi watchNotifPrefs
+  const me=currentUserId;userSettingsUser=me;userSettings={};
+  try{onValue(ref(db,'settings/'+me),s=>{if(userSettingsUser!==me)return;userSettings=s.val()||{};applyUserSettings();try{spotsAttachVenue();}catch(_){}try{document.body.classList.add('quiet');renderAll();}catch(e){}if(document.getElementById('settings-body'))renderSettings();});}catch(e){}
 }
 let _liveDefDone=false;
 function applyUserSettings(){
@@ -5049,7 +5054,7 @@ function renderSettings(){
     +(isDelayAdmin()?'<div id="ai-usage-box" class="set-opt" onclick="openAiLog()" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px;display:block"><i class="ic ic-chip"></i> <b>SPESA AI</b> · <span id="ai-usage-txt">…</span><br><span style="font-size:11px;color:var(--text4)">tocca per il registro degli interventi</span></div>':'')
     +(isDelayAdmin()?'<div class="set-opt" onclick="openTtPhoto()" style="border:1px solid #ef4444;border-radius:10px;margin-bottom:6px;display:block"><i class="ic ic-camera"></i> <b>FOTO PROGRAMMA</b> · emergenza<br><span style="font-size:11px;color:var(--text4)">solo se il programma ufficiale non si trova o non si legge</span></div>':'')
     +'<div class="set-sec">PUNTI DI SCATTO</div>'+sw(!(userSettings&&userSettings.spotsPerRace),'Ritrova i punti sulla stessa pista anche nelle prossime gare','setSpotsScope(this.checked)')+sw(userSettings.spotsKeepView!==false,'Riapri la pista dove l\'avevi lasciata',"setUS('spotsKeepView',this.checked)")
-    +'<div class="set-sec">PROFILO</div><div class="set-opt" onclick="closeModal();showUserPicker()"><i class="ic ic-user"></i> Cambia utente <span style="margin-left:auto;color:var(--text4)">'+currentUserId+'</span></div>'
+    +'<div class="set-sec">PROFILO</div><div class="set-opt" onclick="closeModal();showUserPicker()"><i class="ic ic-user"></i> Cambia utente <span style="margin-left:auto;color:var(--text4)">'+rtEsc(currentUserId)+'</span></div>'
     +'<div class="set-sec">ASPETTO (QUESTO TELEFONO)</div>'+opt(!light,'Tema scuro','setTheme(false)')+opt(light,'Tema chiaro','setTheme(true)')
     +'<div class="set-sec">LEGGIBILITÀ E AVVISI</div>'
     +sw(userSettings.bigText===true,'Testo più grande',"setUS('bigText',this.checked)")
@@ -5065,7 +5070,7 @@ function renderSettings(){
     +(teams.length?'<div class="set-sec">COLORI DEI TEAM</div>'+teams.map(t=>'<div style="margin-bottom:10px"><div style="font-size:13px;font-weight:800;margin-bottom:6px"><span class="tchip" style="--tc:'+teamColor(t.key)+'">'+String(t.name).replace(/</g,'&lt;')+'</span></div><div class="sw-row">'
       +TEAM_PALETTE.map(c=>'<span class="sw-dot'+(teamColor(t.key)===c?' on':'')+'" style="background:'+c+'" onclick="setTeamColor(\''+escAttr(t.key)+'\','+rtJsArg(c)+')"></span>').join('')+'</div></div>').join(''):'<div style="font-size:12px;color:var(--text4)">Nessun team aggiunto in questa gara.</div>')
     +'<div class="set-sec">LE MIE NOTIFICHE</div><div id="notif-prefs-body"></div>'
-    +'<div style="margin-top:10px;font-size:11px;color:var(--text4)">Impostazioni del profilo '+currentUserId+'.</div>';
+    +'<div style="margin-top:10px;font-size:11px;color:var(--text4)">Impostazioni del profilo '+rtEsc(currentUserId)+'.</div>';
   renderNotifPrefs();try{renderPushDevice();}catch(e){}
   try{loadAiUsage();}catch(e){}
 }
