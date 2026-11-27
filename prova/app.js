@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-27-1025';
+var RT_JS_BUILD='2026-11-27-1155';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5037,7 +5037,7 @@ function renderSettings(){
     +(aiChatAllowed()?'<div class="set-opt" onclick="openAiChat()" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px"><i class="ic ic-chat"></i> <b>CHIEDI ALL\'AI</b> · orari, piloti, rischi</div>':'')
     +(isDelayAdmin()?'<div id="ai-usage-box" class="set-opt" onclick="openAiLog()" style="border:1px solid #a78bfa;border-radius:10px;margin-bottom:6px;display:block"><i class="ic ic-chip"></i> <b>SPESA AI</b> · <span id="ai-usage-txt">…</span><br><span style="font-size:11px;color:var(--text4)">tocca per il registro degli interventi</span></div>':'')
     +(isDelayAdmin()?'<div class="set-opt" onclick="openTtPhoto()" style="border:1px solid #ef4444;border-radius:10px;margin-bottom:6px;display:block"><i class="ic ic-camera"></i> <b>FOTO PROGRAMMA</b> · emergenza<br><span style="font-size:11px;color:var(--text4)">solo se il programma ufficiale non si trova o non si legge</span></div>':'')
-    +'<div class="set-sec">PUNTI DI SCATTO</div>'+sw(!(userSettings&&userSettings.spotsPerRace),'Ritrova i punti sulla stessa pista anche nelle prossime gare','setSpotsScope(this.checked)')
+    +'<div class="set-sec">PUNTI DI SCATTO</div>'+sw(!(userSettings&&userSettings.spotsPerRace),'Ritrova i punti sulla stessa pista anche nelle prossime gare','setSpotsScope(this.checked)')+sw(userSettings.spotsKeepView!==false,'Riapri la pista dove l\'avevi lasciata',"setUS('spotsKeepView',this.checked)")
     +'<div class="set-sec">PROFILO</div><div class="set-opt" onclick="closeModal();showUserPicker()"><i class="ic ic-user"></i> Cambia utente <span style="margin-left:auto;color:var(--text4)">'+currentUserId+'</span></div>'
     +'<div class="set-sec">ASPETTO (QUESTO TELEFONO)</div>'+opt(!light,'Tema scuro','setTheme(false)')+opt(light,'Tema chiaro','setTheme(true)')
     +'<div class="set-sec">LEGGIBILITÀ E AVVISI</div>'
@@ -6401,7 +6401,7 @@ function remRenderMine(){const el=document.getElementById('rem-mine');if(!el)ret
 function hm2minRem(t){const p=String(t||'').split(/[.:]/);return(parseInt(p[0])||0)*60+(parseInt(p[1])||0);}
 window.remToggleBefore=remToggleBefore;window.remSave=remSave;window.remDelete=remDelete;
 function openModal(html){document.getElementById('modal-inner').innerHTML=html;document.getElementById('modal').style.display='flex';}
-function closeModal(){document.getElementById('modal').style.display='none';try{spotPillsRefresh();}catch(_){}if(window._rtDeferRender){window._rtDeferRender=false;if(window._rtRenderDirty){window._rtRenderDirty=false;try{renderAll();}catch(e){}}}}
+function closeModal(){try{spViewSave();}catch(_){}document.getElementById('modal').style.display='none';try{spotPillsRefresh();}catch(_){}if(window._rtDeferRender){window._rtDeferRender=false;if(window._rtRenderDirty){window._rtRenderDirty=false;try{renderAll();}catch(e){}}}}
 function closeModalOutside(e){if(e.target===document.getElementById('modal'))closeModal();}
 window.closeModal=closeModal;window.closeModalOutside=closeModalOutside;
 
@@ -6600,7 +6600,13 @@ function raceVenue(){
 function venueMap(){if(_venues===null){loadVenues();return null;}const v=raceVenue();return v&&v.map&&v.map.d?v:null;}
 let _spView={r:0,z:1,x:0,y:0,t:0};
 function spViewKey(){const v=venueMap();return'rt_spview_'+(v?v.key:'');}
-function openSpots(num){loadSpBg();window._rtDeferRender=true;_spSize=null;_spNum=String(num);_spTrash=false;try{const _vr=((venueMap()||{}).map||{}).rot||0;_spView={r:_vr,z:1,x:0,y:0,t:52};}catch(_){_spView={r:0,z:1,x:0,y:0,t:52};}renderSpots();}
+/* 27/11/2026 (Andrea): la pista si riapre dove era stata lasciata (zoom, rotazione, posizione), per pista e telefono.
+   Impostazioni -> PUNTI DI SCATTO, attivo di default. La chiave rt_spview_<pista> esisteva ma non era piu' usata. */
+document.addEventListener('visibilitychange',()=>{if(document.hidden)spViewSave();});
+function spKeepView(){return !(userSettings&&userSettings.spotsKeepView===false);}
+function spViewSave(){try{if(!spKeepView()||!document.getElementById('sp-vp'))return;const v=_spView;localStorage.setItem(spViewKey(),JSON.stringify({r:v.r,z:v.z,x:v.x,y:v.y,t:v.t}));}catch(_){}}
+function spViewLoad(){try{if(!spKeepView())return null;const o=JSON.parse(localStorage.getItem(spViewKey())||'null');return o&&isFinite(o.z)&&isFinite(o.r)?{r:+o.r,z:+o.z,x:+o.x||0,y:+o.y||0,t:+o.t||0}:null;}catch(_){return null;}}
+function openSpots(num){spViewSave();loadSpBg();window._rtDeferRender=true;_spSize=null;_spNum=String(num);_spTrash=false;try{const _vr=((venueMap()||{}).map||{}).rot||0;_spView=spViewLoad()||{r:_vr,z:1,x:0,y:0,t:52};}catch(_){_spView={r:0,z:1,x:0,y:0,t:52};}renderSpots();}
 window.openSpots=openSpots;
 function spotNo(id){const sp=trackSpots[id]||{};if(sp.k)return sp.k;return spotIds().indexOf(id)+1;}
 function renderSpots(){
