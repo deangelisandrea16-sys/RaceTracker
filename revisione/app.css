@@ -939,3 +939,8 @@ body.light .sp-vp.td .sp-track{stroke:#4a4e57}
 /* 24/11/2026: live fuori dalla finestra della gara (liveWindow): resta solo il messaggio */
 #tab-livetiming.lt-closed-on #lt-mynums,#tab-livetiming.lt-closed-on .pv-switch,#tab-livetiming.lt-closed-on .lt-full-btn,#tab-livetiming.lt-closed-on #lt-mytable,#tab-livetiming.lt-closed-on #lt-wrap,#tab-livetiming.lt-closed-on #lt-adjust{display:none!important}
 #tab-livetiming:not(.lt-closed-on) #lt-closed{display:none}
+
+/* 27/11/2026 (revisione): aree di tocco da almeno 44 px (regola del progetto, uso in pista con i guanti/in movimento) */
+.day-tab{min-height:44px;display:inline-flex;align-items:center}
+.ov-btn{min-height:44px}
+.adv-search-mode .adv-mode-btn{min-height:44px}
