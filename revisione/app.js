@@ -2547,7 +2547,13 @@ function uploadEntryList(event,raceId){
       const nNew=keys.filter(k=>!cur[k]).length;
       if(!confirm('Entry list: '+keys.length+' piloti nel file'+(raceId===activeRaceId?' ('+nNew+' nuovi, '+(keys.length-nNew)+' aggiornati)':'')+'. Nessun pilota gia\' presente viene tolto. Procedo?'))return;
       const u={};
-      keys.forEach(k=>{Object.entries(entryList[k]).forEach(([f,v])=>{if(f&&!/[.#$\[\]\/]/.test(f)&&v!==undefined)u['races/'+raceId+'/entryList/'+k+'/'+f]=v;});});
+      /* 27/11/2026 (revisione-2): i campi a oggetto (result, out, grid...) si uniscono voce per voce: prima un file con
+         result:{Q-S1:3} cancellava gli altri arrivi del pilota (A-B, PF-A...) scritti dal server */
+      const okK=f=>f&&!/[.#$\[\]\/]/.test(f);
+      keys.forEach(k=>{Object.entries(entryList[k]).forEach(([f,v])=>{if(!okK(f)||v===undefined)return;
+        const base=['races/',raceId,'/entryList/',k,'/',f].join('');
+        if(v&&typeof v==='object'&&!Array.isArray(v)){Object.entries(v).forEach(([f2,v2])=>{if(okK(f2)&&v2!==undefined&&v2!==null)u[[base,'/',f2].join('')]=v2;});}
+        else if(v!==null)u[base]=v;});});
       update(ref(db),u).then(()=>ref(db,'races/'+raceId+'/entryList').once('value')).then(sn=>{
         const n=Object.keys(sn.val()||{}).length;
         return update(ref(db),{['races_index/'+raceId+'/entryCount']:n}).then(()=>{alert('Entry list: '+keys.length+' piloti caricati, '+n+' in totale');closeModal();});
