@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-27-0920';
+var RT_JS_BUILD='2026-11-27-0930';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1170,6 +1170,7 @@ function listenRaceData(raceId){
     if(!sharedReady||!userReady)return;
     currentEntryList=sharedData.entryList||{};window._rtElSig=Date.now();
     window._rtMedia=sharedData.media||{}; // 22/11/2026: contatori ClipSorter (mediaChip)
+    window._rtParts=sharedData.participants||{}; // 27/11/2026: elenco ufficiale partecipanti per categoria (server)
     currentSchedule=sharedData.schedule||{};
     currentDays=sharedData.days||Object.keys(currentSchedule);
     if(!Array.isArray(currentDays))currentDays=typeof currentDays==='object'?Object.values(currentDays):[];
@@ -1445,12 +1446,15 @@ function pilotsForSlot(slot){
 /* 27/11/2026 (Andrea, R3 OK-NJ #786): le serie arrivano dagli elenchi ufficiali delle serie. Quando nella categoria ci sono gia'
    piloti in almeno due serie diverse, l'assegnazione e' completa: chi non ha serie non e' "in attesa", e' NON IN PISTA. */
 function serieComplete(cat){try{const c=canonCat(cat),set=new Set();Object.values(currentEntryList||{}).forEach(e=>{if(e&&canonCat(e.cat)===c&&String(e.serie||'').trim())set.add(String(e.serie).trim());});return set.size>=2;}catch(_){return false;}}
-function serieAbsent(p){return !pSerie(p)&&serieComplete(p.cat);}
-function pilotsAbsentSerie(slot){return slot.type!=='serie'?[]:pilots.filter(p=>!p.eliminated&&canonCat(p.cat)===canonCat(slot.cat)&&serieAbsent(p));}
+// 27/11/2026: fuori dall'elenco ufficiale dei partecipanti della sua categoria = NON IN GARA (vale per serie, gruppi, prefinali)
+function notInRace(p){try{const P=window._rtParts||{},c=canonCat(p.cat);const k=Object.keys(P).find(x=>canonCat(x)===c);const L=k&&P[k]&&P[k].nums;return !!(L&&L.length>=3&&L.map(String).indexOf(String(p.num))<0);}catch(_){return false;}}
+function serieAbsent(p){return notInRace(p)||(!pSerie(p)&&serieComplete(p.cat));}
+function pilotsAbsentSerie(slot){return pilots.filter(p=>!p.eliminated&&canonCat(p.cat)===canonCat(slot.cat)&&(notInRace(p)||(slot.type==='serie'&&serieAbsent(p))));}
 function pilotsAwaitingData(slot){
   return pilots.filter(p=>{
     if(p.eliminated)return false;
     if(canonCat(p.cat)!==canonCat(slot.cat))return false;
+    if(notInRace(p))return false;
     if(slot.type==='serie'&&!pSerie(p))return !serieComplete(p.cat);
     if(slot.type==='group'&&!pilotHasGroupData(p))return true;
     if(slot.type==='prefinal'&&!String(p.prefinal||'').trim())return true;
@@ -3073,8 +3077,9 @@ function teamsForSlot(slot){
     const inSlot=ents.filter(p=>entrantInSlot(p,slot));
     let waiting=[],absent=[];
     if(slot.type==='serie'){waiting=ents.filter(p=>!pSerie(p)&&!serieAbsent(p));absent=ents.filter(p=>serieAbsent(p));}
-    if(slot.type==='group')waiting=ents.filter(p=>!pilotHasGroupData(p));
-    if(slot.type==='prefinal')waiting=ents.filter(p=>!String(p.prefinal||'').trim()&&!p.eliminated); // 22/11: eliminato = non in attesa
+    if(slot.type==='group')waiting=ents.filter(p=>!pilotHasGroupData(p)&&!notInRace(p));
+    if(slot.type==='prefinal')waiting=ents.filter(p=>!String(p.prefinal||'').trim()&&!p.eliminated&&!notInRace(p)); // 22/11: eliminato = non in attesa
+    if(slot.type!=='serie')absent=ents.filter(p=>notInRace(p)&&!p.eliminated);
     if(inSlot.length||waiting.length||absent.length)res.push({t,inSlot,waiting,absent});
   });
   return res;
@@ -4241,7 +4246,7 @@ function renderSchedule(){
       +'<span class="slot-type">'+slotFilterLabel(slot)+'</span>'+slotDur(slot)+'</div>'
       +remLine(slot)
       +(awaiting.length?'<div style="font-size:9px;color:#fbbf24;font-weight:600;margin-top:4px"><i class="ic ic-wait"></i> '+awaiting.map(p=>'#'+p.num).join(' ')+' in attesa</div>':'')
-      +(()=>{const ab=pilotsAbsentSerie(slot);return ab.length?'<div style="font-size:9px;color:#9ca3af;font-weight:600;margin-top:4px"><i class="ic ic-close"></i> '+ab.map(p=>'#'+p.num).join(' ')+' non in pista</div>':'';})()
+      +(()=>{const ab=pilotsAbsentSerie(slot);return ab.length?'<div style="font-size:9px;color:#9ca3af;font-weight:600;margin-top:4px"><i class="ic ic-close"></i> '+ab.map(p=>'#'+p.num).join(' ')+' non in gara</div>':'';})()
       +'<div style="margin-top:8px">';
     const _items=[]; // 15/11 (Andrea): raccolti per poter raggruppare i piloti dello stesso team
     ps.forEach(p=>{
@@ -5092,7 +5097,7 @@ function teamsHighlightItems(slot,ps,idx){
   return out;
 }
 function teamsWaitingHtml(slot){
-  return teamsForSlot(slot).map(({t,waiting,absent})=>(waiting.length?'<div style="font-size:10px;font-weight:800;margin:4px 0 8px;color:'+teamColor(t.key)+'"><i class="ic ic-wait"></i> '+String(t.name).replace(/</g,'&lt;')+': '+waiting.length+' in attesa</div>':'')+(absent&&absent.length?'<div style="font-size:10px;font-weight:700;margin:0 0 8px;color:#9ca3af"><i class="ic ic-close"></i> '+String(t.name).replace(/</g,'&lt;')+': '+absent.map(p=>'#'+p.num).join(' ')+' non in pista</div>':'')).join('');
+  return teamsForSlot(slot).map(({t,waiting,absent})=>(waiting.length?'<div style="font-size:10px;font-weight:800;margin:4px 0 8px;color:'+teamColor(t.key)+'"><i class="ic ic-wait"></i> '+String(t.name).replace(/</g,'&lt;')+': '+waiting.length+' in attesa</div>':'')+(absent&&absent.length?'<div style="font-size:10px;font-weight:700;margin:0 0 8px;color:#9ca3af"><i class="ic ic-close"></i> '+String(t.name).replace(/</g,'&lt;')+': '+absent.map(p=>'#'+p.num).join(' ')+' non in gara</div>':'')).join('');
 }
 /* 15/11/2026 (Andrea): 2 o piu' piloti dello stesso team seguito nello stesso turno = un riquadro unico in alto, senza linee in mezzo.
    Tutto il resto in ordine di numero. */
@@ -5117,7 +5122,7 @@ function teamsHighlightHtml(slot,ps){
       +'<div class="tasks">'+TASKS.map(k=>teamPilotTaskBtn(p.num,k)).join('')+spotPill(p.num)+'</div>'
       +(teamNotes[t.key]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+teamNotes[t.key]+'</div>':'')+noteLine(p.num)+'</div>').join('')
       +(waiting.length?'<div style="font-size:10px;font-weight:800;margin:4px 0 8px;color:'+c+'"><i class="ic ic-wait"></i> '+String(t.name).replace(/</g,'&lt;')+': '+waiting.length+' in attesa</div>':'')
-      +(absent&&absent.length?'<div style="font-size:10px;font-weight:700;margin:0 0 8px;color:#9ca3af"><i class="ic ic-close"></i> '+String(t.name).replace(/</g,'&lt;')+': '+absent.map(p=>'#'+p.num).join(' ')+' non in pista</div>':'');
+      +(absent&&absent.length?'<div style="font-size:10px;font-weight:700;margin:0 0 8px;color:#9ca3af"><i class="ic ic-close"></i> '+String(t.name).replace(/</g,'&lt;')+': '+absent.map(p=>'#'+p.num).join(' ')+' non in gara</div>':'');
   }).join('');
 }
 setTimeout(watchNotifPrefs,3000);
