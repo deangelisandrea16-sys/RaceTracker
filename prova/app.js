@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-27-1400';
+var RT_JS_BUILD='2026-11-27-1645';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -6042,6 +6042,13 @@ function apexMatchFor(catTxt,sessTxt,startTxt){
     // 27/11/2026 (KZ2 "Free Practice" senza serie, in programma "1^ Serie"): anche le serie, il piu' vicino all'orario
     if(/(FREE|PRACT|WARM)/.test(ss)&&!/QUALIF/.test(ss))return x.type==='all'||x.type==='list'||x.type==='serie';
     if(/HEAT|MANCHE/.test(ss)&&(m=ss.match(/\b([A-H])\s*-\s*([A-H])\b/)))return x.type==='group'&&f.toUpperCase().replace(/\s/g,'')===(m[1]+'-'+m[2]);
+    // 27/11/2026 (KZ2 "Manche 1", categoria a gruppo unico: prima "Ordine cambiato? non trovata"): manche senza lettere di gruppo = turno
+    // "tutti"/lista della categoria; con il numero (Manche 1, Heat 2) vince il turno con quel numero (M1, Manche 1), se il programma lo dice
+    if(/HEAT|MANCHE/.test(ss)&&!/PREFINAL/.test(ss)){
+      if(x.type!=='all'&&x.type!=='list')return false;
+      const n=(ss.match(/(?:HEATS?|MANCHES?)\s*(\d)/)||[])[1];if(!n)return true;
+      const w=rtPfNorm((x.wsk||'')+' '+(x.session||'')+' '+(x.label||''));const wm=w.match(/\bM\s*(\d)\b|(?:HEATS?|MANCHES?)\s*(\d)/);
+      return !wm||(wm[1]||wm[2])===n;}
     // 22/11/2026: prefinale con lettera/numero = quella del gruppo; unica (OKN "Prefinal") = la prefinale della categoria
     if(/PREFINAL/.test(ss)){const isPf=x.type==='prefinal'||/PREFINAL/.test(rtPfNorm((x.session||'')+' '+(x.label||'')+' '+(x.wsk||'')));
       const g=rtPfGroup(ss);return isPf&&(!g||!f||f.toUpperCase()===g);}
