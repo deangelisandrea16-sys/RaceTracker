@@ -939,3 +939,15 @@ body.light .sp-vp.td .sp-track{stroke:#4a4e57}
 /* 24/11/2026: live fuori dalla finestra della gara (liveWindow): resta solo il messaggio */
 #tab-livetiming.lt-closed-on #lt-mynums,#tab-livetiming.lt-closed-on .pv-switch,#tab-livetiming.lt-closed-on .lt-full-btn,#tab-livetiming.lt-closed-on #lt-mytable,#tab-livetiming.lt-closed-on #lt-wrap,#tab-livetiming.lt-closed-on #lt-adjust{display:none!important}
 #tab-livetiming:not(.lt-closed-on) #lt-closed{display:none}
+/* 27/11/2026 (Andrea): piu' contrasto fra sfondo app, schede, tasti e bordi; stessi toni.
+   Solo variabili colore + sfondo dei tasti attivita' spenti: per tornare indietro basta togliere questo blocco. */
+body:not(.light){
+  --bg2:#202026;--bg3:#2b2b33;--border:#3a3a43;--border2:#55555f;
+  --btn-bg:#34343d;--modal-bg:#1a1a1f;--input-bg:#060607;
+  --task-border:#55555f;--text4:#928c84;
+}
+body.light{
+  --bg:#e3e6ec;--bg3:#eceff4;--border:#d0d5de;--border2:#adb4c2;
+  --btn-bg:#dde1e8;--input-bg:#e9ecf2;--task-border:#adb4c2;--text4:#6f7788;
+}
+.task-btn:not(.green):not(.orange):not(.red){background:var(--btn-bg)}
