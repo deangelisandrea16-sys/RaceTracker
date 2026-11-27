@@ -942,12 +942,26 @@ body.light .sp-vp.td .sp-track{stroke:#4a4e57}
 /* 27/11/2026 (Andrea): piu' contrasto fra sfondo app, schede, tasti e bordi; stessi toni.
    Solo variabili colore + sfondo dei tasti attivita' spenti: per tornare indietro basta togliere questo blocco. */
 body:not(.light){
-  --bg2:#202026;--bg3:#2b2b33;--border:#3a3a43;--border2:#55555f;
-  --btn-bg:#34343d;--modal-bg:#1a1a1f;--input-bg:#060607;
+  --bg2:#25252c;--bg3:#2f2f38;--border:#3a3a43;--border2:#55555f;
+  --btn-bg:#3d3d47;--modal-bg:#1a1a1f;--input-bg:#060607;
   --task-border:#55555f;--text4:#928c84;
 }
 body.light{
-  --bg:#e3e6ec;--bg3:#eceff4;--border:#d0d5de;--border2:#adb4c2;
+  --bg:#d9dde5;--bg3:#eceff4;--border:#d0d5de;--border2:#adb4c2;
   --btn-bg:#dde1e8;--input-bg:#e9ecf2;--task-border:#adb4c2;--text4:#6f7788;
 }
 .task-btn:not(.green):not(.orange):not(.red){background:var(--btn-bg)}
+/* 27/11/2026 (Andrea): schede (piloti, turni, squadre) staccate dallo sfondo: bordo sottile e ombra leggera */
+.card:not(.slot-now):not(.final-card):not(.team-card){border-color:var(--border2)!important}
+body:not(.light) .card:not(.slot-now):not(.final-card):not(.team-card):not(.hl-foto):not(.hl-video):not(.hl-prio):not(.hl-both){box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 8px 22px -14px rgba(0,0,0,.9)!important}
+body.light .card:not(.slot-now):not(.final-card):not(.team-card):not(.hl-foto):not(.hl-video):not(.hl-prio):not(.hl-both){box-shadow:0 1px 2px rgba(20,30,60,.08),0 8px 20px -14px rgba(20,30,60,.35)!important}
+.team-card{border-top-color:var(--border2);border-right-color:var(--border2);border-bottom-color:var(--border2)}
+/* 27/11/2026 (Andrea): ogni pilota dentro la scheda del turno su un fondo un po' piu' chiaro della scheda */
+.card .card-inner:not(.team-inner){background:var(--bg3);border-top:none;border-radius:12px;padding:10px 12px;margin:0 0 8px}
+body.light .card .card-inner:not(.team-inner){background:#eef1f6}
+/* 27/11/2026 (Andrea): tasti attivita' spenti staccati solo per colore (niente bordo): piu' chiari del fondo pilota in scuro, bianchi in chiaro */
+body:not(.light) .task-btn:not(.green):not(.orange):not(.red){background:#4a4a55;color:#e4e0da}
+body.light .task-btn:not(.green):not(.orange):not(.red){background:#ffffff;color:#3a4150;box-shadow:0 1px 2px rgba(20,30,60,.12)}
+/* 27/11/2026 (Andrea): tasti non attivi (stato 'red' = da fare) rossi tono su tono, staccati dal fondo pilota */
+body:not(.light) .task-btn.red{background:#4a1d22!important;color:#ff9ba3!important}
+body.light .task-btn.red{background:#fde0e3!important;color:#b4232f!important}
