@@ -908,6 +908,14 @@ function rtAuthStart(){
 const RT_ADMINS=['andrea','print'];   // 19/11/2026 (Andrea): super admin, per ora Andrea e Print
 const RT_ADMIN='andrea';
 let _rtReqOff=null;
+// 27/11/2026 (revisione): avviso breve a schermo. Era richiamato (richieste di accesso) ma non esisteva: non compariva nulla.
+function showToast(msg){try{let t=document.getElementById('rt-toast');if(!t){t=document.createElement('div');t.id='rt-toast';
+  t.style.cssText=['position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom));z-index:10000;',
+    'background:var(--bg3,#222);color:var(--text,#fff);border:1px solid var(--border2,#444);border-radius:10px;padding:10px 14px;',
+    'font-size:13px;font-weight:700;max-width:90vw;box-shadow:0 6px 20px rgba(0,0,0,.4);pointer-events:none'].join('');document.body.appendChild(t);}
+  t.textContent=String(msg||'');t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>{t.style.display='none';},2600);}catch(e){}}
+window.showToast=showToast;
+function rtJsArg(x){return rtEsc(JSON.stringify(String(x==null?'':x)));}   // 27/11/2026 (revisione): stringa sicura dentro onclick="..."
 function rtEsc(x){return String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function rtCleanName(x){return String(x||'').trim().toLowerCase().replace(/[.#$\[\]\/]/g,'').slice(0,30);}
 function rtRequestScreen(u,msg){
@@ -958,19 +966,19 @@ function rtAdminPanel(){
       if(!rqk.length)h.push('<div class="adm-empty">Nessuna richiesta in attesa</div>');
       rqk.forEach(k=>{const r=rq[k];h.push('<div class="adm-card adm-req"><div class="adm-row">',rtAvatar(r.name),'<div class="adm-who"><div class="adm-mail">',rtEsc(r.email),'</div><div class="adm-sub">',rtAgo(r.at),'</div></div></div>',
         '<label class="adm-lbl">Entra come</label><input class="form-input adm-in" id="rq-',rtEsc(k),'" value="',rtEsc(r.name),'" autocomplete="off">',
-        '<div class="adm-btns"><button class="adm-btn ok" onclick="rtApprove(\'',rtEsc(k),'\')">APPROVA</button><button class="adm-btn no" onclick="rtReject(\'',rtEsc(k),'\')">RIFIUTA</button></div></div>');});
+        '<div class="adm-btns"><button class="adm-btn ok" onclick="rtApprove(',rtJsArg(k),')">APPROVA</button><button class="adm-btn no" onclick="rtReject(',rtJsArg(k),')">RIFIUTA</button></div></div>');});
     }else if(_rtAdmTab==='usr'){
       [...users].sort().forEach(n=>{const i=info[n]||{last:0,mails:[]},adm=RT_ADMINS.includes(n),me=n===currentUserId;
         h.push('<div class="adm-card',me?' me':'','"><div class="adm-row">',rtAvatar(n),'<div class="adm-who"><div class="adm-name">',rtEsc(n.toUpperCase()),
           '<span class="adm-role',adm?' sa':'','">',adm?'SUPER ADMIN':'UTENTE','</span></div><div class="adm-sub">',i.mails.length?rtEsc(i.mails.join(', ')):'nessuna mail collegata',' · ',rtAgo(i.last),'</div></div>',
-          me?'<span class="adm-now">IN USO</span>':['<button class="adm-btn sm" onclick="rtViewAs(\'',rtEsc(n),'\')">GUARDA</button>'].join(''),'</div></div>');});
+          me?'<span class="adm-now">IN USO</span>':['<button class="adm-btn sm" onclick="rtViewAs(',rtJsArg(n),')">GUARDA</button>'].join(''),'</div></div>');});
       h.push('<button class="adm-btn ghost" onclick="location.href=location.pathname+\'?user=utente%20prova\'">UTENTE PROVA (test)</button>');
     }else{
       h.push('<div class="adm-card"><label class="adm-lbl">Abilita una mail</label><input class="form-input adm-in" id="ad-email" type="email" inputmode="email" placeholder="mail@esempio.it" autocomplete="off">',
         '<input class="form-input adm-in" id="ad-name" placeholder="nome utente (es. ricky)" autocomplete="off"><button class="adm-btn ok" onclick="rtAdminAdd()">ABILITA</button></div>');
       emk.forEach(k=>{const n=String(em[k]),used=Object.values(mp).some(v=>v&&rtEmailKey(v.email)===k),lock=RT_ADMINS.includes(n)||rtEmailKey((_fbAuth.currentUser||{}).email)===k;
         h.push('<div class="adm-card"><div class="adm-row">',rtAvatar(n),'<div class="adm-who"><div class="adm-mail">',rtEsc(k.replace(/,/g,'.')),'</div><div class="adm-sub">→ <b>',rtEsc(n.toUpperCase()),'</b>',used?'':' · mai entrato','</div></div>',
-          lock?'<span class="adm-now"><i class="ic ic-lock"></i></span>':['<button class="adm-btn sm no" onclick="rtUnlink(\'',rtEsc(k),'\')">SCOLLEGA</button>'].join(''),'</div></div>');});
+          lock?'<span class="adm-now"><i class="ic ic-lock"></i></span>':['<button class="adm-btn sm no" onclick="rtUnlink(',rtJsArg(k),')">SCOLLEGA</button>'].join(''),'</div></div>');});
     }
     h.push('<button class="adm-btn ghost" onclick="rtLogout()">ESCI DA QUESTO TELEFONO</button></div>');
     openModal(h.join(''));
@@ -1000,6 +1008,7 @@ function rtUnlink(k){
 function rtViewAs(n){
   if(!rtIsAdmin())return;
   currentUserId=n;try{localStorage.setItem('rt_user',n);}catch(e){}
+  window._rtViewAs=(n!==_rtAuthUser)?n:'';   // 27/11/2026 (revisione): guardare un altro utente = sola lettura
   closeModal();updateUserHeader();if(activeRaceId)listenRaceData(activeRaceId);
 }
 window.rtApprove=rtApprove;window.rtReject=rtReject;window.rtAdminAdd=rtAdminAdd;window.rtUnlink=rtUnlink;window.rtViewAs=rtViewAs;window.rtAdminPanel=rtAdminPanel;
@@ -1326,6 +1335,9 @@ function rtDiff(path,base,local,u){
 }
 function rtWrite(u,what){
   const n=Object.keys(u).length;
+  /* 27/11/2026 (revisione): l'amministratore che GUARDA l'app di un altro utente e' in sola lettura: prima ogni tocco
+     (stato, nota, evidenziazione) finiva nei dati dell'altro utente. */
+  if(n&&window._rtViewAs){dlog('Sola lettura (stai guardando '+window._rtViewAs+'): niente salvataggi','warn');try{showToast&&showToast('Sola lettura: stai guardando '+String(window._rtViewAs).toUpperCase());}catch(e){}return Promise.resolve();}
   if(!n){dlog('Salvataggio '+(what||'')+': nessuna modifica','info');return Promise.resolve();}
   setSyncStatus('saving');dlog('Salvataggio '+(what||'')+': '+n+' campi','info');
   return update(ref(db),u).then(()=>setSyncStatus('ok')).catch(e=>{setSyncStatus('err');console.error(e);dlog('salvataggio: '+e.message,'err');});
@@ -1380,7 +1392,8 @@ function lookupByNum(num){return currentEntryList[num.toString()]||null;}
 // ── GROUP HELPERS ──
 // Normalizza qualsiasi valore gruppo in una singola lettera maiuscola ('A'-'E')
 // oppure '' se il valore non è valido.
-const VALID_GROUPS=['A','B','C','D','E'];
+// 27/11/2026 (revisione): gruppi fino ad H come il server e i documenti (campi grandi): prima F-H venivano ignorati
+const VALID_GROUPS=['A','B','C','D','E','F','G','H'];
 function normalizeGroup(v){
   if(!v&&v!==0)return'';
   const s=String(v).trim().toUpperCase();
@@ -1442,6 +1455,8 @@ function pilotsForSlot(slot){
     if(p.eliminated)return false;
     if(_pf&&!myPilotMatches(p,progSearchMode,progSearchTeam,progSearchCat))return false;
     if(canonCat(p.cat)!==canonCat(slot.cat))return false;
+    // 27/11/2026 (revisione): fuori dall'elenco ufficiale = non in gara anche nei turni All/pari-dispari/lista (prima solo serie)
+    if(notInRace(p))return false;
     if(slot.type==='all')return true;
     if(slot.type==='parity')return p.parity===slot.filter;
     if(slot.type==='serie'){if(!pSerie(p))return false;return pSerie(p)===String(slot.filter).trim();}
@@ -1466,7 +1481,7 @@ function pilotsAwaitingData(slot){
     if(notInRace(p))return false;
     if(slot.type==='serie'&&!pSerie(p))return !serieComplete(p.cat);
     if(slot.type==='group'&&!pilotHasGroupData(p))return true;
-    if(slot.type==='prefinal'&&!String(p.prefinal||'').trim())return true;
+    if(slot.type==='prefinal'&&!String(pfOf(p)||'').trim())return true;
     return false;
   });
 }
@@ -5984,7 +5999,9 @@ function rtPfGroup(ss){const m=rtPfNorm(ss).match(/PREFINALE?\s*([A-D]|[1-4])\b/
 // 27/11/2026 (revisione): turno abbinato dal server alla sessione del live (stessi nomi del live, stesso orario di partenza)
 function rtServerMatch(catTxt,sessTxt,startTxt,today){
   const raw=currentSchedule[today];if(!raw)return null;
-  const ok=(i,r)=>{const sl=raw[i];return sl&&r&&String(sl.time)===String(r.time)&&canonCat(sl.cat)===canonCat(r.cat)?sl:null;};
+  // indice del programma; se il programma e' stato riscritto nel frattempo, lo stesso turno per contenuto (orario + categoria)
+  const same=(sl,r)=>sl&&r&&String(sl.time)===String(r.time)&&canonCat(sl.cat)===canonCat(r.cat);
+  const ok=(i,r)=>{const sl=raw[i];if(same(sl,r))return sl;return (Array.isArray(raw)?raw:Object.values(raw)).find(x=>same(x,r))||null;};
   const res=sl=>{const st=startTxt?slotMins(String(startTxt).replace(':','.')):null;return{slot:sl,delay:st===null?null:st-slotMins(sl.time),src:'server'};};
   const runs=(window._rtLiveRuns||{})[today]||{};
   if(startTxt){for(const i of Object.keys(runs)){const r=runs[i];if(r&&r.lcat===catTxt&&r.sess===sessTxt&&r.start===startTxt){const sl=ok(i,r);if(sl)return res(sl);}}}
