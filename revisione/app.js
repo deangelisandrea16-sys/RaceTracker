@@ -6001,13 +6001,17 @@ function apexMatchFor(catTxt,sessTxt,startTxt){
      scritto in liveRuns (turni corsi oggi) e liveMatch (sessione caricata/in corso). L'app lo mostra e non lo ricalcola:
      prima app e server potevano dare risposte diverse. Il calcolo locale qui sotto resta solo se il server non ha scritto nulla. */
   try{const srv=rtServerMatch(catTxt,sessTxt,startTxt,today);if(srv)return srv;}catch(e){}
+  // turni della sezione QUALIFICHE di oggi per questa categoria (intestazione 'session' prima del turno)
+  const qSec=new Set();{let sec='';arr.forEach(x=>{if(!x)return;if(x.session)sec=x.session;if(/QUALIF/i.test(sec)&&x.type!=='group'&&x.type!=='prefinal'&&canonCat(x.cat)===canonCat(cat))qSec.add(x);});}
   const want=x=>{
     if(canonCat(x.cat)!==canonCat(cat))return false;
     const f=Array.isArray(x.filter)?x.filter.join('-'):String(x.filter||'');
     let m;
     if(/QUALIF/.test(ss)&&(m=ss.match(/S\s*(\d)/)))return x.type==='serie'&&f===m[1];
     // 20/11/2026: qualifica unica (OKN "Qualifying Practice", senza serie) = turno All/lista della categoria
-    if(/QUALIF/.test(ss))return x.type==='all'||x.type==='list';
+    // 27/11/2026 (revisione, KZ2 venerdi' 12:28): qualifica senza serie = turno della sezione QUALIFICHE (anche "1^ Serie");
+    // prima solo All/lista: la KZ2 finiva sulla Manche 1 delle 16:00. Se la sezione non c'e', All/lista come prima.
+    if(/QUALIF/.test(ss))return qSec.size?qSec.has(x):(x.type==='all'||x.type==='list');
     // 20/11/2026: prove per serie (WSK "Free Practice Serie N") = turni di tipo serie N (il piu' vicino all'orario)
     if(/(FREE|PRACT|WARM)/.test(ss)&&(m=ss.match(/SERIE?S?\s*(\d)/)))return x.type==='serie'&&f===m[1];
     if(/(FREE|PRACT|WARM)/.test(ss)&&/EVEN|PARI/.test(ss))return x.type==='parity'&&f==='EVEN'&&(/WARM/.test(ss)===/WARM/i.test((x.session||'')+(x.label||''))||true);
