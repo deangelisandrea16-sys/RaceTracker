@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-27-1245';
+var RT_JS_BUILD='2026-11-27-1250';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -2723,7 +2723,14 @@ function gridPos(num,slot){
 // Dopo la manche: posizione d'arrivo dai risultati Apex (entryList/{num}/result = {"A-B":"3"}), badge verde
 // Chiavi: manche "A-B"; prefinali "PF-A"/"PF-B"; finale "FIN" (scritte dal server dai documenti ufficiali Apex)
 // 20/11/2026: serie del pilota = quella ufficiale dell'entry list (server) se c'e', altrimenti quella salvata
-function pSerie(p){const e=p&&currentEntryList&&currentEntryList[p.num];return String((e&&e.serie)||(p&&p.serie)||'').trim();}
+/* 27/11/2026 (KZ2 R3, ATTESA SERIE): se nel programma la categoria ha una sola serie (es. KZ2 "1^ Serie"),
+   chi non ha la serie assegnata e' in quella. Con 2+ serie nel programma resta "in attesa" come prima. */
+let _oneSerieSrc=null,_oneSerieMap={};
+function oneSerieOf(cat){try{if(_oneSerieSrc!==currentSchedule){_oneSerieSrc=currentSchedule;_oneSerieMap={};
+    Object.values(currentSchedule||{}).forEach(day=>{(Array.isArray(day)?day:Object.values(day||{})).forEach(x=>{if(!x||x.type!=='serie')return;
+      const c=canonCat(x.cat),f=String(x.filter==null?'':x.filter).trim();if(!f)return;(_oneSerieMap[c]=_oneSerieMap[c]||new Set()).add(f);});});}
+  const st=_oneSerieMap[canonCat(cat)];return st&&st.size===1?[...st][0]:'';}catch(_){return '';}}
+function pSerie(p){const e=p&&currentEntryList&&currentEntryList[p.num];return String((e&&e.serie)||(p&&p.serie)||'').trim()||(p?oneSerieOf(p.cat):'');}
 // 20/11/2026: sessione (PROVE LIBERE / QUALIFICHE / MANCHE...) del blocco a cui appartiene il turno, nel giorno attivo
 function slotSessionOf(slot){let cur='';const arr=((currentSchedule||{})[activeDay]||[]);for(const x of (Array.isArray(arr)?arr:Object.values(arr))){if(!x)continue;if(x.session)cur=x.session;
   if(x===slot||(x.time===slot.time&&x.cat===slot.cat&&x.type===slot.type&&String(x.filter)===String(slot.filter)))return cur;}return '';}
@@ -4176,7 +4183,7 @@ function renderSchedule(){
   // Quante volte corre oggi ogni mio pilota e quale di queste è lo slot (es. Gara 2/3)
   // Se un turno dipende da dati non ancora ufficiali (prefinale non assegnata, finale non decisa) il totale è "?"
   const _runs={},_unc={},_finIn={};
-  const _awaits=(p,sl)=>canonCat(p.cat)===canonCat(sl.cat)&&((sl.type==='serie'&&!String(p.serie||'').trim())||(sl.type==='group'&&!pilotHasGroupData(p))||(sl.type==='prefinal'&&!String(p.prefinal||'').trim()));
+  const _awaits=(p,sl)=>canonCat(p.cat)===canonCat(sl.cat)&&((sl.type==='serie'&&!pSerie(p))||(sl.type==='group'&&!pilotHasGroupData(p))||(sl.type==='prefinal'&&!String(p.prefinal||'').trim()));
   let _sess='';
   slotsArr.forEach((sl,i)=>{if(sl.session)_sess=sl.session;pilots.forEach(p=>{if(p.eliminated)return;
     if(entrantInSlot(p,sl))(_runs[p.num]=_runs[p.num]||[]).push(i);
