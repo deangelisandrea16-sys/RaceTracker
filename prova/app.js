@@ -6046,9 +6046,6 @@ function apexMatchFor(catTxt,sessTxt,startTxt){
   if(st===null){const nm=new Date().getHours()*60+new Date().getMinutes()-(typeof scheduleDelay==='number'?scheduleDelay:0);cands.sort((a,b)=>Math.abs(slotMins(a.time)-nm)-Math.abs(slotMins(b.time)-nm));return{slot:cands[0],delay:null};}
   cands.sort((a,b)=>Math.abs(slotMins(a.time)-st)-Math.abs(slotMins(b.time)-st));
   const slot=cands[0];
-  // 27/11/2026: turno a piu' di 2 ore dalla partenza reale (ritardo compreso) = abbinamento sbagliato (prima "ORA" sulla manche delle 16)
-  const curD=typeof scheduleDelay==='number'?scheduleDelay:(parseInt(scheduleDelay)||0);
-  if(Math.abs(st-curD-slotMins(slot.time))>120)return null;
   return{slot,delay:st-slotMins(slot.time)};
 }
 function renderApexDelay(){
