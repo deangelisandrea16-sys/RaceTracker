@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-26-1625';
+var RT_JS_BUILD='2026-11-27-0915';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -4511,6 +4511,7 @@ function renderLiveClosed(w){
 function apexConnect(){
   const lw=liveWindow();
   if(!lw.open){
+    try{if(relayOff)relayOff();}catch(e){}
     if(apexWs||apexWsKey){clearTimeout(apexRetry);try{if(apexWs)apexWs.close();}catch(e){}apexWs=null;apexWsKey='';apexState={cat:'',sess:'',start:'',red:'',at:0};apexNext=null;apexGrid.innerHTML='';}
     renderLiveClosed(lw);try{renderApexDelay();}catch(e){}return;
   }
@@ -4528,10 +4529,14 @@ function apexConnect(){
   try{if(demoLiveUnsub)demoLiveUnsub();}catch(e){}
   const port=APEX_LIVE_PORTS[name];
   const key=name&&port?name+':'+port:'';
-  if(key===apexWsKey&&((apexWs&&apexWs.readyState<=1)||apexPollKey===key))return;
+  if(key===apexWsKey&&((apexWs&&apexWs.readyState<=1)||apexPollKey===key||relayKey===key))return;
+  try{if(relayOff)relayOff();}catch(e){}
   try{if(apexWs)apexWs.close();}catch(e){}
   apexWs=null;apexWsKey=key;apexState={cat:'',sess:'',start:'',red:'',at:0};apexNext=null;apexSeen=new Set();apexIgnore=new Set();
   if(!key){renderApexDelay();return;}
+  // 27/11/2026 (nuova architettura, solo prova): il live arriva dal NOSTRO server (una sola lettura della fonte per tutti),
+  // passato dal database. Se il nostro server tace per 45 s si torna da soli alla fonte; il server si riprova dopo 5 min.
+  if(RELAY_ON&&!(relayDown[key]&&Date.now()-relayDown[key]<300000)){apexPollKey='';relayStart(key);return;}
   try{
     apexPollKey='';let got=false;
     apexWs=new WebSocket('wss://live-data.apex-timing.com:'+(port+3)+'/');
@@ -4545,6 +4550,23 @@ function apexConnect(){
   }catch(e){}
 }
 let apexPollKey='';
+/* 27/11/2026: live dal nostro server (liveRelay/<fonte>: init = fotografia completa con numero, d = novita' in ordine, at = battito) */
+const RELAY_ON=/kart_staging/.test(location.pathname)||/[?&]relay=1/.test(location.search);
+let relayKey='',relayOff=null;const relayDown={};
+function relayStart(key){
+  relayKey=key;const base=_fbDb.ref('liveRelay/'+key.replace(/[^a-z0-9]/gi,'_'));let childRef=null,seq=null,lastAt=0;const t0=Date.now();
+  const pad=n=>String(n).padStart(9,'0');
+  const alive=()=>{const was=liveAlive();apexLastMsgAt=Date.now();if(!was)try{applyDelayPerms();}catch(e){}};
+  const onInit=snap=>{const v=snap.val();if(!v||v.seq===seq)return;seq=v.seq;if(childRef)childRef.off();
+    try{apexParse(String(v.text||''));}catch(e){console.warn('relay init',e);}alive();
+    childRef=base.child('d').orderByKey().startAfter(pad(seq));
+    childRef.on('child_added',s=>{try{apexParse(String(s.val()||''));}catch(e){console.warn('relay',e);}alive();});};
+  const onAt=s=>{lastAt=+s.val()||0;};
+  base.child('init').on('value',onInit);base.child('at').on('value',onAt);
+  const wd=setInterval(()=>{if(relayKey!==key){clearInterval(wd);return;}
+    if(Date.now()-t0>20000&&Date.now()-lastAt>45000){console.warn('live dal nostro server fermo: torno alla fonte');relayDown[key]=Date.now();try{relayOff();}catch(e){}apexWsKey='';apexConnect();}},10000);
+  relayOff=()=>{try{base.child('init').off('value',onInit);base.child('at').off('value',onAt);if(childRef)childRef.off();}catch(e){}clearInterval(wd);relayKey='';relayOff=null;};
+}
 function apexPollStart(key,port){
   if(apexPollKey===key)return;apexPollKey=key;
   const id=Math.floor(Math.random()*1e9);let init=0,index=0,n=0,fails=0;
@@ -4556,6 +4578,7 @@ function apexPollStart(key,port){
       const t=await r.text();const m=t.match(/^(\d+)@(\d+)@/);
       if(m){init=m[1];index=m[2];fails=0;const body=t.slice(m[0].length);
         if(body.trim()&&apexPollKey===key){const was=liveAlive();apexLastMsgAt=Date.now();if(!was)try{applyDelayPerms();}catch(e){}apexParse(body);}}
+      else if(r.ok&&!t.trim())fails=0;   // risposta vuota = nessuna novita' (pista ferma)
       else fails++;
     }catch(e){fails++;}
     // dopo molti errori di fila si riprova da capo (anche il collegamento diretto)
