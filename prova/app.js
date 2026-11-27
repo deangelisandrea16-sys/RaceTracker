@@ -3074,13 +3074,13 @@ function teamsForSlot(slot){
   teams.forEach(t=>{
     const ents=teamEntrants(t).filter(p=>canonCat(p.cat)===canonCat(slot.cat));
     if(!ents.length)return;
-    const inSlot=ents.filter(p=>entrantInSlot(p,slot));
+    const inSlot=ents.filter(p=>entrantInSlot(p,slot)&&!notInRace(p));
     let waiting=[],absent=[];
     if(slot.type==='serie'){waiting=ents.filter(p=>!pSerie(p)&&!serieAbsent(p));absent=ents.filter(p=>serieAbsent(p));}
     if(slot.type==='group')waiting=ents.filter(p=>!pilotHasGroupData(p)&&!notInRace(p));
     if(slot.type==='prefinal')waiting=ents.filter(p=>!String(p.prefinal||'').trim()&&!p.eliminated&&!notInRace(p)); // 22/11: eliminato = non in attesa
     if(slot.type!=='serie')absent=ents.filter(p=>notInRace(p)&&!p.eliminated);
-    if(inSlot.length||waiting.length||absent.length)res.push({t,inSlot,waiting,absent});
+    if(inSlot.length||waiting.length)res.push({t,inSlot,waiting,absent}); // i 'non in gara' solo accanto alla squadra presente
   });
   return res;
 }
