@@ -5092,7 +5092,7 @@ function teamsHighlightItems(slot,ps,idx){
   return out;
 }
 function teamsWaitingHtml(slot){
-  return teamsForSlot(slot).map(({t,waiting,absent})=>(waiting.length?'<div style="font-size:10px;font-weight:800;margin:4px 0 8px;color:'+teamColor(t.key)+'"><i class="ic ic-wait"></i> '+String(t.name).replace(/</g,'&lt;')+': '+waiting.length+' in attesa</div>':''))+(absent&&absent.length?'<div style="font-size:10px;font-weight:700;margin:0 0 8px;color:#9ca3af"><i class="ic ic-close"></i> '+String(t.name).replace(/</g,'&lt;')+': '+absent.map(p=>'#'+p.num).join(' ')+' non in pista</div>':'').join('');
+  return teamsForSlot(slot).map(({t,waiting,absent})=>(waiting.length?'<div style="font-size:10px;font-weight:800;margin:4px 0 8px;color:'+teamColor(t.key)+'"><i class="ic ic-wait"></i> '+String(t.name).replace(/</g,'&lt;')+': '+waiting.length+' in attesa</div>':'')+(absent&&absent.length?'<div style="font-size:10px;font-weight:700;margin:0 0 8px;color:#9ca3af"><i class="ic ic-close"></i> '+String(t.name).replace(/</g,'&lt;')+': '+absent.map(p=>'#'+p.num).join(' ')+' non in pista</div>':'')).join('');
 }
 /* 15/11/2026 (Andrea): 2 o piu' piloti dello stesso team seguito nello stesso turno = un riquadro unico in alto, senza linee in mezzo.
    Tutto il resto in ordine di numero. */
