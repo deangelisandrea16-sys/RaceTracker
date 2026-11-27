@@ -5940,6 +5940,9 @@ function apexParse(txt){
       if(all.length){
         const first=all.sort((a,b)=>slotMins(a.replace(':','.'))-slotMins(b.replace(':','.')))[0];
         if(apexState.start!==first){apexState.start=first;ltCurLabel=apexState.cat+'|'+apexState.sess;changed=true;
+          // 27/11/2026 (revisione): partenza nuova = corsa nuova anche con gli stessi titoli (es. finale KZ2 della gara dopo,
+          // dopo la fotografia vecchia): la fine e la bandiera rossa di prima non valgono piu'
+          apexFinished='';clearTimeout(apexEvalT);apexState.red='';
           // 27/11/2026 (revisione): partenza non recente (fotografia vecchia del live, es. finale KZ2 di R2 vista il 24/11): niente avviso ne' arrivi
           {const fm=slotMins(first.replace(':','.')),nm=apexNowMinTz();apexState.startOld=!(fm<=nm+1&&fm>=nm-30);}
           if(!apexState.startOld)try{const mine=[...ltGridNums(apexGrid)].filter(n=>ltMineNums().has(n));if(mine.length)rtAlert('partenza|'+activeRaceId+'|'+ltCurLabel+'|'+first,'<i class="ic ic-flag"></i> PARTITA '+apexState.cat+' · '+apexState.sess,'alle '+first+' · in pista: '+mine.map(n=>'#'+n+' '+ltNameOf(n)).join(', '));}catch(e){}}
