@@ -1,3 +1,10 @@
+# REGOLE INSINDACABILI — LEGGERE PRIMA DI TUTTO (Andrea, 27/11/2026)
+**Valgono per TUTTE le chat e per Claude Code, ASSOLUTAMENTE, senza eccezioni.**
+1. **Ogni modifica va appuntata nel registro comune** (progetto claude.ai "APPKARTPH24 GARE", file `stato/registro-modifiche.md`), subito dopo averla fatta, anche se piccola o annullata. Una riga: data e ora, chi, dove (app prova/vera, server, dati), cosa e perche', build o commit, come tornare indietro. Se non puoi scrivere nel progetto, scrivi in `docs/registro-modifiche.md` di questa repo: la chat di regia lo riporta nel registro comune. Prima di modificare, leggi le ultime voci del registro.
+2. **Mai scartare o ignorare dati in silenzio, in nessun caso**: se qualcosa non si riesce a leggere, caricare o usare, deve partire un avviso ad Andrea.
+
+---
+
 # Race Tracker — CLAUDE.md
 
 ## Project Overview
