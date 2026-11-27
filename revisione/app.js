@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-27-1400';
+var RT_JS_BUILD='2026-11-27-1700';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1267,7 +1267,9 @@ function listenRaceData(raceId){
     onValue(r,snap=>{
       const v=snap.val();
       if(!_shGot.has(k)){_shGot.add(k);if(v!==null&&v!==undefined)_shFresh[k]=v;if(_shGot.size<SHARED_LISTEN.length)return;sharedData=_shFresh;_shFresh=null;}
-      else{if(v===null||v===undefined)delete sharedData[k];else sharedData[k]=v;}
+      // 27/11/2026 (revisione-2): un dato che cambia di nuovo prima che arrivino tutti gli altri va nella copia in costruzione
+      // (prima finiva nella copia vecchia, poi sostituita: si vedeva il valore precedente fino alla modifica successiva)
+      else{const t=_shFresh||sharedData;if(v===null||v===undefined)delete t[k];else t[k]=v;if(_shFresh)return;}
       window._rtLiveSeen=true;saveSnap();rtSetBase(sharedData,null);
       if(k==='entryList'||!sharedReady)dlog('Dati gara condivisi: entryList='+Object.keys(sharedData.entryList||{}).length+', days='+(sharedData.days||[]).length,'ok');
       sharedReady=true;
@@ -1590,7 +1592,7 @@ function editPilotNote(num){
   const _nm=p?p.name:String((_e.lastName||'')+' '+(_e.firstName||'')).trim();
   const cur=(notes[num]||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
   openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button>'
-    +'<div class="modal-title">Nota #'+num+(_nm?' · '+String(_nm).replace(/</g,'&lt;'):'')+'</div>'
+    +'<div class="modal-title">Nota #'+rtEsc(num)+(_nm?' · '+String(_nm).replace(/</g,'&lt;'):'')+'</div>'
     +'<div class="form-group"><textarea class="form-textarea" id="pn-text" style="min-height:120px" placeholder="Commento, appunti, cosa fare...">'+cur+'</textarea></div>'
     +'<button class="form-submit" onclick="savePilotNote('+rtJsArg(num)+')">SALVA</button>'
     +reelPickerHtml(num)+(function(){const _p=pilots.find(x=>x.num===String(num));return _p?fotoRowHtml(_p,false):'';})()+persToggleHtml(num));
@@ -2074,7 +2076,7 @@ function renderLtMyNums(){
       const nums=it.nums.length?it.nums.map(function(n){return '#'+n;}).join(' '):'—';
       return '<div'+(it.now?' id="lt-mini-now"':'')+' style="flex-shrink:0;display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;border:1px solid '+(it.now?'var(--accent)':'var(--border2)')+';background:'+(it.now?'var(--accent-dim)':'var(--bg2)')+'">'
         +'<b style="color:#fbbf24;font-weight:900;font-size:13px;font-variant-numeric:tabular-nums">'+it.time+'</b>'
-        +(it.label?'<span style="color:var(--text4);font-weight:700;font-size:10px;letter-spacing:.5px">'+it.label+'</span>':'')
+        +(it.label?'<span style="color:var(--text4);font-weight:700;font-size:10px;letter-spacing:.5px">'+rtEsc(it.label)+'</span>':'')
         +'<span style="color:'+(it.now?'var(--accent)':'var(--text)')+';font-weight:800;font-size:13px;font-variant-numeric:tabular-nums">'+nums+'</span>'
         +(it.now?'<span style="color:var(--accent);font-weight:800;font-size:8px;letter-spacing:1px">ORA</span>':'')
         +'</div>';
@@ -2217,8 +2219,8 @@ function renderCalendar(){
       const added=calAdded(e);
       const cats=(e.cats||[]).join(' · ');
       h.push(`<div class="cal-item"><div class="cal-date">${calFmt(e)}</div>${circuitMapHtml({circuit:[e.circuit,e.city].filter(Boolean).join(' '),name:''},false,36)||'<span style="flex:0 0 36px"></span>'}<div class="cal-main">`);
-      h.push(`<div class="cal-name">${e.name}</div><div class="cal-sub">${[e.circuit,e.city].filter(Boolean).join(' — ')}</div>`);
-      if(cats)h.push(`<div class="cal-cats">${cats}</div>`);
+      h.push(`<div class="cal-name">${rtEsc(e.name)}</div><div class="cal-sub">${rtEsc([e.circuit,e.city].filter(Boolean).join(' — '))}</div>`);
+      if(cats)h.push(`<div class="cal-cats">${rtEsc(cats)}</div>`);
       if(e.status!=='confermato'||e.note)h.push(`<div class="cal-note">${[e.status==='confermato'?'':'Provvisorio',e.note||''].filter(Boolean).join(' · ')}</div>`);
       h.push('</div>');
       h.push(added?'<span class="cal-added">Aggiunta</span>':`<button class="cal-add" onclick="addFromCalendar('${e.id}')">Aggiungi</button>`);
@@ -2547,7 +2549,13 @@ function uploadEntryList(event,raceId){
       const nNew=keys.filter(k=>!cur[k]).length;
       if(!confirm('Entry list: '+keys.length+' piloti nel file'+(raceId===activeRaceId?' ('+nNew+' nuovi, '+(keys.length-nNew)+' aggiornati)':'')+'. Nessun pilota gia\' presente viene tolto. Procedo?'))return;
       const u={};
-      keys.forEach(k=>{Object.entries(entryList[k]).forEach(([f,v])=>{if(f&&!/[.#$\[\]\/]/.test(f)&&v!==undefined)u['races/'+raceId+'/entryList/'+k+'/'+f]=v;});});
+      /* 27/11/2026 (revisione-2): i campi a oggetto (result, out, grid...) si uniscono voce per voce: prima un file con
+         result:{Q-S1:3} cancellava gli altri arrivi del pilota (A-B, PF-A...) scritti dal server */
+      const okK=f=>f&&!/[.#$\[\]\/]/.test(f);
+      keys.forEach(k=>{Object.entries(entryList[k]).forEach(([f,v])=>{if(!okK(f)||v===undefined)return;
+        const base=['races/',raceId,'/entryList/',k,'/',f].join('');
+        if(v&&typeof v==='object'&&!Array.isArray(v)){Object.entries(v).forEach(([f2,v2])=>{if(okK(f2)&&v2!==undefined&&v2!==null)u[[base,'/',f2].join('')]=v2;});}
+        else if(v!==null)u[base]=v;});});
       update(ref(db),u).then(()=>ref(db,'races/'+raceId+'/entryList').once('value')).then(sn=>{
         const n=Object.keys(sn.val()||{}).length;
         return update(ref(db),{['races_index/'+raceId+'/entryCount']:n}).then(()=>{alert('Entry list: '+keys.length+' piloti caricati, '+n+' in totale');closeModal();});
@@ -2795,7 +2803,7 @@ function filterPilots(q){
     myP.forEach(m=>{html+=searchResultItem(m);});
   }
   Object.entries(otherGroups).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([team,members])=>{
-    html+='<div class="search-group-label">'+team+' ('+members.length+')</div>';
+    html+='<div class="search-group-label">'+rtEsc(team)+' ('+members.length+')</div>';
     members.sort((a,b)=>parseInt(a.num)-parseInt(b.num)).forEach(m=>{html+=searchResultItem(m);});
   });
   resultsEl.innerHTML=html;
@@ -2981,12 +2989,12 @@ function searchResultItem(m){
   return'<div class="search-result-item" style="'+bd+'" onclick="openPilotDetail('+rtJsArg(m.num)+')">'
     +'<span class="sr-num" style="'+(isMine?'color:#22c55e':ft?'color:'+tc:'')+'">#'+rtEsc(m.num)+'</span>'
     +'<div style="flex:1;min-width:0">'
-    +'<div class="sr-name" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span>'+m.name+'</span>'
+    +'<div class="sr-name" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span>'+rtEsc(m.name)+'</span>'
     +(isMine?'<span style="font-size:10px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i> TUO</span>':'')
     +(ft&&!isMine?'<span style="font-size:10px;font-weight:800;color:'+tc+';border:1px solid '+tc+';border-radius:4px;padding:0 4px">TEAM</span>':'')
     +badges+(p?reelChip(p)+fotoChips(p)+persChip(p):mediaChip({num:m.num}))+'</div>'
-    +'<div class="sr-team">'+m.team+'</div>'+noteLine(m.num)+'</div>'
-    +'<span class="sr-cat '+catCls+'" style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800">'+m.cat+'</span></div>';
+    +'<div class="sr-team">'+rtEsc(m.team)+'</div>'+noteLine(m.num)+'</div>'
+    +'<span class="sr-cat '+catCls+'" style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800">'+rtEsc(m.cat)+'</span></div>';
 }
 window.filterPilots=filterPilots;
 function clearPilotsSearch(){const inp=document.getElementById('pilots-search');if(inp)inp.value='';filterPilots('');}
@@ -3011,10 +3019,10 @@ function openPilotDetail(num){
     +'<span style="font-size:28px;font-weight:900">#'+rtEsc(num)+'</span>'
     +(isMine?'<span style="font-size:11px;color:#22c55e;font-weight:800;border:1px solid #22c55e;padding:2px 8px;border-radius:4px"><i class="ic ic-star"></i> TUO PILOTA</span>':'')
     +'</div>'
-    +'<div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">'+name+mediaChip({num:num})+'</div>'
-    +'<div style="font-size:15px;font-weight:700;color:var(--text3);margin-bottom:8px">'+team+'</div>'
+    +'<div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">'+rtEsc(name)+mediaChip({num:num})+'</div>'
+    +'<div style="font-size:15px;font-weight:700;color:var(--text3);margin-bottom:8px">'+rtEsc(team)+'</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:16px">'
-    +'<span class="'+catCls+'" style="font-size:12px;padding:3px 10px;border-radius:6px;font-weight:800;border:1px solid">'+cat+'</span>'
+    +'<span class="'+catCls+'" style="font-size:12px;padding:3px 10px;border-radius:6px;font-weight:800;border:1px solid">'+rtEsc(cat)+'</span>'
     +'<span class="parity-badge">'+parity+'</span></div>'
     +'<div id="detail-hist" style="margin-bottom:14px"></div>'
     +'<div class="form-group"><label class="form-label">Note su questo pilota</label>'
@@ -3191,8 +3199,8 @@ function teamsViewHasCards(){try{return teamViewMode()!=='cards';}catch(_){retur
 function teamsSlotHtml(slot){
   const list=teamsForSlot(slot);if(!list.length)return'';
   return list.map(({t,inSlot,waiting})=>'<div class="card-inner team-inner"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">'
-    +'<span class="inner-num"><i class="ic ic-team"></i></span><span class="inner-name">'+t.name+'</span>'
-    +'<span style="font-size:10px;font-weight:800;color:#a78bfa">'+(inSlot.length?inSlot.length+' in pista: '+inSlot.map(p=>'#'+p.num+(gridPos(p.num,slot)?' <span style="color:#e9d5a8">P'+gridPos(p.num,slot)+'</span>':'')).join(' · '):'')
+    +'<span class="inner-num"><i class="ic ic-team"></i></span><span class="inner-name">'+rtEsc(t.name)+'</span>'
+    +'<span style="font-size:10px;font-weight:800;color:#a78bfa">'+(inSlot.length?inSlot.length+' in pista: '+inSlot.map(p=>'#'+rtEsc(p.num)+(gridPos(p.num,slot)?' <span style="color:#e9d5a8">P'+gridPos(p.num,slot)+'</span>':'')).join(' · '):'')
     +(waiting.length?(inSlot.length?' · ':'')+'<i class="ic ic-wait"></i> '+waiting.length+' in attesa':'')+'</span></div>'
     +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,true)).join('')+'</div>'
     +(teamsViewHasCards()?'':teamSpotsRow(inSlot))
@@ -3271,7 +3279,7 @@ function renderTeams(){
     const cats=[...new Set(ents.map(p=>p.cat))];
     return'<div class="card team-card"><div class="pilot-header"><div>'
       +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+cats.map(c=>'<span class="pilot-cat '+catClass(c)+'">'+c+'</span>').join('')+'</div>'
-      +'<div style="display:flex;align-items:center;gap:8px;margin-top:3px"><span class="pilot-num"><i class="ic ic-team"></i></span><span class="pilot-name">'+t.name+'</span></div>'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-top:3px"><span class="pilot-num"><i class="ic ic-team"></i></span><span class="pilot-name">'+rtEsc(t.name)+'</span></div>'
       +'<div class="pilot-team">'+ents.length+' piloti iscritti</div>'
       +'<div class="team-nums">'+ents.map(p=>'<span class="team-num'+(pilots.some(x=>x.num===p.num)?' mine':'')+'" onclick="openPilotDetail('+rtJsArg(p.num)+')">#'+rtEsc(p.num)+'</span>').join('')+'</div>'
       +'</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">'
@@ -3324,10 +3332,10 @@ function renderOverviewBody(){
     if(r.si!=null){const b=_ob[r.si];if(b&&b.ses&&b.id!==_ol){pre+=['<div class="session-divider ov-div">',blkLabel(b,_oc),'</div>'].join('');_ol=b.id;}}
     else if(!_ofin){pre+='<div class="session-divider ov-div">FINALI</div>';_ofin=true;}
     const cls=i===nowIdx?' now':(isToday&&i<nowIdx?' past':'');
-    const nums=r.ps.map(p=>{const st=(statuses[p.num]||{}).PISTA||'red';return'<span class="ov-n '+st+'" onclick="ovOpenPilot('+rtJsArg(p.num)+')">'+p.num+'</span>';}).join('')
+    const nums=r.ps.map(p=>{const st=(statuses[p.num]||{}).PISTA||'red';return'<span class="ov-n '+st+'" onclick="ovOpenPilot('+rtJsArg(p.num)+')">'+rtEsc(p.num)+'</span>';}).join('')
       +(r.aw.length?'<span class="ov-n" style="opacity:.5;border-style:dashed"><i class="ic ic-wait"></i>'+r.aw.length+'</span>':'')
-      +r.ts.map(({t})=>{const st=(teamStatuses[t.key]||{}).PISTA||'red';return'<span class="ov-t '+st+'" onclick="toggleTeamTask(\''+escAttr(t.key)+'\',\'PISTA\')"><i class="ic ic-team"></i> '+t.name+'</span>';}).join('');
-    return pre+'<div class="ov-row'+cls+'"><span class="ov-time">'+r.time+'</span><span class="ov-cat '+catClass(r.cat)+'">'+r.label+'<br><span style="color:var(--text4);font-size:9px">'+r.sub+'</span></span>'
+      +r.ts.map(({t})=>{const st=(teamStatuses[t.key]||{}).PISTA||'red';return'<span class="ov-t '+st+'" onclick="toggleTeamTask(\''+escAttr(t.key)+'\',\'PISTA\')"><i class="ic ic-team"></i> '+rtEsc(t.name)+'</span>';}).join('');
+    return pre+'<div class="ov-row'+cls+'"><span class="ov-time">'+r.time+'</span><span class="ov-cat '+catClass(r.cat)+'">'+rtEsc(r.label)+'<br><span style="color:var(--text4);font-size:9px">'+r.sub+'</span></span>'
       +'<div class="ov-nums">'+(nums||'<span style="font-size:10px;color:var(--text4)">—</span>')
       +r.ps.filter(p=>String(notes[p.num]||'').trim()).map(p=>'<div class="note-txt" style="width:100%">#'+rtEsc(p.num)+' <i class="ic ic-note"></i> '+String(notes[p.num]).replace(/</g,'&lt;')+'</div>').join('')+'</div></div>';
   }).join('');
@@ -3660,14 +3668,14 @@ function buildProgResultsHtml(fakePilots){
     if(!ps.length)return;
     html+='<div class="card" style="margin-bottom:8px"><div class="slot-header">'
       +'<span class="slot-time">'+slot.time+'</span>'
-      +'<span class="slot-label '+catClass(slot.cat)+'">'+slot.label+'</span>'
+      +'<span class="slot-label '+catClass(slot.cat)+'">'+rtEsc(slot.label)+'</span>'
       +'<span class="slot-type">'+slotFilterLabel(slot)+'</span></div><div style="margin-top:8px">';
     ps.forEach(p=>{
       const isMine=!!pilots.find(x=>x.num===p.num);
       html+='<div class="card-inner" style="'+(isMine?'border-color:#22c55e':'')+'"><div style="display:flex;align-items:center;gap:6px">'
         +'<span class="inner-num" style="'+(isMine?'color:#22c55e':'')+'">#'+rtEsc(p.num)+'</span>'
-        +'<span class="inner-name">'+p.name+(isMine?' <span style="font-size:9px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i></span>':'')+'</span>'
-        +'<span class="inner-team-big">'+p.team+'</span></div>'+noteLine(p.num)+'</div>';
+        +'<span class="inner-name">'+rtEsc(p.name)+(isMine?' <span style="font-size:9px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i></span>':'')+'</span>'
+        +'<span class="inner-team-big">'+rtEsc(p.team)+'</span></div>'+noteLine(p.num)+'</div>';
     });
     html+='</div></div>';
   });
@@ -3781,7 +3789,7 @@ function renderEntryList(){
   Object.entries(groups).forEach(([cat,members])=>{
     const catCls=catClass(cat);
     html+='<div style="font-size:14px;font-weight:900;letter-spacing:2px;padding:14px 0 6px;border-top:1px solid var(--border);margin-top:6px">'
-      +'<span class="'+catCls+'">'+cat+'</span>'
+      +'<span class="'+catCls+'">'+rtEsc(cat)+'</span>'
       +' <span style="font-size:11px;font-weight:600;color:var(--text4)">'+members.length+'</span></div>';
     members.forEach(p=>{
       const isMine=!!pilots.find(x=>x.num===p.num);
@@ -3827,12 +3835,12 @@ function renderPilots(){
     +'<div class="pilot-header">'
     +'<div style="display:flex;align-items:flex-start;gap:10px;min-width:0;flex:1">'
     +'<span class="pilot-index">'+(i+1)+'.</span><div style="min-width:0">'
-    +'<div class="pilot-cat '+catClass(p.cat)+'">'+p.cat+(isElim?' <span style="color:#ef4444;font-size:9px">ELIMINATO</span>':'')+'</div>'
+    +'<div class="pilot-cat '+catClass(p.cat)+'">'+rtEsc(p.cat)+(isElim?' <span style="color:#ef4444;font-size:9px">ELIMINATO</span>':'')+'</div>'
     /* 22/11/2026 (Andrea): riga del nome a capo se non ci sta (con reel e contatore la colonna di destra usciva dallo schermo) */
     +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;margin-top:3px">'
     +'<span class="pilot-num">#'+rtEsc(p.num)+'</span>'+riskTri(p.num)
-    +'<span class="pilot-name">'+p.name+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)+'</div>'
-    +'<div class="pilot-team">'+p.team+'</div></div></div>'
+    +'<span class="pilot-name">'+rtEsc(p.name)+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)+'</div>'
+    +'<div class="pilot-team">'+rtEsc(p.team)+'</div></div></div>'
     +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px;flex-shrink:0">'
     +(hl.length?'<div class="hl-badges">'+hl.map(function(h){return'<span class="hl-badge hl-'+h+'">'+(hlLabels[h]||h)+'</span>';}).join('')+'</div>':'')
     +'<span class="parity-badge">'+p.parity+'</span>'
@@ -3845,7 +3853,7 @@ function renderPilots(){
     +'<div class="tasks">'+TASKS.map(t=>taskBtn(p.num,t,false,isElim)).join('')+spotPill(p.num)+'</div>'
     +reelRowHtml(p)+fotoRowHtml(p,true)
     +'<div class="note-wrap"><span class="note-label">Note</span>'
-    +'<textarea class="note-area" id="note-'+p.num+'" placeholder="Aggiungi una nota..." onblur="saveNote('+rtJsArg(p.num)+')">'+rtEsc(notes[p.num]||'')+'</textarea></div></div>';
+    +'<textarea class="note-area" id="note-'+rtEsc(p.num)+'" placeholder="Aggiungi una nota..." onblur="saveNote('+rtJsArg(p.num)+')">'+rtEsc(notes[p.num]||'')+'</textarea></div></div>';
   }).join('')+missingDashHtml();
 }
 
@@ -4312,7 +4320,7 @@ function renderSchedule(){
       html+='<div class="card'+(isNow?' slot-now':'')+'" style="opacity:.35;padding:10px 14px" '+(isNow?'id="slot-now"':'')+'>'
         +'<div style="display:flex;align-items:center;gap:8px">'
         +'<span style="font-size:13px;font-weight:900;color:var(--text4)">'+slot.time+'</span>'
-        +'<span class="'+catClass(slot.cat)+'" style="font-size:10px;font-weight:800">'+slot.label+'</span>'
+        +'<span class="'+catClass(slot.cat)+'" style="font-size:10px;font-weight:800">'+rtEsc(slot.label)+'</span>'
         +'<span style="font-size:9px;color:#fbbf24;font-weight:700;margin-left:auto;letter-spacing:1px"><i class="ic ic-wait"></i> ATTESA '+typeLabel.toUpperCase()+'</span>'
         +'</div>'+remLine(slot)+'</div>';
       return;
@@ -4323,7 +4331,7 @@ function renderSchedule(){
     if(!ps.length&&!tHtml){
       html+='<div class="card'+(isNow?' slot-now':'')+'" style="opacity:.45" '+(isNow?'id="slot-now"':'')+'><div class="slot-header">'
         +'<span class="slot-time">'+slot.time+'</span>'+(isNow?'<span class="now-badge">ORA</span>':'')
-        +'<span class="slot-label '+catClass(slot.cat)+'">'+slot.label+'</span>'
+        +'<span class="slot-label '+catClass(slot.cat)+'">'+rtEsc(slot.label)+'</span>'
         +'<span class="slot-type">'+slotFilterLabel(slot)+'</span>'+slotDur(slot)+'</div>'+remLine(slot)
         +'<div style="font-size:11px;font-weight:700;color:var(--text4);padding:2px 0">— NESSUNO —</div></div>';
       return;
@@ -4332,7 +4340,7 @@ function renderSchedule(){
     // Has pilots — show them, plus warning if some are still awaiting
     html+='<div class="card'+(isNow?' slot-now':'')+'" '+(isNow?'id="slot-now"':'')+'><div class="slot-header">'
       +'<span class="slot-time">'+slot.time+'</span>'+(isNow?'<span class="now-badge">ORA</span>':'')
-      +'<span class="slot-label '+catClass(slot.cat)+'">'+slot.label+'</span>'
+      +'<span class="slot-label '+catClass(slot.cat)+'">'+rtEsc(slot.label)+'</span>'
       +'<span class="slot-type">'+slotFilterLabel(slot)+'</span>'+slotDur(slot)+'</div>'
       +remLine(slot)
       +(awaiting.length?'<div style="font-size:9px;color:#fbbf24;font-weight:600;margin-top:4px"><i class="ic ic-wait"></i> '+awaiting.map(p=>'#'+rtEsc(p.num)).join(' ')+' in attesa</div>':'')
@@ -4366,7 +4374,7 @@ function renderSchedule(){
       const _poss=!finalists.length;const _rm=_poss?riskMarkMap():{};
       const ps=finalists.length?finalists:allCat.filter(p=>!p.eliminated).sort((a,b)=>((_rm[String(a.num)]??50)-(_rm[String(b.num)]??50))||((parseInt(a.num)||0)-(parseInt(b.num)||0)));
       const _fNow=_finalNowKey===(f.label+'|'+f.time);
-      html+='<div class="final-card'+(_fNow?' slot-now':'')+'"'+(_fNow?' id="slot-now"':'')+'><div class="final-title"><i class="ic ic-trophy"></i> '+f.label+(_fNow?' <span class="now-badge">ORA</span>':'')+'</div>'
+      html+='<div class="final-card'+(_fNow?' slot-now':'')+'"'+(_fNow?' id="slot-now"':'')+'><div class="final-title"><i class="ic ic-trophy"></i> '+rtEsc(f.label)+(_fNow?' <span class="now-badge">ORA</span>':'')+'</div>'
         +'<div class="final-row"><span>Partenza</span><span class="final-time">'+f.time+'</span></div>'
         +(slotDurText(f)?'<div class="final-row"><span>Durata</span><span class="final-time">'+slotDurText(f)+'</span></div>':'');
       if(!ps.length)html+='<div style="font-size:12px;color:var(--text4);padding:8px 2px 2px">Nessun tuo pilota in questa finale</div>';
@@ -4408,8 +4416,8 @@ function renderSchedule(){
       _elim.slice().sort((a,b)=>parseInt(a.num)-parseInt(b.num)).forEach(p=>{
         html+='<div class="card-inner" style="opacity:.55;border-style:dashed;cursor:pointer;margin-top:6px" onclick="openEditPilot('+rtJsArg(p.num)+')"><div style="display:flex;align-items:center;gap:8px">'
           +'<span class="inner-num" style="color:var(--text4)">#'+rtEsc(p.num)+'</span>'
-          +'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)
-          +'<span class="'+catClass(p.cat)+'" style="font-size:9px;font-weight:800;margin-left:auto">'+p.cat+'</span>'
+          +'<span class="inner-name">'+rtEsc(p.name)+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)
+          +'<span class="'+catClass(p.cat)+'" style="font-size:9px;font-weight:800;margin-left:auto">'+rtEsc(p.cat)+'</span>'
           +'</div>'+noteLine(p.num)+'</div>';
       });
     }
@@ -4740,7 +4748,7 @@ function apexEvaluate(why){
     rank.slice(0,3).forEach(([num],i)=>{
       if(!mine.has(num))return;
       const p=mine.get(num);
-      rtAlert('quali|'+cat+'|'+num+'|'+(i+1)+'|'+done,(i===0?'<i class="ic ic-trophy"></i> POLE':'<i class="ic ic-medal"></i> P'+(i+1))+' qualifiche '+cat+': #'+rtEsc(num)+' '+p.name,
+      rtAlert('quali|'+cat+'|'+num+'|'+(i+1)+'|'+done,(i===0?'<i class="ic ic-trophy"></i> POLE':'<i class="ic ic-medal"></i> P'+(i+1))+' qualifiche '+cat+': #'+num+' '+p.name,
         (done>=2?'Classifica combinata S1+S2':'Dopo la serie '+ser+', manca l\'altra serie')+' · PROVVISORIO, verifica reclami',i===0?'gold':'');
     });
     return;
@@ -4750,7 +4758,7 @@ function apexEvaluate(why){
   snap.filter(x=>x.pos<=5).forEach(x=>{
     if(!mine.has(x.num))return;
     const p=mine.get(x.num);
-    rtAlert('res|'+key+'|'+x.num,(isFinal?'<i class="ic ic-flag"></i> FINALE ':'')+'P'+x.pos+' '+cat+' '+apexState.sess+': #'+rtEsc(x.num)+' '+p.name,
+    rtAlert('res|'+key+'|'+x.num,(isFinal?'<i class="ic ic-flag"></i> FINALE ':'')+'P'+x.pos+' '+cat+' '+apexState.sess+': #'+x.num+' '+p.name,
       'PROVVISORIO da live timing, verifica reclami',isFinal?'final':'');
   });
 }
@@ -5134,7 +5142,7 @@ setInterval(()=>{try{
   const now=new Date();const nm=now.getHours()*60+now.getMinutes();const dl=scheduleDelay||0;
   arr.forEach(sl=>{const st=slotMins(sl.time)+dl;const left=st-nm;if(left<1||left>10)return;
     const ps=pilotsForSlot(sl);if(!ps.length)return;
-    rtAlert('prossima|'+activeRaceId+'|'+day+'|'+sl.time+'|'+sl.label+'|'+JSON.stringify(sl.filter||''),'<i class="ic ic-timer"></i> Tra '+left+' min: '+sl.label+' '+(sl.session||''),'ore '+sl.time+(dl?' ('+(dl>0?'+':'')+dl+')':'')+' · '+ps.map(p=>'#'+rtEsc(p.num)+' '+p.name).join(', '));});
+    rtAlert('prossima|'+activeRaceId+'|'+day+'|'+sl.time+'|'+sl.label+'|'+JSON.stringify(sl.filter||''),'<i class="ic ic-timer"></i> Tra '+left+' min: '+sl.label+' '+(sl.session||''),'ore '+sl.time+(dl?' ('+(dl>0?'+':'')+dl+')':'')+' · '+ps.map(p=>'#'+p.num+' '+p.name).join(', '));});
   if(_lastDelayNotif===null)_lastDelayNotif=dl;
   else if(Math.abs(dl-_lastDelayNotif)>=5){rtAlert('ritardo|'+activeRaceId+'|'+day+'|'+dl+'|'+nm,'<i class="ic ic-wait"></i> Ritardo ora '+(dl>0?'+':'')+dl+' min','prima '+(_lastDelayNotif>0?'+':'')+_lastDelayNotif+' min');_lastDelayNotif=dl;}
 }catch(e){}},30000);window.setTeamView=setTeamView;window.setTeamColor=setTeamColor;
@@ -5512,7 +5520,7 @@ function renderRiskList(){
           :x.status==='safe'?(x.left?(x.need>=Math.ceil(x.n/2)+2?'In finale anche arrivando ultimo (stima)':'In finale se arriva almeno P'+x.need+(many?' di media':'')+' (stima)'):'In finale (stima)')
           :'Rischia la <b>FINALE</b>: deve arrivare almeno <b>P'+x.need+'</b> '+(many?'di media nelle '+x.left+' gare che mancano':nx.art);
         const _pp=pilots.find(p=>String(p.num)===String(x.num));const _pg=_pp?pfOf(_pp):'';
-        const sub=(_pg?'<span style="color:#22c55e;font-weight:800">In prefinale '+_pg+' (ufficiale)</span> · ':'')+(x.left?'Manca: '+riskLeftTxt(x)+(nx.when?' · prossima '+nx.label+' '+nx.when:''):'Gare finite')+' · '+x.pts+' punti';
+        const sub=(_pg?'<span style="color:#22c55e;font-weight:800">In prefinale '+_pg+' (ufficiale)</span> · ':'')+(x.left?'Manca: '+riskLeftTxt(x)+(nx.when?' · prossima '+rtEsc(nx.label)+' '+nx.when:''):'Gare finite')+' · '+x.pts+' punti';
         const _rp=riskPct(x);
         return'<div class="card-inner al-row" style="border-left:4px solid '+riskColor(_rp)+'"><div class="al-time" style="font-size:18px;font-weight:900">'+x.rank+'°</div><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900">#'+esc(x.num)+' '+esc(x.name)+'</div><div style="font-size:13px;color:var(--text2);margin-top:2px">'+t+'</div><div style="font-size:11px;color:var(--text4);margin-top:2px">'+sub+'</div></div>'+riskRing(_rp)+'</div>';}).join('');
     }).join('')+riskSafeBlock(d,esc);
@@ -5542,7 +5550,10 @@ function renderAlertLog(){
   if(alertFilter==='risk'){h.push(renderRiskTab());box.innerHTML=h.join('');return;}
   h.push('<div style="font-size:13px;font-weight:600;color:var(--text3);background:var(--bg3);border-radius:10px;padding:9px 12px;margin-bottom:10px">Gli avvisi sono provvisori: verifica eventuali reclami.</div>');
   if(!log.length)h.push('<div style="font-size:13px;color:var(--text4);padding:8px 0">Nessun avviso</div>');
-  log.forEach(a=>{const c={quali:'#facc15',final:'#22c55e',elim:'#ef4444',race:'#60a5fa'}[alertType(a)];const sub=cleanSub(a.sub);
+  /* 27/11/2026 (revisione-2): titolo e testo degli avvisi (anche quelli scritti dal server in alertsLog, con nomi e numeri
+     dal live) mostrati come testo: resta solo l'HTML delle icone <i class="ic ic-..."></i>. Prima erano HTML grezzo. */
+  const safe=x=>rtEsc(x).replace(/&lt;i class=&quot;(ic(?: ic-[\w-]+)*)&quot;&gt;&lt;\/i&gt;/g,'<i class="$1"></i>');
+  log.forEach(a=>{const c={quali:'#facc15',final:'#22c55e',elim:'#ef4444',race:'#60a5fa'}[alertType(a)];const sub=safe(cleanSub(a.sub));a={...a,title:safe(a.title)};
     h.push(`<div class="card-inner al-row" style="border-left:4px solid ${c}"><div class="al-time">${a.hm||''}</div><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:900;line-height:1.3">${a.title}</div>${sub?`<div style="font-size:12px;color:var(--text4);margin-top:4px">${sub}</div>`:''}</div></div>`);});
   box.innerHTML=h.join('');
 }
@@ -5597,7 +5608,7 @@ function ltNameOf(no){const p=pilots.find(x=>String(x.num)===String(no));return 
 function ltXSpan(r){return'<span class="lt-x'+(r&&r.t==='so'?' so':'')+'"><i class="ic ic-close"></i></span>';}
 function ltRetOf(no,sk){return ltRet[(sk||(apexState.cat+'|'+apexState.sess))+'|'+no]||null;}
 function ltRetAlert(no,t){try{if(!ltMineNums().has(String(no)))return;if(String(apexWsKey).split(':')[0]!==apexLiveName())return; /* live di un'altra gara: nessun avviso */const sk=apexState.cat+'|'+apexState.sess;
-  rtAlert('ritiri|'+activeRaceId+'|'+sk+'|'+no,'<i class="ic ic-redflag"></i> #'+rtEsc(no)+' '+ltNameOf(no)+' '+(ltIsRace()?'USCITO':(t==='ss'?'FERMO IN PISTA':'AI BOX')),apexState.cat+' · '+apexState.sess);}catch(e){}}
+  rtAlert('ritiri|'+activeRaceId+'|'+sk+'|'+no,'<i class="ic ic-redflag"></i> #'+no+' '+ltNameOf(no)+' '+(ltIsRace()?'USCITO':(t==='ss'?'FERMO IN PISTA':'AI BOX')),apexState.cat+' · '+apexState.sess);}catch(e){}}
 function ltRetBadge(r){if(!r)return'';const race=r.race!==undefined?r.race:ltIsRace();
   if(race||r.t==='so')return''; // 14/11/2026: in gara basta la croce rossa nella posizione, niente pillola USCITO
   const tx=race?'':(r.t==='ss'?'<i class="ic ic-redflag"></i> FERMO IN PISTA':'AI BOX');
@@ -5646,7 +5657,7 @@ function renderLtFull(){
     const m=ltFullMv[k];const mv=m&&m.t>now?m.d:0;
     const nm=mine?((pilots.find(x=>String(x.num)===no)||{}).name||txt(r,C('dr','5'))):txt(r,C('dr','5'));
     const tm=((pilots.find(x=>String(x.num)===no)||{}).team)||((currentEntryList[no]||{}).team)||'';
-    out.push('<div class="ltf-row'+(mine?' mine':'')+(mv>0?' up':mv<0?' down':'')+'" data-no="'+no+'"><span class="p">'+(ltRetOf(no)?ltXSpan(ltRetOf(no)):(pos<999?pos:'–'))+'</span><span class="n">'+no+'</span><span class="d">'+String(nm).replace(/</g,'&lt;')+ltRetBadge(ltRetOf(no))+'<small>'+String(tm).replace(/</g,'&lt;')+'</small></span>'+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>');
+    out.push('<div class="ltf-row'+(mine?' mine':'')+(mv>0?' up':mv<0?' down':'')+'" data-no="'+rtEsc(no)+'"><span class="p">'+(ltRetOf(no)?ltXSpan(ltRetOf(no)):(pos<999?pos:'–'))+'</span><span class="n">'+rtEsc(no)+'</span><span class="d">'+String(nm).replace(/</g,'&lt;')+ltRetBadge(ltRetOf(no))+'<small>'+String(tm).replace(/</g,'&lt;')+'</small></span>'+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>');
   });
   const list=el.querySelector('.ltf-list');const ltfFlip=ltCapture(list,sk+'|'+(window.innerWidth>window.innerHeight?'L':'P'));list.innerHTML=out.join('');
   // Tutta la classifica in uno schermo: altezza riga e caratteri calcolati sul numero di piloti
@@ -5692,7 +5703,7 @@ function renderLtNext(){
     +' <span style="color:var(--text)">· ore '+hh+':'+mm+(d?' (ritardo '+d+'′)':'')+'</span> <span style="color:var(--text4)">· '+mine.length+' tuoi'+(N.src==='live'?' · annunciato dal live':'')+'</span></div>'+remLine(sl);
   if(!mine.length)return head+'<div class="empty-state"><p>Nessun tuo pilota nel prossimo turno.</p></div>';
   return head+mine.map(({p,ft})=>{const no=String(p.num),gp=gridPos(no,sl),isMine=!ft,ent=currentEntryList[no]||{};const nt=String((notes&&notes[no])||'').trim();
-    return'<div class="ltbig '+(isMine?hlOfNum(no):hlClassOf(ft.highlight||[])+' tglow')+'"'+(ft?' style="--tc:'+teamColor(ft.key)+'"':'')+' data-no="'+esc(no)+'" onclick="openPilotDetail(\''+esc(no)+'\')">'
+    return'<div class="ltbig '+(isMine?hlOfNum(no):hlClassOf(ft.highlight||[])+' tglow')+'"'+(ft?' style="--tc:'+teamColor(ft.key)+'"':'')+' data-no="'+esc(no)+'" onclick="openPilotDetail('+rtJsArg(no)+')">'
       +'<div class="pos">'+(gp?'<span style="font-size:.55em;opacity:.7">P</span>'+gp:'–')+'</div>'
       +'<div style="flex:1;min-width:0"><div><span class="num">#'+esc(no)+'</span>'+riskTri(no)+' <span class="nm">'+esc(p.name||ent.lastName||'')+'</span><span onclick="event.stopPropagation()" style="float:right">'+noteBtn(no)+'</span></div>'
       +'<div class="tm">'+esc(p.team||ent.team||'')+'</div>'
@@ -5759,7 +5770,7 @@ function renderLtLast(){
       const pl=pilots.find(p=>String(p.num)===x.no)||{};const ent=(currentEntryList&&currentEntryList[x.no])||{};
       const nt=String((notes&&notes[x.no])||'').trim();
       const mine=pilots.some(p=>String(p.num)===x.no);const ft=mine?null:followedTeamOf(x.no,ent.team);
-      return'<div class="ltbig '+(mine?hlOfNum(x.no):ft?hlClassOf(ft.highlight||[])+' tglow':'')+'"'+(ft?' style="--tc:'+teamColor(ft.key)+'"':'')+' data-no="'+esc(x.no)+'" onclick="openPilotDetail(\''+esc(x.no)+'\')">'
+      return'<div class="ltbig '+(mine?hlOfNum(x.no):ft?hlClassOf(ft.highlight||[])+' tglow':'')+'"'+(ft?' style="--tc:'+teamColor(ft.key)+'"':'')+' data-no="'+esc(x.no)+'" onclick="openPilotDetail('+rtJsArg(x.no)+')">'
         +'<div class="pos">'+(x.ret?ltXSpan(x.ret):(x.pos<999?x.pos:'–'))+'</div>'
         +'<div style="flex:1;min-width:0"><div><span class="num">#'+esc(x.no)+'</span>'+riskTri(x.no)+' <span class="nm">'+esc(pl.name||x.dr)+'</span>'+ltRetBadge(x.ret)+'<span onclick="event.stopPropagation()" style="float:right">'+noteBtn(x.no)+'</span></div>'
         +'<div class="tm">'+esc(pl.team||ent.team||'')+(x.gap?' · '+esc(x.gap):'')+(x.blp?' · best '+esc(x.blp):'')+'</div>'
@@ -5965,8 +5976,8 @@ function renderLtMyTable(){
       const hc=tm?(ft?hlClassOf(ft.highlight||[]):''):hlOfNum(no);
       return'<div class="ltbig '+hc+(tm&&!ft?' team':'')+(ft?' tglow':'')+(rt?' ret':'')+(mv>0?' up':mv<0?' down':'')+'"'+(ft?' style="--tc:'+teamColor(ft.key)+'"':'')+' data-no="'+rtEsc(no)+'"'+(as?' onclick="openPilotDetail('+rtJsArg(no)+')"':'')+'>'
         +'<div class="pos">'+(rt?ltXSpan(rt):(txt(r,C('rk','3'))||'–'))+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>'
-        +'<div style="flex:1;min-width:0"><div><span class="num">#'+rtEsc(no)+'</span>'+(as?riskTri(no):'')+' <span class="nm">'+nm+'</span>'+ltRetBadge(rt)+(as?'<span onclick="event.stopPropagation()" style="float:right">'+noteBtn(no)+'</span>':'')+'</div>'
-        +'<div class="tm">'+team+'</div>'
+        +'<div style="flex:1;min-width:0"><div><span class="num">#'+rtEsc(no)+'</span>'+(as?riskTri(no):'')+' <span class="nm">'+rtEsc(nm)+'</span>'+ltRetBadge(rt)+(as?'<span onclick="event.stopPropagation()" style="float:right">'+noteBtn(no)+'</span>':'')+'</div>'
+        +'<div class="tm">'+rtEsc(team)+'</div>'
         +(nt?'<div class="note-txt" style="margin-top:2px"><i class="ic ic-note"></i> '+nt.replace(/</g,'&lt;')+'</div>':'')
         +(!tm?'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+TASKS.map(t=>taskBtn(no,t,true)).join('')+spotPill(no)+'</div>'
           :ft?'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+TASKS.map(k=>teamPilotTaskBtn(no,k)).join('')+spotPill(no)+'</div>':'')+'</div></div>';
@@ -5981,7 +5992,7 @@ function renderLtMyTable(){
       // 20/11/2026 (Andrea): piloti dei team seguiti = riga come i tuoi, con il colore del team a sinistra e sopra/sotto
       const ftr=tm?followedTeamOf(no,((currentEntryList||{})[no]||{}).team):null;
       return'<tr data-no="'+rtEsc(no)+'" class="'+(mine?'mine '+hlOfNum(no):ftr?'mine tglow':tm?'team':'')+'"'+(ftr?' style="--tc:'+teamColor(ftr.key)+'"':'')+(mine||ftr?' onclick="openPilotDetail('+rtJsArg(no)+')"':'')+'>'
-        +'<td>'+(ltRetOf(no)?ltXSpan(ltRetOf(no)):txt(r,C('rk','3')))+'</td><td class="n">'+no+(mine?riskTri(no):'')+'</td><td class="d">'+txt(r,C('dr','5'))+ltRetBadge(ltRetOf(no))+'</td><td class="d" style="color:var(--text3)">'+(((pilots.find(x=>String(x.num)===no)||{}).team)||((currentEntryList&&currentEntryList[no])||{}).team||'')+'</td></tr>'
+        +'<td>'+(ltRetOf(no)?ltXSpan(ltRetOf(no)):txt(r,C('rk','3')))+'</td><td class="n">'+rtEsc(no)+(mine?riskTri(no):'')+'</td><td class="d">'+txt(r,C('dr','5'))+ltRetBadge(ltRetOf(no))+'</td><td class="d" style="color:var(--text3)">'+(((pilots.find(x=>String(x.num)===no)||{}).team)||((currentEntryList&&currentEntryList[no])||{}).team||'')+'</td></tr>'
         +(mine&&String((notes&&notes[no])||'').trim()?'<tr class="mine"><td></td><td colspan="6" class="note-txt" style="white-space:normal"><i class="ic ic-note"></i> '+String(notes[no]).replace(/</g,'&lt;')+'</td></tr>':'');
     }).join('')+'</table>'
     +'<div style="font-size:11px;color:var(--text4);margin-top:6px">Evidenziati i tuoi piloti · tocca un tuo pilota per la scheda</div>';
@@ -6018,7 +6029,7 @@ function apexParse(txt){
           apexFinished='';clearTimeout(apexEvalT);apexState.red='';
           // 27/11/2026 (revisione): partenza non recente (fotografia vecchia del live, es. finale KZ2 di R2 vista il 24/11): niente avviso ne' arrivi
           {const fm=slotMins(first.replace(':','.')),nm=apexNowMinTz();apexState.startOld=!(fm<=nm+1&&fm>=nm-30);}
-          if(!apexState.startOld)try{const mine=[...ltGridNums(apexGrid)].filter(n=>ltMineNums().has(n));if(mine.length)rtAlert('partenza|'+activeRaceId+'|'+ltCurLabel+'|'+first,'<i class="ic ic-flag"></i> PARTITA '+apexState.cat+' · '+apexState.sess,'alle '+first+' · in pista: '+mine.map(n=>'#'+rtEsc(n)+' '+ltNameOf(n)).join(', '));}catch(e){}}
+          if(!apexState.startOld)try{const mine=[...ltGridNums(apexGrid)].filter(n=>ltMineNums().has(n));if(mine.length)rtAlert('partenza|'+activeRaceId+'|'+ltCurLabel+'|'+first,'<i class="ic ic-flag"></i> PARTITA '+apexState.cat+' · '+apexState.sess,'alle '+first+' · in pista: '+mine.map(n=>'#'+n+' '+ltNameOf(n)).join(', '));}catch(e){}}
       }
       const fins=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*><\/span>\s*FINISH/gi)].map(x=>x[1]).filter(t=>apexState.start&&slotMins(t.replace(':','.'))>=slotMins(apexState.start.replace(':','.')));   // 27/11 (revisione): solo dopo la partenza
       if(fins.length&&apexState.start&&!apexFinished){
@@ -6034,7 +6045,7 @@ function apexParse(txt){
           const fin=fins.length?Math.min(...fins.map(f=>slotMins(f.replace(':','.')))):Infinity;return tm>=st&&tm<fin;});
       const lastRed=reds.length?reds.sort((a,b)=>slotMins(b.replace(':','.'))-slotMins(a.replace(':','.')))[0]:'';
       if(apexState.red!==lastRed){apexState.red=lastRed;changed=true;
-        try{if(lastRed&&!apexState.startOld){const mine=[...ltGridNums(apexGrid)].filter(n=>ltMineNums().has(n));if(mine.length)rtAlert('rossa|'+activeRaceId+'|'+apexState.cat+'|'+apexState.sess+'|'+lastRed,'<i class="ic ic-redflag"></i> BANDIERA ROSSA '+apexState.cat,apexState.sess+' · in pista: '+mine.map(n=>'#'+rtEsc(n)).join(' '));}}catch(e){}}
+        try{if(lastRed&&!apexState.startOld){const mine=[...ltGridNums(apexGrid)].filter(n=>ltMineNums().has(n));if(mine.length)rtAlert('rossa|'+activeRaceId+'|'+apexState.cat+'|'+apexState.sess+'|'+lastRed,'<i class="ic ic-redflag"></i> BANDIERA ROSSA '+apexState.cat,apexState.sess+' · in pista: '+mine.map(n=>'#'+n).join(' '));}}catch(e){}}
     }
   });
   if(changed){apexState.at=Date.now();renderApexDelay();try{renderLtMyNums();if(activeTab==='programma')renderSchedule();}catch(e){}}
@@ -6144,7 +6155,7 @@ function renderApexDelay(){
   const m=apexMatchSlot();
   box.style.display='';
   const head='<div style="font-size:11px;font-weight:800;color:var(--text3);padding:8px 10px;border:1px solid var(--border2);border-radius:10px;background:var(--bg2)">'
-    +'<i class="ic ic-signal"></i> LIVE: '+apexState.cat+' · '+apexState.sess+(apexState.start?' · partita '+apexState.start:'')
+    +'<i class="ic ic-signal"></i> LIVE: '+rtEsc(apexState.cat)+' · '+rtEsc(apexState.sess)+(apexState.start?' · partita '+apexState.start:'')
     +(apexState.red?'<div style="color:#f87171;margin-top:4px"><i class="ic ic-redflag"></i> Bandiera rossa alle '+apexState.red+': le prossime sessioni probabilmente slittano</div>':'');
   if(!m||m.delay===null){box.innerHTML=head+'<div style="color:var(--text4);margin-top:4px">'+(m?'In attesa della partenza':'Sessione non trovata nel programma di oggi')+'</div></div>';return;}
   const d=m.delay;const lbl=(d>0?'+':'')+d+' min';
@@ -6240,9 +6251,9 @@ function filterProgramma(q){
       +'<div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="openPilotDetail('+rtJsArg(m.num)+')">'
       +'<span class="sr-num" style="'+(m.isMine?'color:#22c55e':'')+'">#'+rtEsc(m.num)+'</span>'
       +'<div style="flex:1;min-width:0">'
-      +'<div class="sr-name">'+m.name+(m.isMine?' <span style="font-size:10px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i></span>':'')+(m.eliminated?' <span style="font-size:9px;color:#ef4444">ELIM</span>':'')+'</div>'
-      +'<div style="font-size:13px;font-weight:800;color:var(--text2)">'+m.team+'</div></div>'
-      +'<span class="sr-cat '+catClass(m.cat)+'" style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800">'+m.cat+'</span></div>'
+      +'<div class="sr-name">'+rtEsc(m.name)+(m.isMine?' <span style="font-size:10px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i></span>':'')+(m.eliminated?' <span style="font-size:9px;color:#ef4444">ELIM</span>':'')+'</div>'
+      +'<div style="font-size:13px;font-weight:800;color:var(--text2)">'+rtEsc(m.team)+'</div></div>'
+      +'<span class="sr-cat '+catClass(m.cat)+'" style="padding:2px 7px;border-radius:6px;font-size:10px;font-weight:800">'+rtEsc(m.cat)+'</span></div>'
       +'<div style="margin-top:8px;font-size:12px;font-weight:800;color:var(--text2)">'
       +(turni.length?turni.map(sl=>'<span style="display:inline-block;margin:0 6px 4px 0;padding:3px 8px;border-radius:8px;border:1px solid var(--border2)"><b style="color:#fbbf24">'+sl.time+'</b> '+(sl.session?sl.session+' · ':'')+slotFilterLabel(sl)+'</span>').join(''):'<span style="color:var(--text4)">Nessun turno oggi</span>')
       +'</div>'
@@ -6292,12 +6303,12 @@ function renderPista(){
   if(pistaView==='pilota'){
     el.innerHTML=pilots.map(p=>'<div class="card '+hlClassOf(p.highlight)+'">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
-      +'<span class="pilot-num">#'+rtEsc(p.num)+'</span>'+riskTri(p.num)+'<span class="pilot-name">'+p.name+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)
-      +'<span class="pilot-cat '+catClass(p.cat)+'" style="margin-left:auto">'+p.cat+'</span>'+noteBtn(p.num)+'</div>'
+      +'<span class="pilot-num">#'+rtEsc(p.num)+'</span>'+riskTri(p.num)+'<span class="pilot-name">'+rtEsc(p.name)+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)
+      +'<span class="pilot-cat '+catClass(p.cat)+'" style="margin-left:auto">'+rtEsc(p.cat)+'</span>'+noteBtn(p.num)+'</div>'
       +noteLine(p.num)
       +'<div class="track-grid">'+trackSections.map(s=>{
         const st=trackStatus[p.num]?.[s]||'none';
-        return'<button class="track-btn '+(st==='none'?'':st)+'" onclick="toggleTrack(\''+p.num+"','"+s+"')\">"+s+'</button>';
+        return'<button class="track-btn '+(st==='none'?'':st)+'" onclick="toggleTrack('+rtJsArg(p.num)+','+rtJsArg(s)+')">'+rtEsc(s)+'</button>';
       }).join('')+'</div></div>').join('');
   } else {
     el.innerHTML=trackSections.map(s=>{
@@ -6306,7 +6317,7 @@ function renderPista(){
         +' <span style="font-size:11px;color:var(--text4);font-weight:600">'+covered.length+'/'+pilots.length+'</span></div>'
         +'<div class="track-session-grid">'+pilots.map(p=>{
           const st=trackStatus[p.num]?.[s]||'none';
-          return'<button class="track-pilot-btn '+(st==='none'?'':st)+'" onclick="toggleTrack(\''+p.num+"','"+s+"')\">#"+p.num+'</button>';
+          return'<button class="track-pilot-btn '+(st==='none'?'':st)+'" onclick="toggleTrack('+rtJsArg(p.num)+','+rtJsArg(s)+')">#'+rtEsc(p.num)+'</button>';
         }).join('')+'</div></div>';
     }).join('');
   }
