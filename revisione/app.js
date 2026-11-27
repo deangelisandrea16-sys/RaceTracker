@@ -2933,7 +2933,7 @@ function searchResultItem(m){
   const bd=isMine?(prio?'border:2px solid #f59e0b;background:rgba(245,158,11,.08)':'border-color:#22c55e;background:rgba(34,197,94,.06)'):(ft?'border:2px solid '+tc+';background:rgba(255,255,255,.03)':'');
   const badges=hl.map(h=>'<span class="hl-badge hl-'+h+' hl-mini"><i class="ic ic-hl-'+(h==='priority'?'prio':h)+'"></i></span>').join('');
   return'<div class="search-result-item" style="'+bd+'" onclick="openPilotDetail('+rtJsArg(m.num)+')">'
-    +'<span class="sr-num" style="'+(isMine?'color:#22c55e':ft?'color:'+tc:'')+'">#'+m.num+'</span>'
+    +'<span class="sr-num" style="'+(isMine?'color:#22c55e':ft?'color:'+tc:'')+'">#'+rtEsc(m.num)+'</span>'
     +'<div style="flex:1;min-width:0">'
     +'<div class="sr-name" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span>'+m.name+'</span>'
     +(isMine?'<span style="font-size:10px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i> TUO</span>':'')
@@ -2962,7 +2962,7 @@ function openPilotDetail(num){
   openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button>'
     +'<div class="detail-sheet">'
     +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
-    +'<span style="font-size:28px;font-weight:900">#'+num+'</span>'
+    +'<span style="font-size:28px;font-weight:900">#'+rtEsc(num)+'</span>'
     +(isMine?'<span style="font-size:11px;color:#22c55e;font-weight:800;border:1px solid #22c55e;padding:2px 8px;border-radius:4px"><i class="ic ic-star"></i> TUO PILOTA</span>':'')
     +'</div>'
     +'<div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">'+name+mediaChip({num:num})+'</div>'
@@ -3139,7 +3139,7 @@ function teamTaskBtn(key,task,small){
 }
 /* 20/11/2026 (Andrea): punti di scatto dei piloti del team in pista, uno per pilota */
 function teamSpotsRow(list){if(!venueMap()||!list||!list.length)return'';
-  const it=list.map(p=>{const sp=spotPill(p.num);return sp?'<span class="tsp-item"><span class="inner-num">#'+p.num+'</span>'+sp+'</span>':'';}).filter(Boolean);
+  const it=list.map(p=>{const sp=spotPill(p.num);return sp?'<span class="tsp-item"><span class="inner-num">#'+rtEsc(p.num)+'</span>'+sp+'</span>':'';}).filter(Boolean);
   return it.length?'<div class="tasks tsp-row" style="margin-top:6px;flex-wrap:wrap">'+it.join('')+'</div>':'';}
 function teamsViewHasCards(){try{return teamViewMode()!=='cards';}catch(_){return false;}}
 function teamsSlotHtml(slot){
@@ -3227,7 +3227,7 @@ function renderTeams(){
       +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+cats.map(c=>'<span class="pilot-cat '+catClass(c)+'">'+c+'</span>').join('')+'</div>'
       +'<div style="display:flex;align-items:center;gap:8px;margin-top:3px"><span class="pilot-num"><i class="ic ic-team"></i></span><span class="pilot-name">'+t.name+'</span></div>'
       +'<div class="pilot-team">'+ents.length+' piloti iscritti</div>'
-      +'<div class="team-nums">'+ents.map(p=>'<span class="team-num'+(pilots.some(x=>x.num===p.num)?' mine':'')+'" onclick="openPilotDetail('+rtJsArg(p.num)+')">#'+p.num+'</span>').join('')+'</div>'
+      +'<div class="team-nums">'+ents.map(p=>'<span class="team-num'+(pilots.some(x=>x.num===p.num)?' mine':'')+'" onclick="openPilotDetail('+rtJsArg(p.num)+')">#'+rtEsc(p.num)+'</span>').join('')+'</div>'
       +'</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">'
       +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="removeTeam(\''+escAttr(t.key)+'\')"><i class="ic ic-close"></i> rimuovi</button></div></div>'
       +'<div class="tasks">'+TASKS.map(k=>teamTaskBtn(t.key,k,false)).join('')+'</div>'
@@ -3283,7 +3283,7 @@ function renderOverviewBody(){
       +r.ts.map(({t})=>{const st=(teamStatuses[t.key]||{}).PISTA||'red';return'<span class="ov-t '+st+'" onclick="toggleTeamTask(\''+escAttr(t.key)+'\',\'PISTA\')"><i class="ic ic-team"></i> '+t.name+'</span>';}).join('');
     return pre+'<div class="ov-row'+cls+'"><span class="ov-time">'+r.time+'</span><span class="ov-cat '+catClass(r.cat)+'">'+r.label+'<br><span style="color:var(--text4);font-size:9px">'+r.sub+'</span></span>'
       +'<div class="ov-nums">'+(nums||'<span style="font-size:10px;color:var(--text4)">—</span>')
-      +r.ps.filter(p=>String(notes[p.num]||'').trim()).map(p=>'<div class="note-txt" style="width:100%">#'+p.num+' <i class="ic ic-note"></i> '+String(notes[p.num]).replace(/</g,'&lt;')+'</div>').join('')+'</div></div>';
+      +r.ps.filter(p=>String(notes[p.num]||'').trim()).map(p=>'<div class="note-txt" style="width:100%">#'+rtEsc(p.num)+' <i class="ic ic-note"></i> '+String(notes[p.num]).replace(/</g,'&lt;')+'</div>').join('')+'</div></div>';
   }).join('');
   body.innerHTML=html||'<div class="empty-state"><p>Nessun tuo pilota o team in questa giornata</p></div>';
 }
@@ -3619,7 +3619,7 @@ function buildProgResultsHtml(fakePilots){
     ps.forEach(p=>{
       const isMine=!!pilots.find(x=>x.num===p.num);
       html+='<div class="card-inner" style="'+(isMine?'border-color:#22c55e':'')+'"><div style="display:flex;align-items:center;gap:6px">'
-        +'<span class="inner-num" style="'+(isMine?'color:#22c55e':'')+'">#'+p.num+'</span>'
+        +'<span class="inner-num" style="'+(isMine?'color:#22c55e':'')+'">#'+rtEsc(p.num)+'</span>'
         +'<span class="inner-name">'+p.name+(isMine?' <span style="font-size:9px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i></span>':'')+'</span>'
         +'<span class="inner-team-big">'+p.team+'</span></div>'+noteLine(p.num)+'</div>';
     });
@@ -3740,7 +3740,7 @@ function renderEntryList(){
     members.forEach(p=>{
       const isMine=!!pilots.find(x=>x.num===p.num);
       html+='<div class="entry-item'+(isMine?' is-mine':'')+'" onclick="openPilotDetail('+rtJsArg(p.num)+')">'
-        +'<span class="entry-num" style="'+(isMine?'color:#22c55e':'')+'">#'+p.num+'</span>'
+        +'<span class="entry-num" style="'+(isMine?'color:#22c55e':'')+'">#'+rtEsc(p.num)+'</span>'
         +'<div style="flex:1;min-width:0">'
         +'<div class="entry-name">'+(p.lastName||'')+' '+(p.firstName||'')+(isMine?' <span style="font-size:9px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i> TUO</span>':'')+mediaChip({num:p.num})+'</div>'
         +'<div class="entry-team">'+( p.team||'')+(p.source==='ocr'?' <span title="Letto dal PDF scansionato: verra\' sostituito dai dati ufficiali" style="font-size:9px;font-weight:800;color:#facc15;border:1px dashed #facc15;border-radius:4px;padding:0 5px">DA CONFERMARE</span>':'')+'</div>'+noteLine(p.num)+'</div>'
@@ -3784,7 +3784,7 @@ function renderPilots(){
     +'<div class="pilot-cat '+catClass(p.cat)+'">'+p.cat+(isElim?' <span style="color:#ef4444;font-size:9px">ELIMINATO</span>':'')+'</div>'
     /* 22/11/2026 (Andrea): riga del nome a capo se non ci sta (con reel e contatore la colonna di destra usciva dallo schermo) */
     +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;margin-top:3px">'
-    +'<span class="pilot-num">#'+p.num+'</span>'+riskTri(p.num)
+    +'<span class="pilot-num">#'+rtEsc(p.num)+'</span>'+riskTri(p.num)
     +'<span class="pilot-name">'+p.name+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)+'</div>'
     +'<div class="pilot-team">'+p.team+'</div></div></div>'
     +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px;flex-shrink:0">'
@@ -4289,8 +4289,8 @@ function renderSchedule(){
       +'<span class="slot-label '+catClass(slot.cat)+'">'+slot.label+'</span>'
       +'<span class="slot-type">'+slotFilterLabel(slot)+'</span>'+slotDur(slot)+'</div>'
       +remLine(slot)
-      +(awaiting.length?'<div style="font-size:9px;color:#fbbf24;font-weight:600;margin-top:4px"><i class="ic ic-wait"></i> '+awaiting.map(p=>'#'+p.num).join(' ')+' in attesa</div>':'')
-      +(()=>{const ab=pilotsAbsentSerie(slot);return ab.length?'<div style="font-size:9px;color:#9ca3af;font-weight:600;margin-top:4px"><i class="ic ic-close"></i> '+ab.map(p=>'#'+p.num).join(' ')+' non in gara</div>':'';})()
+      +(awaiting.length?'<div style="font-size:9px;color:#fbbf24;font-weight:600;margin-top:4px"><i class="ic ic-wait"></i> '+awaiting.map(p=>'#'+rtEsc(p.num)).join(' ')+' in attesa</div>':'')
+      +(()=>{const ab=pilotsAbsentSerie(slot);return ab.length?'<div style="font-size:9px;color:#9ca3af;font-weight:600;margin-top:4px"><i class="ic ic-close"></i> '+ab.map(p=>'#'+rtEsc(p.num)).join(' ')+' non in gara</div>':'';})()
       +'<div style="margin-top:8px">';
     const _items=[]; // 15/11 (Andrea): raccolti per poter raggruppare i piloti dello stesso team
     ps.forEach(p=>{
@@ -4361,7 +4361,7 @@ function renderSchedule(){
     if(showEliminati){
       _elim.slice().sort((a,b)=>parseInt(a.num)-parseInt(b.num)).forEach(p=>{
         html+='<div class="card-inner" style="opacity:.55;border-style:dashed;cursor:pointer;margin-top:6px" onclick="openEditPilot('+rtJsArg(p.num)+')"><div style="display:flex;align-items:center;gap:8px">'
-          +'<span class="inner-num" style="color:var(--text4)">#'+p.num+'</span>'
+          +'<span class="inner-num" style="color:var(--text4)">#'+rtEsc(p.num)+'</span>'
           +'<span class="inner-name">'+p.name+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)
           +'<span class="'+catClass(p.cat)+'" style="font-size:9px;font-weight:800;margin-left:auto">'+p.cat+'</span>'
           +'</div>'+noteLine(p.num)+'</div>';
@@ -4452,7 +4452,7 @@ function updateProgTicker(slotsArr,currentIdx){
       +'<b style="color:var(--amber);font-weight:900">'+sl.time+'</b>'
       +'<span style="color:var(--text3);font-weight:700">'+(sl.label||sl.cat)+'</span>'
       +'<span style="color:var(--text4);font-weight:700;font-size:9px">'+when+'</span>'
-      +'<span style="color:var(--text);font-weight:800;font-variant-numeric:tabular-nums">'+mine.map(p=>'#'+p.num).join(' ')+'</span>'
+      +'<span style="color:var(--text);font-weight:800;font-variant-numeric:tabular-nums">'+mine.map(p=>'#'+rtEsc(p.num)).join(' ')+'</span>'
       +'</span>');
   }
   if(!items.length){wrap.style.display='none';if(_tickTimer){clearInterval(_tickTimer);_tickTimer=null;}return;}
@@ -4694,7 +4694,7 @@ function apexEvaluate(why){
     rank.slice(0,3).forEach(([num],i)=>{
       if(!mine.has(num))return;
       const p=mine.get(num);
-      rtAlert('quali|'+cat+'|'+num+'|'+(i+1)+'|'+done,(i===0?'<i class="ic ic-trophy"></i> POLE':'<i class="ic ic-medal"></i> P'+(i+1))+' qualifiche '+cat+': #'+num+' '+p.name,
+      rtAlert('quali|'+cat+'|'+num+'|'+(i+1)+'|'+done,(i===0?'<i class="ic ic-trophy"></i> POLE':'<i class="ic ic-medal"></i> P'+(i+1))+' qualifiche '+cat+': #'+rtEsc(num)+' '+p.name,
         (done>=2?'Classifica combinata S1+S2':'Dopo la serie '+ser+', manca l\'altra serie')+' · PROVVISORIO, verifica reclami',i===0?'gold':'');
     });
     return;
@@ -4704,7 +4704,7 @@ function apexEvaluate(why){
   snap.filter(x=>x.pos<=5).forEach(x=>{
     if(!mine.has(x.num))return;
     const p=mine.get(x.num);
-    rtAlert('res|'+key+'|'+x.num,(isFinal?'<i class="ic ic-flag"></i> FINALE ':'')+'P'+x.pos+' '+cat+' '+apexState.sess+': #'+x.num+' '+p.name,
+    rtAlert('res|'+key+'|'+x.num,(isFinal?'<i class="ic ic-flag"></i> FINALE ':'')+'P'+x.pos+' '+cat+' '+apexState.sess+': #'+rtEsc(x.num)+' '+p.name,
       'PROVVISORIO da live timing, verifica reclami',isFinal?'final':'');
   });
 }
@@ -5083,7 +5083,7 @@ setInterval(()=>{try{
   const now=new Date();const nm=now.getHours()*60+now.getMinutes();const dl=scheduleDelay||0;
   arr.forEach(sl=>{const st=slotMins(sl.time)+dl;const left=st-nm;if(left<1||left>10)return;
     const ps=pilotsForSlot(sl);if(!ps.length)return;
-    rtAlert('prossima|'+activeRaceId+'|'+day+'|'+sl.time+'|'+sl.label+'|'+JSON.stringify(sl.filter||''),'<i class="ic ic-timer"></i> Tra '+left+' min: '+sl.label+' '+(sl.session||''),'ore '+sl.time+(dl?' ('+(dl>0?'+':'')+dl+')':'')+' · '+ps.map(p=>'#'+p.num+' '+p.name).join(', '));});
+    rtAlert('prossima|'+activeRaceId+'|'+day+'|'+sl.time+'|'+sl.label+'|'+JSON.stringify(sl.filter||''),'<i class="ic ic-timer"></i> Tra '+left+' min: '+sl.label+' '+(sl.session||''),'ore '+sl.time+(dl?' ('+(dl>0?'+':'')+dl+')':'')+' · '+ps.map(p=>'#'+rtEsc(p.num)+' '+p.name).join(', '));});
   if(_lastDelayNotif===null)_lastDelayNotif=dl;
   else if(Math.abs(dl-_lastDelayNotif)>=5){rtAlert('ritardo|'+activeRaceId+'|'+day+'|'+dl+'|'+nm,'<i class="ic ic-wait"></i> Ritardo ora '+(dl>0?'+':'')+dl+' min','prima '+(_lastDelayNotif>0?'+':'')+_lastDelayNotif+' min');_lastDelayNotif=dl;}
 }catch(e){}},30000);window.setTeamView=setTeamView;window.setTeamColor=setTeamColor;
@@ -5108,7 +5108,7 @@ function teamsHighlightItems(slot,ps,idx){
   return out;
 }
 function teamsWaitingHtml(slot){
-  return teamsForSlot(slot).map(({t,waiting,absent})=>(waiting.length?'<div style="font-size:10px;font-weight:800;margin:4px 0 8px;color:'+teamColor(t.key)+'"><i class="ic ic-wait"></i> '+String(t.name).replace(/</g,'&lt;')+': '+waiting.length+' in attesa</div>':'')+(absent&&absent.length?'<div style="font-size:10px;font-weight:700;margin:0 0 8px;color:#9ca3af"><i class="ic ic-close"></i> '+String(t.name).replace(/</g,'&lt;')+': '+absent.map(p=>'#'+p.num).join(' ')+' non in gara</div>':'')).join('');
+  return teamsForSlot(slot).map(({t,waiting,absent})=>(waiting.length?'<div style="font-size:10px;font-weight:800;margin:4px 0 8px;color:'+teamColor(t.key)+'"><i class="ic ic-wait"></i> '+String(t.name).replace(/</g,'&lt;')+': '+waiting.length+' in attesa</div>':'')+(absent&&absent.length?'<div style="font-size:10px;font-weight:700;margin:0 0 8px;color:#9ca3af"><i class="ic ic-close"></i> '+String(t.name).replace(/</g,'&lt;')+': '+absent.map(p=>'#'+rtEsc(p.num)).join(' ')+' non in gara</div>':'')).join('');
 }
 /* 15/11/2026 (Andrea): 2 o piu' piloti dello stesso team seguito nello stesso turno = un riquadro unico in alto, senza linee in mezzo.
    Tutto il resto in ordine di numero. */
@@ -5128,12 +5128,12 @@ function teamsHighlightHtml(slot,ps){
   return teamsForSlot(slot).map(({t,inSlot,waiting,absent})=>{
     const c=teamColor(t.key);
     return inSlot.filter(p=>!mine.has(String(p.num))).map(p=>'<div class="card-inner tglow" style="--tc:'+c+'"><div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">'
-      +'<span class="inner-num">#'+p.num+'</span>'+gridBadge(p.num,slot)+'<span class="inner-name">'+String(p.name).replace(/</g,'&lt;')+'</span>'
+      +'<span class="inner-num">#'+rtEsc(p.num)+'</span>'+gridBadge(p.num,slot)+'<span class="inner-name">'+String(p.name).replace(/</g,'&lt;')+'</span>'
       +'<span class="tchip" style="--tc:'+c+'">'+String(t.name).replace(/</g,'&lt;')+'</span>'+noteBtn(p.num)+'</div>'
       +'<div class="tasks">'+TASKS.map(k=>teamPilotTaskBtn(p.num,k)).join('')+spotPill(p.num)+'</div>'
       +(teamNotes[t.key]?'<div class="note-txt" style="margin-top:6px"><i class="ic ic-note"></i> '+teamNotes[t.key]+'</div>':'')+noteLine(p.num)+'</div>').join('')
       +(waiting.length?'<div style="font-size:10px;font-weight:800;margin:4px 0 8px;color:'+c+'"><i class="ic ic-wait"></i> '+String(t.name).replace(/</g,'&lt;')+': '+waiting.length+' in attesa</div>':'')
-      +(absent&&absent.length?'<div style="font-size:10px;font-weight:700;margin:0 0 8px;color:#9ca3af"><i class="ic ic-close"></i> '+String(t.name).replace(/</g,'&lt;')+': '+absent.map(p=>'#'+p.num).join(' ')+' non in gara</div>':'');
+      +(absent&&absent.length?'<div style="font-size:10px;font-weight:700;margin:0 0 8px;color:#9ca3af"><i class="ic ic-close"></i> '+String(t.name).replace(/</g,'&lt;')+': '+absent.map(p=>'#'+rtEsc(p.num)).join(' ')+' non in gara</div>':'');
   }).join('');
 }
 setTimeout(watchNotifPrefs,3000);
@@ -5544,7 +5544,7 @@ function ltNameOf(no){const p=pilots.find(x=>String(x.num)===String(no));return 
 function ltXSpan(r){return'<span class="lt-x'+(r&&r.t==='so'?' so':'')+'"><i class="ic ic-close"></i></span>';}
 function ltRetOf(no,sk){return ltRet[(sk||(apexState.cat+'|'+apexState.sess))+'|'+no]||null;}
 function ltRetAlert(no,t){try{if(!ltMineNums().has(String(no)))return;if(String(apexWsKey).split(':')[0]!==apexLiveName())return; /* live di un'altra gara: nessun avviso */const sk=apexState.cat+'|'+apexState.sess;
-  rtAlert('ritiri|'+activeRaceId+'|'+sk+'|'+no,'<i class="ic ic-redflag"></i> #'+no+' '+ltNameOf(no)+' '+(ltIsRace()?'USCITO':(t==='ss'?'FERMO IN PISTA':'AI BOX')),apexState.cat+' · '+apexState.sess);}catch(e){}}
+  rtAlert('ritiri|'+activeRaceId+'|'+sk+'|'+no,'<i class="ic ic-redflag"></i> #'+rtEsc(no)+' '+ltNameOf(no)+' '+(ltIsRace()?'USCITO':(t==='ss'?'FERMO IN PISTA':'AI BOX')),apexState.cat+' · '+apexState.sess);}catch(e){}}
 function ltRetBadge(r){if(!r)return'';const race=r.race!==undefined?r.race:ltIsRace();
   if(race||r.t==='so')return''; // 14/11/2026: in gara basta la croce rossa nella posizione, niente pillola USCITO
   const tx=race?'':(r.t==='ss'?'<i class="ic ic-redflag"></i> FERMO IN PISTA':'AI BOX');
@@ -5912,7 +5912,7 @@ function renderLtMyTable(){
       const hc=tm?(ft?hlClassOf(ft.highlight||[]):''):hlOfNum(no);
       return'<div class="ltbig '+hc+(tm&&!ft?' team':'')+(ft?' tglow':'')+(rt?' ret':'')+(mv>0?' up':mv<0?' down':'')+'"'+(ft?' style="--tc:'+teamColor(ft.key)+'"':'')+' data-no="'+rtEsc(no)+'"'+(as?' onclick="openPilotDetail('+rtJsArg(no)+')"':'')+'>'
         +'<div class="pos">'+(rt?ltXSpan(rt):(txt(r,C('rk','3'))||'–'))+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>'
-        +'<div style="flex:1;min-width:0"><div><span class="num">#'+no+'</span>'+(as?riskTri(no):'')+' <span class="nm">'+nm+'</span>'+ltRetBadge(rt)+(as?'<span onclick="event.stopPropagation()" style="float:right">'+noteBtn(no)+'</span>':'')+'</div>'
+        +'<div style="flex:1;min-width:0"><div><span class="num">#'+rtEsc(no)+'</span>'+(as?riskTri(no):'')+' <span class="nm">'+nm+'</span>'+ltRetBadge(rt)+(as?'<span onclick="event.stopPropagation()" style="float:right">'+noteBtn(no)+'</span>':'')+'</div>'
         +'<div class="tm">'+team+'</div>'
         +(nt?'<div class="note-txt" style="margin-top:2px"><i class="ic ic-note"></i> '+nt.replace(/</g,'&lt;')+'</div>':'')
         +(!tm?'<div class="tasks lt-tasks" onclick="event.stopPropagation()">'+TASKS.map(t=>taskBtn(no,t,true)).join('')+spotPill(no)+'</div>'
@@ -5965,7 +5965,7 @@ function apexParse(txt){
           apexFinished='';clearTimeout(apexEvalT);apexState.red='';
           // 27/11/2026 (revisione): partenza non recente (fotografia vecchia del live, es. finale KZ2 di R2 vista il 24/11): niente avviso ne' arrivi
           {const fm=slotMins(first.replace(':','.')),nm=apexNowMinTz();apexState.startOld=!(fm<=nm+1&&fm>=nm-30);}
-          if(!apexState.startOld)try{const mine=[...ltGridNums(apexGrid)].filter(n=>ltMineNums().has(n));if(mine.length)rtAlert('partenza|'+activeRaceId+'|'+ltCurLabel+'|'+first,'<i class="ic ic-flag"></i> PARTITA '+apexState.cat+' · '+apexState.sess,'alle '+first+' · in pista: '+mine.map(n=>'#'+n+' '+ltNameOf(n)).join(', '));}catch(e){}}
+          if(!apexState.startOld)try{const mine=[...ltGridNums(apexGrid)].filter(n=>ltMineNums().has(n));if(mine.length)rtAlert('partenza|'+activeRaceId+'|'+ltCurLabel+'|'+first,'<i class="ic ic-flag"></i> PARTITA '+apexState.cat+' · '+apexState.sess,'alle '+first+' · in pista: '+mine.map(n=>'#'+rtEsc(n)+' '+ltNameOf(n)).join(', '));}catch(e){}}
       }
       const fins=[...v.matchAll(/<b>(\d{1,2}:\d{2})<\/b>\s*<span[^>]*><\/span>\s*FINISH/gi)].map(x=>x[1]).filter(t=>apexState.start&&slotMins(t.replace(':','.'))>=slotMins(apexState.start.replace(':','.')));   // 27/11 (revisione): solo dopo la partenza
       if(fins.length&&apexState.start&&!apexFinished){
@@ -5981,7 +5981,7 @@ function apexParse(txt){
           const fin=fins.length?Math.min(...fins.map(f=>slotMins(f.replace(':','.')))):Infinity;return tm>=st&&tm<fin;});
       const lastRed=reds.length?reds.sort((a,b)=>slotMins(b.replace(':','.'))-slotMins(a.replace(':','.')))[0]:'';
       if(apexState.red!==lastRed){apexState.red=lastRed;changed=true;
-        try{if(lastRed&&!apexState.startOld){const mine=[...ltGridNums(apexGrid)].filter(n=>ltMineNums().has(n));if(mine.length)rtAlert('rossa|'+activeRaceId+'|'+apexState.cat+'|'+apexState.sess+'|'+lastRed,'<i class="ic ic-redflag"></i> BANDIERA ROSSA '+apexState.cat,apexState.sess+' · in pista: '+mine.map(n=>'#'+n).join(' '));}}catch(e){}}
+        try{if(lastRed&&!apexState.startOld){const mine=[...ltGridNums(apexGrid)].filter(n=>ltMineNums().has(n));if(mine.length)rtAlert('rossa|'+activeRaceId+'|'+apexState.cat+'|'+apexState.sess+'|'+lastRed,'<i class="ic ic-redflag"></i> BANDIERA ROSSA '+apexState.cat,apexState.sess+' · in pista: '+mine.map(n=>'#'+rtEsc(n)).join(' '));}}catch(e){}}
     }
   });
   if(changed){apexState.at=Date.now();renderApexDelay();try{renderLtMyNums();if(activeTab==='programma')renderSchedule();}catch(e){}}
@@ -6185,7 +6185,7 @@ function filterProgramma(q){
     const turni=_slots.filter(sl=>sl&&sl.cat&&_progSlotMatch(subj,sl));
     html+='<div class="search-result-item" style="flex-direction:column;align-items:stretch;'+(m.isMine?'border-color:#22c55e;background:rgba(34,197,94,.06)':'')+'">'
       +'<div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="openPilotDetail('+rtJsArg(m.num)+')">'
-      +'<span class="sr-num" style="'+(m.isMine?'color:#22c55e':'')+'">#'+m.num+'</span>'
+      +'<span class="sr-num" style="'+(m.isMine?'color:#22c55e':'')+'">#'+rtEsc(m.num)+'</span>'
       +'<div style="flex:1;min-width:0">'
       +'<div class="sr-name">'+m.name+(m.isMine?' <span style="font-size:10px;color:#22c55e;font-weight:800"><i class="ic ic-star"></i></span>':'')+(m.eliminated?' <span style="font-size:9px;color:#ef4444">ELIM</span>':'')+'</div>'
       +'<div style="font-size:13px;font-weight:800;color:var(--text2)">'+m.team+'</div></div>'
@@ -6239,7 +6239,7 @@ function renderPista(){
   if(pistaView==='pilota'){
     el.innerHTML=pilots.map(p=>'<div class="card '+hlClassOf(p.highlight)+'">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
-      +'<span class="pilot-num">#'+p.num+'</span>'+riskTri(p.num)+'<span class="pilot-name">'+p.name+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)
+      +'<span class="pilot-num">#'+rtEsc(p.num)+'</span>'+riskTri(p.num)+'<span class="pilot-name">'+p.name+'</span>'+reelChip(p)+fotoChips(p)+persChip(p)
       +'<span class="pilot-cat '+catClass(p.cat)+'" style="margin-left:auto">'+p.cat+'</span>'+noteBtn(p.num)+'</div>'
       +noteLine(p.num)
       +'<div class="track-grid">'+trackSections.map(s=>{
@@ -6501,7 +6501,7 @@ function previewFromNum(val){
     _entryPreview={num,...entry};
     document.getElementById('f-preview-content').innerHTML=
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
-      +'<span style="font-size:22px;font-weight:900">#'+num+'</span>'
+      +'<span style="font-size:22px;font-weight:900">#'+rtEsc(num)+'</span>'
       +'<span style="font-size:16px;font-weight:800">'+(entry.lastName||'')+' '+(entry.firstName||'')+'</span></div>'
       +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
       +'<span class="'+catClass(entry.cat)+'" style="font-size:11px;padding:2px 8px;border-radius:6px;font-weight:800">'+(entry.cat||'')+'</span>'
@@ -6660,7 +6660,7 @@ function renderSpots(){
   const h=[];
   h.push('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button>');
   h.push('<button class="sp-trash'+(_spTrash?' on':'')+'" onclick="spotsToggleTrash()" aria-label="Modalità cestino: elimina punti" aria-pressed="'+_spTrash+'"><i class="ic ic-trash"></i></button>');
-  h.push('<div class="modal-title">#'+p.num+' '+escapeHtmlSp(p.name||'')+'</div>');
+  h.push('<div class="modal-title">#'+rtEsc(p.num)+' '+escapeHtmlSp(p.name||'')+'</div>');
   h.push('<div class="sp-sub">'+(_spMarkMode?'<b style="color:#38bdf8">RIFERIMENTO</b> · tocca il punto del circuito (es. ingresso pregriglia) e dagli un nome':_spTrash?'<b style="color:#ef4444">CESTINO</b> · tocca un punto per eliminarlo per tutti i piloti':(t?'Fatti <b>'+f+'/'+t+'</b> · ':'')+'tocca la pista dove hai scattato')+'</div>');
   const w=v.map.w||10,dd=v.map.d;
   h.push('<div class="sp-vp'+(spotsOverview()?' over':'')+(_spTrash?' trash':'')+(_spView.t?' td':'')+(_spBg?' hasbg':'')+'" id="sp-vp"'+(_spBg?' style="--spbg:url(&quot;'+_spBg+'&quot;)"':'')+'><div class="sp-stage" id="sp-stage">');
