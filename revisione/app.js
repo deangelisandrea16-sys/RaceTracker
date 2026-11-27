@@ -1154,7 +1154,7 @@ function listenRaces(){
       /* FIX 16/10/2026: niente piu' "prima gara della lista" (era la piu' vecchia, es. ACI con live WSK).
          Si sceglie la gara in corso oggi (startDate<=oggi<=endDate), altrimenti la piu' recente per createdAt. */
       const today=rtToday();
-      const ids=Object.keys(races).sort((a,b)=>String((races[b]||{}).createdAt||'').localeCompare(String((races[a]||{}).createdAt||'')));
+      const ids=Object.keys(races).filter(id=>!(races[id]||{}).hidden).sort((a,b)=>String((races[b]||{}).createdAt||'').localeCompare(String((races[a]||{}).createdAt||'')));
       const live=ids.find(id=>{const r=races[id]||{};return r.startDate&&r.endDate&&r.startDate<=today&&today<=r.endDate;});
       if(ids.length) switchRace(live||ids[0]);
       else{ initialized=true; renderAll(); }
@@ -1162,7 +1162,7 @@ function listenRaces(){
       /* FIX 17/10/2026: se la gara salvata e' gia' finita (endDate passata) e c'e' una gara in corso oggi, passa a quella */
       const _t=rtToday();
       const _cur=races[activeRaceId]||{};
-      const _isLive=id=>{const r=races[id]||{};return r.startDate&&r.endDate&&r.startDate<=_t&&_t<=r.endDate;};
+      const _isLive=id=>{const r=races[id]||{};return !r.hidden&&r.startDate&&r.endDate&&r.startDate<=_t&&_t<=r.endDate;};
       /* 17/11/2026: con piu' gare in corso nello stesso giorno (campionati diversi) si resta sulla gara scelta se e' in corso */
       const _live=_isLive(activeRaceId)?activeRaceId:Object.keys(races).find(_isLive);
       /* 17/10 v2 (idea di Andrea): all'apertura segue il badge IN CORSO (stessa regola: startDate<=oggi<=endDate). Solo al primo caricamento, cosi' una scelta manuale successiva resta. */
@@ -1630,21 +1630,22 @@ function exportData(){
 }
 window.exportData=exportData;
 
+/* 27/11/2026 (revisione): nessun pulsante usa import/export (codice raggiungibile solo dalla console).
+   Prima l'import sostituiva entry list, programma, giorni e finali CONDIVISI della gara attiva per tutti, cancellando dal
+   database cio' che nel file mancava, senza conferma. Ora importa solo i dati personali (piloti, stati, note) e chiede conferma. */
 function importData(event){
   const file=event.target.files[0];if(!file)return;
+  if(window._rtViewAs){try{showToast('Sola lettura: stai guardando '+String(window._rtViewAs).toUpperCase());}catch(_){}event.target.value='';return;}
   const reader=new FileReader();
   reader.onload=e=>{
     try{
       const data=JSON.parse(e.target.result);
-      if(data.pilots)pilots=Array.isArray(data.pilots)?data.pilots:Object.values(data.pilots);
+      const pl=data.pilots?(Array.isArray(data.pilots)?data.pilots:Object.values(data.pilots)).filter(p=>p&&p.num!=null):null;
+      if(!confirm('Importare '+(pl?pl.length+' piloti, ':'')+'stati e note nel tuo profilo di questa gara? '+(pl?'I tuoi piloti attuali vengono SOSTITUITI da quelli del file. ':'')+'I dati della gara (entry list, programma) non vengono toccati.'))return;
+      if(pl){pilots=pl;pl.forEach(p=>{try{_rtNewPilots.add(String(p.num));}catch(_){}});}
       if(data.statuses)statuses=data.statuses;
       if(data.notes)notes=data.notes;
-      if(data.trackSections)trackSections=data.trackSections;
       if(data.trackStatus)trackStatus=data.trackStatus;
-      if(data.entryList)currentEntryList=data.entryList;
-      if(data.schedule)currentSchedule=data.schedule;
-      if(data.days)currentDays=data.days;
-      if(data.finals)currentFinals=data.finals;
       saveAll();alert('Dati importati!');
     }catch(err){alert('File non valido');}
   };
@@ -1870,7 +1871,8 @@ function circuitMapHtml(r,active,size){
 }
 function renderGare(){
   const el=document.getElementById('gare-content');
-  const raceIds=Object.keys(races).filter(id=>!isDemoRace(id)||canSeeDemo());
+  const adm=rtCanDeleteRace();
+  const raceIds=Object.keys(races).filter(id=>(!isDemoRace(id)||canSeeDemo())&&(adm||!(races[id]||{}).hidden));
   let html='<div style="margin-bottom:16px">'
     +'<button class="mgmt-btn" onclick="openCalendar()" style="border-color:var(--rt-orange,#ff5a1f);color:var(--rt-orange,#ff5a1f);margin-bottom:8px"><i class="ic ic-calendar"></i> GARE DISPONIBILI</button>'
     +'<button class="mgmt-btn" onclick="openNewRace()" style="border-color:#22c55e;color:#22c55e">+ NUOVA GARA</button></div>';
@@ -1884,7 +1886,8 @@ function renderGare(){
       return da.localeCompare(db2);
     });
 
-    const today=new Date().toISOString().split('T')[0];
+    // 27/11/2026 (revisione): data locale (prima UTC: tra mezzanotte e l'una la gara di oggi non risultava IN CORSO)
+    const today=(()=>{const d=new Date(),z=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate());})();
     let closestIdx=-1;let closestDiff=Infinity;
 
     html+='<div style="font-size:10px;color:var(--text4);font-weight:700;letter-spacing:1px;margin-bottom:10px">'+raceIds.length+' GARE</div>';
@@ -1919,14 +1922,15 @@ function renderGare(){
 
       html+='<div class="race-card'+(isActive?' active-race':'')+'" id="race-card-'+idx+'" onclick="switchRaceAndRender('+rtJsArg(id)+')">'
         +'<div style="display:flex;justify-content:space-between;align-items:flex-start">'
-        +'<div style="display:flex;gap:10px;align-items:flex-start;min-width:0">'+circuitMapHtml(r,isActive)+'<div><div class="race-name">'+r.name+(isActive?'<span class="race-badge">ATTIVA</span>':'')+'</div>'
-        +'<div class="race-meta">'+(r.circuit||'')+(dateStr?' · '+dateStr:'')+'</div>'
+        +'<div style="display:flex;gap:10px;align-items:flex-start;min-width:0">'+circuitMapHtml(r,isActive)+'<div><div class="race-name">'+rtEsc(r.name||'')+(isActive?'<span class="race-badge">ATTIVA</span>':'')+'</div>'
+        +'<div class="race-meta">'+rtEsc(r.circuit||'')+(dateStr?' · '+dateStr:'')+'</div>'
         +'<div class="race-meta" style="margin-top:2px">'+pilotCount+' miei piloti · '+entryCount+' in entry list</div></div></div>'
         +(isOngoing?'<span style="font-size:9px;font-weight:800;color:#22c55e;border:1px solid #22c55e;padding:2px 8px;border-radius:4px;white-space:nowrap">IN CORSO</span>':'')
         +'</div>'
         +'<div style="display:flex;gap:6px;margin-top:10px">'
         +'<button class="io-btn" style="font-size:10px;padding:8px" onclick="event.stopPropagation();openRaceSettings('+rtJsArg(id)+')"><i class="ic ic-gear"></i> IMPOSTAZIONI</button>'
-        +(isActive?'':'<button class="io-btn" style="font-size:10px;padding:8px;border-color:#ef4444;color:#ef4444" onclick="event.stopPropagation();deleteRace('+rtJsArg(id)+')"><i class="ic ic-close"></i> ELIMINA</button>')
+        +(isActive||!adm?'':r.hidden?'<button class="io-btn" style="font-size:10px;padding:8px;border-color:#22c55e;color:#22c55e" onclick="event.stopPropagation();restoreRace('+rtJsArg(id)+')"><i class="ic ic-check"></i> RIPRISTINA (nascosta)</button>'
+          :'<button class="io-btn" style="font-size:10px;padding:8px;border-color:#ef4444;color:#ef4444" onclick="event.stopPropagation();deleteRace('+rtJsArg(id)+')"><i class="ic ic-close"></i> ELIMINA</button>')
         +'</div></div>';
     });
 
@@ -2269,8 +2273,13 @@ function createRace(){
   const org=(document.getElementById('nr-org')||{}).value||'';
   const liveTiming=((document.getElementById('nr-livetiming')||{}).value||'').trim();
   const startDate=document.getElementById('nr-start').value||'';
-  const endDate=document.getElementById('nr-end').value||'';
+  let endDate=document.getElementById('nr-end').value||'';
   if(!name){alert('Inserisci il nome');return;}
+  // 27/11/2026 (revisione): date coerenti (fine prima dell'inizio = gara mai attiva); fine vuota = gara di un giorno
+  if(startDate&&!endDate)endDate=startDate;
+  if(startDate&&endDate&&endDate<startDate){alert('La data di fine e\' prima della data di inizio');return;}
+  // doppio tocco su CREA GARA = due gare uguali: si crea una sola volta
+  if(window._rtCreatingRace)return;window._rtCreatingRace=true;setTimeout(()=>{window._rtCreatingRace=false;},5000);
   const id='race_'+Date.now();
   const raceIndex={name,circuit,org,liveTiming,startDate,endDate,entryCount:0,pilotCount:0,createdAt:new Date().toISOString()};
   let draftEL={};
@@ -2285,38 +2294,39 @@ function createRace(){
   u['races_index/'+id]=raceIndex;
   u['races/'+id]={pilots:{},statuses:{},notes:{},trackSections:["PARTENZA","CURVA 1","RETTILINEO 1","CURVA 2","ESSE","RETTILINEO 2","ARRIVO"],trackStatus:{},entryList:draftEL,schedule:{},days:[],finals:[]};
   update(ref(db),u).then(()=>{
+    window._rtCreatingRace=false;
     switchRace(id);
     closeModal();
     showTab('gare');
-  });
+  }).catch(e=>{window._rtCreatingRace=false;alert('Gara non creata: '+((e&&e.message)||'errore di rete'));});
 }
 window.createRace=createRace;
 
 function openRaceSettings(raceId){
   const r=races[raceId];if(!r)return;
   openModal('<button class="modal-close" onclick="closeModal()"><i class="ic ic-close"></i></button>'
-    +'<div class="modal-title"><i class="ic ic-gear"></i> '+r.name+'</div>'
+    +'<div class="modal-title"><i class="ic ic-gear"></i> '+rtEsc(r.name||'')+'</div>'
     +'<div class="form-group"><label class="form-label">Nome Gara</label>'
-    +'<input class="form-input" id="rs-name" value="'+r.name+'"></div>'
+    +'<input class="form-input" id="rs-name" value="'+rtEsc(r.name||'')+'"></div>'
     +'<div class="form-group"><label class="form-label">Circuito</label>'
-    +'<input class="form-input" id="rs-circuit" value="'+(r.circuit||'')+'"></div>'
+    +'<input class="form-input" id="rs-circuit" value="'+rtEsc(r.circuit||'')+'"></div>'
     +'<div class="form-group"><label class="form-label">Organizzazione</label>'
     +'<select class="form-input" id="rs-org" onchange="rtLiveCheck()">'+orgOptions(r.org||'')+'</select></div>'
     +'<div class="form-group"><label class="form-label">URL Live Timing (opzionale)</label>'
-    +'<input class="form-input" id="rs-livetiming" value="'+(r.liveTiming||'')+'" placeholder="default organizzazione se vuoto" oninput="rtLiveCheck()">'
+    +'<input class="form-input" id="rs-livetiming" value="'+rtEsc(r.liveTiming||'')+'" placeholder="default organizzazione se vuoto" oninput="rtLiveCheck()">'
     +'<div id="rs-lt-chk" style="font-size:12px;font-weight:700;margin-top:6px"></div></div>'
     +'<div style="display:flex;gap:8px">'
     +'<div class="form-group" style="flex:1"><label class="form-label">Data Inizio</label>'
-    +'<input class="form-input" id="rs-start" type="date" value="'+(r.startDate||'')+'"></div>'
+    +'<input class="form-input" id="rs-start" type="date" value="'+rtEsc(r.startDate||'')+'"></div>'
     +'<div class="form-group" style="flex:1"><label class="form-label">Data Fine</label>'
-    +'<input class="form-input" id="rs-end" type="date" value="'+(r.endDate||'')+'"></div></div>'
+    +'<input class="form-input" id="rs-end" type="date" value="'+rtEsc(r.endDate||'')+'"></div></div>'
     /* 14/11/2026: orari delle premiazioni dal programma ufficiale (servono al server per gli avvisi pole/podio e al Programma) */
     /* 14/11/2026: percorso dei risultati Apex della gara (serve al server multi-gara per seguirla da solo) */
     +'<div class="form-group"><label class="form-label">Risultati ufficiali (link o percorso)</label>'
-    +'<input class="form-input" id="rs-apex" placeholder="https://www.apex-timing.com/goracing/results.php?path=/…" value="'+(r.apexPath||'')+'">'
+    +'<input class="form-input" id="rs-apex" placeholder="https://www.apex-timing.com/goracing/results.php?path=/…" value="'+rtEsc(r.apexPath||'')+'">'
     +'<div style="font-size:11px;color:var(--text4);margin-top:4px">Con questo il server segue la gara da solo: entry list, gruppi, arrivi, live.</div></div>'
     +'<div class="form-group"><label class="form-label">Pagina con i PDF dell\'entry list (facoltativo)</label>'
-    +'<input class="form-input" id="rs-elpage" placeholder="https://… (pagina con i PDF Entry List)" value="'+(r.entryListPage||'')+'">'
+    +'<input class="form-input" id="rs-elpage" placeholder="https://… (pagina con i PDF Entry List)" value="'+rtEsc(r.entryListPage||'')+'">'
     +'<div style="font-size:11px;color:var(--text4);margin-top:4px">Prima che i risultati ufficiali abbiano i piloti, l\'app legge i PDF (anche scansionati): piloti segnati DA CONFERMARE.</div></div>'
     +'<div class="form-group"><label class="form-label">Premiazione poleman (se nel programma)</label>'
     +'<input class="form-input" id="rs-aw-pole" type="datetime-local" value="'+(((r.awards||{}).pole)||'')+'"></div>'
@@ -2340,7 +2350,7 @@ function openRaceSettings(raceId){
     +'<input type="file" id="ul-schedule" accept=".json" style="display:none" onchange="uploadSchedule(event,'+rtJsArg(raceId)+')"></div>'
     +'<div class="upload-zone" onclick="document.getElementById(\'ul-assign\').click()" style="border-color:#fbbf24">'
     +'<div class="upload-zone-label" style="color:#fbbf24"><i class="ic ic-refresh"></i> AGGIORNA ASSEGNAZIONI</div>'
-    +'<div class="upload-zone-hint">Gruppi, serie, prefinal dai risultati ufficiali.<br>Piloti assenti = eliminati automaticamente.</div>'
+    +'<div class="upload-zone-hint">Gruppi, serie, prefinal dai risultati ufficiali.<br>Eliminati solo se scritto nel file (eliminated: true).</div>'
     +'<input type="file" id="ul-assign" accept=".json" style="display:none" onchange="uploadAssignments(event,'+rtJsArg(raceId)+')"></div>'
     +'<div class="upload-zone" style="border-color:#a78bfa;cursor:pointer" onclick="openWSKPasteModal('+rtJsArg(raceId)+')">'
     +'<div class="upload-zone-label" style="color:#a78bfa"><i class="ic ic-download"></i> INCOLLA HEATS DA WSK</div>'
@@ -2487,6 +2497,8 @@ function saveRaceSettings(raceId){
   const startDate=document.getElementById('rs-start').value||'';
   const endDate=document.getElementById('rs-end').value||'';
   if(!name)return;
+  // 27/11/2026 (revisione): fine prima dell'inizio = gara mai attiva per server e app
+  if(startDate&&endDate&&endDate<startDate){alert('La data di fine e\' prima della data di inizio');return;}
   const u={};
   u['races_index/'+raceId+'/name']=name;
   u['races_index/'+raceId+'/circuit']=circuit;
@@ -2507,7 +2519,7 @@ function saveRaceSettings(raceId){
   const awF=awDopo?'dopo':((document.getElementById('rs-aw-final')||{}).value||'').trim();
   u['races_index/'+raceId+'/awards/pole']=awP||null;
   u['races_index/'+raceId+'/awards/final']=awF||null;
-  update(ref(db),u).then(()=>{closeModal();});
+  update(ref(db),u).then(()=>{closeModal();}).catch(er=>alert('Impostazioni non salvate: '+((er&&er.message)||'errore di rete')));
 }
 window.saveRaceSettings=saveRaceSettings;
 
@@ -2525,11 +2537,21 @@ function uploadEntryList(event,raceId){
         entryList=data;
       }
       Object.values(entryList).forEach(d=>{if(d&&d.cat)d.cat=normCat(d.cat);});
-      const count=Object.keys(entryList).length;
+      /* 27/11/2026 (revisione): prima il file SOSTITUIVA l'entry list condivisa (per tutti), cancellando arrivi, griglie,
+         eliminati e serie scritti dal server, senza conferma. Ora i piloti del file si AGGIUNGONO o AGGIORNANO campo per campo:
+         nessun pilota e nessun dato gia' presente viene tolto. Solo amministratore. */
+      if(!rtCanDeleteRace()){alert('Solo l\'amministratore puo\' caricare l\'entry list');return;}
+      const keys=Object.keys(entryList).filter(k=>k&&!/[.#$\[\]\/]/.test(k)&&entryList[k]&&typeof entryList[k]==='object');
+      if(!keys.length){alert('Nessun pilota nel file');return;}
+      const cur=(raceId===activeRaceId?currentEntryList:null)||{};
+      const nNew=keys.filter(k=>!cur[k]).length;
+      if(!confirm('Entry list: '+keys.length+' piloti nel file'+(raceId===activeRaceId?' ('+nNew+' nuovi, '+(keys.length-nNew)+' aggiornati)':'')+'. Nessun pilota gia\' presente viene tolto. Procedo?'))return;
       const u={};
-      u['races/'+raceId+'/entryList']=entryList;
-      u['races_index/'+raceId+'/entryCount']=count;
-      update(ref(db),u).then(()=>{alert('Entry list caricata: '+count+' piloti');closeModal();});
+      keys.forEach(k=>{Object.entries(entryList[k]).forEach(([f,v])=>{if(f&&!/[.#$\[\]\/]/.test(f)&&v!==undefined)u['races/'+raceId+'/entryList/'+k+'/'+f]=v;});});
+      update(ref(db),u).then(()=>ref(db,'races/'+raceId+'/entryList').once('value')).then(sn=>{
+        const n=Object.keys(sn.val()||{}).length;
+        return update(ref(db),{['races_index/'+raceId+'/entryCount']:n}).then(()=>{alert('Entry list: '+keys.length+' piloti caricati, '+n+' in totale');closeModal();});
+      }).catch(er=>alert('Entry list non caricata: '+((er&&er.message)||'errore')));
     }catch(err){alert('File non valido');}
   };
   reader.readAsText(file);event.target.value='';
@@ -2549,6 +2571,9 @@ function uploadMyPilots(event,raceId){
       } else {
         pilotsList=Object.values(data);
       }
+      // 27/11/2026 (revisione): sostituisce i tuoi piloti e AZZERA stati e note: prima senza chiedere
+      if(window._rtViewAs){try{showToast('Sola lettura: stai guardando '+String(window._rtViewAs).toUpperCase());}catch(_){}return;}
+      if(!confirm('Caricare '+pilotsList.length+' piloti? I tuoi piloti attuali in questa gara vengono sostituiti e stati e note azzerati.'))return;
       // For each pilot, look up in entry list to fill details
       const pilotsObj={};const newStatuses={};const newNotes={};const newTrack={};
       // First fetch current entry list
@@ -2575,7 +2600,7 @@ function uploadMyPilots(event,raceId){
           u['races/'+raceId+'/users/'+currentUserId+'/trackStatus']=newTrack;
           u['races_index/'+raceId+'/pilotCount']=count;
           update(ref(db),u).then(()=>{alert(''+count+' piloti caricati');closeModal();});
-        });
+        }).catch(er=>alert('Piloti non caricati: '+((er&&er.message)||'errore di rete')));
     }catch(err){alert('File non valido');}
   };
   reader.readAsText(file);event.target.value='';
@@ -2597,11 +2622,14 @@ function uploadSchedule(event,raceId){
       }
       Object.values(schedule).forEach(sl=>{(Array.isArray(sl)?sl:Object.values(sl||{})).forEach(x=>{if(x&&x.cat)x.cat=normCat(x.cat);});});
       (Array.isArray(finals)?finals:Object.values(finals||{})).forEach(f=>{if(f&&f.cat)f.cat=normCat(f.cat);});
+      // 27/11/2026 (revisione): il programma si sostituisce per tutti: solo amministratore e con conferma (prima chiunque, senza chiedere)
+      if(!rtCanDeleteRace()){alert('Solo l\'amministratore puo\' caricare il programma');return;}
+      if(!confirm('Sostituire il programma della gara per tutti con quello del file ('+days.length+' giorni)?'))return;
       const u={};
       u['races/'+raceId+'/schedule']=schedule;
       u['races/'+raceId+'/days']=days;
       u['races/'+raceId+'/finals']=finals;
-      update(ref(db),u).then(()=>{alert('Programma caricato: '+days.length+' giorni');closeModal();});
+      update(ref(db),u).then(()=>{alert('Programma caricato: '+days.length+' giorni');closeModal();}).catch(er=>alert('Programma non caricato: '+((er&&er.message)||'errore')));
     }catch(err){alert('File non valido');}
   };
   reader.readAsText(file);event.target.value='';
@@ -2614,6 +2642,9 @@ window.uploadSchedule=uploadSchedule;
 // heats[] è un array di coppie es. ["B-D","B-C"] — il pilota compare in quegli slot
 function uploadAssignments(event,raceId){
   const file=event.target.files[0];if(!file)return;
+  // 27/11/2026 (revisione): usa piloti ed entry list della gara ATTIVA: da un'altra gara mescolava i dati delle due
+  if(raceId!==activeRaceId){alert('Apri prima questa gara (rendila attiva), poi aggiorna le assegnazioni');event.target.value='';return;}
+  if(!rtCanDeleteRace()){alert('Solo l\'amministratore puo\' aggiornare le assegnazioni');event.target.value='';return;}
   const reader=new FileReader();
   reader.onload=e=>{
     try{
@@ -2689,7 +2720,7 @@ function uploadAssignments(event,raceId){
       let msg='Assegnazioni aggiornate!\n'+updated+' piloti aggiornati';
       if(hasHeats)msg+='\n(formato heats[] — corrispondenza slot precisa)';
       else if(hasGroup)msg+='\n(formato group legacy)';
-      if(eliminated)msg+='\n'+eliminated+' piloti eliminati (non in lista)';
+      if(eliminated)msg+='\n'+eliminated+' piloti eliminati (segnati nel file)';
       if(reactivated)msg+='\n'+reactivated+' piloti riattivati';
       alert(msg);
       closeModal();
@@ -2700,6 +2731,8 @@ function uploadAssignments(event,raceId){
 window.uploadAssignments=uploadAssignments;
 
 function loadDefaultWSK(raceId){
+  // 27/11/2026 (revisione): nessun pulsante la usa; sostituirebbe entry list e programma con dati vecchi: solo amministratore
+  if(!rtCanDeleteRace())return;
   if(!confirm('Caricare i dati WSK Super Master Franciacorta predefiniti?'))return;
   const u={};
   u['races/'+raceId+'/entryList']=ENTRY_LIST;
@@ -2711,11 +2744,24 @@ function loadDefaultWSK(raceId){
 }
 window.loadDefaultWSK=loadDefaultWSK;
 
+/* 27/11/2026 (revisione): prima ELIMINA era visibile a TUTTI e cancellava l'intera gara per tutti (indice + dati), senza copia,
+   con un solo OK. Ora: solo amministratore, e la gara viene NASCOSTA (races_index/<id>/hidden), non cancellata:
+   i dati restano, l'amministratore la vede ancora e puo' ripristinarla; il server non avvia piu' le sue istanze. */
+function rtCanDeleteRace(){try{return rtIsAdmin()||(!rtAuthGateOn()&&currentUserId===SERVER_OWNER);}catch(e){return false;}}
 function deleteRace(raceId){
-  if(!confirm('Eliminare questa gara? Tutti i dati verranno persi.'))return;
-  const u={};u['races_index/'+raceId]=null;u['races/'+raceId]=null;
+  if(!rtCanDeleteRace()){try{showToast('Solo l\'amministratore puo\' eliminare una gara');}catch(_){}return;}
+  if(window._rtViewAs){try{showToast('Sola lettura: stai guardando '+String(window._rtViewAs).toUpperCase());}catch(_){}return;}
+  const r=races[raceId]||{};
+  if(!confirm('Nascondere la gara "'+(r.name||raceId)+'" a tutti? I dati restano salvati e puoi ripristinarla.'))return;
+  const u={};u['races_index/'+raceId+'/hidden']={by:currentUserId,at:Date.now()};
   update(ref(db),u);
 }
+window.deleteRace=deleteRace;
+function restoreRace(raceId){
+  if(!rtCanDeleteRace())return;
+  const u={};u['races_index/'+raceId+'/hidden']=null;update(ref(db),u);
+}
+window.restoreRace=restoreRace;
 window.deleteRace=deleteRace;
 
 // ══════════════════════════════════════
@@ -2828,7 +2874,7 @@ function mediaOf(num){try{const m=(window._rtMedia||{})[currentUserId]||{};const
 /* 22/11/2026 (Andrea): si mostra il dato che interessa per quel pilota: evidenziato VIDEO → solo clip, FOTO → solo foto,
    entrambi o nessuno (o pilota non seguito) → clip e foto. Se il dato che interessa e' 0, il contatore non compare. */
 function mediaChip(p){const x=p&&mediaOf(p.num);if(!x)return'';
-  const mp=(typeof pilots!=='undefined'&&pilots.find(y=>y.num===String(p.num)))||p;
+  const mp=(typeof pilots!=='undefined'&&pilots.find(y=>String(y.num)===String(p.num)))||p;
   const v=hasVideo(mp),f=hasFoto(mp),showC=v||!f,showF=f||!v,c=+x.c||0,ff=+x.f||0;
   if(!((showC&&c)||(showF&&ff)))return'';
   const t=[];if(showC)t.push('<i class="ic ic-video"></i>'+c);if(showF)t.push('<i class="ic ic-camera"></i>'+ff);
@@ -5295,7 +5341,9 @@ function riskData(){
     const rkP=v=>{const x=rkPts(v);if(x!==null)return x;return(v!==undefined&&v!==null&&String(v).trim()!=='')?list.length:null;};
     const rows=list.map(([num,e])=>{let h=e.heats||[];if(!Array.isArray(h))h=Object.values(h);const res=e.result||{};
       let pts=0,done=0;h.forEach(k=>{const v=rkP(res[k]);if(v!==null){pts+=v;done++;}});
-      const pfDone=!catHasPF(cat)||['PF-A','PF-B'].some(k=>rkP(res[k])!==null);if(pfDone&&catHasPF(cat)){const k=rkP(res['PF-A'])!==null?'PF-A':'PF-B';pts+=rkP(res[k]);done++;}
+      // 27/11/2026 (revisione): prefinali C/D (o piu') contate come A/B (prima solo PF-A e PF-B: chi correva la C risultava senza prefinale)
+      const pfK=Object.keys(res).filter(k=>/^PF-[A-H]$/.test(k)&&rkP(res[k])!==null).sort()[0];
+      const pfDone=!catHasPF(cat)||!!pfK;if(pfDone&&catHasPF(cat)){pts+=rkP(res[pfK]);done++;}
       const left=Math.max(0,h.length-(done-(pfDone&&catHasPF(cat)?1:0)))+(pfDone?0:1);
       const heatsLeft=h.filter(k=>rkP(res[k])===null);
       return{num,e,pts,done,left,heatsLeft,pfDone,avg:done?pts/done:list.length/2};}).filter(r=>r.done>0);
