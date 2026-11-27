@@ -943,7 +943,7 @@ body.light .sp-vp.td .sp-track{stroke:#4a4e57}
    Solo variabili colore + sfondo dei tasti attivita' spenti: per tornare indietro basta togliere questo blocco. */
 body:not(.light){
   --bg2:#25252c;--bg3:#2f2f38;--border:#3a3a43;--border2:#55555f;
-  --btn-bg:#34343d;--modal-bg:#1a1a1f;--input-bg:#060607;
+  --btn-bg:#3d3d47;--modal-bg:#1a1a1f;--input-bg:#060607;
   --task-border:#55555f;--text4:#928c84;
 }
 body.light{
@@ -956,3 +956,6 @@ body.light{
 body:not(.light) .card:not(.slot-now):not(.final-card):not(.team-card):not(.hl-foto):not(.hl-video):not(.hl-prio):not(.hl-both){box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 8px 22px -14px rgba(0,0,0,.9)!important}
 body.light .card:not(.slot-now):not(.final-card):not(.team-card):not(.hl-foto):not(.hl-video):not(.hl-prio):not(.hl-both){box-shadow:0 1px 2px rgba(20,30,60,.08),0 8px 20px -14px rgba(20,30,60,.35)!important}
 .team-card{border-top-color:var(--border2);border-right-color:var(--border2);border-bottom-color:var(--border2)}
+/* 27/11/2026 (Andrea): ogni pilota dentro la scheda del turno su un fondo un po' piu' chiaro della scheda */
+.card .card-inner:not(.team-inner){background:var(--bg3);border-top:none;border-radius:12px;padding:10px 12px;margin:0 0 8px}
+body.light .card .card-inner:not(.team-inner){background:#eef1f6}
