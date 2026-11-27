@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-27-0930';
+var RT_JS_BUILD='2026-11-27-1025';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -6031,7 +6031,8 @@ function apexMatchFor(catTxt,sessTxt,startTxt){
     if(/(FREE|PRACT|WARM)/.test(ss)&&/EVEN|PARI/.test(ss))return x.type==='parity'&&f==='EVEN'&&(/WARM/.test(ss)===/WARM/i.test((x.session||'')+(x.label||''))||true);
     if(/(FREE|PRACT|WARM)/.test(ss)&&/ODD|DISPARI/.test(ss))return x.type==='parity'&&f==='ODD';
     // 19/11/2026: prove senza pari/dispari (KZ2, OKN "All", liste di numeri)
-    if(/(FREE|PRACT|WARM)/.test(ss)&&!/QUALIF/.test(ss))return x.type==='all'||x.type==='list';
+    // 27/11/2026 (KZ2 "Free Practice" senza serie, in programma "1^ Serie"): anche le serie, il piu' vicino all'orario
+    if(/(FREE|PRACT|WARM)/.test(ss)&&!/QUALIF/.test(ss))return x.type==='all'||x.type==='list'||x.type==='serie';
     if(/HEAT|MANCHE/.test(ss)&&(m=ss.match(/\b([A-H])\s*-\s*([A-H])\b/)))return x.type==='group'&&f.toUpperCase().replace(/\s/g,'')===(m[1]+'-'+m[2]);
     // 22/11/2026: prefinale con lettera/numero = quella del gruppo; unica (OKN "Prefinal") = la prefinale della categoria
     if(/PREFINAL/.test(ss)){const isPf=x.type==='prefinal'||/PREFINAL/.test(rtPfNorm((x.session||'')+' '+(x.label||'')+' '+(x.wsk||'')));
@@ -6045,6 +6046,9 @@ function apexMatchFor(catTxt,sessTxt,startTxt){
   if(st===null){const nm=new Date().getHours()*60+new Date().getMinutes()-(typeof scheduleDelay==='number'?scheduleDelay:0);cands.sort((a,b)=>Math.abs(slotMins(a.time)-nm)-Math.abs(slotMins(b.time)-nm));return{slot:cands[0],delay:null};}
   cands.sort((a,b)=>Math.abs(slotMins(a.time)-st)-Math.abs(slotMins(b.time)-st));
   const slot=cands[0];
+  // 27/11/2026: turno a piu' di 2 ore dalla partenza reale (ritardo compreso) = abbinamento sbagliato (prima "ORA" sulla manche delle 16)
+  const curD=typeof scheduleDelay==='number'?scheduleDelay:(parseInt(scheduleDelay)||0);
+  if(Math.abs(st-curD-slotMins(slot.time))>120)return null;
   return{slot,delay:st-slotMins(slot.time)};
 }
 function renderApexDelay(){
