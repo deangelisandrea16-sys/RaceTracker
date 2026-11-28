@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-28-1120';
+var RT_JS_BUILD='2026-11-28-1130';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1402,7 +1402,11 @@ function heatPublished(cat,key){try{const el=currentEntryList||{};const sig=Obje
 function pilotInGroup(pilot,filterArr){
   // NUOVO: se il pilota ha heats[], controlla se questa coppia di gruppi è nella lista
   // es. filterArr=['A','B'] → cerca 'A-B' in pilot.heats
-  if(pilot.heats&&Array.isArray(pilot.heats)&&pilot.heats.length){
+  // 28/11/2026 (Andrea, MINI GR3 R3: tutti i piloti in tutti i turni a gruppi): le manche note (heats) valgono solo se
+  // sono coerenti col gruppo ufficiale, cioe' ogni manche contiene la lettera del gruppo. Se no (dati sporchi dal server) vale il gruppo.
+  const _eg=currentEntryList&&currentEntryList[pilot.num];const _g0=normalizeGroup((_eg&&_eg.group)||pilot.group);
+  const _hOk=!_g0||!Array.isArray(pilot.heats)||pilot.heats.every(h=>String(h).toUpperCase().split('-').map(x=>x.trim()).includes(_g0));
+  if(_hOk&&pilot.heats&&Array.isArray(pilot.heats)&&pilot.heats.length){
     const slotKey=filterArr.map(x=>String(x).trim().toUpperCase()).sort().join('-');
     if(pilot.heats.some(h=>{
       const hKey=String(h).trim().toUpperCase().split('-').map(x=>x.trim()).sort().join('-');
