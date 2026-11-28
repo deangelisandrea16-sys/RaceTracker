@@ -1371,7 +1371,16 @@ function lookupByNum(num){return currentEntryList[num.toString()]||null;}
 // ── GROUP HELPERS ──
 // Normalizza qualsiasi valore gruppo in una singola lettera maiuscola ('A'-'E')
 // oppure '' se il valore non è valido.
+/* 28/11/2026 (Fable): niente elenco fisso di gruppi. Vale qualsiasi sigla di UNA lettera (A-Z): con gruppi F, G, H (o altri
+   campionati) il pilota restava senza gruppo e il turno a gruppi restava vuoto fino alla pubblicazione delle manche.
+   VALID_GROUPS resta solo come elenco di ripiego per il menu della scheda pilota quando la gara non ha ancora gruppi. */
 const VALID_GROUPS=['A','B','C','D','E'];
+function raceGroups(){
+  const s=new Set();
+  try{Object.values(currentEntryList||{}).forEach(e=>{const g=e&&String(e.group||'').trim().toUpperCase();if(/^[A-Z]$/.test(g))s.add(g);});}catch(_){}
+  try{Object.values(currentSchedule||{}).forEach(d=>{(Array.isArray(d)?d:Object.values(d||{})).forEach(x=>{if(!x||x.type!=='group')return;(Array.isArray(x.filter)?x.filter:Object.values(x.filter||{})).forEach(g=>{g=String(g).trim().toUpperCase();if(/^[A-Z]$/.test(g))s.add(g);});});});}catch(_){}
+  return s.size?[...s].sort():VALID_GROUPS.slice();
+}
 /* 28/11/2026: manche coerenti col gruppo ufficiale. Se il server ha scritto manche di gruppi non suoi (MINI GR3: 5 manche
    invece di 3) si tengono solo quelle che contengono la lettera del gruppo; senza gruppo noto o senza lettere = invariate. */
 function heatsForGroup(heats,group){let h=heats||[];if(!Array.isArray(h))h=typeof h==='object'?Object.values(h):[];
@@ -1382,7 +1391,7 @@ window.heatsForGroup=heatsForGroup;
 function normalizeGroup(v){
   if(!v&&v!==0)return'';
   const s=String(v).trim().toUpperCase();
-  return VALID_GROUPS.includes(s)?s:'';
+  return /^[A-Z]$/.test(s)?s:'';
 }
 // Restituisce true se il pilota appartiene a uno dei gruppi nell'array filterArr
 // filterArr è sempre un array di lettere, es. ['A','B']
@@ -2407,7 +2416,7 @@ function showWSKBookmarklet(){
     +'else if(f.startsWith(\'kz2\'))cat=\'KZ2\';'
     +'else if(f.startsWith(\'ok_\'))cat=\'OK\';'
     +'if(!cat)return;'
-    +'const hm=t.match(/Eliminatory Heats ([A-E]-[A-E])/);'
+    +'const hm=t.match(/Eliminatory Heats ([A-Z]-[A-Z])/);'
     +'const wpm=t.match(/Warm UP Prefinal ([AB])/);'
     +'const isFinal=t.trim()===\'FINAL\';'
     +'if(hm)links.push({url:base+f,type:\'heat\',pair:hm[1],cat});'
@@ -6588,7 +6597,7 @@ function openEditPilot(num){
     +'<select class="form-select" id="ef-cat">'+cats.map(c=>'<option'+(c===p.cat?' selected':'')+'>'+c+'</option>').join('')+'</select></div>'
     +'<div style="font-size:11px;color:var(--text4);margin-bottom:14px;padding:8px 12px;background:var(--bg3);border-radius:6px">Parità: <strong style="color:var(--text)">'+p.parity+'</strong> <span style="font-size:9px">(auto da #'+p.num+')</span></div>'
     +'<div class="form-group"><label class="form-label">Gruppo (A-E)</label>'
-    +'<select class="form-select" id="ef-group"><option value=""'+(!p.group?' selected':'')+'>—</option>'+['A','B','C','D','E'].map(g=>'<option'+(p.group===g?' selected':'')+'>'+g+'</option>').join('')+'</select></div>'
+    +'<select class="form-select" id="ef-group"><option value=""'+(!p.group?' selected':'')+'>—</option>'+[...new Set(raceGroups().concat(normalizeGroup(p.group)?[normalizeGroup(p.group)]:[]))].sort().map(g=>'<option'+(normalizeGroup(p.group)===g?' selected':'')+'>'+g+'</option>').join('')+'</select></div>'
     +'<div class="form-group"><label class="form-label">Prefinal (A/B)</label>'
     +'<select class="form-select" id="ef-prefinal"><option value=""'+(!p.prefinal?' selected':'')+'>—</option>'+['A','B'].map(g=>'<option'+(p.prefinal===g?' selected':'')+'>'+g+'</option>').join('')+'</select></div>'
     +'<div class="form-group"><label class="form-label">Serie (1/2/3)</label>'
