@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-28-1105';
+var RT_JS_BUILD='2026-11-28-1115';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1699,6 +1699,12 @@ function toggleFilter(kind,v){
   syncFilterChips();renderPilots();refreshTeamLists();
 }
 window.toggleFilter=toggleFilter;
+// 28/11/2026: fisarmonica dei team nella vista piloti divisi per team (stato tenuto in memoria, niente ridisegno)
+function toggleTeamGroup(h){try{const k=h.getAttribute('data-tk')||'';const S=(window._rtTeamOpen=window._rtTeamOpen||new Set());
+  const c=!h.classList.contains('closed');h.classList.toggle('closed',c);h.setAttribute('aria-expanded',String(!c));
+  const w=h.nextElementSibling;if(w&&w.classList.contains('tgrp-wrap'))w.classList.toggle('closed',c);
+  if(c)S.delete(k);else S.add(k);try{if(navigator.vibrate)navigator.vibrate(8);}catch(e){}}catch(e){}}
+window.toggleTeamGroup=toggleTeamGroup;
 function refreshTeamLists(){try{if(document.getElementById('p-team-list'))renderPilotTeamList();}catch(e){}try{if(document.getElementById('prog-team-list'))renderProgTeamList();}catch(e){}}
 function setFilterTask(t){filterTasks.clear();if(t!=='all')filterTasks.add(t);syncFilterChips();renderPilots();refreshTeamLists();}
 window.setFilterTask=setFilterTask;
@@ -3753,8 +3759,9 @@ function renderPilots(){
   const _cnt={};if(_grp)_list.forEach(p=>{const k=teamNorm(_tOf(p))||'';_cnt[k]=(_cnt[k]||0)+1;});
   const _th=(p,i)=>{if(!_grp)return'';const k=teamNorm(_tOf(p))||'';if(i>0&&(teamNorm(_tOf(_list[i-1]))||'')===k)return'';
     const nm=String(_tOf(p)||'SENZA TEAM').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-    // 28/11/2026 (Andrea): nome team grande e ben visibile (in questa vista serve proprio quello)
-    return'<div style="display:flex;align-items:center;gap:10px;margin:'+(i?'22':'6')+'px 0 10px;padding:12px 14px;border-radius:12px;background:var(--bg3);border-left:4px solid #a78bfa;font-family:\'Saira Condensed\',\'Arial Narrow\',Arial,sans-serif;font-size:22px;font-weight:800;letter-spacing:.02em;color:var(--text);line-height:1.15"><i class="ic ic-team" style="flex-shrink:0"></i><span style="flex:1;min-width:0;overflow-wrap:anywhere">'+nm+'</span><span style="font-size:15px;font-weight:800;color:var(--text3);flex-shrink:0">'+_cnt[k]+'</span></div>';};
+    // 28/11/2026 (Andrea): nome team grande e ben visibile, a fisarmonica (tocco = apri/chiudi con animazione)
+    const closed=!(window._rtTeamOpen=window._rtTeamOpen||new Set()).has(k);   // 28/11 (Andrea): chiusi di base
+    return(i>0?'</div></div>':'')+'<div class="tgrp-head'+(closed?' closed':'')+'" onclick="toggleTeamGroup(this)" data-tk="'+String(k).replace(/"/g,'&quot;')+'" role="button" aria-expanded="'+(!closed)+'"><i class="ic ic-team" style="flex-shrink:0"></i><span style="flex:1;min-width:0;overflow-wrap:anywhere">'+nm+'</span><span class="tgrp-cnt">'+_cnt[k]+'</span><span class="tgrp-chev"></span></div><div class="tgrp-wrap'+(closed?' closed':'')+'"><div class="tgrp-inner">';};
   el.innerHTML=counter+_list.map((p,i)=>{
     const isElim=p.eliminated;
     const hl=p.highlight||[];
@@ -3783,7 +3790,7 @@ function renderPilots(){
     +reelRowHtml(p)+fotoRowHtml(p,true)
     +'<div class="note-wrap"><span class="note-label">Note</span>'
     +'<textarea class="note-area" id="note-'+p.num+'" placeholder="Aggiungi una nota..." onblur="saveNote(\''+p.num+'\')">'+(notes[p.num]||'')+'</textarea></div></div>';
-  }).join('')+missingDashHtml();
+  }).join('')+(_grp&&_list.length?'</div></div>':'')+missingDashHtml();
 }
 
 // ══════════════════════════════════════
