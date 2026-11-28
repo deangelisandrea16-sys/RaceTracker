@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-28-1210';
+var RT_JS_BUILD='2026-11-28-1410';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -30,12 +30,28 @@ onValue=function(r,cb,errOrOpts){
     var origVal=snap.val.bind(snap);
     snap.val=function(){
       var v=origVal();
-      return _fixArrays(v);
+      return _rtNeutro(_fixArrays(v),r);
     };
     cb(snap);
   };
   _origOnValue(r,wrappedCb,errOrOpts);
 };
+/* 28/11/2026 (Fable): difesa unica all'ingresso. Ogni testo letto dal database perde i caratteri che servono a scrivere HTML
+   (< > "): diventano ‹ › ″. Cosi' un nome, un team, una nota o il nome di una gara non possono piu' far eseguire codice, in
+   NESSUNA schermata, anche dove il testo viene inserito senza protezione. Non tocca i nodi che contengono HTML scritto dal
+   server apposta (storico avvisi, live). Sulla copia del 28/11 nessun dato di gara contiene questi caratteri. */
+var _RT_HTML_OK=/\/(alertsLog|liveRelay|notifLog)(\/|$)/;
+function _rtNeutro(v,r){
+  try{var u=String(((r&&r.ref)||r||'').toString());if(_RT_HTML_OK.test(u))return v;}catch(e){}
+  return _rtNeutroVal(v);
+}
+function _rtNeutroVal(v){
+  if(typeof v==='string')return /[<>"]/.test(v)?v.replace(/</g,'\u2039').replace(/>/g,'\u203a').replace(/"/g,'\u2033'):v;
+  if(v===null||typeof v!=='object')return v;
+  if(Array.isArray(v)){for(var i=0;i<v.length;i++)v[i]=_rtNeutroVal(v[i]);return v;}
+  Object.keys(v).forEach(function(k){v[k]=_rtNeutroVal(v[k]);});
+  return v;
+}
 function _fixArrays(obj){
   if(obj===null||obj===undefined||typeof obj!=='object')return obj;
   if(Array.isArray(obj)){return obj.map(_fixArrays);}
@@ -1170,7 +1186,8 @@ function listenRaceData(raceId){
     if(!sharedReady||!userReady)return;
     currentEntryList=sharedData.entryList||{};window._rtElSig=Date.now();
     window._rtMedia=sharedData.media||{}; // 22/11/2026: contatori ClipSorter (mediaChip)
-    window._rtParts=sharedData.participants||{}; // 27/11/2026: elenco ufficiale partecipanti per categoria (server)
+    window._rtParts=sharedData.participants||{};
+    window._rtCatMap=sharedData.catMap||{}; // 28/11/2026: abbinamenti di categoria verificati dal server coi numeri // 27/11/2026: elenco ufficiale partecipanti per categoria (server)
     currentSchedule=sharedData.schedule||{};
     currentDays=sharedData.days||Object.keys(currentSchedule);
     if(!Array.isArray(currentDays))currentDays=typeof currentDays==='object'?Object.values(currentDays):[];
@@ -1209,8 +1226,8 @@ function listenRaceData(raceId){
        if(_e&&_e.group&&!(Array.isArray(p.heats)&&p.heats.length)&&String(_e.group).toUpperCase()!==String(p.group||'').toUpperCase())p.group=String(_e.group).toUpperCase();}
       if(!p.heats)p.heats=[];
       if(!Array.isArray(p.heats))p.heats=typeof p.heats==='object'?Object.values(p.heats):[];
-      // 17/11/2026: manche ufficiali dall'entry list (il server le scrive per tutti, es. WSK) unite a quelle del pilota
-      {const _e=currentEntryList&&currentEntryList[p.num];const _h=_e&&_e.heats?(Array.isArray(_e.heats)?_e.heats:Object.values(_e.heats)):[];if(_h.length){const _u=new Set(p.heats.map(h=>String(h).trim().toUpperCase()));_h.forEach(h=>_u.add(String(h).trim().toUpperCase()));if(_u.size!==p.heats.length)p.heats=[..._u];}}
+      // 28/11/2026 (Fable): le manche ufficiali NON si copiano piu' dentro il pilota (prima si sommavano a quelle salvate, non si
+      // toglievano mai e finivano riscritte nel database al primo salvataggio). Si leggono al momento con pHeats(p).
       if(!p.inFinal)p.inFinal=false;
       // Normalize highlight to array
       if(p.highlight&&typeof p.highlight==='string')p.highlight=[p.highlight];
@@ -1371,7 +1388,16 @@ function lookupByNum(num){return currentEntryList[num.toString()]||null;}
 // ── GROUP HELPERS ──
 // Normalizza qualsiasi valore gruppo in una singola lettera maiuscola ('A'-'E')
 // oppure '' se il valore non è valido.
+/* 28/11/2026 (Fable): niente elenco fisso di gruppi. Vale qualsiasi sigla di UNA lettera (A-Z): con gruppi F, G, H (o altri
+   campionati) il pilota restava senza gruppo e il turno a gruppi restava vuoto fino alla pubblicazione delle manche.
+   VALID_GROUPS resta solo come elenco di ripiego per il menu della scheda pilota quando la gara non ha ancora gruppi. */
 const VALID_GROUPS=['A','B','C','D','E'];
+function raceGroups(){
+  const s=new Set();
+  try{Object.values(currentEntryList||{}).forEach(e=>{const g=e&&String(e.group||'').trim().toUpperCase();if(/^[A-Z]$/.test(g))s.add(g);});}catch(_){}
+  try{Object.values(currentSchedule||{}).forEach(d=>{(Array.isArray(d)?d:Object.values(d||{})).forEach(x=>{if(!x||x.type!=='group')return;(Array.isArray(x.filter)?x.filter:Object.values(x.filter||{})).forEach(g=>{g=String(g).trim().toUpperCase();if(/^[A-Z]$/.test(g))s.add(g);});});});}catch(_){}
+  return s.size?[...s].sort():VALID_GROUPS.slice();
+}
 /* 28/11/2026: manche coerenti col gruppo ufficiale. Se il server ha scritto manche di gruppi non suoi (MINI GR3: 5 manche
    invece di 3) si tengono solo quelle che contengono la lettera del gruppo; senza gruppo noto o senza lettere = invariate. */
 function heatsForGroup(heats,group){let h=heats||[];if(!Array.isArray(h))h=typeof h==='object'?Object.values(h):[];
@@ -1379,14 +1405,23 @@ function heatsForGroup(heats,group){let h=heats||[];if(!Array.isArray(h))h=typeo
   const ok=h.filter(x=>String(x).toUpperCase().split('-').map(y=>y.trim()).includes(g));
   return ok.length?ok:h;}
 window.heatsForGroup=heatsForGroup;
+/* Manche del pilota: quelle UFFICIALI dell'entry list se ci sono (il server le aggiorna e le toglie), altrimenti quelle salvate
+   a mano sul pilota. Nessuna copia in memoria: niente dati vecchi, niente scritture di ritorno. */
+function pHeats(p){
+  const e=p&&currentEntryList&&currentEntryList[p.num];
+  let h=e&&e.heats?(Array.isArray(e.heats)?e.heats:Object.values(e.heats)):[];
+  if(!h.length){h=p&&p.heats?(Array.isArray(p.heats)?p.heats:Object.values(p.heats)):[];}
+  return h.map(x=>String(x).trim().toUpperCase());
+}
+window.pHeats=pHeats;
 function normalizeGroup(v){
   if(!v&&v!==0)return'';
   const s=String(v).trim().toUpperCase();
-  return VALID_GROUPS.includes(s)?s:'';
+  return /^[A-Z]$/.test(s)?s:'';
 }
 // Restituisce true se il pilota appartiene a uno dei gruppi nell'array filterArr
 // filterArr è sempre un array di lettere, es. ['A','B']
-function canonCat(c){
+function _canonCatNomi(c){
   // Normalizza le diciture categoria tra competizioni (WSK/ACI/ecc.)
   // es. "MINI U10"=="MINI GR3 U10"=="MINI GR.3 U10"; "OK"=="OK-N"; "OKJ"=="OK-N JUNIOR"
   var s=String(c||'').toUpperCase().replace(/[.\-_]/g,'').replace(/\s+/g,'');
@@ -1400,6 +1435,33 @@ function canonCat(c){
   if(s==='OKNJ'||s==='OKNJUNIOR'||s==='OKNJR')return 'OKNJ';
   return s;
 }
+/* 28/11/2026 (Fable): CATEGORIE DALL'ENTRY LIST, MAI FUSE PER SOMIGLIANZA.
+   Le categorie della gara sono quelle scritte nell'entry list. Un altro nome (programma, live, pilota salvato) si abbina cosi':
+   1) stesso nome, ignorando solo spazi, trattini, punti e maiuscole;
+   2) abbinamento verificato dal server con i NUMERI dei piloti (races/<gara>/catMap);
+   3) regole dei nomi di prima (_canonCatNomi), ma SOLO se portano a UNA categoria dell'entry list. Se due categorie diverse
+      dell'entry list finirebbero insieme (es. "MINI 60" e "MINI ROK"), la regola non si usa: nessuna fusione, avviso nel registro.
+   Senza entry list (gara vuota) vale il nome ripulito. */
+function _catN(c){return String(c==null?'':c).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,'');}
+var _catIxSig=null,_catIx={perN:{},perVecchia:{}},_catAvvisi={};
+function _catIndex(){
+  var el=currentEntryList||{},sig=[Object.keys(el).length,window._rtElSig||''].join('|');
+  if(_catIxSig===sig)return _catIx;
+  var perN={},perVecchia={};
+  Object.keys(el).forEach(function(k){var e=el[k];if(!e||!e.cat)return;var n=_catN(e.cat);if(perN[n])return;perN[n]=String(e.cat);var v=_canonCatNomi(e.cat);(perVecchia[v]=perVecchia[v]||[]).push(n);});
+  _catIxSig=sig;_catIx={perN:perN,perVecchia:perVecchia};_catAvvisi={};
+  return _catIx;
+}
+function canonCat(c){
+  var n=_catN(c);if(!n)return '';
+  var ix=_catIndex();
+  if(ix.perN[n])return n;
+  var m=(window._rtCatMap||{})[n];if(m&&ix.perN[_catN(m)])return _catN(m);
+  var cand=ix.perVecchia[_canonCatNomi(c)]||[];
+  if(cand.length===1)return cand[0];
+  if(cand.length>1&&!_catAvvisi[n]){_catAvvisi[n]=1;try{dlog(['Categoria "',String(c),'" non abbinata: somiglia a piu\' categorie dell\'entry list (',cand.map(function(k){return ix.perN[k];}).join(', '),'). Nessuna fusione.'].join(''),'warn');}catch(e){}}
+  return n;
+}
 window.canonCat=canonCat;
 /* manche gia' pubblicata da WSK per la categoria = almeno un pilota dell'entry list ce l'ha nei suoi heats */
 let _hpCache={k:'',m:null};
@@ -1412,10 +1474,11 @@ function pilotInGroup(pilot,filterArr){
   // 28/11/2026 (Andrea, MINI GR3 R3: tutti i piloti in tutti i turni a gruppi): le manche note (heats) valgono solo se
   // sono coerenti col gruppo ufficiale, cioe' ogni manche contiene la lettera del gruppo. Se no (dati sporchi dal server) vale il gruppo.
   const _eg=currentEntryList&&currentEntryList[pilot.num];const _g0=normalizeGroup((_eg&&_eg.group)||pilot.group);
-  const _hOk=!_g0||!Array.isArray(pilot.heats)||pilot.heats.every(h=>String(h).toUpperCase().split('-').map(x=>x.trim()).includes(_g0));
-  if(_hOk&&pilot.heats&&Array.isArray(pilot.heats)&&pilot.heats.length){
+  const _ph=pHeats(pilot);
+  const _hOk=!_g0||_ph.every(h=>h.split('-').map(x=>x.trim()).includes(_g0));
+  if(_hOk&&_ph.length){
     const slotKey=filterArr.map(x=>String(x).trim().toUpperCase()).sort().join('-');
-    if(pilot.heats.some(h=>{
+    if(_ph.some(h=>{
       const hKey=String(h).trim().toUpperCase().split('-').map(x=>x.trim()).sort().join('-');
       return hKey===slotKey;
     }))return true;
@@ -1433,7 +1496,7 @@ function pilotInGroup(pilot,filterArr){
 
 // Indica se il pilota ha dati gruppo validi (heats[] nuovo o group legacy)
 function pilotHasGroupData(pilot){
-  if(pilot.heats&&Array.isArray(pilot.heats)&&pilot.heats.length)return true;
+  if(pHeats(pilot).length)return true;
   const _e=currentEntryList&&currentEntryList[pilot.num];
   return!!normalizeGroup((_e&&_e.group)||pilot.group);
 }
@@ -2407,7 +2470,7 @@ function showWSKBookmarklet(){
     +'else if(f.startsWith(\'kz2\'))cat=\'KZ2\';'
     +'else if(f.startsWith(\'ok_\'))cat=\'OK\';'
     +'if(!cat)return;'
-    +'const hm=t.match(/Eliminatory Heats ([A-E]-[A-E])/);'
+    +'const hm=t.match(/Eliminatory Heats ([A-Z]-[A-Z])/);'
     +'const wpm=t.match(/Warm UP Prefinal ([AB])/);'
     +'const isFinal=t.trim()===\'FINAL\';'
     +'if(hm)links.push({url:base+f,type:\'heat\',pair:hm[1],cat});'
@@ -3797,7 +3860,7 @@ function renderPilots(){
     +(hl.length?'<div class="hl-badges">'+hl.map(function(h){return'<span class="hl-badge hl-'+h+'">'+(hlLabels[h]||h)+'</span>';}).join('')+'</div>':'')
     +'<span class="parity-badge">'+p.parity+'</span>'
     +'<span class="group-badge '+(pilotHasGroupData(p)?'set':'')+'">'
-    +(p.heats&&p.heats.length?heatsLabel(heatsForGroup(p.heats,((currentEntryList&&currentEntryList[p.num]||{}).group)||p.group)):(p.group?'GRP '+p.group:'GRP ?'))
+    +(pHeats(p).length?heatsLabel(heatsForGroup(pHeats(p),((currentEntryList&&currentEntryList[p.num]||{}).group)||p.group)):(p.group?'GRP '+p.group:'GRP ?'))
     +'</span>'
     +'<button class="pilot-edit-btn" onclick="openEditPilot(\''+p.num+'\')"><i class="ic ic-note"></i> modifica</button>'
     +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="deletePilot(\''+p.num+'\')"><i class="ic ic-close"></i> rimuovi</button>'
@@ -5691,7 +5754,9 @@ function renderLtNext(){
     +' <span style="color:var(--text)">· ore '+hh+':'+mm+(d?' (ritardo '+d+'′)':'')+'</span> <span style="color:var(--text4)">· '+mine.length+' tuoi'+(N.src==='live'?' · annunciato dal live':'')+'</span></div>'+remLine(sl);
   if(!mine.length)return head+'<div class="empty-state"><p>Nessun tuo pilota nel prossimo turno.</p></div>';
   return head+mine.map(({p,ft})=>{const no=String(p.num),gp=gridPos(no,sl),isMine=!ft,ent=currentEntryList[no]||{};const nt=String((notes&&notes[no])||'').trim();
-    return'<div class="ltbig '+(isMine?hlOfNum(no):hlClassOf(ft.highlight||[])+' tglow')+'"'+(ft?' style="--tc:'+teamColor(ft.key)+'"':'')+' data-no="'+esc(no)+'" onclick="openPilotDetail(\''+esc(no)+'\')">'
+    // 28/11/2026 (Andrea): anche un pilota mio che e' in un team seguito ha il contorno colore team
+    const tg=ft||(isMine?followedTeamOf(no,ent.team):null);
+    return'<div class="ltbig '+(isMine?hlOfNum(no):hlClassOf(ft.highlight||[]))+(tg?' tglow':'')+'"'+(tg?' style="--tc:'+teamColor(tg.key)+'"':'')+' data-no="'+esc(no)+'" onclick="openPilotDetail(\''+esc(no)+'\')">'
       +'<div class="pos">'+(gp?'<span style="font-size:.55em;opacity:.7">P</span>'+gp:'–')+'</div>'
       +'<div style="flex:1;min-width:0"><div><span class="num">#'+esc(no)+'</span>'+riskTri(no)+' <span class="nm">'+esc(p.name||ent.lastName||'')+'</span><span onclick="event.stopPropagation()" style="float:right">'+noteBtn(no)+'</span></div>'
       +'<div class="tm">'+esc(p.team||ent.team||'')+'</div>'
@@ -5758,7 +5823,8 @@ function renderLtLast(){
       const pl=pilots.find(p=>String(p.num)===x.no)||{};const ent=(currentEntryList&&currentEntryList[x.no])||{};
       const nt=String((notes&&notes[x.no])||'').trim();
       const mine=pilots.some(p=>String(p.num)===x.no);const ft=mine?null:followedTeamOf(x.no,ent.team);
-      return'<div class="ltbig '+(mine?hlOfNum(x.no):ft?hlClassOf(ft.highlight||[])+' tglow':'')+'"'+(ft?' style="--tc:'+teamColor(ft.key)+'"':'')+' data-no="'+esc(x.no)+'" onclick="openPilotDetail(\''+esc(x.no)+'\')">'
+      const tg=ft||(mine?followedTeamOf(x.no,ent.team):null);
+      return'<div class="ltbig '+(mine?hlOfNum(x.no):ft?hlClassOf(ft.highlight||[]):'')+(tg?' tglow':'')+'"'+(tg?' style="--tc:'+teamColor(tg.key)+'"':'')+' data-no="'+esc(x.no)+'" onclick="openPilotDetail(\''+esc(x.no)+'\')">'
         +'<div class="pos">'+(x.ret?ltXSpan(x.ret):(x.pos<999?x.pos:'–'))+'</div>'
         +'<div style="flex:1;min-width:0"><div><span class="num">#'+esc(x.no)+'</span>'+riskTri(x.no)+' <span class="nm">'+esc(pl.name||x.dr)+'</span>'+ltRetBadge(x.ret)+'<span onclick="event.stopPropagation()" style="float:right">'+noteBtn(x.no)+'</span></div>'
         +'<div class="tm">'+esc(pl.team||ent.team||'')+(x.gap?' · '+esc(x.gap):'')+(x.blp?' · best '+esc(x.blp):'')+'</div>'
@@ -5962,7 +6028,8 @@ function renderLtMyTable(){
       // 20/11/2026 (Andrea): pilota di un team seguito = trattato come i tuoi (stesso aspetto), con contorno colore team
       const ft=tm?followedTeamOf(no,ent.team):null;const as=!tm||ft;
       const hc=tm?(ft?hlClassOf(ft.highlight||[]):''):hlOfNum(no);
-      return'<div class="ltbig '+hc+(tm&&!ft?' team':'')+(ft?' tglow':'')+(rt?' ret':'')+(mv>0?' up':mv<0?' down':'')+'"'+(ft?' style="--tc:'+teamColor(ft.key)+'"':'')+' data-no="'+no+'"'+(as?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
+      const tg=ft||(!tm&&teamNums.has(no)?followedTeamOf(no,ent.team):null);
+      return'<div class="ltbig '+hc+(tm&&!ft?' team':'')+(tg?' tglow':'')+(rt?' ret':'')+(mv>0?' up':mv<0?' down':'')+'"'+(tg?' style="--tc:'+teamColor(tg.key)+'"':'')+' data-no="'+no+'"'+(as?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
         +'<div class="pos">'+(rt?ltXSpan(rt):(txt(r,C('rk','3'))||'–'))+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>'
         +'<div style="flex:1;min-width:0"><div><span class="num">#'+no+'</span>'+(as?riskTri(no):'')+' <span class="nm">'+nm+'</span>'+ltRetBadge(rt)+(as?'<span onclick="event.stopPropagation()" style="float:right">'+noteBtn(no)+'</span>':'')+'</div>'
         +'<div class="tm">'+team+'</div>'
@@ -5979,7 +6046,8 @@ function renderLtMyTable(){
       const llc=cls(r,C('llp','10'));
       // 20/11/2026 (Andrea): piloti dei team seguiti = riga come i tuoi, con il colore del team a sinistra e sopra/sotto
       const ftr=tm?followedTeamOf(no,((currentEntryList||{})[no]||{}).team):null;
-      return'<tr data-no="'+no+'" class="'+(mine?'mine '+hlOfNum(no):ftr?'mine tglow':tm?'team':'')+'"'+(ftr?' style="--tc:'+teamColor(ftr.key)+'"':'')+(mine||ftr?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
+      const tgr=ftr||(mine&&teamNums.has(no)?followedTeamOf(no,((currentEntryList||{})[no]||{}).team):null);
+      return'<tr data-no="'+no+'" class="'+(mine?'mine '+hlOfNum(no)+(tgr?' tglow':''):ftr?'mine tglow':tm?'team':'')+'"'+(tgr?' style="--tc:'+teamColor(tgr.key)+'"':'')+(mine||ftr?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
         +'<td>'+(ltRetOf(no)?ltXSpan(ltRetOf(no)):txt(r,C('rk','3')))+'</td><td class="n">'+no+(mine?riskTri(no):'')+'</td><td class="d">'+txt(r,C('dr','5'))+ltRetBadge(ltRetOf(no))+'</td><td class="d" style="color:var(--text3)">'+(((pilots.find(x=>String(x.num)===no)||{}).team)||((currentEntryList&&currentEntryList[no])||{}).team||'')+'</td></tr>'
         +(mine&&String((notes&&notes[no])||'').trim()?'<tr class="mine"><td></td><td colspan="6" class="note-txt" style="white-space:normal"><i class="ic ic-note"></i> '+String(notes[no]).replace(/</g,'&lt;')+'</td></tr>':'');
     }).join('')+'</table>'
@@ -6588,7 +6656,7 @@ function openEditPilot(num){
     +'<select class="form-select" id="ef-cat">'+cats.map(c=>'<option'+(c===p.cat?' selected':'')+'>'+c+'</option>').join('')+'</select></div>'
     +'<div style="font-size:11px;color:var(--text4);margin-bottom:14px;padding:8px 12px;background:var(--bg3);border-radius:6px">Parità: <strong style="color:var(--text)">'+p.parity+'</strong> <span style="font-size:9px">(auto da #'+p.num+')</span></div>'
     +'<div class="form-group"><label class="form-label">Gruppo (A-E)</label>'
-    +'<select class="form-select" id="ef-group"><option value=""'+(!p.group?' selected':'')+'>—</option>'+['A','B','C','D','E'].map(g=>'<option'+(p.group===g?' selected':'')+'>'+g+'</option>').join('')+'</select></div>'
+    +'<select class="form-select" id="ef-group"><option value=""'+(!p.group?' selected':'')+'>—</option>'+[...new Set(raceGroups().concat(normalizeGroup(p.group)?[normalizeGroup(p.group)]:[]))].sort().map(g=>'<option'+(normalizeGroup(p.group)===g?' selected':'')+'>'+g+'</option>').join('')+'</select></div>'
     +'<div class="form-group"><label class="form-label">Prefinal (A/B)</label>'
     +'<select class="form-select" id="ef-prefinal"><option value=""'+(!p.prefinal?' selected':'')+'>—</option>'+['A','B'].map(g=>'<option'+(p.prefinal===g?' selected':'')+'>'+g+'</option>').join('')+'</select></div>'
     +'<div class="form-group"><label class="form-label">Serie (1/2/3)</label>'
