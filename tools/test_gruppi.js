@@ -9,7 +9,7 @@ function fn(nome) { const m = new RegExp('^function ' + nome + '\\(', 'm').exec(
     if (c === '/' && n === '/') { i = src.indexOf('\n', i); continue; } if (c === '/' && n === '*') { i = src.indexOf('*/', i) + 1; continue; }
     if (c === '"' || c === "'" || c === '`') { q = c; continue; } if (c === '{') d++; else if (c === '}') { d--; if (!d) return src.slice(m.index, i + 1); } } return ''; }
 const codice = [/^const VALID_GROUPS=.*$/m.exec(src)[0], /^let _hpCache=.*$/m.exec(src)[0], 'var _oneSerieSrc=null,_oneSerieMap={};']
-  .concat(['pHeats', 'raceGroups', 'normalizeGroup', 'canonCat', 'heatPublished', 'pilotInGroup', 'oneSerieOf', 'pSerie', 'pilotsForSlot'].map(fn)).join('\n')
+  .concat(/^function _catIndex\(/m.test(src) ? ['var _catIxSig=null,_catIx={perN:{},perVecchia:{}},_catAvvisi={};function dlog(){}'] : []).concat(['_canonCatNomi', '_catN', '_catIndex', 'pHeats', 'raceGroups', 'normalizeGroup', 'canonCat', 'heatPublished', 'pilotInGroup', 'oneSerieOf', 'pSerie', 'pilotsForSlot'].map(fn)).join('\n')
   + '\n;globalThis.__api={pilotsForSlot,normalizeGroup,raceGroups:typeof raceGroups==="function"?raceGroups:null};';
 const L = ['E', 'F', 'G', 'H'], el = {}, pilots = [];
 for (let i = 0; i < 16; i++) { const n = String(100 + i); el[n] = { num: n, cat: 'CAT X', group: L[i % 4] }; pilots.push({ num: n, cat: 'CAT X', group: '', heats: [], eliminated: false }); }
