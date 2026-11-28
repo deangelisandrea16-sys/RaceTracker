@@ -965,3 +965,16 @@ body.light .task-btn:not(.green):not(.orange):not(.red){background:#ffffff;color
 /* 27/11/2026 (Andrea): tasti non attivi (stato 'red' = da fare) rossi tono su tono, staccati dal fondo pilota */
 body:not(.light) .task-btn.red{background:#4a1d22!important;color:#ff9ba3!important}
 body.light .task-btn.red{background:#fde0e3!important;color:#b4232f!important}
+
+/* 28/11/2026 (Andrea): team a fisarmonica nella vista piloti divisi per team */
+.tgrp-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:var(--bg3);border-left:4px solid #a78bfa;font-family:'Saira Condensed','Arial Narrow',Arial,sans-serif;font-size:22px;font-weight:800;letter-spacing:.02em;color:var(--text);line-height:1.15;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:background .2s,margin .3s}
+.tgrp-head:active{background:var(--btn-bg)}
+.tgrp-cnt{font-size:15px;font-weight:800;color:var(--text3);flex-shrink:0}
+.tgrp-chev{width:11px;height:11px;flex-shrink:0;margin:0 4px 4px 6px;border-right:3px solid var(--text3);border-bottom:3px solid var(--text3);transform:rotate(45deg);transition:transform .3s ease,margin .3s ease}
+.tgrp-head.closed .tgrp-chev{transform:rotate(-45deg);margin:0 6px 0 4px}
+.tgrp-wrap{display:grid;grid-template-rows:1fr;transition:grid-template-rows .3s ease,opacity .3s ease;opacity:1}
+.tgrp-wrap.closed{grid-template-rows:0fr;opacity:0}
+.tgrp-inner{overflow:hidden;min-height:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(380px,100%),1fr));gap:12px;align-items:start;padding:4px;margin:-4px}
+.tgrp-inner>.card{margin-bottom:0!important}
+.tgrp-wrap.closed .tgrp-inner{padding:0;margin:0}
+@media (prefers-reduced-motion:reduce){.tgrp-wrap,.tgrp-chev,.tgrp-head{transition:none}}
