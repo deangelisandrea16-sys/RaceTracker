@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-28-1050';
+var RT_JS_BUILD='2026-11-28-1105';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3753,7 +3753,8 @@ function renderPilots(){
   const _cnt={};if(_grp)_list.forEach(p=>{const k=teamNorm(_tOf(p))||'';_cnt[k]=(_cnt[k]||0)+1;});
   const _th=(p,i)=>{if(!_grp)return'';const k=teamNorm(_tOf(p))||'';if(i>0&&(teamNorm(_tOf(_list[i-1]))||'')===k)return'';
     const nm=String(_tOf(p)||'SENZA TEAM').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-    return'<div class="search-group-label" style="margin-top:'+(i?'18':'4')+'px"><i class="ic ic-team"></i> '+nm+' ('+_cnt[k]+')</div>';};
+    // 28/11/2026 (Andrea): nome team grande e ben visibile (in questa vista serve proprio quello)
+    return'<div style="display:flex;align-items:center;gap:10px;margin:'+(i?'22':'6')+'px 0 10px;padding:12px 14px;border-radius:12px;background:var(--bg3);border-left:4px solid #a78bfa;font-family:\'Saira Condensed\',\'Arial Narrow\',Arial,sans-serif;font-size:22px;font-weight:800;letter-spacing:.02em;color:var(--text);line-height:1.15"><i class="ic ic-team" style="flex-shrink:0"></i><span style="flex:1;min-width:0;overflow-wrap:anywhere">'+nm+'</span><span style="font-size:15px;font-weight:800;color:var(--text3);flex-shrink:0">'+_cnt[k]+'</span></div>';};
   el.innerHTML=counter+_list.map((p,i)=>{
     const isElim=p.eliminated;
     const hl=p.highlight||[];
