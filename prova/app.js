@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-27-1655';
+var RT_JS_BUILD='2026-11-28-1000';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1696,10 +1696,11 @@ function toggleFilter(kind,v){
   const set=kind==='task'?filterTasks:kind==='status'?filterStatuses:kind==='reel'?filterReel:filterHL;
   if(v==='all')set.clear();else if(set.has(v))set.delete(v);else set.add(v);
   try{if(navigator.vibrate)navigator.vibrate(10);}catch(e){}
-  syncFilterChips();renderPilots();
+  syncFilterChips();renderPilots();refreshTeamLists();
 }
 window.toggleFilter=toggleFilter;
-function setFilterTask(t){filterTasks.clear();if(t!=='all')filterTasks.add(t);syncFilterChips();renderPilots();}
+function refreshTeamLists(){try{if(document.getElementById('p-team-list'))renderPilotTeamList();}catch(e){}try{if(document.getElementById('prog-team-list'))renderProgTeamList();}catch(e){}}
+function setFilterTask(t){filterTasks.clear();if(t!=='all')filterTasks.add(t);syncFilterChips();renderPilots();refreshTeamLists();}
 window.setFilterTask=setFilterTask;
 function setFilterStatus(s){filterStatuses.clear();if(s!=='all')filterStatuses.add(s);syncFilterChips();renderPilots();}
 window.setFilterStatus=setFilterStatus;
@@ -3374,8 +3375,10 @@ window.copyAllForEditor=copyAllForEditor;
 // ══════════════════════════════════════
 const CATS=['KZ2','OK','OKN','OKJ','MINI GR3','MINI U10','OK-NJ'];
 
+// 28/11/2026 (Andrea): con i filtri attivi (EVID foto/video, stato, reel) la lista team conta solo i piloti che passano i filtri
 function getMyTeams(){
-  return groupTeamNames(pilots.map(p=>p.team||((currentEntryList[p.num]||{}).team)||''));
+  const ok=p=>{try{return pilotMatchesFilter(p);}catch(e){return true;}};
+  return groupTeamNames(pilots.filter(ok).map(p=>p.team||((currentEntryList[p.num]||{}).team)||''));
 }
 function myPilotMatches(p,mode,team,cat){
   if(mode==='team')return!!team&&sameTeam(p.team||((currentEntryList[p.num]||{}).team)||'',team);
@@ -3419,7 +3422,7 @@ function setPilotSearchMode(mode){
   const resEl=document.getElementById('pilots-search-results');
   const listEl=document.getElementById('pilots-list');
   if(mode==='text'){resEl.style.display='none';listEl.style.display='';}
-  else if(mode==='team'){renderPilotTeamList();resEl.style.display='';listEl.style.display='none';renderPilotSearchResults();} // 14/11: niente risultati vecchi della ricerca per nome
+  else if(mode==='team'){renderPilotTeamList();resEl.style.display='none';listEl.style.display='';renderPilots();} // 28/11: piloti aperti divisi per team; tocco su un team = solo quel team // 14/11: niente risultati vecchi della ricerca per nome
   else if(mode==='cat'){buildCatGrid('p-cat-grid','selectPilotCat',pilotSearchCat);resEl.style.display='';listEl.style.display='none';renderPilotSearchResults();}
 }
 window.setPilotSearchMode=setPilotSearchMode;
@@ -3440,6 +3443,8 @@ function renderPilotTeamList(){
       +(followed(t)?'<button class="btn-add-team done" style="min-height:36px;width:auto;margin:0;padding:0 12px" onclick="setPilotsView(\'team\')">SEGUITO</button>'
         :'<button class="btn-add-team" style="min-height:36px;width:auto;margin:0;padding:0 12px" onclick="followTeamFromSearch(\''+esc(t)+'\')">+ SEGUI TEAM</button>')+'</div>').join('');
   el.innerHTML=html||'<div style="padding:14px;font-size:12px;color:var(--text4);text-align:center">Nessun team'+(q.length<2?'':' con questo nome nella gara')+'</div>';
+  // 28/11: scrivendo nel filtro team si aggiornano anche le schede divise per team
+  if(pilotSearchMode==='team'&&!pilotSearchTeam&&document.activeElement&&document.activeElement.id==='p-team-input'){try{renderPilots();}catch(e){}}
 }
 function teams_isFollowed(name){try{const k=teamKey(name);return teams.some(t=>t.key===k||sameTeam(name,teamOfKey(t)));}catch(e){return false;}}
 function followTeamFromSearch(name){addTeam(name);setPilotsView('team');}
@@ -3447,6 +3452,8 @@ window.followTeamFromSearch=followTeamFromSearch;
 window.renderPilotTeamList=renderPilotTeamList;
 
 function selectPilotTeam(team){
+  // 28/11/2026: secondo tocco sullo stesso team = torna a tutti i piloti divisi per team
+  if(pilotSearchTeam===team){pilotSearchTeam='';renderPilotTeamList();const r=document.getElementById('pilots-search-results'),l=document.getElementById('pilots-list');if(r)r.style.display='none';if(l)l.style.display='';renderPilots();return;}
   pilotSearchTeam=team;
   renderPilotTeamList();
   renderPilotSearchResults();
@@ -3737,12 +3744,22 @@ function renderPilots(){
   const counter='<div style="font-size:11px;font-weight:700;color:var(--text4);margin-bottom:14px;letter-spacing:1px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">'
     +(filtersActive()?'FILTRO':'TOTALE PILOTI')
     +' <span style="color:var(--text);font-size:18px;font-weight:900;margin-left:8px;">'+showing+(filtersActive()?'/'+total:'')+'</span></div>';
-  el.innerHTML=counter+filtered.map((p,i)=>{
+  // 28/11/2026 (Andrea): ricerca per TEAM senza team scelto = schede complete dei miei piloti divise per team (con i filtri attivi)
+  const _grp=pilotSearchMode==='team'&&!pilotSearchTeam;
+  const _tOf=p=>(p.team||((currentEntryList[p.num]||{}).team)||'').trim();
+  let _list=filtered;
+  if(_grp){const q=(document.getElementById('p-team-input')||{}).value||'';const Q=q.toUpperCase();
+    _list=filtered.filter(p=>!Q||_tOf(p).toUpperCase().includes(Q)).sort((a,b)=>(teamNorm(_tOf(a))||'~').localeCompare(teamNorm(_tOf(b))||'~')||(parseInt(a.num)||0)-(parseInt(b.num)||0));}
+  const _cnt={};if(_grp)_list.forEach(p=>{const k=teamNorm(_tOf(p))||'';_cnt[k]=(_cnt[k]||0)+1;});
+  const _th=(p,i)=>{if(!_grp)return'';const k=teamNorm(_tOf(p))||'';if(i>0&&(teamNorm(_tOf(_list[i-1]))||'')===k)return'';
+    const nm=String(_tOf(p)||'SENZA TEAM').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    return'<div class="search-group-label" style="margin-top:'+(i?'18':'4')+'px"><i class="ic ic-team"></i> '+nm+' ('+_cnt[k]+')</div>';};
+  el.innerHTML=counter+_list.map((p,i)=>{
     const isElim=p.eliminated;
     const hl=p.highlight||[];
     const hlLabels={foto:'<i class="ic ic-hl-foto"></i> FOTO',video:'<i class="ic ic-hl-video"></i> VIDEO',priority:'<i class="ic ic-hl-prio"></i> PRIORITÀ'};
     const hlCls=hlClassOf(hl);
-    return'<div class="card '+hlCls+'">'
+    return _th(p,i)+'<div class="card '+hlCls+'">'
     +'<div class="pilot-header">'
     +'<div style="display:flex;align-items:flex-start;gap:10px;min-width:0;flex:1">'
     +'<span class="pilot-index">'+(i+1)+'.</span><div style="min-width:0">'
