@@ -1209,8 +1209,8 @@ function listenRaceData(raceId){
        if(_e&&_e.group&&!(Array.isArray(p.heats)&&p.heats.length)&&String(_e.group).toUpperCase()!==String(p.group||'').toUpperCase())p.group=String(_e.group).toUpperCase();}
       if(!p.heats)p.heats=[];
       if(!Array.isArray(p.heats))p.heats=typeof p.heats==='object'?Object.values(p.heats):[];
-      // 17/11/2026: manche ufficiali dall'entry list (il server le scrive per tutti, es. WSK) unite a quelle del pilota
-      {const _e=currentEntryList&&currentEntryList[p.num];const _h=_e&&_e.heats?(Array.isArray(_e.heats)?_e.heats:Object.values(_e.heats)):[];if(_h.length){const _u=new Set(p.heats.map(h=>String(h).trim().toUpperCase()));_h.forEach(h=>_u.add(String(h).trim().toUpperCase()));if(_u.size!==p.heats.length)p.heats=[..._u];}}
+      // 28/11/2026 (Fable): le manche ufficiali NON si copiano piu' dentro il pilota (prima si sommavano a quelle salvate, non si
+      // toglievano mai e finivano riscritte nel database al primo salvataggio). Si leggono al momento con pHeats(p).
       if(!p.inFinal)p.inFinal=false;
       // Normalize highlight to array
       if(p.highlight&&typeof p.highlight==='string')p.highlight=[p.highlight];
@@ -1379,6 +1379,15 @@ function heatsForGroup(heats,group){let h=heats||[];if(!Array.isArray(h))h=typeo
   const ok=h.filter(x=>String(x).toUpperCase().split('-').map(y=>y.trim()).includes(g));
   return ok.length?ok:h;}
 window.heatsForGroup=heatsForGroup;
+/* Manche del pilota: quelle UFFICIALI dell'entry list se ci sono (il server le aggiorna e le toglie), altrimenti quelle salvate
+   a mano sul pilota. Nessuna copia in memoria: niente dati vecchi, niente scritture di ritorno. */
+function pHeats(p){
+  const e=p&&currentEntryList&&currentEntryList[p.num];
+  let h=e&&e.heats?(Array.isArray(e.heats)?e.heats:Object.values(e.heats)):[];
+  if(!h.length){h=p&&p.heats?(Array.isArray(p.heats)?p.heats:Object.values(p.heats)):[];}
+  return h.map(x=>String(x).trim().toUpperCase());
+}
+window.pHeats=pHeats;
 function normalizeGroup(v){
   if(!v&&v!==0)return'';
   const s=String(v).trim().toUpperCase();
@@ -1412,10 +1421,11 @@ function pilotInGroup(pilot,filterArr){
   // 28/11/2026 (Andrea, MINI GR3 R3: tutti i piloti in tutti i turni a gruppi): le manche note (heats) valgono solo se
   // sono coerenti col gruppo ufficiale, cioe' ogni manche contiene la lettera del gruppo. Se no (dati sporchi dal server) vale il gruppo.
   const _eg=currentEntryList&&currentEntryList[pilot.num];const _g0=normalizeGroup((_eg&&_eg.group)||pilot.group);
-  const _hOk=!_g0||!Array.isArray(pilot.heats)||pilot.heats.every(h=>String(h).toUpperCase().split('-').map(x=>x.trim()).includes(_g0));
-  if(_hOk&&pilot.heats&&Array.isArray(pilot.heats)&&pilot.heats.length){
+  const _ph=pHeats(pilot);
+  const _hOk=!_g0||_ph.every(h=>h.split('-').map(x=>x.trim()).includes(_g0));
+  if(_hOk&&_ph.length){
     const slotKey=filterArr.map(x=>String(x).trim().toUpperCase()).sort().join('-');
-    if(pilot.heats.some(h=>{
+    if(_ph.some(h=>{
       const hKey=String(h).trim().toUpperCase().split('-').map(x=>x.trim()).sort().join('-');
       return hKey===slotKey;
     }))return true;
@@ -1433,7 +1443,7 @@ function pilotInGroup(pilot,filterArr){
 
 // Indica se il pilota ha dati gruppo validi (heats[] nuovo o group legacy)
 function pilotHasGroupData(pilot){
-  if(pilot.heats&&Array.isArray(pilot.heats)&&pilot.heats.length)return true;
+  if(pHeats(pilot).length)return true;
   const _e=currentEntryList&&currentEntryList[pilot.num];
   return!!normalizeGroup((_e&&_e.group)||pilot.group);
 }
@@ -3797,7 +3807,7 @@ function renderPilots(){
     +(hl.length?'<div class="hl-badges">'+hl.map(function(h){return'<span class="hl-badge hl-'+h+'">'+(hlLabels[h]||h)+'</span>';}).join('')+'</div>':'')
     +'<span class="parity-badge">'+p.parity+'</span>'
     +'<span class="group-badge '+(pilotHasGroupData(p)?'set':'')+'">'
-    +(p.heats&&p.heats.length?heatsLabel(heatsForGroup(p.heats,((currentEntryList&&currentEntryList[p.num]||{}).group)||p.group)):(p.group?'GRP '+p.group:'GRP ?'))
+    +(pHeats(p).length?heatsLabel(heatsForGroup(pHeats(p),((currentEntryList&&currentEntryList[p.num]||{}).group)||p.group)):(p.group?'GRP '+p.group:'GRP ?'))
     +'</span>'
     +'<button class="pilot-edit-btn" onclick="openEditPilot(\''+p.num+'\')"><i class="ic ic-note"></i> modifica</button>'
     +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="deletePilot(\''+p.num+'\')"><i class="ic ic-close"></i> rimuovi</button>'
