@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-28-1150';
+var RT_JS_BUILD='2026-11-28-1200';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1372,6 +1372,13 @@ function lookupByNum(num){return currentEntryList[num.toString()]||null;}
 // Normalizza qualsiasi valore gruppo in una singola lettera maiuscola ('A'-'E')
 // oppure '' se il valore non è valido.
 const VALID_GROUPS=['A','B','C','D','E'];
+/* 28/11/2026: manche coerenti col gruppo ufficiale. Se il server ha scritto manche di gruppi non suoi (MINI GR3: 5 manche
+   invece di 3) si tengono solo quelle che contengono la lettera del gruppo; senza gruppo noto o senza lettere = invariate. */
+function heatsForGroup(heats,group){let h=heats||[];if(!Array.isArray(h))h=typeof h==='object'?Object.values(h):[];
+  const g=normalizeGroup(group);if(!g)return h;
+  const ok=h.filter(x=>String(x).toUpperCase().split('-').map(y=>y.trim()).includes(g));
+  return ok.length?ok:h;}
+window.heatsForGroup=heatsForGroup;
 function normalizeGroup(v){
   if(!v&&v!==0)return'';
   const s=String(v).trim().toUpperCase();
@@ -3790,7 +3797,7 @@ function renderPilots(){
     +(hl.length?'<div class="hl-badges">'+hl.map(function(h){return'<span class="hl-badge hl-'+h+'">'+(hlLabels[h]||h)+'</span>';}).join('')+'</div>':'')
     +'<span class="parity-badge">'+p.parity+'</span>'
     +'<span class="group-badge '+(pilotHasGroupData(p)?'set':'')+'">'
-    +(p.heats&&p.heats.length?heatsLabel(p.heats):(p.group?'GRP '+p.group:'GRP ?'))
+    +(p.heats&&p.heats.length?heatsLabel(heatsForGroup(p.heats,((currentEntryList&&currentEntryList[p.num]||{}).group)||p.group)):(p.group?'GRP '+p.group:'GRP ?'))
     +'</span>'
     +'<button class="pilot-edit-btn" onclick="openEditPilot(\''+p.num+'\')"><i class="ic ic-note"></i> modifica</button>'
     +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="deletePilot(\''+p.num+'\')"><i class="ic ic-close"></i> rimuovi</button>'
@@ -5333,7 +5340,7 @@ function riskData(){
     const cut=riskCutOf(cat,list.length);
     // 15/11/2026: ritirato / non classificato ('—') = gara fatta, punti da ultimo (prima risultava 'manca')
     const rkP=v=>{const x=rkPts(v);if(x!==null)return x;return(v!==undefined&&v!==null&&String(v).trim()!=='')?list.length:null;};
-    const rows=list.map(([num,e])=>{let h=e.heats||[];if(!Array.isArray(h))h=Object.values(h);const res=e.result||{};
+    const rows=list.map(([num,e])=>{let h=heatsForGroup(e.heats,e.group);const res=e.result||{};
       let pts=0,done=0;h.forEach(k=>{const v=rkP(res[k]);if(v!==null){pts+=v;done++;}});
       const pfDone=!catHasPF(cat)||['PF-A','PF-B'].some(k=>rkP(res[k])!==null);if(pfDone&&catHasPF(cat)){const k=rkP(res['PF-A'])!==null?'PF-A':'PF-B';pts+=rkP(res[k]);done++;}
       const left=Math.max(0,h.length-(done-(pfDone&&catHasPF(cat)?1:0)))+(pfDone?0:1);
