@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-28-1210';
+var RT_JS_BUILD='2026-11-28-1410';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -5691,7 +5691,9 @@ function renderLtNext(){
     +' <span style="color:var(--text)">· ore '+hh+':'+mm+(d?' (ritardo '+d+'′)':'')+'</span> <span style="color:var(--text4)">· '+mine.length+' tuoi'+(N.src==='live'?' · annunciato dal live':'')+'</span></div>'+remLine(sl);
   if(!mine.length)return head+'<div class="empty-state"><p>Nessun tuo pilota nel prossimo turno.</p></div>';
   return head+mine.map(({p,ft})=>{const no=String(p.num),gp=gridPos(no,sl),isMine=!ft,ent=currentEntryList[no]||{};const nt=String((notes&&notes[no])||'').trim();
-    return'<div class="ltbig '+(isMine?hlOfNum(no):hlClassOf(ft.highlight||[])+' tglow')+'"'+(ft?' style="--tc:'+teamColor(ft.key)+'"':'')+' data-no="'+esc(no)+'" onclick="openPilotDetail(\''+esc(no)+'\')">'
+    // 28/11/2026 (Andrea): anche un pilota mio che e' in un team seguito ha il contorno colore team
+    const tg=ft||(isMine?followedTeamOf(no,ent.team):null);
+    return'<div class="ltbig '+(isMine?hlOfNum(no):hlClassOf(ft.highlight||[]))+(tg?' tglow':'')+'"'+(tg?' style="--tc:'+teamColor(tg.key)+'"':'')+' data-no="'+esc(no)+'" onclick="openPilotDetail(\''+esc(no)+'\')">'
       +'<div class="pos">'+(gp?'<span style="font-size:.55em;opacity:.7">P</span>'+gp:'–')+'</div>'
       +'<div style="flex:1;min-width:0"><div><span class="num">#'+esc(no)+'</span>'+riskTri(no)+' <span class="nm">'+esc(p.name||ent.lastName||'')+'</span><span onclick="event.stopPropagation()" style="float:right">'+noteBtn(no)+'</span></div>'
       +'<div class="tm">'+esc(p.team||ent.team||'')+'</div>'
@@ -5758,7 +5760,8 @@ function renderLtLast(){
       const pl=pilots.find(p=>String(p.num)===x.no)||{};const ent=(currentEntryList&&currentEntryList[x.no])||{};
       const nt=String((notes&&notes[x.no])||'').trim();
       const mine=pilots.some(p=>String(p.num)===x.no);const ft=mine?null:followedTeamOf(x.no,ent.team);
-      return'<div class="ltbig '+(mine?hlOfNum(x.no):ft?hlClassOf(ft.highlight||[])+' tglow':'')+'"'+(ft?' style="--tc:'+teamColor(ft.key)+'"':'')+' data-no="'+esc(x.no)+'" onclick="openPilotDetail(\''+esc(x.no)+'\')">'
+      const tg=ft||(mine?followedTeamOf(x.no,ent.team):null);
+      return'<div class="ltbig '+(mine?hlOfNum(x.no):ft?hlClassOf(ft.highlight||[]):'')+(tg?' tglow':'')+'"'+(tg?' style="--tc:'+teamColor(tg.key)+'"':'')+' data-no="'+esc(x.no)+'" onclick="openPilotDetail(\''+esc(x.no)+'\')">'
         +'<div class="pos">'+(x.ret?ltXSpan(x.ret):(x.pos<999?x.pos:'–'))+'</div>'
         +'<div style="flex:1;min-width:0"><div><span class="num">#'+esc(x.no)+'</span>'+riskTri(x.no)+' <span class="nm">'+esc(pl.name||x.dr)+'</span>'+ltRetBadge(x.ret)+'<span onclick="event.stopPropagation()" style="float:right">'+noteBtn(x.no)+'</span></div>'
         +'<div class="tm">'+esc(pl.team||ent.team||'')+(x.gap?' · '+esc(x.gap):'')+(x.blp?' · best '+esc(x.blp):'')+'</div>'
@@ -5962,7 +5965,8 @@ function renderLtMyTable(){
       // 20/11/2026 (Andrea): pilota di un team seguito = trattato come i tuoi (stesso aspetto), con contorno colore team
       const ft=tm?followedTeamOf(no,ent.team):null;const as=!tm||ft;
       const hc=tm?(ft?hlClassOf(ft.highlight||[]):''):hlOfNum(no);
-      return'<div class="ltbig '+hc+(tm&&!ft?' team':'')+(ft?' tglow':'')+(rt?' ret':'')+(mv>0?' up':mv<0?' down':'')+'"'+(ft?' style="--tc:'+teamColor(ft.key)+'"':'')+' data-no="'+no+'"'+(as?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
+      const tg=ft||(!tm&&teamNums.has(no)?followedTeamOf(no,ent.team):null);
+      return'<div class="ltbig '+hc+(tm&&!ft?' team':'')+(tg?' tglow':'')+(rt?' ret':'')+(mv>0?' up':mv<0?' down':'')+'"'+(tg?' style="--tc:'+teamColor(tg.key)+'"':'')+' data-no="'+no+'"'+(as?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
         +'<div class="pos">'+(rt?ltXSpan(rt):(txt(r,C('rk','3'))||'–'))+(mv?'<span class="mv">'+(mv>0?'▲':'▼')+Math.abs(mv)+'</span>':'')+'</div>'
         +'<div style="flex:1;min-width:0"><div><span class="num">#'+no+'</span>'+(as?riskTri(no):'')+' <span class="nm">'+nm+'</span>'+ltRetBadge(rt)+(as?'<span onclick="event.stopPropagation()" style="float:right">'+noteBtn(no)+'</span>':'')+'</div>'
         +'<div class="tm">'+team+'</div>'
@@ -5979,7 +5983,8 @@ function renderLtMyTable(){
       const llc=cls(r,C('llp','10'));
       // 20/11/2026 (Andrea): piloti dei team seguiti = riga come i tuoi, con il colore del team a sinistra e sopra/sotto
       const ftr=tm?followedTeamOf(no,((currentEntryList||{})[no]||{}).team):null;
-      return'<tr data-no="'+no+'" class="'+(mine?'mine '+hlOfNum(no):ftr?'mine tglow':tm?'team':'')+'"'+(ftr?' style="--tc:'+teamColor(ftr.key)+'"':'')+(mine||ftr?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
+      const tgr=ftr||(mine&&teamNums.has(no)?followedTeamOf(no,((currentEntryList||{})[no]||{}).team):null);
+      return'<tr data-no="'+no+'" class="'+(mine?'mine '+hlOfNum(no)+(tgr?' tglow':''):ftr?'mine tglow':tm?'team':'')+'"'+(tgr?' style="--tc:'+teamColor(tgr.key)+'"':'')+(mine||ftr?' onclick="openPilotDetail(\''+no+'\')"':'')+'>'
         +'<td>'+(ltRetOf(no)?ltXSpan(ltRetOf(no)):txt(r,C('rk','3')))+'</td><td class="n">'+no+(mine?riskTri(no):'')+'</td><td class="d">'+txt(r,C('dr','5'))+ltRetBadge(ltRetOf(no))+'</td><td class="d" style="color:var(--text3)">'+(((pilots.find(x=>String(x.num)===no)||{}).team)||((currentEntryList&&currentEntryList[no])||{}).team||'')+'</td></tr>'
         +(mine&&String((notes&&notes[no])||'').trim()?'<tr class="mine"><td></td><td colspan="6" class="note-txt" style="white-space:normal"><i class="ic ic-note"></i> '+String(notes[no]).replace(/</g,'&lt;')+'</td></tr>':'');
     }).join('')+'</table>'
