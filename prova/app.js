@@ -30,12 +30,28 @@ onValue=function(r,cb,errOrOpts){
     var origVal=snap.val.bind(snap);
     snap.val=function(){
       var v=origVal();
-      return _fixArrays(v);
+      return _rtNeutro(_fixArrays(v),r);
     };
     cb(snap);
   };
   _origOnValue(r,wrappedCb,errOrOpts);
 };
+/* 28/11/2026 (Fable): difesa unica all'ingresso. Ogni testo letto dal database perde i caratteri che servono a scrivere HTML
+   (< > "): diventano ‹ › ″. Cosi' un nome, un team, una nota o il nome di una gara non possono piu' far eseguire codice, in
+   NESSUNA schermata, anche dove il testo viene inserito senza protezione. Non tocca i nodi che contengono HTML scritto dal
+   server apposta (storico avvisi, live). Sulla copia del 28/11 nessun dato di gara contiene questi caratteri. */
+var _RT_HTML_OK=/\/(alertsLog|liveRelay|notifLog)(\/|$)/;
+function _rtNeutro(v,r){
+  try{var u=String(((r&&r.ref)||r||'').toString());if(_RT_HTML_OK.test(u))return v;}catch(e){}
+  return _rtNeutroVal(v);
+}
+function _rtNeutroVal(v){
+  if(typeof v==='string')return /[<>"]/.test(v)?v.replace(/</g,'\u2039').replace(/>/g,'\u203a').replace(/"/g,'\u2033'):v;
+  if(v===null||typeof v!=='object')return v;
+  if(Array.isArray(v)){for(var i=0;i<v.length;i++)v[i]=_rtNeutroVal(v[i]);return v;}
+  Object.keys(v).forEach(function(k){v[k]=_rtNeutroVal(v[k]);});
+  return v;
+}
 function _fixArrays(obj){
   if(obj===null||obj===undefined||typeof obj!=='object')return obj;
   if(Array.isArray(obj)){return obj.map(_fixArrays);}
