@@ -1170,7 +1170,8 @@ function listenRaceData(raceId){
     if(!sharedReady||!userReady)return;
     currentEntryList=sharedData.entryList||{};window._rtElSig=Date.now();
     window._rtMedia=sharedData.media||{}; // 22/11/2026: contatori ClipSorter (mediaChip)
-    window._rtParts=sharedData.participants||{}; // 27/11/2026: elenco ufficiale partecipanti per categoria (server)
+    window._rtParts=sharedData.participants||{};
+    window._rtCatMap=sharedData.catMap||{}; // 28/11/2026: abbinamenti di categoria verificati dal server coi numeri // 27/11/2026: elenco ufficiale partecipanti per categoria (server)
     currentSchedule=sharedData.schedule||{};
     currentDays=sharedData.days||Object.keys(currentSchedule);
     if(!Array.isArray(currentDays))currentDays=typeof currentDays==='object'?Object.values(currentDays):[];
@@ -1386,7 +1387,7 @@ function normalizeGroup(v){
 }
 // Restituisce true se il pilota appartiene a uno dei gruppi nell'array filterArr
 // filterArr è sempre un array di lettere, es. ['A','B']
-function canonCat(c){
+function _canonCatNomi(c){
   // Normalizza le diciture categoria tra competizioni (WSK/ACI/ecc.)
   // es. "MINI U10"=="MINI GR3 U10"=="MINI GR.3 U10"; "OK"=="OK-N"; "OKJ"=="OK-N JUNIOR"
   var s=String(c||'').toUpperCase().replace(/[.\-_]/g,'').replace(/\s+/g,'');
@@ -1399,6 +1400,33 @@ function canonCat(c){
   if(s==='OKN')return 'OKN';
   if(s==='OKNJ'||s==='OKNJUNIOR'||s==='OKNJR')return 'OKNJ';
   return s;
+}
+/* 28/11/2026 (Fable): CATEGORIE DALL'ENTRY LIST, MAI FUSE PER SOMIGLIANZA.
+   Le categorie della gara sono quelle scritte nell'entry list. Un altro nome (programma, live, pilota salvato) si abbina cosi':
+   1) stesso nome, ignorando solo spazi, trattini, punti e maiuscole;
+   2) abbinamento verificato dal server con i NUMERI dei piloti (races/<gara>/catMap);
+   3) regole dei nomi di prima (_canonCatNomi), ma SOLO se portano a UNA categoria dell'entry list. Se due categorie diverse
+      dell'entry list finirebbero insieme (es. "MINI 60" e "MINI ROK"), la regola non si usa: nessuna fusione, avviso nel registro.
+   Senza entry list (gara vuota) vale il nome ripulito. */
+function _catN(c){return String(c==null?'':c).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,'');}
+var _catIxSig=null,_catIx={perN:{},perVecchia:{}},_catAvvisi={};
+function _catIndex(){
+  var el=currentEntryList||{},sig=[Object.keys(el).length,window._rtElSig||''].join('|');
+  if(_catIxSig===sig)return _catIx;
+  var perN={},perVecchia={};
+  Object.keys(el).forEach(function(k){var e=el[k];if(!e||!e.cat)return;var n=_catN(e.cat);if(perN[n])return;perN[n]=String(e.cat);var v=_canonCatNomi(e.cat);(perVecchia[v]=perVecchia[v]||[]).push(n);});
+  _catIxSig=sig;_catIx={perN:perN,perVecchia:perVecchia};_catAvvisi={};
+  return _catIx;
+}
+function canonCat(c){
+  var n=_catN(c);if(!n)return '';
+  var ix=_catIndex();
+  if(ix.perN[n])return n;
+  var m=(window._rtCatMap||{})[n];if(m&&ix.perN[_catN(m)])return _catN(m);
+  var cand=ix.perVecchia[_canonCatNomi(c)]||[];
+  if(cand.length===1)return cand[0];
+  if(cand.length>1&&!_catAvvisi[n]){_catAvvisi[n]=1;try{dlog(['Categoria "',String(c),'" non abbinata: somiglia a piu\' categorie dell\'entry list (',cand.map(function(k){return ix.perN[k];}).join(', '),'). Nessuna fusione.'].join(''),'warn');}catch(e){}}
+  return n;
 }
 window.canonCat=canonCat;
 /* manche gia' pubblicata da WSK per la categoria = almeno un pilota dell'entry list ce l'ha nei suoi heats */
