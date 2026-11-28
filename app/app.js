@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-28-1130';
+var RT_JS_BUILD='2026-11-28-1200';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -1372,6 +1372,13 @@ function lookupByNum(num){return currentEntryList[num.toString()]||null;}
 // Normalizza qualsiasi valore gruppo in una singola lettera maiuscola ('A'-'E')
 // oppure '' se il valore non è valido.
 const VALID_GROUPS=['A','B','C','D','E'];
+/* 28/11/2026: manche coerenti col gruppo ufficiale. Se il server ha scritto manche di gruppi non suoi (MINI GR3: 5 manche
+   invece di 3) si tengono solo quelle che contengono la lettera del gruppo; senza gruppo noto o senza lettere = invariate. */
+function heatsForGroup(heats,group){let h=heats||[];if(!Array.isArray(h))h=typeof h==='object'?Object.values(h):[];
+  const g=normalizeGroup(group);if(!g)return h;
+  const ok=h.filter(x=>String(x).toUpperCase().split('-').map(y=>y.trim()).includes(g));
+  return ok.length?ok:h;}
+window.heatsForGroup=heatsForGroup;
 function normalizeGroup(v){
   if(!v&&v!==0)return'';
   const s=String(v).trim().toUpperCase();
@@ -3196,7 +3203,10 @@ function renderTeams(){
   const filtered=teams.filter(teamMatchesFilter).sort((a,b)=>a.name.localeCompare(b.name));
   const counter='<div style="font-size:11px;font-weight:700;color:var(--text4);margin-bottom:14px;letter-spacing:1px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">'
     +(filterStatuses.size?'FILTRO':'TOTALE TEAM')+' <span style="color:var(--text);font-size:18px;font-weight:900;margin-left:8px;">'+filtered.length+(filterStatuses.size?'/'+teams.length:'')+'</span></div>';
-  el.innerHTML=counter+filtered.map(t=>{
+  el.innerHTML=counter+filtered.map(teamCardHtml).join('');
+}
+// 28/11/2026: scheda del team riusata anche nella ricerca TEAM della scheda Piloti
+function teamCardHtml(t){
     const ents=teamEntrants(t);
     const cats=[...new Set(ents.map(p=>p.cat))];
     return'<div class="card team-card"><div class="pilot-header"><div>'
@@ -3210,7 +3220,6 @@ function renderTeams(){
       +teamWorkRowHtml(t)
       +'<div class="note-wrap"><span class="note-label">Note</span>'
       +'<textarea class="note-area" id="tnote-'+t.key+'" placeholder="Es. tenda dietro box 12..." onblur="saveTeamNote(\''+escAttr(t.key)+'\')">'+(teamNotes[t.key]||'')+'</textarea></div></div>';
-  }).join('');
 }
 
 // ══════════════════════════════════════
@@ -3446,13 +3455,16 @@ function renderPilotTeamList(){
   const others=q.length>=2?getTeamsFromEntryList().filter(([t])=>t.toUpperCase().includes(q)&&!mineT.has(teamNorm(t))):[];
   const esc=t=>t.replace(/'/g,"\\'");
   const followed=t=>teams_isFollowed(t);
-  let html=teams.map(([t,cnt])=>'<div class="scuderia-item'+(pilotSearchTeam===t?' selected':'')+'" onclick="selectPilotTeam(\''+esc(t)+'\')">'
-    +'<span style="flex:1">'+t+'</span><span style="font-size:10px;color:var(--text4);font-weight:700;margin-left:8px">'+cnt+'</span></div>').join('');
+  // 28/11/2026 (Andrea): i miei team non si elencano piu' qui: ci sono gia' le schede divise per team (fisarmonica) sotto.
+  // Qui restano solo i team della gara da seguire, scrivendo nel filtro.
+  if(pilotSearchTeam){pilotSearchTeam='';const r=document.getElementById('pilots-search-results'),l=document.getElementById('pilots-list');if(r)r.style.display='none';if(l)l.style.display='';}
+  let html='';
   if(others.length)html+='<div style="padding:10px 4px 4px;font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--text4)">TEAM IN GARA</div>'
     +others.map(([t,cnt])=>'<div class="scuderia-item" style="cursor:default"><span style="flex:1">'+t+'</span><span style="font-size:10px;color:var(--text4);font-weight:700;margin:0 8px">'+cnt+' piloti</span>'
       +(followed(t)?'<button class="btn-add-team done" style="min-height:36px;width:auto;margin:0;padding:0 12px" onclick="setPilotsView(\'team\')">SEGUITO</button>'
         :'<button class="btn-add-team" style="min-height:36px;width:auto;margin:0;padding:0 12px" onclick="followTeamFromSearch(\''+esc(t)+'\')">+ SEGUI TEAM</button>')+'</div>').join('');
-  el.innerHTML=html||'<div style="padding:14px;font-size:12px;color:var(--text4);text-align:center">Nessun team'+(q.length<2?'':' con questo nome nella gara')+'</div>';
+  el.innerHTML=html||(q.length>=2&&!teams.length?'<div style="padding:14px;font-size:12px;color:var(--text4);text-align:center">Nessun team con questo nome nella gara</div>':'');
+  el.style.display=el.innerHTML?'':'none';
   // 28/11: scrivendo nel filtro team si aggiornano anche le schede divise per team
   if(pilotSearchMode==='team'&&!pilotSearchTeam){try{renderPilots();}catch(e){}}
 }
@@ -3766,12 +3778,12 @@ function renderPilots(){
     // 28/11/2026 (Andrea): nome team grande e ben visibile, a fisarmonica (tocco = apri/chiudi con animazione)
     const closed=!(window._rtTeamOpen=window._rtTeamOpen||new Set()).has(k);   // 28/11 (Andrea): chiusi di base
     return(i>0?'</div></div>':'')+'<div class="tgrp-head'+(closed?' closed':'')+'" onclick="toggleTeamGroup(this)" data-tk="'+String(k).replace(/"/g,'&quot;')+'" role="button" aria-expanded="'+(!closed)+'"><i class="ic ic-team" style="flex-shrink:0"></i><span style="flex:1;min-width:0;overflow-wrap:anywhere">'+nm+'</span><span class="tgrp-cnt">'+_cnt[k]+'</span><span class="tgrp-chev"></span></div><div class="tgrp-wrap'+(closed?' closed':'')+'"><div class="tgrp-inner">';};
-  el.innerHTML=counter+_list.map((p,i)=>{
+  const _card=(p,i)=>{
     const isElim=p.eliminated;
     const hl=p.highlight||[];
     const hlLabels={foto:'<i class="ic ic-hl-foto"></i> FOTO',video:'<i class="ic ic-hl-video"></i> VIDEO',priority:'<i class="ic ic-hl-prio"></i> PRIORITÀ'};
     const hlCls=hlClassOf(hl);
-    return _th(p,i)+'<div class="card '+hlCls+'">'
+    return'<div class="card '+hlCls+'">'
     +'<div class="pilot-header">'
     +'<div style="display:flex;align-items:flex-start;gap:10px;min-width:0;flex:1">'
     +'<span class="pilot-index">'+(i+1)+'.</span><div style="min-width:0">'
@@ -3785,7 +3797,7 @@ function renderPilots(){
     +(hl.length?'<div class="hl-badges">'+hl.map(function(h){return'<span class="hl-badge hl-'+h+'">'+(hlLabels[h]||h)+'</span>';}).join('')+'</div>':'')
     +'<span class="parity-badge">'+p.parity+'</span>'
     +'<span class="group-badge '+(pilotHasGroupData(p)?'set':'')+'">'
-    +(p.heats&&p.heats.length?heatsLabel(p.heats):(p.group?'GRP '+p.group:'GRP ?'))
+    +(p.heats&&p.heats.length?heatsLabel(heatsForGroup(p.heats,((currentEntryList&&currentEntryList[p.num]||{}).group)||p.group)):(p.group?'GRP '+p.group:'GRP ?'))
     +'</span>'
     +'<button class="pilot-edit-btn" onclick="openEditPilot(\''+p.num+'\')"><i class="ic ic-note"></i> modifica</button>'
     +'<button class="pilot-edit-btn" style="color:#ef4444;border-color:#ef4444" onclick="deletePilot(\''+p.num+'\')"><i class="ic ic-close"></i> rimuovi</button>'
@@ -3794,7 +3806,22 @@ function renderPilots(){
     +reelRowHtml(p)+fotoRowHtml(p,true)
     +'<div class="note-wrap"><span class="note-label">Note</span>'
     +'<textarea class="note-area" id="note-'+p.num+'" placeholder="Aggiungi una nota..." onblur="saveNote(\''+p.num+'\')">'+(notes[p.num]||'')+'</textarea></div></div>';
-  }).join('')+(_grp&&_list.length?'</div></div>':'')+missingDashHtml();
+  };
+  if(!_grp){el.innerHTML=counter+_list.map(_card).join('')+missingDashHtml();}
+  else{
+    // 28/11/2026 (Andrea): gruppi = team dei miei piloti + team che seguo (con TUTTI i loro iscritti nella scheda del team)
+    const hlOn=filterHL.size>0||filterReel.size>0;const Q=(((document.getElementById('p-team-input')||{}).value)||'').toUpperCase();
+    const G=new Map();const gk=n=>teamNorm(n)||n||'';
+    _list.forEach(p=>{const n=_tOf(p)||'SENZA TEAM';const k=gk(n);if(!G.has(k))G.set(k,{name:n,mine:[],team:null});G.get(k).mine.push(p);});
+    (teams||[]).forEach(t=>{try{if(hlOn||!teamMatchesFilter(t))return;if(Q&&!String(t.name).toUpperCase().includes(Q))return;const k=gk(t.name);if(!G.has(k))G.set(k,{name:t.name,mine:[],team:null});G.get(k).team=t;}catch(e){}});
+    const OPEN=(window._rtTeamOpen=window._rtTeamOpen||new Set());let idx=0;
+    const esc=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    el.innerHTML=counter+[...G.entries()].sort((a,b)=>a[1].name.toUpperCase().localeCompare(b[1].name.toUpperCase())).map(([k,g])=>{
+      const closed=!OPEN.has(k);let tot=g.mine.length;try{if(g.team)tot=Math.max(tot,teamEntrants(g.team).length);}catch(e){}
+      return'<div class="tgrp-head'+(closed?' closed':'')+'" onclick="toggleTeamGroup(this)" data-tk="'+esc(k)+'" role="button" aria-expanded="'+(!closed)+'"><i class="ic ic-team" style="flex-shrink:0"></i><span style="flex:1;min-width:0;overflow-wrap:anywhere">'+esc(g.name)+'</span><span class="tgrp-cnt">'+tot+'</span><span class="tgrp-chev"></span></div>'
+        +'<div class="tgrp-wrap'+(closed?' closed':'')+'"><div class="tgrp-inner">'+(g.team?teamCardHtml(g.team):'')+g.mine.map(p=>_card(p,idx++)).join('')+'</div></div>';
+    }).join('')+missingDashHtml();
+  }
 }
 
 // ══════════════════════════════════════
@@ -5313,7 +5340,7 @@ function riskData(){
     const cut=riskCutOf(cat,list.length);
     // 15/11/2026: ritirato / non classificato ('—') = gara fatta, punti da ultimo (prima risultava 'manca')
     const rkP=v=>{const x=rkPts(v);if(x!==null)return x;return(v!==undefined&&v!==null&&String(v).trim()!=='')?list.length:null;};
-    const rows=list.map(([num,e])=>{let h=e.heats||[];if(!Array.isArray(h))h=Object.values(h);const res=e.result||{};
+    const rows=list.map(([num,e])=>{let h=heatsForGroup(e.heats,e.group);const res=e.result||{};
       let pts=0,done=0;h.forEach(k=>{const v=rkP(res[k]);if(v!==null){pts+=v;done++;}});
       const pfDone=!catHasPF(cat)||['PF-A','PF-B'].some(k=>rkP(res[k])!==null);if(pfDone&&catHasPF(cat)){const k=rkP(res['PF-A'])!==null?'PF-A':'PF-B';pts+=rkP(res[k]);done++;}
       const left=Math.max(0,h.length-(done-(pfDone&&catHasPF(cat)?1:0)))+(pfDone?0:1);
