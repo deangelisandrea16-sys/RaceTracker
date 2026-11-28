@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-28-1000';
+var RT_JS_BUILD='2026-11-28-1010';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3444,7 +3444,7 @@ function renderPilotTeamList(){
         :'<button class="btn-add-team" style="min-height:36px;width:auto;margin:0;padding:0 12px" onclick="followTeamFromSearch(\''+esc(t)+'\')">+ SEGUI TEAM</button>')+'</div>').join('');
   el.innerHTML=html||'<div style="padding:14px;font-size:12px;color:var(--text4);text-align:center">Nessun team'+(q.length<2?'':' con questo nome nella gara')+'</div>';
   // 28/11: scrivendo nel filtro team si aggiornano anche le schede divise per team
-  if(pilotSearchMode==='team'&&!pilotSearchTeam&&document.activeElement&&document.activeElement.id==='p-team-input'){try{renderPilots();}catch(e){}}
+  if(pilotSearchMode==='team'&&!pilotSearchTeam){try{renderPilots();}catch(e){}}
 }
 function teams_isFollowed(name){try{const k=teamKey(name);return teams.some(t=>t.key===k||sameTeam(name,teamOfKey(t)));}catch(e){return false;}}
 function followTeamFromSearch(name){addTeam(name);setPilotsView('team');}
@@ -3749,7 +3749,7 @@ function renderPilots(){
   const _tOf=p=>(p.team||((currentEntryList[p.num]||{}).team)||'').trim();
   let _list=filtered;
   if(_grp){const q=(document.getElementById('p-team-input')||{}).value||'';const Q=q.toUpperCase();
-    _list=filtered.filter(p=>!Q||_tOf(p).toUpperCase().includes(Q)).sort((a,b)=>(teamNorm(_tOf(a))||'~').localeCompare(teamNorm(_tOf(b))||'~')||(parseInt(a.num)||0)-(parseInt(b.num)||0));}
+    _list=filtered.filter(p=>!Q||_tOf(p).toUpperCase().includes(Q)).sort((a,b)=>(_tOf(a).toUpperCase()||'~').localeCompare(_tOf(b).toUpperCase()||'~')||(parseInt(a.num)||0)-(parseInt(b.num)||0));}
   const _cnt={};if(_grp)_list.forEach(p=>{const k=teamNorm(_tOf(p))||'';_cnt[k]=(_cnt[k]||0)+1;});
   const _th=(p,i)=>{if(!_grp)return'';const k=teamNorm(_tOf(p))||'';if(i>0&&(teamNorm(_tOf(_list[i-1]))||'')===k)return'';
     const nm=String(_tOf(p)||'SENZA TEAM').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
