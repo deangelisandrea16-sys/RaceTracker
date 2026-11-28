@@ -1,6 +1,6 @@
 /* Race Tracker — copia di prova: script principale (14/11/2026, punto 9: tolto dalla pagina unica).
    RT_JS_BUILD deve essere uguale ad APP_BUILD della pagina: se diverso, la pagina ricarica il file. */
-var RT_JS_BUILD='2026-11-28-1130';
+var RT_JS_BUILD='2026-11-28-1140';
 // ── Firebase Compat Shim: drop-in replacements for modular API ──
 var _fbApp=firebase.initializeApp({apiKey:"AIzaSyB2t6Rm0x-LIMD8iWF_cAUXzdsBUCz6Byg",authDomain:"karting-tools.firebaseapp.com",databaseURL:"https://karting-tools-default-rtdb.firebaseio.com",projectId:"karting-tools",storageBucket:"karting-tools.firebasestorage.app",messagingSenderId:"199360301984",appId:"1:199360301984:web:50252111fe9b47231232c5"});
 var _fbDb=firebase.database();
@@ -3196,7 +3196,10 @@ function renderTeams(){
   const filtered=teams.filter(teamMatchesFilter).sort((a,b)=>a.name.localeCompare(b.name));
   const counter='<div style="font-size:11px;font-weight:700;color:var(--text4);margin-bottom:14px;letter-spacing:1px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">'
     +(filterStatuses.size?'FILTRO':'TOTALE TEAM')+' <span style="color:var(--text);font-size:18px;font-weight:900;margin-left:8px;">'+filtered.length+(filterStatuses.size?'/'+teams.length:'')+'</span></div>';
-  el.innerHTML=counter+filtered.map(t=>{
+  el.innerHTML=counter+filtered.map(teamCardHtml).join('');
+}
+// 28/11/2026: scheda del team riusata anche nella ricerca TEAM della scheda Piloti
+function teamCardHtml(t){
     const ents=teamEntrants(t);
     const cats=[...new Set(ents.map(p=>p.cat))];
     return'<div class="card team-card"><div class="pilot-header"><div>'
@@ -3210,7 +3213,6 @@ function renderTeams(){
       +teamWorkRowHtml(t)
       +'<div class="note-wrap"><span class="note-label">Note</span>'
       +'<textarea class="note-area" id="tnote-'+t.key+'" placeholder="Es. tenda dietro box 12..." onblur="saveTeamNote(\''+escAttr(t.key)+'\')">'+(teamNotes[t.key]||'')+'</textarea></div></div>';
-  }).join('');
 }
 
 // ══════════════════════════════════════
@@ -3766,12 +3768,12 @@ function renderPilots(){
     // 28/11/2026 (Andrea): nome team grande e ben visibile, a fisarmonica (tocco = apri/chiudi con animazione)
     const closed=!(window._rtTeamOpen=window._rtTeamOpen||new Set()).has(k);   // 28/11 (Andrea): chiusi di base
     return(i>0?'</div></div>':'')+'<div class="tgrp-head'+(closed?' closed':'')+'" onclick="toggleTeamGroup(this)" data-tk="'+String(k).replace(/"/g,'&quot;')+'" role="button" aria-expanded="'+(!closed)+'"><i class="ic ic-team" style="flex-shrink:0"></i><span style="flex:1;min-width:0;overflow-wrap:anywhere">'+nm+'</span><span class="tgrp-cnt">'+_cnt[k]+'</span><span class="tgrp-chev"></span></div><div class="tgrp-wrap'+(closed?' closed':'')+'"><div class="tgrp-inner">';};
-  el.innerHTML=counter+_list.map((p,i)=>{
+  const _card=(p,i)=>{
     const isElim=p.eliminated;
     const hl=p.highlight||[];
     const hlLabels={foto:'<i class="ic ic-hl-foto"></i> FOTO',video:'<i class="ic ic-hl-video"></i> VIDEO',priority:'<i class="ic ic-hl-prio"></i> PRIORITÀ'};
     const hlCls=hlClassOf(hl);
-    return _th(p,i)+'<div class="card '+hlCls+'">'
+    return'<div class="card '+hlCls+'">'
     +'<div class="pilot-header">'
     +'<div style="display:flex;align-items:flex-start;gap:10px;min-width:0;flex:1">'
     +'<span class="pilot-index">'+(i+1)+'.</span><div style="min-width:0">'
@@ -3794,7 +3796,22 @@ function renderPilots(){
     +reelRowHtml(p)+fotoRowHtml(p,true)
     +'<div class="note-wrap"><span class="note-label">Note</span>'
     +'<textarea class="note-area" id="note-'+p.num+'" placeholder="Aggiungi una nota..." onblur="saveNote(\''+p.num+'\')">'+(notes[p.num]||'')+'</textarea></div></div>';
-  }).join('')+(_grp&&_list.length?'</div></div>':'')+missingDashHtml();
+  };
+  if(!_grp){el.innerHTML=counter+_list.map(_card).join('')+missingDashHtml();}
+  else{
+    // 28/11/2026 (Andrea): gruppi = team dei miei piloti + team che seguo (con TUTTI i loro iscritti nella scheda del team)
+    const hlOn=filterHL.size>0||filterReel.size>0;const Q=(((document.getElementById('p-team-input')||{}).value)||'').toUpperCase();
+    const G=new Map();const gk=n=>teamNorm(n)||n||'';
+    _list.forEach(p=>{const n=_tOf(p)||'SENZA TEAM';const k=gk(n);if(!G.has(k))G.set(k,{name:n,mine:[],team:null});G.get(k).mine.push(p);});
+    (teams||[]).forEach(t=>{try{if(hlOn||!teamMatchesFilter(t))return;if(Q&&!String(t.name).toUpperCase().includes(Q))return;const k=gk(t.name);if(!G.has(k))G.set(k,{name:t.name,mine:[],team:null});G.get(k).team=t;}catch(e){}});
+    const OPEN=(window._rtTeamOpen=window._rtTeamOpen||new Set());let idx=0;
+    const esc=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    el.innerHTML=counter+[...G.entries()].sort((a,b)=>a[1].name.toUpperCase().localeCompare(b[1].name.toUpperCase())).map(([k,g])=>{
+      const closed=!OPEN.has(k);let tot=g.mine.length;try{if(g.team)tot=Math.max(tot,teamEntrants(g.team).length);}catch(e){}
+      return'<div class="tgrp-head'+(closed?' closed':'')+'" onclick="toggleTeamGroup(this)" data-tk="'+esc(k)+'" role="button" aria-expanded="'+(!closed)+'"><i class="ic ic-team" style="flex-shrink:0"></i><span style="flex:1;min-width:0;overflow-wrap:anywhere">'+esc(g.name)+'</span><span class="tgrp-cnt">'+tot+'</span><span class="tgrp-chev"></span></div>'
+        +'<div class="tgrp-wrap'+(closed?' closed':'')+'"><div class="tgrp-inner">'+(g.team?teamCardHtml(g.team):'')+g.mine.map(p=>_card(p,idx++)).join('')+'</div></div>';
+    }).join('')+missingDashHtml();
+  }
 }
 
 // ══════════════════════════════════════
